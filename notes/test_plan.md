@@ -42,3 +42,4 @@ This document describes the test plan for the FavoriteTeleport mod, including te
 - `architecture.md` – Detailed architecture and module relationships.
 - `coding_standards.md` – Coding conventions and best practices.
 - `data_schema.md` – Persistent data schema and structure.
+- `factorio_specs.md` – Notes regarding how factorio modding works

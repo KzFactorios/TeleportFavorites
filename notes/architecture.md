@@ -15,6 +15,7 @@ This document describes the architecture of the FavoriteTeleport mod, including 
 ---
 
 ## Module Breakdown
+- All modules should use a class paradigm. Use emmylua definitions to achieve this goal. Store external type in the core/types folder
 - `core/cache/` – Persistent data cache, schema, init methods and helpers.
 - `core/control/` – Lifecycle, event, and utility modules.
 - `core/patterns/` – eg: Observer module. Files to handle design pattern logic
@@ -29,6 +30,7 @@ This document describes the architecture of the FavoriteTeleport mod, including 
 - `core/map_tag.lua` – Map tag object logic and helpers.
 - `core/error_handling.lua` – Centralizes error handling and displying the information to the user and/or logging to the correct files
 - `gui/` – GUI modules for favorite bar, tag editor, and cache viewer.
+- `core/gps.lua` - used for helper file for gps conversion to a map position and vice versa. Includes any helper methods related to gps
 
 ---
 
@@ -56,3 +58,4 @@ This document describes the architecture of the FavoriteTeleport mod, including 
 - `design_specs.md` – Project goals and feature overview.
 - `data_schema.md` – Persistent data schema and structure.
 - `coding_standards.md` – Coding conventions and best practices.
+- `factorio_specs.md` – Notes regarding how factorio modding works
