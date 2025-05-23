@@ -14,7 +14,7 @@
 - [ ] Test for the display of unforeseen large strings - player names, 
 - [ ] Check limits on size for chart tag text
 - [ ] Check for map editor functionality
-- [ ] When a chart_tag is destroyed, it should destroy any linked map_tags
-- [ ] When a map_tag is destroyed, it should destroy any linked chart_tags
+- [ ] When a chart_tag is destroyed, it should destroy any linked tags
+- [ ] When a tag is destroyed, it should destroy any linked chart_tags
 - [ ] Multiplayer: play around with ownership of tags
 - [ ] Match vanilaa styling for delete and move button in the TE

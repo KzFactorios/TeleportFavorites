@@ -1,0 +1,158 @@
+---@diagnostic disable: undefined-global, lowercase-global, duplicate-set-field, duplicate-doc-field, assign-type-mismatch, param-type-mismatch, return-type-mismatch, redundant-parameter, missing-return, cast-local-type, need-check-nil, deprecated, undefined-field, redefined-local, unused-local, unused-function, unused-label, trailing-space
+
+---@class MapPosition
+---@field x number
+---@field y number
+
+---@class ChartTagSpec
+---@field position MapPosition
+---@field text string
+---@field icon? SignalID[] # Optional: array of SignalID for tag icons
+---@field last_user string # Player name of last user to edit
+---@field surface LuaSurface # Surface where the tag is placed
+---@field color? Color # Optional: color of the tag
+---@field tag_id? uint # Optional: unique identifier for the tag
+
+---@class SignalID
+---@field type string   # "item", "fluid", "virtual"
+---@field name string  # Name of the item/fluid/virtual-signal prototype
+
+-- Factorio 2.0.47 runtime classes and type aliases (auto-generated, do not edit manually)
+---@class LuaAccumulator
+---@class LuaAchievementPrototype
+---@class LuaAISettings
+---@class LuaAmmoCategoryPrototype
+---@class LuaArithmeticCombinatorControlBehavior
+---@class LuaAutoplaceControlPrototype
+---@class LuaBeacon
+---@class LuaBeltImmunityEquipment
+---@class LuaBinaryCombinatorControlBehavior
+---@class LuaBurner
+---@class LuaBurnerPrototype
+---@class LuaCamera
+---@class LuaCharacter
+---@class LuaChunkIterator
+---@class LuaCliff
+---@class LuaCliffPrototype
+---@class LuaCommandProcessor
+---@class LuaCombinatorControlBehavior
+---@class LuaConstantCombinatorControlBehavior
+---@class LuaContainer
+---@class LuaContainerControlBehavior
+---@class LuaControl
+---@class LuaControlBehavior
+---@class LuaCorpse
+---@class LuaCustomChartTag
+---@class LuaCustomInputPrototype
+---@class LuaCustomTable
+---@class LuaDeciderCombinatorControlBehavior
+---@class LuaDecorative
+---@class LuaDecorativePrototype
+---@class LuaElectricEnergyInterface
+---@class LuaElectricPole
+---@class LuaElectricPolePrototype
+---@class LuaEntity
+---@class LuaEntityPrototype
+---@class LuaEntityPrototypeFlags
+---@class LuaEquipment
+---@class LuaEquipmentCategoryPrototype
+---@class LuaEquipmentGrid
+---@class LuaEquipmentGridPrototype
+---@class LuaEquipmentPrototype
+---@class LuaExplosion
+---@class LuaFire
+---@class LuaFluidBox
+---@class LuaFluidBoxPrototype
+---@class LuaFluidEnergySourcePrototype
+---@class LuaFluidPrototype
+---@class LuaFlowStatistics
+---@class LuaForce
+---@class LuaFurnace
+---@class LuaGameScript
+---@class LuaGenericOnOffControlBehavior
+---@class LuaGui
+---@class LuaGuiElement
+---@class LuaGroup
+---@class LuaHeatBufferPrototype
+---@class LuaHeatEnergySourcePrototype
+---@class LuaInfinityContainer
+---@class LuaInfinityPipe
+---@class LuaInserter
+---@class LuaInserterPrototype
+---@class LuaInventory
+---@class LuaItemPrototype
+---@class LuaItemRequestProxy
+---@class LuaItemStack
+---@class LuaItemWithInventory
+---@class LuaItemWithLabel
+---@class LuaItemWithTags
+---@class LuaLamp
+---@class LuaLampControlBehavior
+---@class LuaLandMine
+---@class LuaLogisticCell
+---@class LuaLogisticContainer
+---@class LuaLogisticContainerControlBehavior
+---@class LuaLogisticNetwork
+---@class LuaLogisticPoint
+---@class LuaLuaCommandProcessor
+---@class LuaMapSettings
+---@class LuaMarket
+---@class LuaMiningDrill
+---@class LuaModSettingPrototype
+---@class LuaModuleCategoryPrototype
+---@class LuaNamedNoiseExpression
+---@class LuaNoiseLayerPrototype
+---@class LuaPermissionGroup
+---@class LuaPermissionGroups
+---@class LuaPlayer
+---@field mod_settings table<string, {value: any}> # Per-player mod settings
+---@class LuaPowerSwitch
+---@class LuaPowerSwitchControlBehavior
+---@class LuaProgrammableSpeaker
+---@class LuaProgrammableSpeakerControlBehavior
+---@class LuaProjectile
+---@class LuaPump
+---@class LuaPumpPrototype
+---@class LuaRailChainSignal
+---@class LuaRailPath
+---@class LuaRailSegment
+---@class LuaRailSignal
+---@class LuaRailSignalControlBehavior
+---@class LuaRailSignalPrototype
+---@class LuaRoboport
+---@class LuaRoboportControlBehavior
+---@class LuaRocketSilo
+---@class LuaRocketSiloControlBehavior
+---@class LuaRollingStock
+---@class LuaSelectionTool
+---@class LuaSmoke
+---@class LuaSolarPanel
+---@class LuaSpeechBubble
+---@class LuaSpiderLeg
+---@class LuaSpiderVehicle
+---@class LuaSpritePrototype
+---@class LuaStackFilterInserter
+---@class LuaStatistic
+---@class LuaStorageTank
+---@class LuaStorageTankControlBehavior
+---@class LuaStyle
+---@class LuaSurface
+---@class LuaTechnology
+---@class LuaTechnologyPrototype
+---@class LuaTile
+---@class LuaTilePrototype
+---@class LuaTrain
+---@class LuaTrainStop
+---@class LuaTrainStopControlBehavior
+---@class LuaTransportBelt
+---@class LuaTree
+---@class LuaTrivialSmokePrototype
+---@class LuaTurret
+---@class LuaUnit
+---@class LuaUnitGroup
+---@class LuaUpgradePlanner
+---@class LuaVirtualSignalPrototype
+---@class LuaWall
+
+---@class uint: number
+---@class Color table  -- {r: number, g: number, b: number, a?: number}

@@ -12,7 +12,7 @@ local Constants = require("constants")
 -- @return table settings { teleport_radius: integer, favorites_on: boolean, destination_msg_on: boolean }
 function Settings:getPlayerSettings(player)
   local settings = {
-    teleport_radius = Constants.TELEPORT_RADIUS_DEFAULT,
+    teleport_radius = Constants.settings.TELEPORT_RADIUS_DEFAULT,
     favorites_on = true,
     destination_msg_on = true,
   }
@@ -22,11 +22,12 @@ function Settings:getPlayerSettings(player)
   end
 
   local mod_settings = player.mod_settings
+
   ---@cast mod_settings table<string, {value: any}>  -- EmmyLua type cast for static analysis
 
   local t_radius = mod_settings["teleport-radius"]
   if t_radius and t_radius.value ~= nil then
-    settings.teleport_radius = math.floor(tonumber(t_radius.value) or Constants.TELEPORT_RADIUS_DEFAULT)
+    settings.teleport_radius = math.floor(tonumber(t_radius.value) or Constants.settings.TELEPORT_RADIUS_DEFAULT)
   end
 
   local favorites_on = mod_settings["favorites-on"]

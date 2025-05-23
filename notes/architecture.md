@@ -9,7 +9,7 @@ This document describes the architecture of the FavoriteTeleport mod, including 
 - **Persistent Data:** All persistent data is stored in `storage` and managed via the `core/cache` module.
 - **Core Modules:** Handle tag/favorite logic, context, and multiplayer safety.
 - **GUI Modules:** Provide user interfaces for managing favorites, tags, and settings.
-- **Sync_Tag:** Ensures tag/favorite consistency across multiplayer and surfaces.
+- **Sync:** Ensures tag/favorite consistency across multiplayer and surfaces. Part of the tag folder
 - **Lifecycle & Events:** Manage mod initialization, configuration changes, and event registration.
 
 ---
@@ -18,16 +18,15 @@ This document describes the architecture of the FavoriteTeleport mod, including 
 - All modules should use a class paradigm. Use emmylua definitions to achieve this goal. Store external type in the core/types folder
 - `core/cache/` – Persistent data cache, schema, init methods and helpers.
 - `core/control/` – Lifecycle, event, and utility modules.
-- `core/patterns/` – eg: Observer module. Files to handle design pattern logic
-- `core/sync_tag/` – sync taghronization and migration logic.
+- `core/pattern/` – eg: Observer, singleton, etc modules. Base files to handle design pattern logic
+- `core/tag/sync.lua` – tag synchronization and migration logic.
 - `core/types/` – for external type definitions
 - `core/utils/` – will hold a variety of helper files
 - `core/utils/version.lua` – a utility file to record the version information
     from the info.json file to make the version number readily available
     to the codebase. It is created and updated by update_version.py
 - `core/favorite.lua` – Favorite object logic and helpers.
-- `core/chart_tag.lua` – Chart tag object logic and helpers.
-- `core/map_tag.lua` – Map tag object logic and helpers.
+- `core/tag.lua` – Map tag object logic and helpers.
 - `core/error_handling.lua` – Centralizes error handling and displying the information to the user and/or logging to the correct files
 - `gui/` – GUI modules for favorite bar, tag editor, and cache viewer.
 - `core/gps.lua` - used for helper file for gps conversion to a map position and vice versa. Includes any helper methods related to gps

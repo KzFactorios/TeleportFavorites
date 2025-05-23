@@ -14,7 +14,7 @@ This document describes the test plan for the FavoriteTeleport mod, including te
 
 ## Test Structure
 - All test files are located in the `tests/` directory.
-- Each core module and helper has a corresponding test file (e.g., `favorite_spec.lua`, `map_tag_spec.lua`).
+- Each core module and helper has a corresponding test file (e.g., `favorite_spec.lua`, `tag_spec.lua`).
 - GUI modules have dedicated test files for actions, validation, and edge cases.
 - Integration tests cover end-to-end scenarios and multiplayer edge cases.
 

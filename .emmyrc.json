@@ -2,7 +2,7 @@
   "runtime": {
     "library": [
       "./core/types",          
-      "./factorio_API_types.lua"
+      "./factorio.emmy.lua"
     ]
   }
 }
