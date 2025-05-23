@@ -10,9 +10,6 @@ Defines the persistent data structures for the mod, including player favorites, 
 ```lua
 {
   mod_version = "0.0.01",
-  tag_editor_positions = {
-    [player_index] = position
-  },
   players = {
     [player_index] = {
       toggle_fave_bar_buttons = boolean,
@@ -20,7 +17,6 @@ Defines the persistent data structures for the mod, including player favorites, 
       -- ...other per-player data
       surfaces = {
         [surface_index] = {
-          tag_editor_position = gps,
           favorites = {
             [slot_number] = {
               gps = string
@@ -35,18 +31,23 @@ Defines the persistent data structures for the mod, including player favorites, 
   surfaces = {
     [surface_index] = {
       tags = {
-        [gps] = {
-          faved_by_players = { [player_index] = true },
-          -- ...other tag fields
+        [gps] = {faved_by_players = { [player_index: uint] },
         },
-      },
-      chart_tags = { -- used as a cache for the surface to reduce global data calls
-                    -- refreshes when the cache is empty by game.forces["player"].find_chart_tags(surface)
-        LuaCustomChartTag
       }
     },
   },
-  -- ...other global mod data
+}
+
+
+_G["Lookups"] = {
+  surfaces = {
+    [surface_index] = {
+      chart_tags = { an array of LuaCustomChartTag },
+      tag_editor_positions = {
+        [player_index] = gps
+      }
+    }
+  }
 }
 ```
 

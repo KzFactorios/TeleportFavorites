@@ -58,6 +58,18 @@ This document defines the coding standards and best practices for the FavoriteTe
 
 ---
 
+## Paradigms and Patterns
+
+- **Class-based OOP:** All core modules and helpers should use idiomatic Lua class patterns, with strict EmmyLua annotations for all classes, fields, and methods. Use `---@class`, `---@field`, `---@param`, and `---@return` for documentation and IDE support.
+- **Design Patterns:** The following classic design patterns are implemented and should be used where appropriate: Adapter, Facade, Proxy, Singleton, Observer, Builder, Command, Strategy, Composite. Each pattern base class is located in `core/pattern/` or `core/patterns/` and documented in `notes/pattern_class_notes.md`.
+- **Surface Awareness:** All helpers and accessors must be surface-aware and multiplayer-safe.
+- **Event-driven Architecture:** Use Factorio's event system for initialization, surface management, and runtime cache handling. Register event handlers in `control.lua`.
+- **Persistent vs. Runtime Data:** Persistent data must be managed via the `core/cache` module and stored in `storage`. Runtime-only (non-persistent) data must use the runtime cache (`core/cache/lookups.lua`) and never be stored in persistent storage.
+- **Strict EmmyLua Annotation:** All classes, fields, and methods must be annotated for strictness and IDE support. See `core/types/factorio.emmy.lua` for Factorio runtime types and type aliases.
+- **No leading underscores for private fields:** For private or internal fields in classes, do not use a leading underscore (e.g., use `chart_tag` instead of `_chart_tag`). This is the preferred convention for this codebase.
+
+---
+
 
 ## See Also
 - `design_specs.md` – Project goals and feature overview.
