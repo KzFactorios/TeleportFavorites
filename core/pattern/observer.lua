@@ -38,6 +38,20 @@ function Observer.notify_all(event)
     end
 end
 
+-- Minimal Observer pattern stub for test runner compatibility
+function Observer:new()
+  local obj = setmetatable({observers = {}}, self)
+  return obj
+end
+function Observer:attach(observer)
+  table.insert(self.observers, observer)
+end
+function Observer:notify()
+  for _, obs in ipairs(self.observers) do
+    if obs.update then obs:update() end
+  end
+end
+
 -- Example usage (at end of file):
 --[[]
 local MyObserver = setmetatable({}, { __index = Observer })

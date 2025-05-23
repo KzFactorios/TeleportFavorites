@@ -14,5 +14,8 @@
         "c:\\Users\\rob\\AppData\\Roaming\\Code\\User\\workspaceStorage\\aee1f7749cbc174d121dc5776bc0c9ea\\justarandomgeek.factoriomod-debug\\sumneko-3rd"
     ],
     "Lua.workspace.checkThirdParty": "ApplyInMemory",
-    "editor.detectIndentation": false
+    "editor.detectIndentation": false,
+    "workbench.colorCustomizations": {
+  "editor.background": "#181842"
+}
 }

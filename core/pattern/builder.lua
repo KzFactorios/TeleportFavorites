@@ -7,8 +7,7 @@ Builder.__index = Builder
 
 --- Create a new Builder instance
 function Builder:new()
-    local obj = setmetatable({}, self)
-    -- Initialize builder state here
+    local obj = setmetatable({obj = {}}, self)
     return obj
 end
 
@@ -28,6 +27,14 @@ end
 function Builder:get_result()
     -- Override in subclass to return the built object
     error("Builder:get_result() not implemented")
+end
+
+function Builder:set_part(k, v)
+  self.obj[k] = v
+end
+
+function Builder:build()
+  return self.obj
 end
 
 -- Example usage (at end of file):

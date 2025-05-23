@@ -1,5 +1,5 @@
 local mod_version = require("core.utils.version")
-local PlayerFavorites = require("core.favorte.player_favorites")
+local PlayerFavorites = require("core.favorite.player_favorites")
 local Lookups = require("core/cache/lookups")
 
 ---@diagnostic disable: undefined-global

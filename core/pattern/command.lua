@@ -6,15 +6,15 @@ local Command = {}
 Command.__index = Command
 
 --- Create a new Command instance
-function Command:new()
+function Command:new(fn)
     local obj = setmetatable({}, self)
+    obj.fn = fn
     return obj
 end
 
 --- Execute the command
-function Command:execute(...)
-    -- Override in subclass to perform the command
-    error("Command:execute() not implemented")
+function Command:execute()
+    if self.fn then self.fn() end
 end
 
 -- Example usage (at end of file):

@@ -6,9 +6,9 @@ local Facade = {}
 Facade.__index = Facade
 
 --- Create a new Facade instance
-function Facade:new()
+function Facade:new(subsystem)
     local obj = setmetatable({}, self)
-    -- Initialize subsystems here if needed
+    obj.subsystem = subsystem
     return obj
 end
 
