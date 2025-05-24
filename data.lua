@@ -14,7 +14,7 @@ data:extend {
   {
     type = "sprite",
     name = "default-map-tag",
-    filename = "__FavoriteTeleport__/graphics/default_map_tag.png",
+    filename = "__TeleportFavorites__/graphics/default_map_tag.png",
     priority = "extra-high",
     size = { 32, 49 },
     flags = { "gui-icon" },

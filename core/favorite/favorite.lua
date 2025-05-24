@@ -1,21 +1,25 @@
 local Helpers = require("core.utils.helpers")
 
 ---@class Favorite
--- Represents a favorite location with a GPS string and a locked state.
--- @field gps string The GPS string identifying the location
--- @field locked boolean Whether the favorite is locked (default: false)
-
+---@field gps string The GPS string identifying the location
+---@field locked boolean Whether the favorite is locked (default: false)
+---@field map_tag? table Optional map tag table for tooltip formatting
 local Favorite = {}
 Favorite.__index = Favorite
 
 --- Constructor for Favorite
 -- @param gps string The GPS string
 -- @param locked boolean|nil Optional, defaults to false
+-- @param map_tag table|nil Optional, defaults to nil
 -- @return Favorite
-function Favorite:new(gps, locked)
+function Favorite:new(gps, locked, map_tag)
   local obj = setmetatable({}, self)
-  obj.gps = gps
+  ---@type string
+  obj.gps = gps or ""
+  ---@type boolean
   obj.locked = locked or false
+  ---@type table|nil
+  obj.map_tag = map_tag
   return obj
 end
 

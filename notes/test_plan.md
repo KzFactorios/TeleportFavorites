@@ -1,7 +1,7 @@
-# FavoriteTeleport – Test Plan
+# TeleportFavorites – Test Plan
 
 ## Overview
-This document describes the test plan for the FavoriteTeleport mod, including test coverage goals, test structure, and key scenarios. All core logic, helpers, and GUI modules must be covered by automated tests.
+This document describes the test plan for the TeleportFavorites mod, including test coverage goals, test structure, and key scenarios. All core logic, helpers, and GUI modules must be covered by automated tests.
 
 ---
 

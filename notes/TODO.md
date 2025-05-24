@@ -1,6 +1,6 @@
 -- This is a work in progress
 
-# TODOs for FavoriteTeleport
+# TODOs for TeleportFavorites
 
 
 - [ ] Review and finalize all custom button styles for the tag editor GUI, ensuring vanilla-like appearance and consistent sizing/alignment. 
@@ -21,3 +21,4 @@
 - [ ] If it possible that the tag_editor can be available when the game starts then we may need to persist the tag_editor_positions 
 - [ ] Player favorites mimic a first-in last-out (FILO) pattern. If for some reason we need to trim the list, the last in items go first. This will preserve the longest lasting members
 - [ ] In control.lua.events.on_player_changed_surface, event.surface_index is not guaranteed. Ensure that player.surface.index indicates the new surface
+- [ ] Handle events from the vanilla tag editor

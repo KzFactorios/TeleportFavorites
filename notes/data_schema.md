@@ -1,4 +1,4 @@
-# FavoriteTeleport – Data Schema
+# TeleportFavorites – Data Schema
 
 ## Overview
 Defines the persistent data structures for the mod, including player favorites, map tags, and settings. All data is managed via the `cache` module and is surface-aware.

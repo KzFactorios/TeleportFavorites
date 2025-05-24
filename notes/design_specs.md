@@ -1,7 +1,7 @@
-# FavoriteTeleport – Design Specs
+# TeleportFavorites – Design Specs
 
 ## Overview
-FavoriteTeleport is a Factorio mod that allows players to mark, favorite, and teleport to locations on the map using a robust, multiplayer-safe, and surface-aware system. The mod features a modular architecture, a persistent data cache, and a modern, extensible GUI for managing favorites and map tags.
+TeleportFavorites is a Factorio mod that allows players to mark, favorite, and teleport to locations on the map using a robust, multiplayer-safe, and surface-aware system. The mod features a modular architecture, a persistent data cache, and a modern, extensible GUI for managing favorites and map tags.
 
 This document provides a high-level overview of the mod's goals, architecture, and main features. It is intended as a starting point for developers and maintainers.
 

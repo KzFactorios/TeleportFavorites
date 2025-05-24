@@ -1,7 +1,7 @@
-# FavoriteTeleport – Coding Standards
+# TeleportFavorites – Coding Standards
 
 ## Overview
-This document defines the coding standards and best practices for the FavoriteTeleport mod. All contributors should follow these guidelines to ensure code quality, maintainability, and consistency.
+This document defines the coding standards and best practices for the TeleportFavorites mod. All contributors should follow these guidelines to ensure code quality, maintainability, and consistency.
 
 ---
 
@@ -16,7 +16,7 @@ This document defines the coding standards and best practices for the FavoriteTe
 - Use descriptive variable and function names. Avoid abbreviations unless they are widely understood in the Factorio modding community.
 - Write clear, concise comments and documentation. All public functions and modules must be documented with EmmyLua annotations and descriptive comments. Private helpers should be documented where their behavior is non-obvious.
 - Suggest gang of four design patterns whenever applicable and document when they are in use at the top of the file or at the top of a method - where is most appropriate. --- Pattern [pattern name] is acceptable. All pattern base classes are located in `core/pattern/` or `core/patterns/` and are documented in `notes/pattern_class_notes.md`.
-- Always put require statements at the top of the file. Do not use require statements in method calls. Always use absolute paths from the root. Always order require statements alphabetically upon save or refomatting. This ensures consistency and makes it easy to audit dependencies.
+- chatGPT said "Tip: You can also use local requires inside functions to break cycles:" this tip maybe true for lua (i have no idea), but it is not for factorio, ABSOLUTELY ALWAYS PUT THE REQUIRES AT THE TOP OF THE FILE!!!!!! Always put require statements at the top of the file. Do not use require statements in method calls. Always use absolute paths from the root. Always order require statements alphabetically upon save or refomatting. This ensures consistency and makes it easy to audit dependencies.
 - It is acceptable to have helper methods within a module if they are only used locally. When a helper method needs to be shared, it should be included in a helper file, appropriately named, in the `core/utils/helper` folder.
 - When referencing Factorio runtime objects (e.g., `LuaCustomChartTag`), be aware that static analysis may not recognize all valid runtime fields or methods. Use per-line suppression comments (e.g., `---@diagnostic disable-next-line: undefined-field`) to silence false positives, especially for methods like `:destroy()` or `:destroy_tag()` on chart tags.
 
@@ -50,6 +50,7 @@ This document defines the coding standards and best practices for the FavoriteTe
 - All core logic and helpers must be covered by automated tests. Use the `tests/` directory for all test files. Each core module and helper should have a corresponding test file, and all tests should be automated and cover edge cases and multiplayer scenarios.
 - Edge cases should be examined in all tests where applicable. Multiplayer scenarios must be tested to ensure correctness and robustness.
 - File names in `tests/` should mirror the modules they represent. This makes it easy to find and run tests for any given module.
+- If I delete all the files in the tests folder, do not recreate any tests unless I explicitly ask
 
 ---
 

@@ -1,10 +1,14 @@
+local PlayerFavorites = require("core.favorite.player_favorites")
 local Constants = require("constants")
+local Favorite = require("core.favorite.favorite")
 local Settings = require("settings")
 local Helpers = require("core.utils.Helpers")
+local Lookups = require("core.cache.lookups")
+local GPS = require("core.gps.gps")
 
 ---@class Tag
 ---@field gps string # The GPS string (serves as the index)
----@field chart_tag LuaCustomChartTag # Cached chart tag (private, but no underscore)
+---@field chart_tag LuaCustomChartTag # Cached chart tag (private)
 ---@field faved_by_players uint[] # Array of player indices who have favorited this tag
 
 local Tag = {}
@@ -29,16 +33,6 @@ function Tag:get_chart_tag()
     self.chart_tag = Tag.get_chart_tag_by_gps(self.gps)
   end
   return self.chart_tag
-end
-
---- Static method to fetch a LuaCustomChartTag by gps (implement lookup logic as needed)
----@param gps string
----@return LuaCustomChartTag|nil
-function Tag.get_chart_tag_by_gps(gps)
-  -- TODO: Implement actual lookup logic using your runtime cache or helpers
-  
-  
-  return nil
 end
 
 function Tag:is_player_favorite(player)
@@ -82,6 +76,7 @@ end
 --- @return string|integer Localized error string on failure, or Constants.enums.return_state.SUCCESS on success
 function Tag.teleport_player_with_messaging(player, position, surface, raise_teleported)
   -- Defensive checks for valid player and surface
+  -- These checks are in align_position, but the return message here target teleporting
   if not player or not player.valid or type(player.teleport) ~= "function" then
     return "Unable to teleport. Player is missing"
   end
@@ -94,60 +89,125 @@ function Tag.teleport_player_with_messaging(player, position, surface, raise_tel
     return "Unable to teleport. Player character is missing"
   end
 
-  -- Space platform check
-  if Helpers.is_on_space_platform and Helpers.is_on_space_platform(player) then
-    return
-    "The insurance general has determined that teleporting on a space platform could result in injury or death, or both, and has outlawed the practice."
+  local err_msg, aligned_position = GPS.align_position_for_landing(player, position, surface or player.surface or 1)
+  if err_msg ~= nil and Helpers.trim(err_msg) ~= "" then
+    return err_msg
   end
 
-  -- Get settings
-  local settings = Settings.getPlayerSettings and Settings:getPlayerSettings(player) or { teleport_radius = 8 }
-  local teleport_radius = settings.teleport_radius or 8
+  if aligned_position then
+    local teleport_AOK = false
+    -- Vehicle teleportation: In Factorio, teleporting a vehicle does NOT move the player with it automatically.
+    -- To ensure the player stays inside the vehicle, you must teleport the vehicle first, and the player immediately thereafter.
+    ---@diagnostic disable-next-line
+    if player.driving and player.vehicle then
+      ---@diagnostic disable-next-line
+      if player.riding_state and player.riding_state ~= defines.riding.acceleration.nothing then
+        -- check state of vehicle - cannot teleport from a moving vehicle
+        return "Are you crazy? Trying to teleport while driving is strictly prohibited."
+      end
+      player.vehicle:teleport(aligned_position, surface,
+        raise_teleported and raise_teleported == true or false)
+      teleport_AOK = player:teleport(aligned_position, surface,
+        raise_teleported and raise_teleported == true or false)
+    else
+      teleport_AOK = player:teleport(aligned_position, surface,
+        raise_teleported and raise_teleported == true or false)
+    end
 
-  -- Use the default prototype name for collision search
-  local proto_name = "character"
-  -- Find a non-colliding position near the target position
-  -- fun(self: LuaSurface, name: string, center: MapPosition, radius: double, precision: double): MapPosition?
-  local closest_position = 
-    surface:find_non_colliding_position(proto_name, position, teleport_radius, 4)
-  if not closest_position then
-    return
-    "The location you have chosen is too dense for teleportation. You may try to adjust the settings for teleport radius, but generally you should try a different location."
+    -- A succeful teleport!
+    if teleport_AOK then return Constants.enums.return_state.SUCCESS end
   end
-
-  -- Water tile check
-  if Helpers.is_water_tile(surface, closest_position) then
-    return
-    "You cannot teleport onto water. Ages ago, this practice was allowed and many agents were lost as they were teleported to insurvivable depths. Please select a land location."
-  end
-  -- Check if the position is valid for placing the player
-  if not surface.can_place_entity or not surface:can_place_entity(closest_position) then
-    return "The player cannot be placed at this location. Try another location."
-  end
-
-  local teleport_AOK = false
-
-  -- Vehicle teleportation: In Factorio, teleporting a vehicle does NOT move the player with it automatically.
-  -- To ensure the player stays inside the vehicle, you must teleport the vehicle first, then the player.
-  local vehicle = player.vehicle or nil
-  
-  if vehicle then
-    -- TODO
-    
-    vehicle:teleport(closest_position, surface,
-      raise_teleported and raise_teleported == true or false)
-    teleport_AOK = player:teleport(closest_position, surface,
-      raise_teleported and raise_teleported == true or false)
-  else
-    teleport_AOK = player:teleport(closest_position, surface,
-      raise_teleported and raise_teleported == true or false)
-  end
-
-  -- A succeful teleport!
-  if teleport_AOK then return Constants.enums.return_state.SUCCESS end
 
   -- Fallback error
   return "We were unable to perform the teleport due to unforeseen circumstances"
+end
+
+--- This handles moving a chart_tag to a new location. chart_tag.Position is read-only,
+--- so to move a tag we have to create a new tag and delete the old one
+---@param player LuaPlayer
+---@param destination_gps string
+---@returns string, LuaCustomChartTag?
+function Tag:rehome_chart_tag(player, destination_gps)
+  -- get the gps from the local current_gps = self.gps
+  -- get the aligned position of the destination_gps
+  -- aligned_gps == map_position_t0_gps(aligned_position)
+  -- if current_gps == aligned_gps then return self end
+
+  -- loop thru the game.players and for any favorite that matches the current_gps save any found_tag to a collection all_fave_tags
+  -- create a new chart_tag_spec for the new location - copy the matching info from tag.get_chart_tag.
+  --    Use gps_to_map_position(aligned_gps) for the chart_tag_spec.position
+  -- local new_chart_tag = player.force.add_chart_tag(surface, chart_tag_spec)
+  -- loop thru the all_fave_tags and if the favorite.gps == current_gps then update the favorite.gps to the aligned_gps
+  -- if a valid tag was created then get a ref old_chart_tag to the tag.chart_tag. if it wan;t created or isn't valid then return an error
+  -- update self.gps to aligned_gps and the chart_tag to the newly created chart_tag
+  -- destroy the old_chart_tag
+  -- return the tag.chart_tag
+
+  -- Defensive: self must be a Tag instance
+  if not self or type(self) ~= "table" or not self.gps then
+    return "Invalid tag object"
+  end
+
+  local current_gps = self.gps
+  local msg, aligned_position = GPS.align_position_for_landing(player, destination_gps, player.surface)
+  if msg ~= nil and Helpers.trim(msg) ~= "" then
+    return msg
+  end
+  if aligned_position == nil then
+    return "[TeleportFavorites] Could not find a valid location withini range"
+  end
+
+  local surface_index = player.surface and player.surface.index or 1
+  local aligned_gps = GPS.gps_from_map_position(aligned_position, surface_index + 0)
+  local old_chart_tag = self:get_chart_tag()
+  if current_gps == aligned_gps and old_chart_tag and old_chart_tag.valid == true then
+    return nil, old_chart_tag
+  end
+
+  -- Find all favorite tags matching current_gps for all players
+  local all_fave_tags = {}
+  ---@diagnostic disable-next-line: undefined-global
+  for _, other_player in pairs(game.players) do
+    local favorites = PlayerFavorites.get_player_favorites(other_player)
+    if favorites and type(favorites) == "table" then
+      for _, favorite in pairs(favorites) do
+        if favorite.gps == current_gps then
+          table.insert(all_fave_tags, favorite)
+        end
+      end
+    end
+  end
+
+  -- Build new chart_tag_spec by copying info from old_chart_tag
+  local chart_tag_spec = {
+    position = aligned_position,
+    icon = old_chart_tag and old_chart_tag.icon or {},
+    text = old_chart_tag and old_chart_tag.text or "",
+    last_user = old_chart_tag and old_chart_tag.last_user or player.name
+  }
+
+  -- Create the new chart tag
+  local surface = player.surface
+  local new_chart_tag = player.force:add_chart_tag(surface, chart_tag_spec)
+  if not new_chart_tag or not new_chart_tag.valid then
+    return "Failed to create new chart tag"
+  end
+
+  -- Update all favorite tags to use the new gps
+  for _, favorite in pairs(all_fave_tags) do
+    favorite.gps = aligned_gps
+  end
+
+  -- Update self.gps and self.chart_tag
+  self.gps = aligned_gps
+  self.chart_tag = new_chart_tag
+
+  -- Destroy the old chart tag
+  if old_chart_tag then
+    old_chart_tag.destroy()
+  end
+
+  return nil, self.chart_tag
 end
 
 return Tag

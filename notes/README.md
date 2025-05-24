@@ -1,4 +1,4 @@
-# FavoriteTeleport – Notes Index & Organization
+# TeleportFavorites – Notes Index & Organization
 
 This document summarizes and organizes the key points from all files in the `notes/` folder as of May 23, 2025. Use this as a quick reference and onboarding guide. For full details, see the individual files.
 

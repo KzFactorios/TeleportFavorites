@@ -1,3 +1,5 @@
+local GPS = require("core.gps.gps")
+
 ---@diagnostic disable: undefined-global
 ---@class Lookups
 -- Handles the non-persistent in-game data cache for runtime lookups.
@@ -57,12 +59,44 @@ function Lookups.get_chart_tag_cache(surface_index)
   local cache = ensure_cache()
   cache.surfaces[surface_index] = cache.surfaces[surface_index] or {}
   local surface = cache.surfaces[surface_index]
-  surface.chart_tag_cache = surface.chart_tag_cache or {}
+  -- Always store as a numerically indexed array
+  if not surface.chart_tag_cache or type(surface.chart_tag_cache) ~= "table" then
+    surface.chart_tag_cache = {}
+  end
+  -- Rebuild from game if empty
   ---@diagnostic disable-next-line
   if #surface.chart_tag_cache == 0 and game and game.forces and game.forces["player"] then
-    surface.chart_tag_cache = game.forces["player"].find_chart_tags(surface_index)
+    surface.chart_tag_cache = game.forces["player"]:find_chart_tags(surface_index)
+  end
+  -- Build or update O(1) lookup map by gps
+  surface.chart_tag_cache_by_gps = surface.chart_tag_cache_by_gps or {}
+  -- Clear the map (manual wipe for compatibility)
+  for k in pairs(surface.chart_tag_cache_by_gps) do
+    surface.chart_tag_cache_by_gps[k] = nil
+  end
+  for _, chart_tag in ipairs(surface.chart_tag_cache) do
+    -- chart_tag.position is always present for chart tags from Factorio API
+    local gps = GPS.gps_from_map_position(chart_tag.position, surface_index)
+    surface.chart_tag_cache_by_gps[gps] = chart_tag
   end
   return surface.chart_tag_cache
+end
+
+--- Static method to fetch a LuaCustomChartTag by gps (O(1) lookup)
+---@param gps string
+---@return LuaCustomChartTag|nil
+function Lookups.get_chart_tag_by_gps(gps)
+  local surface_index = GPS.get_surface_index(gps) or 1
+  local cache = ensure_cache()
+  local surface = cache.surfaces[surface_index]
+  if not surface or not surface.chart_tag_cache_by_gps then
+    Lookups.get_chart_tag_cache(surface_index) -- ensure map is built
+    surface = cache.surfaces[surface_index]
+  end
+  if surface and type(surface.chart_tag_cache_by_gps) == "table" then
+    return surface.chart_tag_cache_by_gps[gps]
+  end
+  return nil
 end
 
 --- Set the tag editor position for a player on a surface

@@ -31,6 +31,7 @@ function TagSync.guarantee_chart_tag(player, tag)
     error("Surface not found for tag.gps: " .. tag.gps)
   end
 
+  -- align_position_for_landing
   local chart_tag_spec = {
     position = GPS.map_position_from_gps(tag.gps),
     text = text,
@@ -38,7 +39,7 @@ function TagSync.guarantee_chart_tag(player, tag)
     last_user = player.name
   }
 
-  local chart_tag_obj = game.forces["player"].add_chart_tag(surface, chart_tag_spec)
+  local chart_tag_obj = game.forces["player"]:add_chart_tag(surface, chart_tag_spec)
   if not chart_tag_obj then
     error("Matching chart tag could not be created: " .. tostring(tag.gps))
   end
@@ -49,41 +50,44 @@ function TagSync.guarantee_chart_tag(player, tag)
   return chart_tag_obj
 end
 
-local function ensure_best_location(player, tag, chart_tag_spec)
-  -- align the location using SNAP_SCALE_FOR_CLICKED_TAG
-
-  -- validate the aligned location (tag.gps) is not on a space platform
-  -- validate the aligned location is not a water tile (create a Helpers method for this)
-
-  -- ensure a tag can be placed on the spot or near it
-end
-
 --- Remove a tag and its related chart_tag from all collections
 ---@param tag Tag
 function TagSync.remove_tag_and_chart_tag(tag)
+  local old_gps = tag.gps
+  local surface_index = GPS.get_surface_index(tag.gps) or 1
+  local surface_data = Cache.get_surface_data(surface_index)
+
+   -- delete/reset any player_favorites that match the gps
+  for _, player in pairs(game.players) do
+    local faves = PlayerFavorites.get_player_favorites(player)
+    for _, fave in pairs(faves) do
+      if fave.gps == tag.gps then
+        fave.gps = ""
+        fave.locked = false
+      end
+    end
+  end
+  
   local chart_tag = tag.chart_tag
   if chart_tag and chart_tag.valid then
     chart_tag.destroy()
   end
-  local surface_index = GPS.get_surface_index(tag.gps)
-  local surface_data = Cache.get_surface_data(surface_index)
 
   ---@diagnostic disable-next-line
   if surface_data then
     if not surface_data.tags then surface_data.tags = {} end
     surface_data.tags[tag.gps] = nil
-    Cache.set("surfaces", Cache.get("surfaces"))
   end
 end
 
 --- Delete a tag for a player, updating all relevant collections and state.
 --- Removes the player from the tag's faved_by_players, resets the favorite slot for the player,
---- clears last_user if the player was the last user, and deletes the tag and chart_tag if no players remain.
+--- clears last_user if the player was the last user, and deletes the tag and chart_tag if no faved_by_players players remain.
 --- If other players still favorite the tag, returns the tag; otherwise, returns nil after deletion.
 ---@param player LuaPlayer The player removing the tag
 ---@param tag Tag The tag to be deleted
 ---@return Tag|nil Returns the tag if it is still favorited by others, or nil if deleted
-function TagSync.delete_tag_for_player(player, tag)
+function TagSync.delete_tag_by_player(player, tag)
   -- Remove the player.index from faved_by_players
   local faved_by_players = tag.faved_by_players or {}
   local new_faved = {}
@@ -95,9 +99,10 @@ function TagSync.delete_tag_for_player(player, tag)
   tag.faved_by_players = new_faved
 
   -- Remove the favorite from the player's favorites for the surface (reset the slot to a Favorite.blank_favorite)
-  local player_favs = PlayerFavorites:new(player)
+  local player_favs = PlayerFavorites.new(player)
   for i, fav in ipairs(player_favs.favorites) do
     if fav.gps == tag.gps then
+      ---@diagnostic disable-next-line: assign-type-mismatch
       player_favs.favorites[i] = Favorite.get_blank_favorite()
     end
   end
@@ -117,11 +122,11 @@ function TagSync.delete_tag_for_player(player, tag)
     tag.chart_tag:destroy()
   end
   -- Remove tag from persistent storage
-  local surface_index = GPS.get_surface_index(tag.gps)
+  local surface_index = GPS.get_surface_index(tag.gps) or player.surface.index or 1
+  surface_index = tonumber(surface_index) or 1
   local surface_data = Cache.get_surface_data(surface_index)
   if type(surface_data) == "table" and type(surface_data.tags) == "table" then
     surface_data.tags[tag.gps] = nil
-    Cache.set("surfaces", Cache.get("surfaces"))
   end
   return nil
 end

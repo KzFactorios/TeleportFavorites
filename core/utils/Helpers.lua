@@ -1,13 +1,17 @@
-local GPS = require("core.gps.gps")
-
---- Helpers.lua
+-- Helpers.lua
 -- Utility functions for math, tables, strings, and general helpers used throughout the mod.
 -- Provides static methods only. All helpers are namespaced under Helpers.
 --
--- Math helpers: rounding, snapping Helperss
+-- Math helpers: rounding, snapping, floor, etc.
 -- Table helpers: deep/shallow copy, equality, indexed array creation, sorting, searching, removal
--- String helpers: splitting, nonempty check, padding
+-- String helpers: splitting, trimming, nonempty check, padding
+-- Position helpers: chunk/map conversion, position simplification
+-- Tagging helpers: tag placement, collision, water/space checks
 
+local GPS = require("core.gps.gps")
+
+--- Static helper class for utility functions used throughout the mod.
+---@class Helpers
 local Helpers = {}
 
 --- Round a number to the nearest integer (0.5 rounds up for positive, down for negative)
@@ -96,7 +100,9 @@ end
 ---@return boolean
 function Helpers.remove_first(tbl, value)
   for i, v in ipairs(tbl) do
-    if v == value then table.remove(tbl, i); return true end
+    if v == value then
+      table.remove(tbl, i); return true
+    end
   end
   return false
 end
@@ -166,6 +172,16 @@ function Helpers.find_by_predicate(_table, predicate)
 end
 
 -- STRINGS
+
+--- Trim leading and trailing whitespace from a string
+---@param s string
+---@return string
+function Helpers.trim(s)
+  if type(s) ~= "string" then return s end
+  local trimmed = s:match("^%s*(.-)%s*$")
+  return trimmed or ""
+end
+
 --- Split a string by a delimiter
 ---@param str string
 ---@param delimiter string
@@ -207,14 +223,21 @@ function Helpers.pad(n, padlen)
   return s
 end
 
+--- Returns true if a string contains a decimal point
+---@param s string|number
+---@return boolean
 function Helpers.has_decimal_point(s)
   return tostring(s):find("%.") ~= nil
 end
 
 -- POSITIONING
+
+--- Simplify a position by rounding x and y if they are decimal
+---@param pos table
+---@return table
 function Helpers.simplify_position(pos)
-  local x = (pos and type(pos.x) == "number" or pos and type(pos.x) == "string") and pos.x or 0
-  local y = (pos and type(pos.y) == "number" or pos and type(pos.y) == "string") and pos.y or 0
+  local x = tonumber((pos and type(pos.x) == "number" or pos and type(pos.x) == "string") and pos.x or 0) or 0
+  local y = tonumber((pos and type(pos.y) == "number" or pos and type(pos.y) == "string") and pos.y or 0) or 0
   if Helpers.has_decimal_point(tostring(x)) then
     x = Helpers.math_round(x)
   end
@@ -224,6 +247,10 @@ function Helpers.simplify_position(pos)
   return { x = x, y = y }
 end
 
+--- Snap a position to a grid of given scale
+---@param Helpers table  -- expects a table with x and y
+---@param snap_scale number
+---@return table
 function Helpers.snap_position(Helpers, snap_scale)
   return {
     x = Helpers.math_round(Helpers.x / snap_scale) * snap_scale,
@@ -231,13 +258,19 @@ function Helpers.snap_position(Helpers, snap_scale)
   }
 end
 
+--- Convert a map position to chunk position
+---@param map_pos table
+---@return table
 function Helpers.map_position_to_chunk_position(map_pos)
   return {
-    x = Helpers.math_floor(map_pos.x / 32),
-    y = Helpers.math_floor(map_pos.y / 32)
+    x = math.floor(map_pos.x / 32),
+    y = math.floor(map_pos.y / 32)
   }
 end
 
+--- Convert a chunk position to map position
+---@param chunk_pos table
+---@return table
 function Helpers.chunk_position_to_map_position(chunk_pos)
   return {
     x = chunk_pos.x * 32,
@@ -246,17 +279,27 @@ function Helpers.chunk_position_to_map_position(chunk_pos)
 end
 
 -- Tagging and map position helpers
+
+--- Returns true if a tag can be placed at the given map position for the player
+---@param player LuaPlayer
+---@param map_position table
+---@return boolean
 function Helpers.position_can_be_tagged(player, map_position)
   if not player then return false end
   local chunk_position = {
-    x = Helpers.math_round(map_position.x / 32),
-    y = Helpers.math_round(map_position.y / 32)
+    x = math.floor(map_position.x / 32),
+    y = math.floor(map_position.y / 32)
   }
-  if not player.force.is_chunk_charted(player.surface, chunk_position) then
-    player.print("[TeleportFavorites] You are trying to create a tag in uncharted territory: " .. GPS.map_position_to_gps(map_position))
+  if not (player.force and player.surface and player.force.is_chunk_charted) then
     return false
   end
-  local tile = player.surface.get_tile(math.floor(map_position.x), math.floor(map_position.y))
+  if not player.force:is_chunk_charted(player.surface, chunk_position) then
+    player.print(player,
+      "[TeleportFavorites] You are trying to create a tag in uncharted territory: " ..
+      GPS.map_position_to_gps(map_position))
+    return false
+  end
+  local tile = player.surface.get_tile(player.surface, math.floor(map_position.x), math.floor(map_position.y))
   for _, mask in pairs(tile.prototype.collision_mask) do
     if mask == "water-tile" then
       return false
@@ -266,6 +309,8 @@ function Helpers.position_can_be_tagged(player, map_position)
 end
 
 --- Returns true if the player is on a space platform (stub, always returns false unless you have space platforms mod integration)
+---@param player LuaPlayer
+---@return boolean
 function Helpers.is_on_space_platform(player)
   -- If you have a space platform mod, check for the surface name or property here
   if not player or not player.surface or not player.surface.name then return false end
@@ -274,6 +319,11 @@ function Helpers.is_on_space_platform(player)
   return name:find("space") ~= nil or name == "space-platform"
 end
 
+--- Returns the position of a colliding tag if present, or nil
+---@param player LuaPlayer
+---@param map_position table
+---@param snap_scale number
+---@return table|nil
 function Helpers.position_has_colliding_tag(player, map_position, snap_scale)
   if not player then return nil end
   local collision_area = {
@@ -286,42 +336,47 @@ function Helpers.position_has_colliding_tag(player, map_position, snap_scale)
       y = map_position.y + snap_scale - 0.1
     }
   }
-  local colliding_tags = player.force.find_chart_tags(player.surface, collision_area)
+  local colliding_tags = player.force:find_chart_tags(player.surface, collision_area)
   if colliding_tags and #colliding_tags > 0 then
-    return colliding_tags[1].position
+    return colliding_tags[1]
   end
   return nil
 end
 
---- Utility: Check if a position is a water tile (Factorio runtime only)
+--- Returns true if the given position is a water tile
+---@param surface LuaSurface
+---@param pos table
+---@return boolean
 function Helpers.is_water_tile(surface, pos)
-  if surface then
-    local tile = surface.get_tile(math.floor(pos.x), math.floor(pos.y))
----@diagnostic disable-next-line
-    if tile and tile.prototype and tile.prototype.collision_mask then
-      for _, mask in pairs(tile.prototype.collision_mask) do
-        if mask == "water-tile" then
-          return true
-        end
+  local tile = surface:get_tile(math.floor(pos.x), math.floor(pos.y))
+  ---@diagnostic disable-next-line
+  if tile and tile.prototype and tile.prototype.collision_mask then
+    for _, mask in pairs(tile.prototype.collision_mask) do
+      if mask == "water-tile" then
+        return true
       end
     end
   end
+
   return false
 end
 
+--- Print a localized message to the player after teleporting
+---@param event table
+---@param game table
 function Helpers.on_raise_teleported(event, game)
-    if not event or not event.player_index then return end
-    if not game or type(game.get_player) ~= "function" then return end
-    local player = game.get_player(event.player_index)
-    if not player then return end
-    local pos = player.position or { x = 0, y = 0 }
-    if type(player.print) == "function" then
-      -- do not add the [TeleportFavorites] at the head of the output to reduce clutter
-      local gps_string = GPS.coords_string_from_gps(GPS.gps_from_map_position(pos, player.surface.index))
-      ---@diagnostic disable-next-line
-      player.print({"teleported-to", player.name, gps_string})
-    end
-    --Slots.update_slots(player)
+  if not event or not event.player_index then return end
+  if not game or type(game.get_player) ~= "function" then return end
+  local player = game.get_player(event.player_index)
+  if not player then return end
+  local pos = player.position or { x = 0, y = 0 }
+  if type(player.print) == "function" then
+    -- do not add the [TeleportFavorites] at the head of the output to reduce clutter
+    local gps_string = GPS.coords_string_from_gps(GPS.gps_from_map_position(pos, player.surface.index))
+    ---@diagnostic disable-next-line
+    player.print({ "teleported-to", player.name, gps_string })
+  end
+  --Slots.update_slots(player)
 end
 
 return Helpers

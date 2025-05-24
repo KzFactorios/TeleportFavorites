@@ -1,7 +1,7 @@
-# FavoriteTeleport – Architecture
+# TeleportFavorites – Architecture
 
 ## Overview
-This document describes the architecture of the FavoriteTeleport mod, including its modular structure, data flow, and key design patterns. It is intended to help developers understand how the mod is organized and how its components interact.
+This document describes the architecture of the TeleportFavorites mod, including its modular structure, data flow, and key design patterns. It is intended to help developers understand how the mod is organized and how its components interact.
 
 ---
 
