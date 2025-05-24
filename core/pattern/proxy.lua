@@ -13,11 +13,4 @@ function Proxy:new(real_subject)
     return obj
 end
 
--- Minimal Proxy pattern stub for test runner compatibility
-function Proxy:new(real)
-  local obj = setmetatable({}, self)
-  obj.real = real
-  return obj
-end
-
 return Proxy

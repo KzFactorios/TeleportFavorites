@@ -58,7 +58,7 @@ function Lookups.get_chart_tag_cache(surface_index)
   cache.surfaces[surface_index] = cache.surfaces[surface_index] or {}
   local surface = cache.surfaces[surface_index]
   surface.chart_tag_cache = surface.chart_tag_cache or {}
-  ---@diagnostic disable-next-line: unnecessary-if
+  ---@diagnostic disable-next-line
   if #surface.chart_tag_cache == 0 and game and game.forces and game.forces["player"] then
     surface.chart_tag_cache = game.forces["player"].find_chart_tags(surface_index)
   end

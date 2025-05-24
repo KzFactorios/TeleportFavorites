@@ -1,8 +1,52 @@
 ---@diagnostic disable: undefined-global, lowercase-global, duplicate-set-field, duplicate-doc-field, assign-type-mismatch, param-type-mismatch, return-type-mismatch, redundant-parameter, missing-return, cast-local-type, need-check-nil, deprecated, undefined-field, redefined-local, unused-local, unused-function, unused-label, trailing-space
 
----@class MapPosition
----@field x number
----@field y number
+
+--- @class defines
+--- @diagnostic disable-next-line: duplicate-doc-alias
+--- @enum defines.print_sound
+--- @diagnostic disable-next-line: duplicate-doc-alias
+--- @enum defines.print_skip
+--- @diagnostic disable-next-line: duplicate-doc-alias
+--- @enum defines.inventory
+--- @diagnostic disable-next-line: duplicate-doc-alias
+--- @enum defines.chunk_generated_status
+--- @diagnostic disable-next-line: duplicate-doc-alias
+--- @enum defines.controllers
+--- @diagnostic disable-next-line: duplicate-doc-alias
+--- @enum defines.gui_type
+--- @diagnostic disable-next-line: duplicate-doc-alias
+--- @enum defines.render_mode
+--- @diagnostic disable-next-line: duplicate-doc-alias
+--- @enum defines.riding.acceleration
+--- @diagnostic disable-next-line: duplicate-doc-alias
+--- @enum defines.riding.direction
+--- @diagnostic disable-next-line: duplicate-doc-alias
+--- @enum defines.direction
+--- @diagnostic disable-next-line: duplicate-doc-alias
+--- @enum defines.alert_type
+--- @diagnostic disable-next-line: duplicate-doc-alias
+--- @enum defines.wire_type
+--- @diagnostic disable-next-line: duplicate-doc-alias
+--- @enum defines.circuit_connector_id
+--- @diagnostic disable-next-line: duplicate-doc-alias
+--- @enum defines.rail_direction
+--- @diagnostic disable-next-line: duplicate-doc-alias
+--- @enum defines.rail_connection_direction
+
+---@class uint: number
+---@class double: number
+---@class float: number
+
+---@class LocalisedString: string|{[1]: string, [2]: any, [3]: any, [4]: any, [5]: any, [6]: any, [7]: any, [8]: any}
+
+---@class Color table  -- {r: number, g: number, b: number, a?: number}
+
+---@class SimpleItemStack
+---@field name string   -- The item prototype name.
+---@field count uint    -- The number of items.
+---@field health? float -- Optional: health value (0.0 - 1.0).
+---@field ammo? uint    -- Optional: ammo count.
+---@field durability? double -- Optional: durability value.
 
 ---@class ChartTagSpec
 ---@field position MapPosition
@@ -13,9 +57,36 @@
 ---@field color? Color # Optional: color of the tag
 ---@field tag_id? uint # Optional: unique identifier for the tag
 
+---@class ScriptArea
+---@field area BoundingBox
+---@field name string
+---@field surface LuaSurface
+---@field id uint
+---@field color? Color
+---@field players? uint[]  -- Optional: list of player indices
+---@field tags? table<string, any>  -- Optional: custom tags
+
 ---@class SignalID
 ---@field type string   # "item", "fluid", "virtual"
 ---@field name string  # Name of the item/fluid/virtual-signal prototype
+
+---@class MapPosition
+---@field x number
+---@field y number
+
+---@class BoundingBox
+---@field left_top MapPosition
+---@field right_bottom MapPosition
+
+---@class ChunkPosition
+---@field x int
+---@field y int
+
+---@class Vector
+---@field x number
+---@field y number
+
+
 
 -- Factorio 2.0.47 runtime classes and type aliases (auto-generated, do not edit manually)
 ---@class LuaAccumulator
@@ -32,6 +103,17 @@
 ---@class LuaCamera
 ---@class LuaCharacter
 ---@class LuaChunkIterator
+
+---@class LuaCircuitNetwork
+---@field entity LuaEntity                -- The entity this circuit network belongs to.
+---@field circuit_connector_id defines.circuit_connector_id -- The connector ID.
+---@field network_id uint                -- The unique network ID.
+---@field signals table<SignalID, {signal: SignalID, count: int}>? -- Table of all signals on the network, or nil if none.
+---@field wires table<defines.wire_type, LuaCircuitNetwork> -- Connected networks by wire type.
+---@field valid boolean                  -- Is this circuit network valid?
+---@field get_signal fun(self: LuaCircuitNetwork, signal: SignalID): int -- Gets the value of a specific signal.
+---@field get_circuit_network fun(self: LuaCircuitNetwork, wire: defines.wire_type): LuaCircuitNetwork? -- Gets the connected network for a given wire type.
+
 ---@class LuaCliff
 ---@class LuaCliffPrototype
 ---@class LuaCommandProcessor
@@ -42,7 +124,18 @@
 ---@class LuaControl
 ---@class LuaControlBehavior
 ---@class LuaCorpse
+
 ---@class LuaCustomChartTag
+---@field icon SignalID
+---@field last_user? LuaPlayer
+---@field position MapPosition
+---@field text string
+---@field tag_number string
+---@field force LuaForce
+---@field surface LuaSurface
+---@field valid boolean
+---@field destroy fun()
+
 ---@class LuaCustomInputPrototype
 ---@class LuaCustomTable
 ---@class LuaDeciderCombinatorControlBehavior
@@ -51,7 +144,102 @@
 ---@class LuaElectricEnergyInterface
 ---@class LuaElectricPole
 ---@class LuaElectricPolePrototype
+
 ---@class LuaEntity
+---@field name string
+---@field type string
+---@field valid boolean
+---@field force LuaForce
+---@field surface LuaSurface
+---@field position MapPosition
+---@field bounding_box BoundingBox
+---@field selection_box BoundingBox
+---@field unit_number? uint
+---@field direction? defines.direction
+---@field health? float
+---@field ghost_name? string
+---@field ghost_type? string
+---@field ghost_localised_name? LocalisedString
+---@field ghost_localised_description? LocalisedString
+---@field mining_progress? double
+---@field crafting_progress? double
+---@field crafting_recipe? LuaRecipe
+---@field items_to_place_this? SimpleItemStack[]
+---@field prototype LuaEntityPrototype
+---@field vehicle? LuaEntity
+---@field driver? LuaEntity|LuaPlayer
+---@field passenger? LuaEntity|LuaPlayer
+---@field energy? double
+---@field temperature? double
+---@field fluidbox? LuaFluidBox
+---@field logistic_network? LuaLogisticNetwork
+---@field logistic_cell? LuaLogisticCell
+---@field circuit_connected_entities? table
+---@field circuit_connection_definitions? table
+---@field circuit_networks? table
+---@field control_behavior? LuaControlBehavior
+---@field get_inventory fun(self: LuaEntity, inventory: defines.inventory): LuaInventory
+---@field insert fun(self: LuaEntity, item: SimpleItemStack): uint
+---@field remove_item fun(self: LuaEntity, item: SimpleItemStack): uint
+---@field destroy fun(self: LuaEntity)
+---@field teleport fun(self: LuaEntity, position: MapPosition, surface?: LuaSurface, raise_teleported?: boolean): boolean
+---@field can_insert fun(self: LuaEntity, item: SimpleItemStack): boolean
+---@field to_table fun(self: LuaEntity): table
+---@field get_fuel_inventory fun(self: LuaEntity): LuaInventory
+---@field get_burnt_result_inventory fun(self: LuaEntity): LuaInventory
+---@field get_module_inventory fun(self: LuaEntity): LuaInventory
+---@field get_output_inventory fun(self: LuaEntity): LuaInventory
+---@field get_fluid_inventory fun(self: LuaEntity): LuaInventory
+---@field get_rocket_inventory fun(self: LuaEntity): LuaInventory
+---@field get_storage_inventory fun(self: LuaEntity): LuaInventory
+---@field get_filter_slot fun(self: LuaEntity, index: uint): SimpleItemStack
+---@field set_filter_slot fun(self: LuaEntity, index: uint, filter: SimpleItemStack)
+---@field get_request_slot fun(self: LuaEntity, index: uint): SimpleItemStack
+---@field set_request_slot fun(self: LuaEntity, index: uint, request: SimpleItemStack)
+---@field clear_request_slot fun(self: LuaEntity, index: uint)
+---@field get_signal fun(self: LuaEntity, signal: SignalID): int
+---@field get_merged_signal fun(self: LuaEntity, signal: SignalID): int
+---@field get_circuit_network fun(self: LuaEntity, wire: defines.wire_type, circuit_connector?: defines.circuit_connector_id): LuaCircuitNetwork
+---@field connect_neighbour fun(self: LuaEntity, target: LuaEntity|table): boolean
+---@field disconnect_neighbour fun(self: LuaEntity, target?: LuaEntity|table): boolean
+---@field is_connected_to fun(self: LuaEntity, target: LuaEntity): boolean
+---@field supports_backer_name boolean
+---@field backer_name? string
+---@field order_deconstruction fun(self: LuaEntity, force: LuaForce)
+---@field cancel_deconstruction fun(self: LuaEntity, force: LuaForce)
+---@field order_upgrade fun(self: LuaEntity, force: LuaForce, target: string)
+---@field cancel_upgrade fun(self: LuaEntity, force: LuaForce)
+---@field get_driver fun(self: LuaEntity): LuaEntity|LuaPlayer
+---@field set_driver fun(self: LuaEntity, driver: LuaEntity|LuaPlayer)
+---@field get_passenger fun(self: LuaEntity): LuaEntity|LuaPlayer
+---@field set_passenger fun(self: LuaEntity, passenger: LuaEntity|LuaPlayer)
+---@field get_connected_rail fun(self: LuaEntity): LuaEntity
+---@field get_rail_segment_entity fun(self: LuaEntity, direction: defines.rail_direction, side: defines.rail_connection_direction): LuaEntity
+---@field get_rail_segment_end fun(self: LuaEntity, direction: defines.rail_direction, side: defines.rail_connection_direction): MapPosition
+---@field get_train fun(self: LuaEntity): LuaTrain
+---@field get_stopped_train fun(self: LuaEntity): LuaTrain
+---@field get_fluidbox fun(self: LuaEntity): LuaFluidBox
+---@field set_fluidbox fun(self: LuaEntity, fluidbox: LuaFluidBox)
+---@field get_or_create_control_behavior fun(self: LuaEntity): LuaControlBehavior
+---@field get_control_behavior fun(self: LuaEntity): LuaControlBehavior
+---@field get_or_create_circuit_condition fun(self: LuaEntity): table
+---@field get_circuit_condition fun(self: LuaEntity): table
+---@field set_circuit_condition fun(self: LuaEntity, condition: table)
+---@field get_or_create_circuit_network fun(self: LuaEntity): LuaCircuitNetwork
+---@field get_circuit_network fun(self: LuaEntity): LuaCircuitNetwork
+---@field get_circuit_networks fun(self: LuaEntity): table
+---@field get_circuit_connected_entities fun(self: LuaEntity): table
+---@field get_circuit_connection_definitions fun(self: LuaEntity): table
+---@field get_circuit_networks fun(self: LuaEntity): table
+-- (Add more fields and methods as needed from the API)
+
+
+
+
+
+
+
+
 ---@class LuaEntityPrototype
 ---@class LuaEntityPrototypeFlags
 ---@class LuaEquipment
@@ -89,6 +277,19 @@
 ---@class LuaLamp
 ---@class LuaLampControlBehavior
 ---@class LuaLandMine
+
+---@class LuaLinkedContainer
+---@field valid boolean
+---@field force LuaForce
+---@field surface LuaSurface
+---@field position MapPosition
+---@field get_inventory fun(self: LuaLinkedContainer, inventory: defines.inventory): LuaInventory
+---@field link_id uint
+---@field link_mode string
+---@field link_target LuaLinkedContainer?
+---@field link_with fun(self: LuaLinkedContainer, target: LuaLinkedContainer)
+---@field unlink fun(self: LuaLinkedContainer)
+
 ---@class LuaLogisticCell
 ---@class LuaLogisticContainer
 ---@class LuaLogisticContainerControlBehavior
@@ -104,8 +305,121 @@
 ---@class LuaNoiseLayerPrototype
 ---@class LuaPermissionGroup
 ---@class LuaPermissionGroups
+
+---@class PrintSettings table
+---@field color? Color
+---@field sound? defines.print_sound
+---@field skip? defines.print_skip
+---@field sound_path? string
+---@field volume_modifier? float
+---@field game_state? boolean   # Defaults to true
+
 ---@class LuaPlayer
----@field mod_settings table<string, {value: any}> # Per-player mod settings
+-- FIELDS
+---@field admin boolean
+---@field afk_time uint
+---@field character? LuaEntity
+---@field color Color
+---@field connected boolean
+---@field controller_type defines.controllers
+---@field crafting_queue_size uint
+---@field cursor_stack LuaItemStack
+---@field display_resolution {width: uint, height: uint}
+---@field display_scale double
+---@field driving boolean
+---@field force LuaForce
+---@field index uint
+---@field is_shortcut_toggled table<string, boolean>
+---@field mod_settings table<string, {value: any}>
+---@field name string
+---@field online_time uint
+---@field opened? LuaEntity|LuaItemStack|LuaEquipment|LuaEquipmentGrid|LuaPlayer|LuaGuiElement|LuaCustomTable|LuaTransportLine|LuaInfinityContainer|LuaInfinityPipe|LuaLinkedContainer|LuaLogisticContainer|LuaLogisticNetwork|LuaProgrammableSpeaker|LuaTrain|LuaTrainStop|LuaUnitGroup|LuaVirtualSignalPrototype|LuaGui|LuaGuiElement|LuaPermissionGroup|LuaPermissionGroups|LuaRoboport|LuaRoboportControlBehavior|LuaSurface|LuaTile|LuaTilePrototype|LuaTrainStopControlBehavior|LuaTransportBelt|LuaTree|LuaTrivialSmokePrototype|LuaTurret|LuaUnit|LuaUnitGroup|LuaUpgradePlanner|LuaVirtualSignalPrototype|LuaWall
+---@field opened_gui_type defines.gui_type
+---@field permissions LuaPermissionGroup
+---@field position MapPosition
+---@field print_entity_info boolean
+---@field render_mode defines.render_mode
+---@field riding_state {acceleration: defines.riding.acceleration, direction: defines.riding.direction}
+---@field selected? LuaEntity
+---@field spectator boolean
+---@field surface LuaSurface
+---@field tag string
+---@field ticks_to_respawn? uint
+---@field vehicle? LuaEntity
+---@field valid boolean
+---@field walking_state {walking: boolean, direction: defines.direction}
+---@field opened_self boolean
+---@field opened_unit_number? uint
+---@field opened_item? LuaItemStack
+---@field opened_signal_id? SignalID
+---@field opened_signal_index? uint
+---@field opened_signal_mode? string
+---@field opened_signal_slot_index? uint
+---@field opened_signal_slot_count? uint
+---@field opened_signal_slot_name? string
+---@field opened_signal_slot_value? any
+---@field opened_signal_slot_type? string
+---@field opened_signal_slot_signal? SignalID
+---@field opened_signal_slot_signal_index? uint
+---@field opened_signal_slot_signal_count? uint
+---@field opened_signal_slot_signal_name? string
+---@field opened_signal_slot_signal_value? any
+---@field opened_signal_slot_signal_type? string
+-- (Many more opened_signal_* fields omitted for brevity; add as needed)
+-- METHODS
+---@field add_alert fun(self: LuaPlayer, entity: LuaEntity, alert_type: defines.alert_type, icon?: SignalID, message?: LocalisedString)
+---@field add_custom_alert fun(self: LuaPlayer, entity: LuaEntity, icon: SignalID, message: LocalisedString, show_on_map: boolean)
+---@field add_item fun(self: LuaPlayer, item: {name: string, count: uint}): uint
+---@field begin_crafting fun(self: LuaPlayer, params: {count: uint, recipe: string|LuaRecipe, silent?: boolean}): uint
+---@field cancel_crafting fun(self: LuaPlayer, index: uint): boolean
+---@field can_insert fun(self: LuaPlayer, item: {name: string, count: uint}): boolean
+---@field clear_cursor fun(self: LuaPlayer)
+---@field clear_items_inside fun(self: LuaPlayer)
+---@field clear_personal_logistics fun(self: LuaPlayer)
+---@field clear_personal_trash fun(self: LuaPlayer)
+---@field close_map fun(self: LuaPlayer)
+---@field connect_to_server fun(self: LuaPlayer, address: string, password?: string)
+---@field create_local_flying_text fun(self: LuaPlayer, params: table)
+---@field disable_alert fun(self: LuaPlayer, alert_type: defines.alert_type)
+---@field enable_alert fun(self: LuaPlayer, alert_type: defines.alert_type)
+---@field enable_flashlight fun(self: LuaPlayer)
+---@field enable_recipe_notifications fun(self: LuaPlayer)
+---@field enable_research_notifications fun(self: LuaPlayer)
+---@field enable_tutorial fun(self: LuaPlayer, tutorial: string)
+---@field find_entity_ghost fun(self: LuaPlayer, position: MapPosition): LuaEntity?
+---@field find_non_colliding_position fun(self: LuaPlayer, name: string, center: MapPosition, radius: double, precision: double): MapPosition?
+---@field get_active_quick_bar fun(self: LuaPlayer): LuaInventory
+---@field get_associated_character fun(self: LuaPlayer): LuaEntity?
+---@field get_blueprint_entities fun(self: LuaPlayer): table?
+---@field get_crafting_queue fun(self: LuaPlayer): table
+---@field get_crafting_queue_size fun(self: LuaPlayer): uint
+---@field get_cursor_stack fun(self: LuaPlayer): LuaItemStack
+---@field get_friends fun(self: LuaPlayer): string[]
+---@field get_inventory fun(self: LuaPlayer, inventory: defines.inventory): LuaInventory
+---@field get_main_inventory fun(self: LuaPlayer): LuaInventory
+---@field get_quick_bar fun(self: LuaPlayer): LuaInventory
+---@field get_vehicle fun(self: LuaPlayer): LuaEntity?
+---@field insert fun(self: LuaPlayer, item: {name: string, count: uint}): uint
+---@field is_cursor_empty fun(self: LuaPlayer): boolean
+---@field is_shortcut_toggled fun(self: LuaPlayer, prototype_name: string): boolean
+---@field open_map fun(self: LuaPlayer, position: MapPosition, zoom?: double)
+---@field play_sound fun(self: LuaPlayer, params: table)
+---@field print fun(self: LuaPlayer, message: string|LocalisedString|table, print_settings?: PrintSettings)
+---@field promote fun(self: LuaPlayer)
+---@field remove_alert fun(self: LuaPlayer, entity: LuaEntity, alert_type: defines.alert_type)
+---@field remove_item fun(self: LuaPlayer, item: {name: string, count: uint}): uint
+---@field remove_shortcut fun(self: LuaPlayer, prototype_name: string)
+---@field request_translation fun(self: LuaPlayer, localised_string: LocalisedString)
+---@field set_controller fun(self: LuaPlayer, type: defines.controllers, character?: LuaEntity)
+---@field set_shortcut_toggled fun(self: LuaPlayer, prototype_name: string, toggled: boolean)
+---@field teleport fun(self: LuaPlayer, position: MapPosition, surface?: LuaSurface, force?: boolean, show_effects?: boolean, raise_teleported?: boolean): boolean
+---@field unlock_achievement fun(self: LuaPlayer, name: string)
+---@field update_selected_entity fun(self: LuaPlayer)
+-- (Add more methods as needed from the API)
+
+
+
+
 ---@class LuaPowerSwitch
 ---@class LuaPowerSwitchControlBehavior
 ---@class LuaProgrammableSpeaker
@@ -119,6 +433,49 @@
 ---@class LuaRailSignal
 ---@class LuaRailSignalControlBehavior
 ---@class LuaRailSignalPrototype
+
+---@class LuaRecipe
+---@field name string
+---@field localised_name LocalisedString
+---@field localised_description LocalisedString
+---@field category string
+---@field enabled boolean
+---@field hidden boolean
+---@field energy double
+---@field ingredients SimpleItemStack[]
+---@field products SimpleItemStack[]
+---@field requester_paste_multiplier uint
+---@field emissions_multiplier double
+---@field allow_decomposition boolean
+---@field allow_as_intermediate boolean
+---@field allow_intermediates boolean
+---@field main_product? string
+---@field order string
+---@field group LuaGroup
+---@field subgroup LuaGroup
+---@field valid boolean
+---@field prototype LuaRecipePrototype
+
+---@class LuaRecipePrototype
+---@field name string
+---@field localised_name LocalisedString
+---@field localised_description LocalisedString
+---@field category string
+---@field enabled boolean
+---@field hidden boolean
+---@field energy double
+---@field ingredients SimpleItemStack[]
+---@field products SimpleItemStack[]
+---@field emissions_multiplier double
+---@field allow_decomposition boolean
+---@field allow_as_intermediate boolean
+---@field allow_intermediates boolean
+---@field main_product? string
+---@field order string
+---@field group LuaGroup
+---@field subgroup LuaGroup
+---@field valid boolean
+
 ---@class LuaRoboport
 ---@class LuaRoboportControlBehavior
 ---@class LuaRocketSilo
@@ -136,15 +493,107 @@
 ---@class LuaStorageTank
 ---@class LuaStorageTankControlBehavior
 ---@class LuaStyle
+
 ---@class LuaSurface
+---@field name string
+---@field index uint
+---@field peaceful_mode boolean
+---@field valid boolean
+---@field map_gen_settings table
+---@field freeze_daytime boolean
+---@field darkness float
+---@field always_day boolean
+---@field wind_orientation_change float
+---@field wind_speed float
+---@field daytime float
+---@field brightness_visual_weights table
+---@field pollution_visual_weights table
+---@field show_clouds boolean
+---@field generate_with_lab_tiles boolean
+---@field print fun(self: LuaSurface, message: string)
+---@field create_entity fun(self: LuaSurface, spec: table): LuaEntity
+---@field find_entities fun(self: LuaSurface, area?: BoundingBox): LuaEntity[]
+---@field find_entity fun(self: LuaSurface, name: string, position: MapPosition): LuaEntity?
+---@field get_tile fun(self: LuaSurface, x: number, y: number): LuaTile
+---@field set_tiles fun(self: LuaSurface, tiles: table)
+---@field request_to_generate_chunks fun(self: LuaSurface, position: MapPosition, radius: uint)
+---@field get_random_chunk_position fun(self: LuaSurface): ChunkPosition
+---@field get_starting_area_radius fun(self: LuaSurface): double
+---@field get_closest fun(self: LuaSurface, position: MapPosition, entities: LuaEntity[]): LuaEntity?
+---@field can_place_entity fun(self: LuaSurface, spec: table): boolean
+---@field count_entities_filtered fun(self: LuaSurface, spec: table): uint
+---@field find_entities_filtered fun(self: LuaSurface, spec: table): LuaEntity[]
+---@field find_non_colliding_position fun(self: LuaSurface, name: string, center: MapPosition, radius: double, precision: double): MapPosition?
+---@field get_chunks fun(self: LuaSurface): table
+---@field get_pollution fun(self: LuaSurface, position: MapPosition): double
+---@field spill_item_stack fun(self: LuaSurface, position: MapPosition, item_stack: LuaItemStack, enable_looted?: boolean, force?: LuaForce, allow_belts?: boolean): uint
+---@field create_decoratives fun(self: LuaSurface, decoratives: table)
+---@field create_trivial_smoke fun(self: LuaSurface, smoke_name: string, position: MapPosition)
+---@field create_particle fun(self: LuaSurface, particle_name: string, position: MapPosition, movement: Vector, height: double, vertical_speed: double, frame_speed: double)
+---@field create_unit_group fun(self: LuaSurface, position: MapPosition, force: LuaForce): LuaUnitGroup
+---@field create_entity fun(self: LuaSurface, spec: table): LuaEntity
+---@field create_force fun(self: LuaSurface, name: string): LuaForce
+---@field destroy_decoratives fun(self: LuaSurface, area: BoundingBox, name?: string, limit?: uint)
+---@field destroy_entity fun(self: LuaSurface, entity: LuaEntity)
+---@field destroy_force fun(self: LuaSurface, force: LuaForce)
+---@field find_tiles_filtered fun(self: LuaSurface, spec: table): LuaTile[]
+---@field get_script_area fun(self: LuaSurface, area_id: uint): ScriptArea
+---@field get_script_position fun(self: LuaSurface, position_id: uint): MapPosition
+---@field get_script_areas fun(self: LuaSurface, tag?: string): ScriptArea[]
+---@field get_script_positions fun(self: LuaSurface, tag?: string): MapPosition[]
+---@field set_chunk_generated_status fun(self: LuaSurface, position: ChunkPosition, status: defines.chunk_generated_status)
+---@field get_chunk_generated_status fun(self: LuaSurface, position: ChunkPosition): defines.chunk_generated_status
+---@field get_hidden_tile fun(self: LuaSurface, position: MapPosition): string
+---@field set_hidden_tile fun(self: LuaSurface, position: MapPosition, tile: string)
+---@field get_resource_counts fun(self: LuaSurface): table<string, uint>
+---@field get_trains fun(self: LuaSurface, force?: LuaForce): LuaTrain[]
+---@field get_train_stops fun(self: LuaSurface, name?: string, force?: LuaForce): LuaTrainStop[]
+---@field get_tile_height fun(self: LuaSurface, position: MapPosition): double
+---@field get_tile_properties fun(self: LuaSurface, position: MapPosition): table
+---@field get_tile_tags fun(self: LuaSurface, position: MapPosition): table
+---@field set_tile_tags fun(self: LuaSurface, position: MapPosition, tags: table)
+---@field get_total_pollution fun(self: LuaSurface): double
+---@field get_wind_orientation fun(self: LuaSurface): float
+---@field set_wind_orientation fun(self: LuaSurface, orientation: float)
+---@field get_wind_speed fun(self: LuaSurface): float
+---@field set_wind_speed fun(self: LuaSurface, speed: float)
+
 ---@class LuaTechnology
 ---@class LuaTechnologyPrototype
+
 ---@class LuaTile
+---@field name string                 -- The prototype name of the tile (e.g., "grass-1", "water").
+---@field position MapPosition        -- The position of the tile (top-left corner).
+---@field valid boolean              -- Is this tile valid?
+---@field surface LuaSurface         -- The surface this tile belongs to.
+---@field hidden boolean             -- Is this tile hidden?
+---@field prototype LuaTilePrototype -- The tile prototype.
+---@field has_hidden_tile boolean    -- Does this tile have a hidden tile?
+---@field mineable_properties table  -- Mining properties for this tile.
+---@field pollution double           -- The pollution on this tile.
+---@field decorative_names string[]  -- Names of decoratives on this tile.
+---@field entities LuaEntity[]       -- Entities on this tile.
+---@field collides_with fun(self: LuaTile, mask: string): boolean -- Checks if the tile collides with a collision mask.
+
 ---@class LuaTilePrototype
 ---@class LuaTrain
 ---@class LuaTrainStop
 ---@class LuaTrainStopControlBehavior
 ---@class LuaTransportBelt
+
+---@class LuaTransportLine
+---@field owner LuaEntity                -- The owning transport belt entity.
+---@field index uint                    -- The index of the line on the belt.
+---@field input_lines LuaTransportLine[] -- The input lines connected to this line.
+---@field output_lines LuaTransportLine[] -- The output lines connected to this line.
+---@field valid boolean                 -- Is this transport line valid?
+---@field get_item_count fun(self: LuaTransportLine, item_name: string): uint
+---@field insert_at fun(self: LuaTransportLine, position: number, items: SimpleItemStack): uint
+---@field remove_item fun(self: LuaTransportLine, item: SimpleItemStack): uint
+---@field clear fun(self: LuaTransportLine)
+---@field get_contents fun(self: LuaTransportLine): table<string, uint>
+---@field can_insert_at fun(self: LuaTransportLine, position: number, items: SimpleItemStack): boolean
+
 ---@class LuaTree
 ---@class LuaTrivialSmokePrototype
 ---@class LuaTurret
@@ -153,6 +602,3 @@
 ---@class LuaUpgradePlanner
 ---@class LuaVirtualSignalPrototype
 ---@class LuaWall
-
----@class uint: number
----@class Color table  -- {r: number, g: number, b: number, a?: number}

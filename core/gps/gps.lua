@@ -1,6 +1,6 @@
 local Constants = require("constants")
 local Helpers = require("core.utils.Helpers")
-local Cache = require("core/cache/cache")
+local Cache = require("core.cache.cache")
 
 local GPS = {}
 

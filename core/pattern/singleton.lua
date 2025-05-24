@@ -8,16 +8,17 @@ Singleton._instance = nil
 
 --- Get the singleton instance, creating it if necessary
 function Singleton:getInstance()
-    if not self._instance then
-        self._instance = setmetatable({}, self)
-        if self.init then self._instance:init() end
-    end
-    return self._instance
+  if not self._instance then
+    self._instance = setmetatable({}, self)
+    ---@diagnostic disable-next-line
+    if self.init then self._instance:init() end
+  end
+  return self._instance
 end
 
 --- Optional: Initialization logic for the singleton
 function Singleton:init()
-    -- Override in subclass if needed
+  -- Override in subclass if needed
 end
 
 -- Example usage (at end of file):

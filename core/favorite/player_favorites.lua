@@ -3,8 +3,8 @@
 -- Handles slot management, persistence, and favorite manipulation.
 
 local Constants = require("constants")
-local Favorite = require("core/favorite/favorite")
-local Cache = require("core/cache/cache")
+local Favorite = require("core.favorite.favorite")
+local Cache = require("core.cache.cache")
 
 local PlayerFavorites = {}
 PlayerFavorites.__index = PlayerFavorites

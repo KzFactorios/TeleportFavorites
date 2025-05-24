@@ -1,4 +1,4 @@
-local Cache = require("core/cache/cache")
+local Cache = require("core.cache.cache")
 local Lookups = Cache.lookups
 
 ---@diagnostic disable: undefined-global
@@ -28,5 +28,18 @@ script.on_event(defines.events.on_player_changed_surface, function(event)
   Lookups.ensure_surface_cache(surface_index)
   -- TODO init any other surface oriented data structures
 end)
+
+-- Register custom input for opening tag editor (right-click or hotkey)
+script.on_event(Constants.events.ON_OPEN_TAG_EDITOR, function(event)
+  --TagEditorGUI.on_open_tag_editor(event)
+end)
+
+-- Register teleport hotkeys
+for i = 1, Constants.MAX_FAVORITE_SLOTS do
+  local event_name = Constants.events.TELEPORT_TO_FAVORITE .. tostring(i)
+  script.on_event(event_name, function(event)
+    Favorite.on_teleport_to_favorite(event, i)
+  end)
+end
 
 return Control
