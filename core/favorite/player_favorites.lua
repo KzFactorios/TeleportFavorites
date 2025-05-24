@@ -7,6 +7,7 @@
 
 local Constants = require("constants")
 local Favorite = require("core.favorite.favorite")
+local Helpers = require("core.utils.helpers")
 local Cache = require("core.cache.cache")
 
 ---
@@ -59,13 +60,18 @@ function PlayerFavorites.get_player_favorites(player)
 end
 
 --- Add a favorite GPS to the first available slot
+---@param player LuaPlayer
 ---@param gps string GPS string to add
 ---@return boolean success True if added, false if no open slot
-function PlayerFavorites:add_favorite(gps)
-  for i, fav in ipairs(self.favorites) do
+function PlayerFavorites.add_favorite(player, gps)
+  if not player then return false end
+  local tag = Cache.get_surface_tags(player.surface.index) 
+  local player_favorites = PlayerFavorites.get_player_favorites(player)
+  for i, fav in ipairs(player_favorites) do
     if fav and fav.gps == "" then
       fav.gps = gps
       fav.locked = false
+      tag.add_faved_by_player(player.index)
       return true
     end
   end
@@ -73,15 +79,25 @@ function PlayerFavorites:add_favorite(gps)
 end
 
 --- Remove a favorite by GPS
+---@param player LuaPlayer
 ---@param gps string GPS string to remove
-function PlayerFavorites:remove_favorite(gps)
-  for i, fav in ipairs(self.favorites) do
+function PlayerFavorites.remove_favorite(player, gps)
+  -- find the tag with matching gps
+  local tag = Cache.get_tag_by_gps(gps)
+  if not tag then return end
+
+  -- reset any favorites for the current player
+  local player_favorites = PlayerFavorites.get_player_favorites(player)
+  for i, fav in ipairs(player_favorites) do
     if fav and fav.gps == gps then
       ---@diagnostic disable-next-line: assign-type-mismatch
-      self.favorites[i] = Favorite.get_blank_favorite()
+      player_favorites[i] = Favorite.get_blank_favorite()
       return
     end
   end
+
+  -- removed player index from faved_by_players
+  Helpers.remove_first(tag.faved_by_players, player.index)
 end
 
 --- Swap two favorite slots by index

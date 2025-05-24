@@ -1,6 +1,6 @@
 local Constants = require("constants")
 local Settings = require("settings")
-local Helpers = require("core.utils.Helpers")
+local Helpers = require("core.utils.helpers")
 local Cache = require("core.cache.cache")
 
 local GPS = {}
@@ -13,12 +13,12 @@ local padlen = Constants.settings.GPS_PAD_NUMBER
 local function parse_gps_string(gps)
   local x, y, s = string.match(gps, "^([%d%.-]+)%.([%d%.-]+)%.([%d%.-]+)$")
   if not x or not y or not s then return nil end
-  return { x = tonumber(x), y = tonumber(y), surface = tonumber(s) }
+  return { x = tonumber(x), y = tonumber(y), surface_index = tonumber(s) }
 end
 
 --- Return the GPS string in the format xxx.yyy.s
 ---@param map_position MapPosition
----@param surface_index number
+---@param surface_index uint
 ---@return string
 function GPS.gps_from_map_position(map_position, surface_index)
   return Helpers.pad(map_position.x, padlen) ..
@@ -47,24 +47,23 @@ end
 ---@param gps string
 ---@return Tag|nil
 function GPS.find_tag_by_gps(gps)
-  local surface_index = GPS.get_surface_index(gps) or 1
-  if not surface_index then return nil end
-  local surface_data = Cache.get_surface_data(surface_index)
-  if not surface_data or not surface_data.tags then return nil end
-  return surface_data.tags[gps]
+  return Cache.get_tag_by_gps(gps)
 end
 
 --- Get the surface index from a gps string
 ---@param gps string
----@return number|nil
+---@return uint
 function GPS.get_surface_index(gps)
   local parsed = parse_gps_string(gps)
-  if not parsed then return nil end
-  return parsed.surface
+  if parsed then
+    return parsed.surface_index
+  else
+    return 1
+  end
 end
 
----@returns string, MapPosition?
-function GPS.align_position_for_landing(player, position, surface)
+---@returns string|nil, MapPosition}nil
+function GPS.normalize_landing_position(player, position, surface)
   if not player or not player.valid or type(player.teleport) ~= "function" then
     return "[TeleportFavorites] _gps_align_ Player is missing"
   end
@@ -80,7 +79,7 @@ function GPS.align_position_for_landing(player, position, surface)
   end
 
   -- Space platform check
-  if Helpers.is_on_space_platform and Helpers.is_on_space_platform(player) then
+  if Helpers.is_on_space_platform(player) then
     return
     "The insurance general has determined that space platform tag placement could result in injury or death, or both, and has outlawed the practice."
   end
@@ -105,6 +104,7 @@ function GPS.align_position_for_landing(player, position, surface)
     return
     "Water tiles cannot be tagged by us. Use the vanilla add tag dialog if you want to mark the location."
   end
+  
   -- Check if the position is valid for placing the player - a radar footprint is about the same size
   -- ---@field find_non_colliding_position fun(self: LuaSurface, name: string, center: MapPosition, radius: double, precision: double): MapPosition?
   if not surface.can_place_entity

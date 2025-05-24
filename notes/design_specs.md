@@ -23,6 +23,7 @@ This document provides a high-level overview of the mod's goals, architecture, a
 - Multiplayer-safe tag and favorite synchronization.
 - Modular codebase with clear separation of concerns.
 - Comprehensive test suite and documentation.
+- Cross-surface and global favorite operation will not be used. Managing favorites for a given surface (or the player's current surface) is the goal of the mod
 
 ---
 

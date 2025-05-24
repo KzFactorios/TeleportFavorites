@@ -111,7 +111,7 @@ function Cache.get_player_data(player)
 end
 
 --- Initialize and retrieve persistent surface data for a given surface index.
----@param surface_index number
+---@param surface_index uint
 ---@return table Surface data table (persistent)
 local function init_surface_data(surface_index)
   if not storage then return {} end
@@ -125,14 +125,14 @@ local function init_surface_data(surface_index)
 end
 
 --- Get persistent surface data for a given surface index.
----@param surface_index number
+---@param surface_index uint
 ---@return table Surface data table (persistent)
 function Cache.get_surface_data(surface_index)
   return init_surface_data(surface_index)
 end
 
 --- Get the persistent tag table for a given surface index.
----@param surface_index number
+---@param surface_index uint
 ---@return table<string, any> Table of tags indexed by GPS string.
 function Cache.get_surface_tags(surface_index)
   local sdata = init_surface_data(surface_index)
@@ -150,6 +150,21 @@ function Cache.remove_stored_tag(gps)
   local surface_data = init_surface_data(idx)
   if not surface_data or not surface_data.tags then return end
   surface_data.tags[gps] = nil
+end
+
+--- @param gps string
+--- @return Tag?
+function Cache.get_tag_by_gps(gps)
+  local surface_index = GPS.get_surface_index(gps)
+  if type(surface_index) ~= "number" or surface_index < 1 then
+    surface_index = 1 --[[@as uint]] -- ensure this is always a positive unsigned integer (uint)
+  end
+  local tag_cache = Cache.get_surface_tags(surface_index)
+  local found = Helpers.find_by_predicate(tag_cache, function(v) return v.gps == gps end) or {}
+  if #found > 0 then
+    return found[1]
+  end
+  return nil
 end
 
 return Cache

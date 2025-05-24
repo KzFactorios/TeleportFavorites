@@ -33,7 +33,7 @@
 --- @diagnostic disable-next-line: duplicate-doc-alias
 --- @enum defines.rail_connection_direction
 
----@class uint: number
+---@class uint: integer
 ---@class double: number
 ---@class float: number
 

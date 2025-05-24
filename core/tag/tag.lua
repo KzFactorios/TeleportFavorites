@@ -4,6 +4,7 @@ local Favorite = require("core.favorite.favorite")
 local Settings = require("settings")
 local Helpers = require("core.utils.Helpers")
 local Lookups = require("core.cache.lookups")
+local Cache = require("core.cache.cache")
 local GPS = require("core.gps.gps")
 
 ---@class Tag
@@ -30,17 +31,28 @@ end
 ---@return LuaCustomChartTag|nil
 function Tag:get_chart_tag()
   if not self.chart_tag then
-    self.chart_tag = Tag.get_chart_tag_by_gps(self.gps)
+    self.chart_tag = Lookups.get_chart_tag_by_gps(self.gps)
   end
   return self.chart_tag
 end
 
+--- @param player LuaPlayer
+--- @return boolean
 function Tag:is_player_favorite(player)
   if not self or not self.faved_by_players then return false end
   for _, idx in ipairs(self.faved_by_players) do
     if idx == player.index then return true end
   end
   return false
+end
+
+--- @param player LuaPlayer
+--- @return boolean
+function Tag:is_owner(player)
+  if not self.chart_tag then
+    return false
+  end
+  return self.chart_tag.last_user ~= nil and self.chart_tag.last_user == player.name
 end
 
 --- Add a player index to faved_by_players (if not already present)
@@ -89,9 +101,9 @@ function Tag.teleport_player_with_messaging(player, position, surface, raise_tel
     return "Unable to teleport. Player character is missing"
   end
 
-  local err_msg, aligned_position = GPS.align_position_for_landing(player, position, surface or player.surface or 1)
-  if err_msg ~= nil and Helpers.trim(err_msg) ~= "" then
-    return err_msg
+  local err_msg, aligned_position = GPS.normalize_landing_position(player, position, surface or player.surface or 1)
+  if err_msg ~= nil and Helpers.trim(tostring(err_msg)) ~= "" then
+    return tostring(err_msg)
   end
 
   if aligned_position then
@@ -149,16 +161,16 @@ function Tag:rehome_chart_tag(player, destination_gps)
   end
 
   local current_gps = self.gps
-  local msg, aligned_position = GPS.align_position_for_landing(player, destination_gps, player.surface)
-  if msg ~= nil and Helpers.trim(msg) ~= "" then
+  local msg, aligned_position = GPS.normalize_landing_position(player, destination_gps, player.surface)
+  if msg ~= nil and Helpers.trim(tostring(msg)) ~= "" then
     return msg
   end
   if aligned_position == nil then
-    return "[TeleportFavorites] Could not find a valid location withini range"
+    return "[TeleportFavorites] Could not find a valid location within range"
   end
 
   local surface_index = player.surface and player.surface.index or 1
-  local aligned_gps = GPS.gps_from_map_position(aligned_position, surface_index + 0)
+  local aligned_gps = GPS.gps_from_map_position(aligned_position, surface_index)
   local old_chart_tag = self:get_chart_tag()
   if current_gps == aligned_gps and old_chart_tag and old_chart_tag.valid == true then
     return nil, old_chart_tag
@@ -203,11 +215,40 @@ function Tag:rehome_chart_tag(player, destination_gps)
   self.chart_tag = new_chart_tag
 
   -- Destroy the old chart tag
-  if old_chart_tag then
-    old_chart_tag.destroy()
+  if old_chart_tag and old_chart_tag.valid then
+    old_chart_tag:destroy()
   end
-
   return nil, self.chart_tag
+end
+
+--- Unlink and destroy a tag and its associated chart_tag, and remove from all collections.
+--- Order: remove all player favorites, destroy chart_tag, remove tag from storage.
+---@param tag Tag
+function Tag.unlink_and_destroy(tag)
+  if not tag or type(tag) ~= "table" or not tag.gps then return end
+  ---@diagnostic disable-next-line: undefined-global
+  for _, player in pairs(game.players) do
+    local faves = PlayerFavorites.get_player_favorites(player)
+    for _, fave in pairs(faves) do
+      if fave.gps == tag.gps then
+        fave.gps = ""
+        fave.locked = false
+        -- Remove player index from faved_by_players
+        for i, idx in ipairs(tag.faved_by_players) do
+          if idx == player.index then
+            table.remove(tag.faved_by_players, i)
+            break
+          end
+        end
+      end
+    end
+  end
+  -- Destroy the chart_tag if valid
+  if tag.chart_tag and tag.chart_tag.valid then
+    tag.chart_tag:destroy()
+  end
+  -- Remove from persistent storage
+  Cache.remove_stored_tag(tag.gps)
 end
 
 return Tag
