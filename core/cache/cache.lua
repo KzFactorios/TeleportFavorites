@@ -17,7 +17,7 @@ local mod_version = require("core.utils.version")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local Lookups = require("core.cache.lookups")
 local GPS = require("core.gps.gps")
-local Helpers = require("core.utils.Helpers")
+local Helpers = require("core.utils.helpers")
 
 ---@diagnostic disable: undefined-global
 
@@ -173,7 +173,7 @@ function Cache.get_tag_by_gps(gps)
   end
   local tag_cache = Cache.get_surface_tags(surface_index)
   local found = Helpers.find_by_predicate(tag_cache, function(v) return v.gps == gps end) or {}
-  if #found > 0 then
+  if Helpers.table_count(found) > 0 then
     return found[1]
   end
   return nil

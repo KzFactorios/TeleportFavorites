@@ -63,7 +63,7 @@ function Lookups.get_chart_tag_cache(surface_index)
   end
   -- Rebuild from game if empty
   ---@diagnostic disable-next-line
-  if #surface.chart_tag_cache == 0 and game and game.forces and game.forces["player"] then
+  if Helpers.table_count(surface.chart_tag_cache) == 0 and game and game.forces and game.forces["player"] then
     surface.chart_tag_cache = game.forces["player"]:find_chart_tags(surface_index)
   end
   -- Always rebuild O(1) lookup map by gps after cache is cleared or rebuilt

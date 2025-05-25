@@ -1,6 +1,6 @@
 -- tests/unit/test_helpers.lua
 -- Unit tests for core.utils.Helpers
-local Helpers = require("core.utils.Helpers")
+local Helpers = require("core.utils.helpers")
 
 local function test_trim()
   assert(Helpers.trim("  foo  ") == "foo", "Trim should remove leading/trailing spaces")

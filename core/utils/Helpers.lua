@@ -169,6 +169,17 @@ function Helpers.find_by_predicate(_table, predicate)
   return nil, nil
 end
 
+--- Robustly count the number of entries in a table (works for sparse/non-array tables)
+---@param t table
+---@return integer
+function Helpers.table_count(t)
+  local n = 0
+  if type(t) == "table" then
+    for _ in pairs(t) do n = n + 1 end
+  end
+  return n
+end
+
 -- STRINGS
 
 --- Trim leading and trailing whitespace from a string
@@ -270,7 +281,7 @@ function Helpers.position_has_colliding_tag(player, map_position, snap_scale)
     }
   }
   local colliding_tags = player.force:find_chart_tags(player.surface, collision_area)
-  if colliding_tags and #colliding_tags > 0 then
+  if colliding_tags and Helpers.table_count(colliding_tags) > 0 then
     return colliding_tags[1]
   end
   return nil

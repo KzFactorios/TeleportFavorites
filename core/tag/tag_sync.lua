@@ -186,7 +186,7 @@ function TagSync.delete_tag_by_player(player, tag)
     PlayerFavorites:remove_favorite( tag.gps)
 
     -- if tag faved_by_Players then we will not delete the chart_tag and update last_user to nil
-    if #tag.faved_by_players > 0 then
+    if Helpers.table_count(tag.faved_by_players) > 0 then
       tag.chart_tag.last_user = nil
       return tag
     end

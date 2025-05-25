@@ -4,6 +4,7 @@
 local PlayerFavorites = require("core.favorite.player_favorites")
 local Favorite = require("core.favorite.favorite")
 local Constants = require("constants")
+local Helpers = require("core.utils.helpers")
 
 local defines = _G.defines or { render_mode = { game = 0, chart = 1, chart_zoomed_in = 2, chart_zoomed_out = 3 } }
 
@@ -59,7 +60,7 @@ local function test_new_and_get_all()
   local player = mock_player(1)
   local pf = PlayerFavorites.new(player)
   local all = pf:get_all()
-  assert(type(all) == "table" and #all == Constants.settings.MAX_FAVORITE_SLOTS, "Should have correct number of slots")
+  assert(type(all) == "table" and Helpers.table_count(all) == Constants.settings.MAX_FAVORITE_SLOTS, "Should have correct number of slots")
 end
 
 local function test_add_and_remove_favorite()
@@ -151,6 +152,51 @@ local function test_validate_gps()
   assert(not ok and msg, "Nil GPS should fail validation")
 end
 
+local function test_remove_favorite_no_match()
+  local player = mock_player(1)
+  local pf = PlayerFavorites.new(player)
+  -- Remove a GPS that was never added
+  pf:remove_favorite("not-in-slots")
+  -- Should not error, and all slots should remain blank
+  for _, fav in ipairs(pf:get_all()) do
+    assert(fav.gps == "" or fav.gps == nil, "Slot should remain blank if GPS not found")
+  end
+end
+
+local function test_set_favorites_empty_and_invalid()
+  local player = mock_player(1)
+  local pf = PlayerFavorites.new(player)
+  -- Set to empty table
+  pf:set_favorites({})
+  assert(Helpers.table_count(pf:get_all()) == 0, "Favorites should be empty after setting to empty table")
+  -- Set to table with nils
+  pf:set_favorites({nil, nil, nil})
+  assert(Helpers.table_count(pf:get_all()) == 0, "Favorites should be empty after setting to all nils")
+  -- Set to table with fewer than MAX_FAVORITE_SLOTS
+  local partial = {}
+  for i = 1, 2 do partial[i] = Favorite.get_blank_favorite() end
+  pf:set_favorites(partial)
+  assert(Helpers.table_count(pf:get_all()) == 2, "Favorites should have 2 entries after partial set")
+end
+
+local function test_new_with_missing_or_invalid_slots()
+  -- Simulate persistent favorites with missing/non-table entries
+  local player = mock_player(1)
+  local Cache = require("core.cache.cache")
+  local orig_get_player_favorites = Cache.get_player_favorites
+  Cache.get_player_favorites = function() return { {}, "not-a-table", nil } end
+  local pf = PlayerFavorites.new(player)
+  assert(Helpers.table_count(pf:get_all()) == Constants.settings.MAX_FAVORITE_SLOTS, "All slots should be filled with blank favorites")
+  Cache.get_player_favorites = orig_get_player_favorites -- restore
+end
+
+local function test_validate_gps_non_string()
+  local ok, msg = PlayerFavorites.validate_gps(12345)
+  assert(not ok and msg, "Non-string GPS should fail validation")
+  ok, msg = PlayerFavorites.validate_gps({})
+  assert(not ok and msg, "Table GPS should fail validation")
+end
+
 local function run_all()
   test_new_and_get_all()
   test_add_and_remove_favorite()
@@ -160,6 +206,10 @@ local function run_all()
   test_duplicate_gps()
   test_set_favorites()
   test_validate_gps()
+  test_remove_favorite_no_match()
+  test_set_favorites_empty_and_invalid()
+  test_new_with_missing_or_invalid_slots()
+  test_validate_gps_non_string()
   print("All PlayerFavorites tests passed.")
 end
 
