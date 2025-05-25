@@ -129,7 +129,7 @@
 
 ---@class LuaCustomChartTag
 ---@field icon SignalID
----@field last_user? LuaPlayer
+---@field last_user? LuaPlayer|string|uint
 ---@field position MapPosition
 ---@field text string
 ---@field tag_number string
@@ -226,7 +226,6 @@
 ---@class LuaGameScript
 ---@class LuaGenericOnOffControlBehavior
 ---@class LuaGui
----@class LuaGuiElement
 ---@class LuaGroup
 ---@class LuaHeatBufferPrototype
 ---@class LuaHeatEnergySourcePrototype
@@ -612,3 +611,81 @@
 ---@field print fun(self: LuaForce, message: LocalisedString) -- Prints a message to all players in the force.
 ---@field find_chart_tags fun(self: LuaForce, surface: LuaSurface, area?: BoundingBox): LuaCustomChartTag[]
 -- (Add more fields and methods as needed from the API)
+
+---@class LuaGuiElement
+---@field name string
+---@field type string
+---@field parent LuaGuiElement?
+---@field children LuaGuiElement[]
+---@field style LuaStyle
+---@field tags table<string, any>
+---@field index uint
+---@field valid boolean
+---@field visible boolean
+---@field enabled boolean
+---@field caption LocalisedString
+---@field tooltip LocalisedString
+---@field style_mods table<string, any>
+---@field elem_value any
+---@field value any
+---@field text string
+---@field number number
+---@field selected_index uint
+---@field selected_tab_index uint
+---@field state boolean
+---@field items string[]
+---@field item string
+---@field sprite string
+---@field color Color
+---@field direction string
+---@field drag_target LuaGuiElement?
+---@field location MapPosition
+---@field auto_center boolean
+---@field destroy fun(self: LuaGuiElement)
+---@field clear fun(self: LuaGuiElement)
+---@field add fun(self: LuaGuiElement, spec: table): LuaGuiElement
+---@field remove fun(self: LuaGuiElement)
+---@field bring_to_front fun(self: LuaGuiElement)
+---@field get_mod_settings fun(self: LuaGuiElement): table
+---@field get_style fun(self: LuaGuiElement): LuaStyle
+---@field get_index fun(self: LuaGuiElement): uint
+---@field get_parent fun(self: LuaGuiElement): LuaGuiElement?
+---@field get_children fun(self: LuaGuiElement): LuaGuiElement[]
+---@field get_or_create_child fun(self: LuaGuiElement, name: string, spec: table): LuaGuiElement
+---@field get_child fun(self: LuaGuiElement, name: string): LuaGuiElement?
+---@field get_caption fun(self: LuaGuiElement): LocalisedString
+---@field set_caption fun(self: LuaGuiElement, caption: LocalisedString)
+---@field get_tooltip fun(self: LuaGuiElement): LocalisedString
+---@field set_tooltip fun(self: LuaGuiElement, tooltip: LocalisedString)
+---@field get_style_mods fun(self: LuaGuiElement): table<string, any>
+---@field set_style_mods fun(self: LuaGuiElement, mods: table<string, any>)
+---@field get_tags fun(self: LuaGuiElement): table<string, any>
+---@field set_tags fun(self: LuaGuiElement, tags: table<string, any>)
+---@field get_value fun(self: LuaGuiElement): any
+---@field set_value fun(self: LuaGuiElement, value: any)
+---@field get_text fun(self: LuaGuiElement): string
+---@field set_text fun(self: LuaGuiElement, text: string)
+---@field get_number fun(self: LuaGuiElement): number
+---@field set_number fun(self: LuaGuiElement, number: number)
+---@field get_selected_index fun(self: LuaGuiElement): uint
+---@field set_selected_index fun(self: LuaGuiElement, index: uint)
+---@field get_selected_tab_index fun(self: LuaGuiElement): uint
+---@field set_selected_tab_index fun(self: LuaGuiElement, index: uint)
+---@field get_state fun(self: LuaGuiElement): boolean
+---@field set_state fun(self: LuaGuiElement, state: boolean)
+---@field get_items fun(self: LuaGuiElement): string[]
+---@field set_items fun(self: LuaGuiElement, items: string[])
+---@field get_item fun(self: LuaGuiElement): string
+---@field set_item fun(self: LuaGuiElement, item: string)
+---@field get_sprite fun(self: LuaGuiElement): string
+---@field set_sprite fun(self: LuaGuiElement, sprite: string)
+---@field get_color fun(self: LuaGuiElement): Color
+---@field set_color fun(self: LuaGuiElement, color: Color)
+---@field get_direction fun(self: LuaGuiElement): string
+---@field set_direction fun(self: LuaGuiElement, direction: string)
+---@field get_drag_target fun(self: LuaGuiElement): LuaGuiElement?
+---@field set_drag_target fun(self: LuaGuiElement, target: LuaGuiElement?)
+---@field get_location fun(self: LuaGuiElement): MapPosition
+---@field set_location fun(self: LuaGuiElement, location: MapPosition)
+---@field get_auto_center fun(self: LuaGuiElement): boolean
+---@field set_auto_center fun(self: LuaGuiElement, auto_center: boolean)

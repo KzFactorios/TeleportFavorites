@@ -71,6 +71,10 @@ function Cache.clear()
   if storage then
     storage.cache = {}
   end
+  -- Also clear and sync Lookups chart_tag_cache and map for all surfaces
+  if package.loaded["core.cache.lookups"] then
+    package.loaded["core.cache.lookups"].clear_chart_tag_cache()
+  end
 end
 
 --- Get the mod version from the cache, setting it if not present.
@@ -165,6 +169,35 @@ function Cache.get_tag_by_gps(gps)
     return found[1]
   end
   return nil
+end
+
+--- Get the favorites array for a player (persistent, surface-aware)
+---@param player LuaPlayer
+---@param surface LuaSurface|nil
+---@return Favorite[]
+function Cache.get_player_favorites(player, surface)
+  local pdata = Cache.get_player_data(player) or {}
+  local sidx = surface and surface.index or player.surface.index
+  if pdata.surfaces and pdata.surfaces[sidx] and pdata.surfaces[sidx].favorites then
+    return pdata.surfaces[sidx].favorites
+  end
+  return {}
+end
+
+--- Normalize a player index to integer
+---@param player LuaPlayer|number|string
+---@return integer
+local function normalize_player_index(player)
+  if type(player) == "table" and player.index then return player.index end
+  return math.floor(tonumber(player) or 0)
+end
+
+--- Normalize a surface index to integer
+---@param surface LuaSurface|number|string
+---@return integer
+local function normalize_surface_index(surface)
+  if type(surface) == "table" and surface.index then return surface.index end
+  return math.floor(tonumber(surface) or 0)
 end
 
 return Cache

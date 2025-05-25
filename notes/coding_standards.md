@@ -19,6 +19,7 @@ This document defines the coding standards and best practices for the TeleportFa
 - chatGPT said "Tip: You can also use local requires inside functions to break cycles:" this tip maybe true for lua (i have no idea), but it is not for factorio, ABSOLUTELY ALWAYS PUT THE REQUIRES AT THE TOP OF THE FILE!!!!!! Always put require statements at the top of the file. Do not use require statements in method calls. Always use absolute paths from the root. Always order require statements alphabetically upon save or refomatting. This ensures consistency and makes it easy to audit dependencies.
 - It is acceptable to have helper methods within a module if they are only used locally. When a helper method needs to be shared, it should be included in a helper file, appropriately named, in the `core/utils/helper` folder.
 - When referencing Factorio runtime objects (e.g., `LuaCustomChartTag`), be aware that static analysis may not recognize all valid runtime fields or methods. Use per-line suppression comments (e.g., `---@diagnostic disable-next-line: undefined-field`) to silence false positives, especially for methods like `:destroy()` or `:destroy_tag()` on chart tags.
+- Always be on the lookout for situations that create a "too many C levels" error. Do not try to fix by placing a requires staement in methods - THIS WILL NOT WORK!
 
 ---
 

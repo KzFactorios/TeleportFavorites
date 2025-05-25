@@ -64,7 +64,7 @@ end
 ---@return LuaGuiElement
 function Style.add_horizontal_flow(parent, name, opts)
   opts = opts or {}
-  return parent.add{
+  return parent:add{
     type = "flow",
     name = name,
     direction = "horizontal",

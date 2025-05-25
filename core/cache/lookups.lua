@@ -68,14 +68,9 @@ function Lookups.get_chart_tag_cache(surface_index)
   if #surface.chart_tag_cache == 0 and game and game.forces and game.forces["player"] then
     surface.chart_tag_cache = game.forces["player"]:find_chart_tags(surface_index)
   end
-  -- Build or update O(1) lookup map by gps
-  surface.chart_tag_cache_by_gps = surface.chart_tag_cache_by_gps or {}
-  -- Clear the map (manual wipe for compatibility)
-  for k in pairs(surface.chart_tag_cache_by_gps) do
-    surface.chart_tag_cache_by_gps[k] = nil
-  end
+  -- Always rebuild O(1) lookup map by gps after cache is cleared or rebuilt
+  surface.chart_tag_cache_by_gps = {}
   for _, chart_tag in ipairs(surface.chart_tag_cache) do
-    -- chart_tag.position is always present for chart tags from Factorio API
     local gps = GPS.gps_from_map_position(chart_tag.position, surface_index)
     surface.chart_tag_cache_by_gps[gps] = chart_tag
   end
@@ -132,10 +127,12 @@ function Lookups.clear_chart_tag_cache(surface_index)
   if surface_index then
     if cache.surfaces[surface_index] then
       cache.surfaces[surface_index].chart_tag_cache = {}
+      cache.surfaces[surface_index].chart_tag_cache_by_gps = {}
     end
   else
     for idx, surface in pairs(cache.surfaces) do
       surface.chart_tag_cache = {}
+      surface.chart_tag_cache_by_gps = {}
     end
   end
 end

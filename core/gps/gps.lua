@@ -1,7 +1,6 @@
 local Constants = require("constants")
 local Settings = require("settings")
 local Helpers = require("core.utils.helpers")
-local Cache = require("core.cache.cache")
 
 local GPS = {}
 
@@ -43,11 +42,16 @@ function GPS.coords_string_from_gps(gps)
   return Helpers.pad(parsed.x, padlen) .. "." .. Helpers.pad(parsed.y, padlen)
 end
 
+-- Lazy require to break circular dependency with core.cache.cache
+local function get_cache()
+  return require("core.cache.cache")
+end
+
 --- Find a Tag object by GPS string
 ---@param gps string
 ---@return Tag|nil
 function GPS.find_tag_by_gps(gps)
-  return Cache.get_tag_by_gps(gps)
+  return get_cache().get_tag_by_gps(gps)
 end
 
 --- Get the surface index from a gps string

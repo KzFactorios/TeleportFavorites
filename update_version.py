@@ -14,8 +14,8 @@ import os
 
 # Paths
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-info_path = os.path.join(root, 'info.json')
-lua_out_path = os.path.join(root, 'core', 'version.lua')
+info_path = os.path.join(root, 'TeleportFavorites', 'info.json')
+lua_out_path = os.path.join(root, 'TeleportFavorites', 'core', 'utils', 'version.lua')
 
 # Read info.json
 with open(info_path, 'r', encoding='utf-8') as f:

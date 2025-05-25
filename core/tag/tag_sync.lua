@@ -1,7 +1,7 @@
 ---@diagnostic disable: undefined-global
 local Tag = require("core.tag.tag")
+local TagSync = require("core.tag.tag_sync")
 local GPS = require("core.gps.gps")
-local Cache = require("core.cache.cache")
 local Lookups = require("core.cache.lookups")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local Favorite = require("core.favorite.favorite")
@@ -10,11 +10,20 @@ local Favorite = require("core.favorite.favorite")
 local TagSync = {}
 TagSync.__index = nil -- No instance methods, only static
 
+
+local function get_cache()
+  return require("core.cache.cache")
+end
+
+local function get_player_favorites(player)
+  return get_cache().get_player_favorites(player, player.surface)
+end
+
 ---@param old_gps string
 ---@param new_gps string
 local function update_player_favorites_gps(old_gps, new_gps)
   for _, player in pairs(game.players) do
-    local faves = PlayerFavorites.get_player_favorites(player)
+    local faves = get_player_favorites(player)
     for _, fave in pairs(faves) do
       if fave.gps == old_gps then
         fave.gps = new_gps
@@ -28,7 +37,7 @@ end
 ---@param text string
 ---@param icon SignalID
 ---@return LuaCustomChartTag?
-local function add_new_chart_tag(player, normal_pos, text, icon)
+function TagSync.add_new_chart_tag(player, normal_pos, text, icon)
   local chart_tag_spec = {
     position = normal_pos,
     text = text,
@@ -72,7 +81,7 @@ function TagSync.guarantee_chart_tag(player, tag)
   end
 
   -- create new chart_tag at position
-  local new_chart_tag = add_new_chart_tag(player, normal_pos, text, icon)
+  local new_chart_tag = TagSync.add_new_chart_tag(player, normal_pos, text, icon)
   if not new_chart_tag then
     error("Sorry, we couldn't find a valid landing area. Try another location")
   end
@@ -92,7 +101,7 @@ end
 ---@param tag Tag
 local function remove_all_player_favorites_by_tag(tag)
   for _, player in pairs(game.players) do
-    local faves = PlayerFavorites.get_player_favorites(player)
+    local faves = get_player_favorites(player)
     for _, fave in pairs(faves) do
       if fave.gps == tag.gps then
         fave.gps = ""
@@ -148,7 +157,7 @@ function TagSync.update_tag_gps_and_associated(player, tag, new_gps)
   end
 
   --create the new and delete the old
-  local new_chart_tag = add_new_chart_tag(player, normal_pos, tag.chart_tag.text, tag.chart_tag.icon)
+  local new_chart_tag = TagSync.add_new_chart_tag(player, normal_pos, tag.chart_tag.text, tag.chart_tag.icon)
   if not new_chart_tag then
     error("Sorry, we couldn't find a valid landing area. Try another location")
   end
@@ -174,7 +183,7 @@ function TagSync.delete_tag_by_player(player, tag)
   if not player or not tag then return end
 
 -- remove player index from faved_by_players
-    PlayerFavorites.remove_favorite(player, tag.gps)
+    PlayerFavorites:remove_favorite( tag.gps)
 
     -- if tag faved_by_Players then we will not delete the chart_tag and update last_user to nil
     if #tag.faved_by_players > 0 then

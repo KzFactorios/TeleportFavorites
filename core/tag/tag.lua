@@ -1,11 +1,14 @@
-local PlayerFavorites = require("core.favorite.player_favorites")
 local Constants = require("constants")
 local Favorite = require("core.favorite.favorite")
 local Settings = require("settings")
 local Helpers = require("core.utils.Helpers")
-local Lookups = require("core.cache.lookups")
-local Cache = require("core.cache.cache")
 local GPS = require("core.gps.gps")
+local tag_destroy_helper = require("core.tag.tag_destroy_helper")
+local Lookups = require("core.cache.lookups")
+-- Lazy require to break circular dependency with core.cache.cache
+local function get_cache()
+  return require("core.cache.cache")
+end
 
 ---@class Tag
 ---@field gps string # The GPS string (serves as the index)
@@ -15,16 +18,19 @@ local GPS = require("core.gps.gps")
 local Tag = {}
 Tag.__index = Tag
 
+-- Guard table to prevent recursive destruction
+local destroying_tags = setmetatable({}, { __mode = "k" })
+local destroying_chart_tags = setmetatable({}, { __mode = "k" })
+
 --- Constructor for Tag
 ---@param gps string
 ---@param faved_by_players uint[]|nil
-function Tag:new(gps, faved_by_players)
-  assert(type(gps) == "string", "gps must be a string")
-  local obj = setmetatable({}, self)
-  obj.gps = gps
-  obj.chart_tag = nil
-  obj.faved_by_players = faved_by_players or {}
-  return obj
+---@return Tag
+function Tag.new(gps, faved_by_players)
+  local self = setmetatable({}, Tag)
+  self.gps = gps
+  self.faved_by_players = faved_by_players or {}
+  return self
 end
 
 --- Get the related LuaCustomChartTag, retrieving and caching it by gps
@@ -180,7 +186,7 @@ function Tag:rehome_chart_tag(player, destination_gps)
   local all_fave_tags = {}
   ---@diagnostic disable-next-line: undefined-global
   for _, other_player in pairs(game.players) do
-    local favorites = PlayerFavorites.get_player_favorites(other_player)
+    local favorites = get_cache().get_player_favorites(other_player)
     if favorites and type(favorites) == "table" then
       for _, favorite in pairs(favorites) do
         if favorite.gps == current_gps then
@@ -216,7 +222,7 @@ function Tag:rehome_chart_tag(player, destination_gps)
 
   -- Destroy the old chart tag
   if old_chart_tag and old_chart_tag.valid then
-    old_chart_tag:destroy()
+    tag_destroy_helper.destroy_tag_and_chart_tag(nil, old_chart_tag)
   end
   return nil, self.chart_tag
 end
@@ -226,29 +232,8 @@ end
 ---@param tag Tag
 function Tag.unlink_and_destroy(tag)
   if not tag or type(tag) ~= "table" or not tag.gps then return end
-  ---@diagnostic disable-next-line: undefined-global
-  for _, player in pairs(game.players) do
-    local faves = PlayerFavorites.get_player_favorites(player)
-    for _, fave in pairs(faves) do
-      if fave.gps == tag.gps then
-        fave.gps = ""
-        fave.locked = false
-        -- Remove player index from faved_by_players
-        for i, idx in ipairs(tag.faved_by_players) do
-          if idx == player.index then
-            table.remove(tag.faved_by_players, i)
-            break
-          end
-        end
-      end
-    end
-  end
-  -- Destroy the chart_tag if valid
-  if tag.chart_tag and tag.chart_tag.valid then
-    tag.chart_tag:destroy()
-  end
-  -- Remove from persistent storage
-  Cache.remove_stored_tag(tag.gps)
+  local chart_tag = tag.chart_tag
+  tag_destroy_helper.destroy_tag_and_chart_tag(tag, chart_tag)
 end
 
 return Tag
