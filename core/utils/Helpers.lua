@@ -97,6 +97,7 @@ end
 ---@param value any
 ---@return boolean
 function Helpers.remove_first(tbl, value)
+  if type(tbl) ~= "table" then return false end
   for i, v in ipairs(tbl) do
     if v == value then
       table.remove(tbl, i); return true
@@ -219,6 +220,7 @@ end
 ---@param padlen number
 ---@return string
 function Helpers.pad(n, padlen)
+  if type(n) ~= "number" or type(padlen) ~= "number" then return tostring(n or "") end
   local floorn = math.floor(n + 0.5)
   local absn = math.abs(floorn)
   local s = tostring(absn)

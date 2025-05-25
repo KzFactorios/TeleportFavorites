@@ -63,6 +63,24 @@ This document summarizes and organizes the key points from all files in the `not
 - **GUI Style:** Use vanilla styles, module system, responsive layouts, lifecycle functions, style inspector.
 - **Summary Table:** Allowed/disallowed types, GUI best practices.
 
+## GPS String Format and Usage
+
+- **GPS values must always be strings** in the format `xxx.yyy.s`, where:
+  - `xxx` is the X coordinate (may be negative, always padded to the configured length, including sign if negative)
+  - `yyy` is the Y coordinate (may be negative, always padded to the configured length, including sign if negative)
+  - `s` is the surface index (always an integer, may be negative in rare cases)
+- **Valid examples:**
+  - `-000123.000456.1`
+  - `000123.-000456.1`
+  - `-000123.-000456.1`
+  - `000123.000456.1`
+- **GPS must never be a table or any other type.**
+- **Helpers** in `core/utils/gps_helpers.lua` are provided to convert between GPS strings and tables for internal use, but the canonical value for all storage, comparison, and API is always a string.
+- **Parsing:** If a GPS string is not valid, helpers will return `nil` or a blank GPS value. Always validate GPS strings before use.
+- **Legacy/Vanilla Format:** If a GPS string is encountered in the vanilla `[gps=x,y,s]` format, it will be normalized to the canonical string format on construction.
+
+> **Note:** All code, tests, and documentation must treat GPS as a string in this format. Do not store or pass GPS as a table except for temporary parsing or conversion.
+
 ---
 
 **Redundancy is minimized above, but some repetition is retained for clarity and onboarding.**

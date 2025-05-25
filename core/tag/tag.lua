@@ -5,10 +5,7 @@ local Helpers = require("core.utils.helpers")
 local GPS = require("core.gps.gps")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local Lookups = require("core.cache.lookups")
--- Lazy require to break circular dependency with core.cache.cache
-local function get_cache()
-  return require("core.cache.cache")
-end
+local Cache = require("core.cache.cache")
 
 ---@class Tag
 ---@field gps string # The GPS string (serves as the index)
@@ -46,6 +43,7 @@ end
 --- @return boolean
 function Tag:is_player_favorite(player)
   if not self or not self.faved_by_players then return false end
+  if not player or type(player) ~= "table" or not player.index then return false end
   for _, idx in ipairs(self.faved_by_players) do
     if idx == player.index then return true end
   end
@@ -58,6 +56,7 @@ function Tag:is_owner(player)
   if not self.chart_tag then
     return false
   end
+  if not player or type(player) ~= "table" or not player.name then return false end
   return self.chart_tag.last_user ~= nil and self.chart_tag.last_user == player.name
 end
 
@@ -107,34 +106,32 @@ function Tag.teleport_player_with_messaging(player, position, surface, raise_tel
     return "Unable to teleport. Player character is missing"
   end
 
-  local err_msg, aligned_position = GPS.normalize_landing_position(player, position, surface or player.surface or 1)
-  if err_msg ~= nil and Helpers.trim(tostring(err_msg)) ~= "" then
-    return tostring(err_msg)
+  local aligned_position = GPS.normalize_landing_position(player, position, surface or player.surface or 1)
+  if not aligned_position then
+    return "Unable to normalize landing position"
   end
 
-  if aligned_position then
-    local teleport_AOK = false
-    -- Vehicle teleportation: In Factorio, teleporting a vehicle does NOT move the player with it automatically.
-    -- To ensure the player stays inside the vehicle, you must teleport the vehicle first, and the player immediately thereafter.
+  local teleport_AOK = false
+  -- Vehicle teleportation: In Factorio, teleporting a vehicle does NOT move the player with it automatically.
+  -- To ensure the player stays inside the vehicle, you must teleport the vehicle first, and the player immediately thereafter.
+  ---@diagnostic disable-next-line
+  if player.driving and player.vehicle then
     ---@diagnostic disable-next-line
-    if player.driving and player.vehicle then
-      ---@diagnostic disable-next-line
-      if player.riding_state and player.riding_state ~= defines.riding.acceleration.nothing then
-        -- check state of vehicle - cannot teleport from a moving vehicle
-        return "Are you crazy? Trying to teleport while driving is strictly prohibited."
-      end
-      player.vehicle:teleport(aligned_position, surface,
-        raise_teleported and raise_teleported == true or false)
-      teleport_AOK = player:teleport(aligned_position, surface,
-        raise_teleported and raise_teleported == true or false)
-    else
-      teleport_AOK = player:teleport(aligned_position, surface,
-        raise_teleported and raise_teleported == true or false)
+    if player.riding_state and player.riding_state ~= defines.riding.acceleration.nothing then
+      -- check state of vehicle - cannot teleport from a moving vehicle
+      return "Are you crazy? Trying to teleport while driving is strictly prohibited."
     end
-
-    -- A succeful teleport!
-    if teleport_AOK then return Constants.enums.return_state.SUCCESS end
+    player.vehicle:teleport(aligned_position, surface,
+      raise_teleported and raise_teleported == true or false)
+    teleport_AOK = player:teleport(aligned_position, surface,
+      raise_teleported and raise_teleported == true or false)
+  else
+    teleport_AOK = player:teleport(aligned_position, surface,
+      raise_teleported and raise_teleported == true or false)
   end
+
+  -- A successful teleport!
+  if teleport_AOK then return Constants.enums.return_state.SUCCESS end
 
   -- Fallback error
   return "We were unable to perform the teleport due to unforeseen circumstances"
@@ -167,11 +164,12 @@ function Tag:rehome_chart_tag(player, destination_gps)
   end
 
   local current_gps = self.gps
-  local msg, aligned_position = GPS.normalize_landing_position(player, destination_gps, player.surface)
-  if msg ~= nil and Helpers.trim(tostring(msg)) ~= "" then
-    return msg
+  local destination_pos = GPS.map_position_from_gps(destination_gps)
+  if not destination_pos then
+    return "[TeleportFavorites] Could not parse destination GPS string"
   end
-  if aligned_position == nil then
+  local aligned_position = GPS.normalize_landing_position(player, destination_pos, player.surface)
+  if not aligned_position then
     return "[TeleportFavorites] Could not find a valid location within range"
   end
 
@@ -186,7 +184,7 @@ function Tag:rehome_chart_tag(player, destination_gps)
   local all_fave_tags = {}
   ---@diagnostic disable-next-line: undefined-global
   for _, other_player in pairs(game.players) do
-    local favorites = get_cache().get_player_favorites(other_player)
+    local favorites = Cache.get_player_favorites(other_player)
     if favorites and type(favorites) == "table" then
       for _, favorite in pairs(favorites) do
         if favorite.gps == current_gps then

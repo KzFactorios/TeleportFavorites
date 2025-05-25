@@ -5,18 +5,14 @@ local GPS = require("core.gps.gps")
 local Lookups = require("core.cache.lookups")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local Favorite = require("core.favorite.favorite")
+local Cache = require("core.cache.cache")
 
 ---@class TagSync
-local TagSync = {}
 TagSync.__index = nil -- No instance methods, only static
 
 
-local function get_cache()
-  return require("core.cache.cache")
-end
-
 local function get_player_favorites(player)
-  return get_cache().get_player_favorites(player, player.surface)
+  return Cache.get_player_favorites(player, player.surface)
 end
 
 ---@param old_gps string

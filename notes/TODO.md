@@ -26,3 +26,5 @@
 - [ ] Player favorites should mimic a first-in last-out (FILO) pattern. If trimming is needed, remove last-in items first to preserve oldest entries.
 - [ ] In control.lua.events.on_player_changed_surface, event.surface_index is not guaranteed. Use player.surface.index for the new surface.
 - [ ] Handle events from the vanilla tag editor and ensure mod GUI stays in sync.
+- [ ] allow a creator of a tag to be able to allow(or not) the favoriting of the tag by other players
+- [x] Clarify and document that GPS must always be a string in the format 'xxx.yyy.s', never a table. Update README, gps_helpers.lua, and favorite.lua with explicit rules and examples.

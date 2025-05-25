@@ -8,11 +8,7 @@ local GPS = require("core.gps.gps")
 local Constants = require("constants")
 local Lookups = require("core.lookup.lookups")
 local Favorite = require("core.favorite.favorite")
-
--- Lazy require to break cycles
-local function get_cache()
-  return require("core.cache.cache")
-end
+local Cache = require("core.cache.cache")
 
 local handlers = {}
 
@@ -40,7 +36,6 @@ function handlers.on_teleport_to_favorite(event, i)
   ---@diagnostic disable-next-line: undefined-global
   local player = game.get_player(event.player_index)
   if not player then return end
-  local Cache = get_cache()
   local favorites = Cache.get_player_favorites(player)
   if type(favorites) ~= "table" or not i or not favorites[i] then
     player:print({ "teleport-favorite-no-location" })

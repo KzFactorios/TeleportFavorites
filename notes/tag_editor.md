@@ -1,5 +1,83 @@
+# Tag Editor GUI Behavior and Rules
+
+The tag editor is a modal GUI for creating, editing, moving, and deleting map tags and their associated favorites. It is designed for multiplayer, surface-aware, and robust operation, and should closely mimic the vanilla "add tag" dialog in Factorio 2.0, with additional features for favorites and tag management. The GUI is built using the builder pattern for construction and the command pattern for user/event handling. It is auto-centered, screen-anchored, and only active in chart or chart_zoomed_in modes (except when opened from the favorites bar in game mode).
+
+## Core Features and Interactions
+- **Builder/Command Patterns:** Use builder pattern for GUI construction and command pattern for all user/event interactions.
+- **Styling:** Mimic vanilla "add tag" dialog, omitting the snap_position editor. Use vanilla styles, spacing, and iconography where possible.
+- **Modal Behavior:** Mouse clicks outside the tag editor's outer frame are ignored. ESC closes the GUI. The "e" key, when no fields are focused, confirms and saves/closes the dialog.
+- **Lifecycle:**
+  - If the editor remains open after switching to game mode (not from the favorites bar), it self-closes after 30 ticks via on_tick. The on_tick event is unregistered on close.
+  - On open, set `player.open` to enable ESC to close the GUI.
+- **Button Enablement:**
+  - Only certain buttons are enabled depending on the player and tag state (see below).
+  - The close button is always enabled and closes the dialog without saving.
+  - The move button is only enabled in chart mode and when the current player is the last user (or last_user is nil/empty). Clicking it enters move_mode, allowing the user to pick a new location. Right-click cancels move_mode. Left-click attempts to move the tag and all linked favorites, validating the new location. If valid, updates all relevant objects and reopens the dialog at the new location.
+  - The delete button is enabled only if the current player is the last user and no other players have favorited the tag. Clicking it asks for confirmation, then deletes the tag, chart tag, and resets all linked favorites.
+  - The teleport button is always enabled (background orange). Clicking it teleports the player and closes the dialog, unless there is an error (which is shown in the error message label).
+  - The favorite button is always available. Its state is tied to `is_player_favorite`. If true, shows a green checkmark; if false, no icon. Clicking toggles the state, but changes are only saved on confirm.
+  - The icon button shows the current icon or blank. Clicking opens the signalID selector. Selecting a signal saves the icon and closes the selector. The value is saved to the tag/chart_tag on confirm or during move_mode.
+  - The text box reflects `tag.chart_tag.text` and records input back to that field. Max length is 256 chars (see `constants.settings`). Validator trims right whitespace and checks length before saving. Shows an error if exceeded.
+  - The cancel button is always enabled and closes the dialog without saving.
+  - The confirm button is enabled if either the icon is set or the trimmed text box is not blank. Clicking validates and saves all fields, closes the dialog if valid, or shows an error if not.
+- **last_user:** If `last_user` is empty, any changes record the current player as the new last_user.
+
+## Button Enablement Logic
+- If `player == tag.chart_tag.last_user` (by name) or `last_user` is nil/empty:
+  - Enable: move, delete, icon, and text box buttons.
+- The move button is only enabled in chart mode and when above conditions are met.
+- The delete button is only enabled if the tag is not favorited by any other player.
+
+## Move Mode
+- Clicking the move button enters move_mode, changing the cursor to indicate selection. Right-click cancels move_mode. Left-click attempts to move the tag and all linked favorites, validating the new location. If valid, updates all relevant objects and reopens the dialog at the new location. If not valid, plays a beep and remains in move_mode.
+
+## Teleport Button
+- Always enabled. Clicking teleports the player to the tag location and closes the dialog. If teleport fails, shows an error and keeps the dialog open.
+
+## Favorite Button
+- Always available. State is tied to `is_player_favorite`. Clicking toggles the state, but changes are only saved on confirm.
+
+## Icon Button
+- Shows current icon or blank. Clicking opens the signalID selector. Selecting a signal saves the icon and closes the selector. Value is saved on confirm or during move_mode.
+
+## Text Box
+- Reflects `tag.chart_tag.text`. Max length is 256 chars (see `constants.settings`). Validator trims right whitespace and checks length before saving. Shows an error if exceeded.
+
+## Confirm/Cancel Buttons
+- Cancel always enabled, closes dialog without saving.
+- Confirm enabled if icon is set or trimmed text is not blank. Clicking validates and saves all fields, closes dialog if valid, or shows an error if not.
+
+---
+## Open Questions / Missing Functionality
+
+1. **Undo/Redo Support:** Should the tag editor support undo/redo for text or icon changes before confirmation?
+2. **Keyboard Navigation:** Are there keyboard shortcuts for moving between fields, or for toggling favorite/move modes?
+3. **Accessibility:** Should the GUI provide tooltips, ARIA labels, or other accessibility features for visually impaired users?
+4. **Multiplayer Race Conditions:** How should the editor handle cases where another player modifies or deletes the tag while the dialog is open?
+5. **Concurrent Edits:** What happens if two players edit the same tag at the same time? Is there a locking or merge strategy?
+6. **Tag Color/Style:** Is there a way to customize the color or style of a tag beyond the icon and text?
+7. **Error Handling Granularity:** Should errors be shown per-field (inline) or only in the error row? Should errors be cleared automatically on input change?
+8. **Localization:** Are all user-facing strings (including error messages) localized and translatable?
+9. **History/Audit Trail:** Should changes to tags (text, icon, location, last_user) be logged for audit/history purposes?
+10. **Favorite Limit Enforcement:** Is there a maximum number of favorites per player, and is this enforced/communicated in the UI?
+11. **Tag Sharing:** Can tags be shared or transferred between players, or are they strictly per-user?
+12. **Chart Tag Sync:** How is the chart tag kept in sync with the tag editor and player favorites if changes are made outside the editor?
+13. **GUI Scaling:** Does the tag editor scale properly with different screen resolutions and UI scales?
+14. **Input Validation:** Are there additional validation rules for text (e.g., forbidden characters, profanity filter)?
+15. **Move Mode Feedback:** Is there visual feedback (cursor, highlight) when in move_mode, and is it clear when move_mode is active?
+16. **Favorite State Persistence:** If the dialog is closed without confirming, is the favorite state reverted or left as-is?
+17. **Performance:** Are there any performance concerns with large numbers of tags or favorites in multiplayer?
+18. **Mod Compatibility:** Are there known compatibility issues with other mods that modify tags or the map GUI?
+19. **Tag Expiry/Auto-Removal:** Should tags have an expiry or auto-removal mechanism (e.g., after X days or if unused)?
+20. **Custom Signals:** Can custom signals (beyond vanilla) be used as icons, and how are they handled?
+
+---
+<!--
+Original detailed notes for reference:
 
 the tag editor:
+
+
 tag_editor_outer_frame = {
   tag_editor_inner_frame = {
     tag_editor_top_row = {
@@ -43,6 +121,10 @@ tag_editor_outer_frame = {
         }
       }
     },
+    tag_editor_error_row_frame = {
+      error_row_inner_frame -- invisible frame
+      error_row_error_message -- is a label
+    },
     tag_editor_last_row = {
       last_row_cancel_button.text = {'cancel_button'}
       last_row_confirm_button.text = {'confirm_button'}
@@ -65,3 +147,38 @@ when the tag_editor is open, any mouse clicks outside the tag editor's outer fra
 upon opening the player.open should be set to enable esc to close the gui.
 
 if, for some reason, it is possible to have the tag_editor still open when exiting chart or chart_zoomed mode to game mode, then i would like to create an on_tick event to see if the editor is in game view and the editor was not opened by the fave_bar while in game view, then after 30 ticks the tag_editor should self-close. when the tag_editor is closed, the on_tick event should be unregistered (and re-registered upon opening)
+
+if it is possible to have the tag_editor handle the "e" input while the tag_editor is open, then "e", when no other fields are in focus, should be a signal to confirm the input and save/close the dialog
+
+How buttons are enabled:
+Only certain buttons should be enabled depending on some factors. And the requirements should be checked when the dialog is open and any field mentioned meets the requirements
+
+if the player == tag.chart_tag.last_user (hopefully matched by name) or if the tag.chart_tag.last_user is nil or "" then
+  the following buttons should be enabled (and in all other conditions enabled == false)
+  last_user_row_move_button, last_user_row_delete_button, icon_button, text_box
+end
+
+- the title_row_close_button should always be enabled and if clicked, it should immediately close the dialog without saving or making changes to any data
+
+- the last_user_row_move_button is a special button, it will allow us to move the current tag's location to another location on the map. in addition to the enabled rules above, it should also only be enabled when render_mode = chart only. Help me to envision and employ the click action for this button. My initial thought is that clicking on this button brings up a special cursor that shows that we are searching for a new spot. A special type of pointer. It also puts us into "move_mode". In move_mode a right-click will cancel "move_mod" and the cursor should reset. A left-click in move_mode will first verify that the tag can be moved to the location, so this will immediateley trigger a normalization of the cursor_position location and aligned_for_landing check for the locations validty. If the location is not valid a beep sound should be played. We remain in move_mode until a valid selection is selected (and verified, more on that later) or until a right-click occurs. 
+A left-click in move_mode will try to move the tag and all it's components, including the chart tag and any and all matched player favorites to the new location. If the new location cannot be verified, the tag_editor should remain open displaying the information from the original opening of the dialog.
+If the new location is verified, update all the tag objects, other player's favorites (in addition to the current player), etc, save to storage and then upon success, turn off move_mode and close the already open dialog and then re-open, from scratch, with the information from the newly created tag.
+
+- the last_user_row_delete button should only be enabled when
+  - the current player == tag.chart.tag.last_user (try to match on player.name) or the last_user is nil or ""
+  - the tag.faved_by_players does not contain any index but the current player's index or is empty. A tag cannot be deleted if any other players have favorited it
+- when the delete button is clicked, it should ask for confirmation "Are you sure you want to delete?", and then, on confirmation, it should delete the tag and the related chart tag as well as update any players favorites to reset linked favorites to a blank favorite. when all of those operations are done, close the dialog
+
+- the teleport_button should always be enabled - can we make the background of this button orange? When clicked it should immediately try to teleport the player to the location indicated and then the dialog should be closed. if there is an error, do not automatically close the dialog and show the error in the error_row_error_messaage label
+
+- the favorite_button should always be available. the state of the favorite button should be tied to is_player_favorite. If it is_player_favorite == true, then the icon should be set to a green chackmark. If false then the favorite_button should be cleared of any icons. Clicking on the favorite_button should toggle the state of the button. The value will not be reflected back into storage until the confirm button is clicked and then all fields will be checked for validity before updating any associate storage objects (this behavior regarding saving the value should apply accross all input fields)
+
+- the icon button should display the icon for the current chart_tag.icon or display no icon when chart_tag.icon is nil or empty. clicking on the button will bring up the signalID selector. selecting a signal id will immediately save the input's icon and close the signal id selector and the tag_editor should now display the chosen signal id. The selected signal id or empty should be saved to the tag.chart_tag upon confirmation or during move_mode
+
+- the text_box should reflect the value of tag.chart_tag.text and record the input back to the tag.chart_tag.text field upon update. We need to avoid excessive length here. set a maximum of 256 chars for this field. Make an appropriate entry in constants.settings to manage the exact length. set up a validator to show an error if the chars exceed the number. all string values returned should trim the right end whitespace. the validator should check this format (trim right) prior to validating as well.
+
+- the cancel_button should always be enabled and clicking on it should close the editor dialog
+- the confirm button should only be enabled if either icon_button is set or text_box.text (trimmed) is not blank or nil in the dialog. check this in real time. if clicked, the input data should be validated immediately and saved back to the appropriate storage objects. Close the dialog box and save the data back to storage, where applicable and close the dialog box if there are no errors, otherwise display a user friendly error in the error_row_error_message and keep the dialog box open.
+
+-- if the last_user is empty, then any changes made should record the current player as the new last_user
+-->

@@ -1,0 +1,11 @@
+include = {
+  "core/",
+  "prototypes/",
+  "control.lua",
+  "data.lua"
+}
+exclude = {
+  "tests/",
+  "mocks/",
+  "spec/"
+}

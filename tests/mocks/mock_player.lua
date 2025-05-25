@@ -1,5 +1,6 @@
 -- tests/mocks/mock_player.lua
 -- Minimal mock for a LuaPlayer object
+-- print("[MOCK_PLAYER] mock_player.lua loaded!")
 
 local function make_player(index, name)
   local obj = {
@@ -17,10 +18,17 @@ local function make_player(index, name)
     driving = false,
     vehicle = nil,
   }
-  function obj:teleport(...) return true end -- method, not field
+  obj.teleport = function(self, ...)
+    -- Accept both : and . calls
+    if type(self) == "table" and self.index and self.valid ~= false then
+      return true
+    end
+    return true
+  end
   return setmetatable(obj, {
     __index = function(self, k)
-      if k == "teleport" then return nil end -- do not shadow the real method
+      if k == "teleport" then return obj.teleport end
+      if rawget(self, k) ~= nil then return rawget(self, k) end
       return function() end
     end
   })

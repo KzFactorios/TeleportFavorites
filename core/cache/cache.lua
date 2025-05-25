@@ -14,10 +14,14 @@
 ]]
 
 local mod_version = require("core.utils.version")
-local PlayerFavorites = require("core.favorite.player_favorites")
 local Lookups = require("core.cache.lookups")
 local GPS = require("core.gps.gps")
 local Helpers = require("core.utils.helpers")
+
+-- Helper to require PlayerFavorites only when needed
+local function get_player_favorites()
+  return require("core.favorite.player_favorites")
+end
 
 ---@diagnostic disable: undefined-global
 
@@ -39,18 +43,17 @@ Cache.lookups = Cache.lookups or Lookups.init()
 
 --- Initialize the persistent cache table if not already present.
 function Cache.init()
-  if storage then
-    storage.cache = storage.cache or {}
-  end
+  _G.storage = _G.storage or {}
+  _G.storage.cache = _G.storage.cache or {}
 end
 
 --- Retrieve a value from the persistent cache by key.
 ---@param key string
 ---@return any|nil
 function Cache.get(key)
-  if not storage then return nil end
-  if not storage.cache then Cache.init() end
-  return storage.cache and storage.cache[key] or nil
+  if not key or key == "" then return nil end
+  Cache.init()
+  return _G.storage.cache[key]
 end
 
 --- Set a value in the persistent cache by key.
@@ -58,27 +61,24 @@ end
 ---@param value any
 ---@return any|nil The value set, or nil if storage is unavailable.
 function Cache.set(key, value)
-  if not storage then return end
-  if not storage.cache then Cache.init() end
-  if storage.cache then
-    storage.cache[key] = value
-    return storage.cache[key]
-  end
-  return nil
+  if not key or key == "" then return nil end
+  Cache.init()
+  _G.storage.cache[key] = value
+  return _G.storage.cache[key]
 end
 
 --- Remove a value from the persistent cache by key.
 ---@param key string
 function Cache.remove(key)
-  if not storage or not storage.cache then return end
-  storage.cache[key] = nil
+  if not key or key == "" then return end
+  Cache.init()
+  _G.storage.cache[key] = nil
 end
 
 --- Clear the entire persistent cache.
 function Cache.clear()
-  if storage then
-    storage.cache = {}
-  end
+  Cache.init()
+  _G.storage.cache = {}
   -- Also clear and sync Lookups chart_tag_cache and map for all surfaces
   if package.loaded["core.cache.lookups"] then
     package.loaded["core.cache.lookups"].clear_chart_tag_cache()
@@ -86,32 +86,34 @@ function Cache.clear()
 end
 
 --- Get the mod version from the cache, setting it if not present.
----@return string
+---@return string|nil
 function Cache.get_mod_version()
-  local val = tostring(Cache.get("mod_version"))
-  if not val or val == "" then
-    val = tostring(Cache.set("mod_version", mod_version))
+  local val = Cache.get("mod_version")
+  if val == nil or val == "" then
+    return nil
   end
-  return val
+  return tostring(val)
 end
 
 --- Initialize and retrieve persistent player data for a given player.
 ---@param player LuaPlayer
 ---@return table Player data table (persistent)
 local function init_player_data(player)
-  if not storage then return {} end
-  if not storage.cache then Cache.init() end
-  storage.players = storage.players or {}
-  local pidx = Helpers.normalize_player_index(player)
-  storage.players[pidx] = storage.players[pidx] or {}
-  local player_data = storage.players[pidx]
+  if not _G.storage then return {} end
+  if not _G.storage.cache then Cache.init() end
+  _G.storage.players = _G.storage.players or {}
+  local pidx = tonumber(Helpers.normalize_player_index(player)) or 0
+  if type(pidx) ~= "number" or pidx < 1 then return {} end
+  _G.storage.players[pidx] = _G.storage.players[pidx] or {}
+  local player_data = _G.storage.players[pidx]
   player_data.toggle_fav_bar_buttons = player_data.toggle_fav_bar_buttons or true
-  player_data.render_mode = player_data.render_mode or player.render_mode
+  player_data.render_mode = player_data.render_mode or (player and player.render_mode)
   player_data.surfaces = player_data.surfaces or {}
-  local sidx = Helpers.normalize_surface_index(player.surface)
+  local sidx = tonumber(Helpers.normalize_surface_index(player and player.surface)) or 1
+  if type(sidx) ~= "number" or sidx < 1 then sidx = 1 end
   player_data.surfaces[sidx] = player_data.surfaces[sidx] or {}
   local player_surface = player_data.surfaces[sidx]
-  player_surface.favorites = player_surface.favorites or PlayerFavorites.new(player)
+  player_surface.favorites = player_surface.favorites or {}
   return player_data
 end
 
@@ -126,12 +128,13 @@ end
 ---@param surface_index uint
 ---@return table Surface data table (persistent)
 local function init_surface_data(surface_index)
-  if not storage then return {} end
-  if not storage.cache then Cache.init() end
-  storage.surfaces = storage.surfaces or {}
-  local idx = tonumber(surface_index) or 0
-  storage.surfaces[idx] = storage.surfaces[idx] or {}
-  local surface_data = storage.surfaces[idx]
+  if not _G.storage then return {} end
+  if not _G.storage.cache then Cache.init() end
+  _G.storage.surfaces = _G.storage.surfaces or {}
+  local idx = tonumber(surface_index) or 1
+  if type(idx) ~= "number" or idx < 1 then idx = 1 end
+  _G.storage.surfaces[idx] = _G.storage.surfaces[idx] or {}
+  local surface_data = _G.storage.surfaces[idx]
   surface_data.tags = surface_data.tags or {}
   return surface_data
 end
@@ -167,6 +170,7 @@ end
 --- @param gps string
 --- @return Tag?
 function Cache.get_tag_by_gps(gps)
+  if not gps or type(gps) ~= "string" or gps == "" then return nil end
   local surface_index = GPS.get_surface_index(gps)
   if type(surface_index) ~= "number" or surface_index < 1 then
     surface_index = 1 --[[@as uint]] -- ensure this is always a positive unsigned integer (uint)

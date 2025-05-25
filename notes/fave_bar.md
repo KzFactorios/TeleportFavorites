@@ -1,3 +1,66 @@
+# TeleportFavorites TODO
+
+_This is a work in progress._
+
+---
+
+## GUI Improvements
+
+- [ ] **Change the color of the teleport button** in the tag editor.
+- [ ] **Test** the `ft_teleport_button` with `parent = "confirm_button"` and minimal overrides for best vanilla look.
+- [ ] **Confirm label widths and alignments** are consistent across the tag editor dialog.
+- [ ] **Match vanilla styling** for delete and move button in the tag editor.
+- [ ] **Test for display of unforeseen large strings** (e.g., player names, chart tag text).  
+      _Limit string length in GUI where appropriate._
+- [ ] **Check limits on size for chart tag text** and enforce in GUI logic/helpers.
+- [ ] **Document further style or layout tweaks** in this file for future reference.
+- [ ] **Add localization** for any new user-facing strings.
+
+---
+
+## Testing & Coverage
+
+- [ ] **Add more unit tests** for helpers and GUI logic as the project matures.
+- [ ] **Test for map editor functionality** and ensure compatibility.
+- [ ] **Multiplayer:** Test and document tag ownership edge cases.
+- [ ] **Player favorites:**  
+      - Should mimic a first-in last-out (FILO) pattern.  
+      - If trimming is needed, remove last-in items first to preserve oldest entries.
+
+---
+
+## Persistence & State
+
+- [ ] **Persist `tag_editor_positions` for all players** if the tag editor can be available at game start.
+
+---
+
+## Event Handling & Sync
+
+- [ ] **Implement GUI desync detection and recovery**  
+      _See `notes/specs_after_agent_discussion.md`._
+- [ ] **Handle events from the vanilla tag editor** and ensure mod GUI stays in sync.
+- [ ] **In `control.lua.events.on_player_changed_surface`,**  
+      `event.surface_index` is not guaranteed. Use `player.surface.index` for the new surface.
+
+---
+
+## Tag & Chart Tag Logic
+
+- [ ] **When a `chart_tag` is destroyed, ensure it destroys any linked tags (and vice versa).**  
+      _Refactor tag <-> chart_tag destruction logic to a shared helper if possible._
+
+---
+
+## References
+
+- The only place `"map_tag"` should be used is for the reference to the sprite:  
+  `graphics/default_map_tag.png`
+
+---
+
+
+<!--
 the fave_bar will exist in the player's top gui. it should strive to be displayed as the rightmost item in the top gui. the parent element of the gui is fave_bar_frame
 
 the fave_bar_frame will have two horizontal containers. The first, the fave_toggle_container, will hold one button, fave_toggle. this button should use a red star as an icon. clicking on this button will immediately show or hide the next container in this gui, the favorite_buttons container. These containers sohuld sit side by side with the fave_toggle to the of the parent container. to keep the state of the fave_toggle button, it should live in persistent storage, like so:
@@ -24,3 +87,4 @@ The fave_bar should show when defines.render_mode  = game, chart, chart_zoomed_i
 the fave_bar_frame should probably have an inner_frame to make styling easier
 
 use the builder pattern for this and all guis! use command pattern to handle user and event interaction
+-->

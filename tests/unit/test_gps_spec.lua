@@ -37,12 +37,21 @@ local function test_blank_gps()
   assert(GPS.coords_string_from_gps(BLANK_GPS) == "1000000.1000000", "BLANK_GPS should have the corresponding coords string")
 end
 
+local function test_parse_gps_string_edge_cases()
+  local gps_helpers = require("core.utils.gps_helpers")
+  assert(gps_helpers.parse_gps_string(nil) == nil, "Should return nil for nil input")
+  assert(gps_helpers.parse_gps_string(12345) == nil, "Should return nil for non-string input")
+  assert(gps_helpers.parse_gps_string("not.a.gps") == nil, "Should return nil for badly formatted string")
+  assert(gps_helpers.parse_gps_string("1.2.3").x == 1, "Should parse valid gps string")
+end
+
 local function run_all()
   test_gps_from_map_position()
   test_map_position_from_gps()
   test_coords_string_from_gps()
   test_get_surface_index()
   test_blank_gps()
+  test_parse_gps_string_edge_cases()
   print("All GPS tests passed.")
 end
 
@@ -68,4 +77,37 @@ describe("Favorite GPS handling", function()
             assert.is_true(pos.y == 0)
         end
     end)
+end)
+
+describe("gps_helpers 100% coverage edge cases", function()
+  local gps_helpers = require("core.utils.gps_helpers")
+  it("map_position_from_gps returns nil for nil, non-string, or bad string", function()
+    assert.is_nil(gps_helpers.map_position_from_gps(nil))
+    assert.is_nil(gps_helpers.map_position_from_gps(12345))
+    assert.is_nil(gps_helpers.map_position_from_gps("not.a.gps"))
+  end)
+  it("get_surface_index returns 1 for nil, non-string, or bad string", function()
+    assert.equals(1, gps_helpers.get_surface_index(nil))
+    assert.equals(1, gps_helpers.get_surface_index(12345))
+    assert.equals(1, gps_helpers.get_surface_index("not.a.gps"))
+  end)
+  it("normalize_landing_position returns nil if pos is nil", function()
+    assert.is_nil(gps_helpers.normalize_landing_position({}, nil, 1))
+  end)
+  it("normalize_landing_position handles all surface types", function()
+    local pos = { x = 1, y = 2 }
+    -- number
+    local r = gps_helpers.normalize_landing_position({}, pos, 5)
+    assert.same({ x = 1, y = 2, surface = 5 }, r)
+    -- table with index
+    r = gps_helpers.normalize_landing_position({}, pos, { index = 7 })
+    assert.same({ x = 1, y = 2, surface = 7 }, r)
+    -- string with matching surface in game.surfaces
+    _G.game = { surfaces = { foo = { index = 9 } } }
+    r = gps_helpers.normalize_landing_position({}, pos, "foo")
+    assert.same({ x = 1, y = 2, surface = 9 }, r)
+    -- string with no matching surface
+    r = gps_helpers.normalize_landing_position({}, pos, "bar")
+    assert.same({ x = 1, y = 2, surface = 1 }, r)
+  end)
 end)

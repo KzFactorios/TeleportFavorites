@@ -6,11 +6,7 @@
 -- Weak tables to track objects being destroyed
 local destroying_tags = setmetatable({}, { __mode = "k" })
 local destroying_chart_tags = setmetatable({}, { __mode = "k" })
-
--- Lazy require to break circular dependency with core.cache.cache
-local function get_cache()
-  return require("core.cache.cache")
-end
+local Cache = require("core.cache.cache")
 local Favorite = require("core.favorite.favorite")
 
 --- Check if a tag is being destroyed
@@ -46,19 +42,21 @@ function destroy_tag_and_chart_tag(tag, chart_tag)
   if tag then
     -- Remove from all player favorites
     ---@diagnostic disable-next-line
-    if game and game.players then
+    if game and type(game.players) == "table" then
       ---@diagnostic disable-next-line
       for _, player in pairs(game.players) do
-        local faves = get_cache().get_player_favorites(player)
-        for _, fave in pairs(faves) do
-          if fave.gps == tag.gps then
-            fave.gps = ""
-            fave.locked = false
-            -- Remove player index from faved_by_players
-            if tag.faved_by_players then
-              for i = #tag.faved_by_players, 1, -1 do
-                if tag.faved_by_players[i] == player.index then
-                  table.remove(tag.faved_by_players, i)
+        local faves = Cache.get_player_favorites(player)
+        if type(faves) == "table" then
+          for _, fave in pairs(faves) do
+            if fave.gps == tag.gps then
+              fave.gps = ""
+              fave.locked = false
+              -- Remove player index from faved_by_players
+              if tag.faved_by_players and type(tag.faved_by_players) == "table" then
+                for i = #tag.faved_by_players, 1, -1 do
+                  if tag.faved_by_players[i] == player.index then
+                    table.remove(tag.faved_by_players, i)
+                  end
                 end
               end
             end
@@ -67,7 +65,7 @@ function destroy_tag_and_chart_tag(tag, chart_tag)
       end
     end
     -- Remove from persistent storage
-    get_cache().remove_stored_tag(tag.gps)
+    Cache.remove_stored_tag(tag.gps)
     destroying_tags[tag] = nil -- clear tag guard only after all tag work is done
   end
 

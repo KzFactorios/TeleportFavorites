@@ -8,6 +8,7 @@
 local Constants = require("constants")
 local Favorite = require("core.favorite.favorite")
 local Helpers = require("core.utils.helpers")
+local Cache = require("core.cache.cache")
 
 local BLANK_GPS = "1000000.1000000.1"
 
@@ -40,7 +41,6 @@ end
 ---@param player LuaPlayer
 ---@return PlayerFavorites
 function PlayerFavorites.new(player)
-  local Cache = require("core.cache.cache")
   local obj = setmetatable({}, PlayerFavorites)
   obj.player = player
   obj.player_index = player.index
@@ -102,7 +102,7 @@ function PlayerFavorites:add_favorite(gps)
   -- Allow duplicates: do not check for existing gps in other slots
   for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
     if Favorite.is_blank_favorite(self.favorites[i]) then
-      self.favorites[i] = setmetatable({ gps = fav_obj.gps, locked = fav_obj.locked or false, map_tag = fav_obj.map_tag }, Favorite)
+      self.favorites[i] = setmetatable({ gps = fav_obj.gps, locked = fav_obj.locked or false, tag = fav_obj.tag }, Favorite)
       self.favorites_by_gps[fav_obj.gps] = self.favorites[i]
       return true
     end
@@ -117,7 +117,7 @@ function PlayerFavorites:remove_favorite(gps)
   for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
     local fav = self.favorites[i]
     if fav and fav.gps == gps then
-      self.favorites[i] = setmetatable({ gps = Favorite.get_blank_favorite().gps, locked = false, map_tag = nil }, Favorite)
+      self.favorites[i] = setmetatable({ gps = Favorite.get_blank_favorite().gps, locked = false, tag = nil }, Favorite)
       self.favorites_by_gps[gps] = nil
       found = true
     end
@@ -125,7 +125,7 @@ function PlayerFavorites:remove_favorite(gps)
   -- If not found, ensure all blank slots are explicitly set to blank favorite
   if not found then
     for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
-      self.favorites[i] = setmetatable({ gps = Favorite.get_blank_favorite().gps, locked = false, map_tag = nil }, Favorite)
+      self.favorites[i] = setmetatable({ gps = Favorite.get_blank_favorite().gps, locked = false, tag = nil }, Favorite)
     end
   end
 end
@@ -138,13 +138,18 @@ function PlayerFavorites:set_favorites(new_faves)
   for i = 1, max do
     local f = new_faves and new_faves[i]
     if type(f) == "table" and not Favorite.is_blank_favorite(f) then
-      filtered[i] = Favorite:new(f.gps, f.locked, f.map_tag)
+      filtered[i] = Favorite:new(f.gps, f.locked, f.tag)
     else
       filtered[i] = Favorite.get_blank_favorite()
     end
   end
   self.favorites = filtered
-  return self.favorites
+  self.favorites_by_gps = {}
+  for i, fav in ipairs(filtered) do
+    if not Favorite.is_blank_favorite(fav) then
+      self.favorites_by_gps[fav.gps] = fav
+    end
+  end
 end
 
 --- Validate a GPS string (centralized)
