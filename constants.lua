@@ -20,7 +20,7 @@ constants.settings = {
   TELEPORT_RADIUS_MAX = 64,
   MAX_FAVORITE_SLOTS = 10,
   GPS_PAD_NUMBER = 3, -- minimum number of digits to display in a gps x or y
-
+  DATA_VIEWER_INDENT = 4,
   FAVORITES_ON = "favorites_on",
   BOUNDING_BOX_TOLERANCE = 10,
   SNAP_SCALE_FOR_CLICKED_TAG = 4

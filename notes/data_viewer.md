@@ -1,0 +1,92 @@
+# Data Viewer GUI – Design & Best Practices
+
+The Data Viewer is a developer utility for inspecting mod storage in real time. It should be robust, performant, and idiomatic for Factorio 2.0, using the builder and command patterns for GUI and event handling. The viewer is intended for debugging and development, not for end users.
+
+## Core Features
+- **Location:** Lives in the top GUI, below the favorites bar.
+- **Tabs:** Four tab buttons at the top: `player_data`, `surface_data`, `lookups`, `all_data`.
+- **Panel:** Data panel below tabs, width 1000px, always shows scrollbars. Each line shows one key and its value, with child tables indented by `Constants.settings.DATA_VIEWER_INDENT` (default: 4 spaces). Wrapped lines begin with `...\t`.
+- **Controls:**
+  - Opacity button (25%, 50%, 75%, 100%) updates panel opacity immediately.
+  - Font size buttons (+/-) adjust data panel font size per player (default: 12, stored in `storage.players[player_index].data_viewer_font_size`).
+  - Refresh button reloads the current tab's data snapshot.
+  - Close button hides the data panel.
+  - Title bar: "Data Viewer", drag handle, close button.
+- **Tab Content:**
+  - `player_data`: Shows `storage.players[player_index]`, with toggle for all players.
+  - `surface_data`: Shows `storage.surfaces[surface_index]`, with toggle for all surfaces.
+  - `lookups`: Shows lookups storage.
+  - `all_data`: Shows all mod storage.
+- **Live Updates:** Data panel tracks changes in real time; refresh button can force reload.
+- **Simplicity:** Keep code maintainable and easy to extend for future improvements.
+
+## Best Practices
+- Use vanilla Factorio styles and idioms for all controls and layout.
+- All controls should be accessible via keyboard and mouse.
+- All user-facing strings should be localizable.
+- Avoid excessive polling or performance impact in multiplayer.
+- Use scrollbars and fixed width for predictable layout.
+- Store per-player settings (font size, opacity) in persistent storage.
+- Use the builder pattern for GUI construction and command pattern for event handling.
+
+## Open Questions / Suggestions for Improvement
+
+1. **Data Export:** Should there be a button to export the current data view to a file or clipboard?
+Not at this time
+2. **Search/Filter:** Should the data panel support searching or filtering keys/values?
+Not at this time
+3. **Data Editing:** Should the viewer allow editing of data (with confirmation), or remain strictly read-only?
+Absolutely not
+4. **Performance:** Are there concerns with very large tables (e.g., all_data in large multiplayer games)? Should there be paging or lazy loading?
+Not at this time
+5. **Tab Customization:** Should users be able to add custom tabs for other data sources?
+NO. but make it easy for the developer to expand
+6. **Panel Resizing:** Should the data panel width/height be resizable by the user?
+Yes
+7. **Error Handling:** How should the viewer handle errors or nil data (e.g., missing player/surface)?
+There should rarely be errors as we are only displaying a snapshot of the current data without any manipulation
+8. **Access Control:** Should the data viewer be restricted to admins or certain players?
+Not at this time
+9. **Hotkey Support:** Should there be a hotkey to open/close the data viewer or switch tabs?
+Not at this time
+10. **Data Diffing:** Should the viewer support diffing between snapshots (e.g., before/after an event)?
+Not at this time
+
+---
+<!--
+The Data_Viewer:
+
+This is a component to aid in debugging only. 
+It's purpose is to provide the ability to view the state of the stored data at anytime.
+The data viewer's gui should live in the top gui underneath the fave bar. it should have 4 buttons, acting as tabs at the top labeled "player_data", "surface_data", "lookups", "all_data"
+There be a button to adjust the opacity with options 25%, 50%, 75% and 100%. Changing this value should immediatelty change the opacity of the data panel to show at the designated opacity
+Include another pair of buttons to increase the font size used for the data panel and update the data panel immediately upon any changes in this value. use a plus button minus button functionality for this. minus decrease the font size by one and the plus button increase the font-size by 1 for each click. use appropriate icons for these buttons. The default size sohuld be 12. This should be stored per player at storage.players[player_index].data_viewer_font_size
+There should be another button to "Refresh Data" the data on the top row off to the right. and another button to close the data panel. Use an appropriate icon to display this button and make "Refresh Data" to be the tooltip
+Above all this should be a standard factorio title bar. The title is "Data Viewer" then a drag handle and finally a close button "X" to close the dialog
+
+The data panel will be toggled by the data_panel_close button
+the purpose of the data panel is to show the relevant data to what tab is selected in the top row
+player_data will show the data from the current player -> storage.players[player_index] and there should be a way to toggle between the current player and all player data in the tab content display
+surface_data will show the data from the current player -> storage.surfaces[surface_index] and there should be a way to toggle between the current player and all surface data in the tab content display
+lookups will show the data for the lookups storage
+
+when a tab is clicked, the viewer should load the snapshot of the current data appropriate to the selected tab, and should track it in the panel in realtime. Additionally, any data in the panel can be refreshed at any time by clicking on the refresh data button
+
+display strategies will change as the mod develops and testing continues. Make the code super-maintainable and easy to navigate for future improvements
+
+## Display Strategy
+each line of data should only show one key and it value, which may be further broken down in to the child tables, etc. Once again each line should only show one key and it's value. show nil if nil. successive children should be indented by Constants.settings.DATA_VIEWER_INDENT or 4 (default) spaces 
+
+Any wrapped lines should begin with "..." \t
+
+implore scrollbars at all times to pan through the data. although the width should be a max amount of say 1000
+
+the data panel should be 1000 wide.
+
+the entire gui, with the exception of the tab selectors, should be able to be adjusted for opacity according to the top row button
+
+the tabs and buttons specified should arrange horizontally in the top row of the gui.
+the data panel sohuld be the same width and show below the tabs. Create a button handle the opening and closing of the data panel in the top row as well
+
+keep things very simple as this only a dev utility
+-->

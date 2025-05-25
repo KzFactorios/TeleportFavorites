@@ -1,61 +1,69 @@
-# TeleportFavorites TODO
+# TeleportFavorites Favorites Bar (Fave Bar)
 
-_This is a work in progress._
+The favorites bar (fave_bar) is a persistent, player-specific GUI element that provides quick access to teleportation favorites. It is designed to be idiomatic for Factorio 2.0, robust in multiplayer, and visually consistent with vanilla UI paradigms. The bar should be built using the builder pattern for GUI construction and the command pattern for user/event handling.
 
----
+## Core Features and Interactions
+- The fave_bar exists in the player's top GUI, ideally as the rightmost item.
+- The parent element is `fave_bar_frame`, which contains two horizontal containers:
+  - `fave_toggle_container`: Holds the `fave_toggle` button (red star icon). Clicking toggles visibility of the favorite buttons container. State is persisted in `storage.players[player_index].toggle_fave_bar_buttons`.
+  - `favorite_buttons` container: Contains `MAX_FAVORITE_SLOTS` slot buttons, each representing a favorite. Each slot button:
+    - Shows the icon for the matched chart_tag, or `default_map_tag.png` if none.
+    - Tooltip: First line is GPS (without surface), second line is chart_tag text (trimmed to 50 chars, see constant), no second line if no text.
+    - Caption: Slot number (1-0), small font.
+    - Size: 36x36, use slot button style.
+    - Left-click: Teleport to favorite's GPS.
+    - Right-click: Open tag editor for editing.
+    - Ctrl+left-click: Toggle locked state (with highlight and lock icon if possible).
+    - Locked slots cannot be moved.
+    - Drag-and-drop: Reorder favorites (locked slots cannot move).
+    - Distinct styles for default, hovered, clicked, disabled, locked, etc.
+- The bar is only built if the per-player mod setting `favorites_on` is true.
+- The bar is visible in game, chart, and chart_zoomed_in render modes.
+- The bar should scale and style properly for all UI scales and resolutions.
+- All GUI state and slot order is persisted per player.
+- Use shared styles and idiomatic Factorio GUI patterns wherever possible.
 
-## GUI Improvements
+## Best Practices & Modern Factorio v2 Considerations
+- Use the builder pattern for all GUIs.
+- Use the command pattern for all user/event interactions.
+- Use vanilla icons, spacing, and style classes where possible.
+- Provide clear visual feedback for all button states and actions.
+- Ensure all user-facing strings are localizable.
+- Avoid GUI thrashing or excessive updates; debounce where needed.
+- Support multiplayer and hot-reload scenarios robustly.
 
-- [ ] **Change the color of the teleport button** in the tag editor.
-- [ ] **Test** the `ft_teleport_button` with `parent = "confirm_button"` and minimal overrides for best vanilla look.
-- [ ] **Confirm label widths and alignments** are consistent across the tag editor dialog.
-- [ ] **Match vanilla styling** for delete and move button in the tag editor.
-- [ ] **Test for display of unforeseen large strings** (e.g., player names, chart tag text).  
-      _Limit string length in GUI where appropriate._
-- [ ] **Check limits on size for chart tag text** and enforce in GUI logic/helpers.
-- [ ] **Document further style or layout tweaks** in this file for future reference.
-- [ ] **Add localization** for any new user-facing strings.
+## Open Questions / Suggestions for Improvement
 
----
+1. **Drag-and-Drop Feedback:** Should there be a visual indicator (e.g., ghost image, highlight) when dragging a favorite slot? yes, it should look as if a slot_button with the dragged favorites icon is being moved around
+2. **Slot Locking UI:** If layering icons is not possible, should a tooltip or color change indicate locked state?
+Yes. pretty sure I mentioned this below, but a locked favorite should show with a different color border. Use orange for now. And if it is possible to put another locked icon over the button, we should do that as well
+3. **Favorite Slot Overflow:** What should happen if a player tries to add more favorites than `MAX_FAVORITE_SLOTS`? Should there be a message or animation?
+There should be a beep, and a message that indictaes that the player already has the max number of available slots.
 
-## Testing & Coverage
-
-- [ ] **Add more unit tests** for helpers and GUI logic as the project matures.
-- [ ] **Test for map editor functionality** and ensure compatibility.
-- [ ] **Multiplayer:** Test and document tag ownership edge cases.
-- [ ] **Player favorites:**  
-      - Should mimic a first-in last-out (FILO) pattern.  
-      - If trimming is needed, remove last-in items first to preserve oldest entries.
-
----
-
-## Persistence & State
-
-- [ ] **Persist `tag_editor_positions` for all players** if the tag editor can be available at game start.
-
----
-
-## Event Handling & Sync
-
-- [ ] **Implement GUI desync detection and recovery**  
-      _See `notes/specs_after_agent_discussion.md`._
-- [ ] **Handle events from the vanilla tag editor** and ensure mod GUI stays in sync.
-- [ ] **In `control.lua.events.on_player_changed_surface`,**  
-      `event.surface_index` is not guaranteed. Use `player.surface.index` for the new surface.
-
----
-
-## Tag & Chart Tag Logic
-
-- [ ] **When a `chart_tag` is destroyed, ensure it destroys any linked tags (and vice versa).**  
-      _Refactor tag <-> chart_tag destruction logic to a shared helper if possible._
-
----
-
-## References
-
-- The only place `"map_tag"` should be used is for the reference to the sprite:  
-  `graphics/default_map_tag.png`
+4. **Slot Button Accessibility:** Should slot buttons have tooltips for all states (locked, disabled, etc.)?
+yes and no. locked buttons sould just not react to any left clicks. right clicks should open the tag_editor with the faves info and a ctrl+left-click should toggle the locked state immediatley. ctrl-right-click should be ignored. Blank favorites should not show as disabled, they just shouldn't do anything if left,right, ctrl+? clicked. A blank favorite cannot be locked
+5. **Favorite Removal:** Is there a quick way to remove a favorite (e.g., middle-click or context menu)?
+You can delete by right clicking the favorite thereby open the tag editor with the favorites' information and the ability to delete if not locked and with all of the other ownership rules which are handled in the tag_editor
+6. **Favorite Sorting:** Should there be an option to auto-sort favorites (e.g., by name, location, last used)?
+No. instead we are going to offer drag and drop
+7. **Favorite Import/Export:** Should players be able to import/export their favorites (e.g., for sharing or backup)?
+Not now. although this is something to consider in future versions
+8. **Favorite Bar Customization:** Should players be able to customize the number of slots, bar position, or appearance?
+Not at this time
+9. **Performance:** Are there any performance concerns with large numbers of favorites or frequent GUI updates?
+There will only be MAX_FAVORITE_SLOTS available and I don't see the number going much higher due to the fact that we just can't steal that many hotkeys away from the vanilla game :)!
+10. **Mod Compatibility:** Are there known issues with other mods that modify the top GUI or add similar bars?
+No known issues, but I would like to keep the fave bar as the last element in the top gui
+11. **Hotkey Support:** Should there be hotkeys for toggling the bar, jumping to a favorite, or reordering slots?
+Not at this time
+12. **Favorite State Sync:** How is favorite state synced if the player changes settings or reloads the mod?
+I am not sure exactly what you mean but player favorites are persisted in storage and the default settings keep favorite false until toggeled 
+13. **Favorite Bar Visibility:** Should the bar auto-hide in certain situations (e.g., cutscenes, map editor)?
+yes it should not be shown in anything other than game chart or chart_zzoomed_in mode
+14. **Favorite Button Animations:** Should there be subtle animations for adding/removing/reordering favorites?
+yes and i am counting on you to provdie a modern efficient, easy to maintain, system or look
+15. **Favorite Bar API:** Should there be a remote interface for other mods to interact with the favorites bar?
+Not at this time
 
 ---
 
