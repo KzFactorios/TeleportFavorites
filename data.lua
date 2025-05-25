@@ -31,70 +31,70 @@ data:extend {
   },
   {
     type = "custom-input",
-    name = Constants.events.TELEPORT_TO_FAVORITE .. "1",
+    name = Constants.enums.events.TELEPORT_TO_FAVORITE .. "1",
     key_sequence = "CONTROL + 1",
     consuming = "game-only",
     order = "ca"
   },
   {
     type = "custom-input",
-    name = Constants.events.TELEPORT_TO_FAVORITE .. "2",
+    name = Constants.enums.events.TELEPORT_TO_FAVORITE .. "2",
     key_sequence = "CONTROL + 2",
     consuming = "game-only",
     order = "cb"
   },
   {
     type = "custom-input",
-    name = Constants.events.TELEPORT_TO_FAVORITE .. "3",
+    name = Constants.enums.events.TELEPORT_TO_FAVORITE .. "3",
     key_sequence = "CONTROL + 3",
     consuming = "game-only",
     order = "cc"
   },
   {
     type = "custom-input",
-    name = Constants.events.TELEPORT_TO_FAVORITE .. "4",
+    name = Constants.enums.events.TELEPORT_TO_FAVORITE .. "4",
     key_sequence = "CONTROL + 4",
     consuming = "game-only",
     order = "cd"
   },
   {
     type = "custom-input",
-    name = Constants.events.TELEPORT_TO_FAVORITE .. "5",
+    name = Constants.enums.events.TELEPORT_TO_FAVORITE .. "5",
     key_sequence = "CONTROL + 5",
     consuming = "game-only",
     order = "ce"
   },
   {
     type = "custom-input",
-    name = Constants.events.TELEPORT_TO_FAVORITE .. "6",
+    name = Constants.enums.events.TELEPORT_TO_FAVORITE .. "6",
     key_sequence = "CONTROL + 6",
     consuming = "game-only",
     order = "cf"
   },
   {
     type = "custom-input",
-    name = Constants.events.TELEPORT_TO_FAVORITE .. "7",
+    name = Constants.enums.events.TELEPORT_TO_FAVORITE .. "7",
     key_sequence = "CONTROL + 7",
     consuming = "game-only",
     order = "cg"
   },
   {
     type = "custom-input",
-    name = Constants.events.TELEPORT_TO_FAVORITE .. "8",
+    name = Constants.enums.events.TELEPORT_TO_FAVORITE .. "8",
     key_sequence = "CONTROL + 8",
     consuming = "game-only",
     order = "ch"
   },
   {
     type = "custom-input",
-    name = Constants.events.TELEPORT_TO_FAVORITE .. "9",
+    name = Constants.enums.events.TELEPORT_TO_FAVORITE .. "9",
     key_sequence = "CONTROL + 9",
     consuming = "game-only",
     order = "ci"
   },
   {
     type = "custom-input",
-    name = Constants.events.TELEPORT_TO_FAVORITE .. "10",
+    name = Constants.enums.events.TELEPORT_TO_FAVORITE .. "10",
     key_sequence = "CONTROL + 0",
     consuming = "game-only",
     order = "cj"

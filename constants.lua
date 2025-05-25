@@ -11,10 +11,7 @@ local constants = {}
 constants.PREFIX = "tf_"
 
 constants.events = {
-  ADD_TAG_INPUT = "add-tag-input",
-  TELEPORT_TO_FAVORITE = "teleport_to_favorite-",
-  ON_OPEN_TAG_EDITOR = "on_open_tag_editor",
-  CACHE_DUMP = "cache_dump"
+
 }
 
 constants.settings = {
@@ -33,6 +30,12 @@ constants.enums = {
   return_state = {
     SUCCESS = "sucess",
     FAILURE = "failure"
+  },
+  events = {
+    ADD_TAG_INPUT = "add-tag-input",
+    TELEPORT_TO_FAVORITE = "teleport_to_favorite-",
+    ON_OPEN_TAG_EDITOR = "on_open_tag_editor",
+    CACHE_DUMP = "cache_dump"
   }
 }
 
