@@ -1,3 +1,9 @@
+local ok, GPSorErr = pcall(require, "core.gps.gps")
+if not ok then
+  error("[TeleportFavorites] Could not load GPS module: " .. tostring(GPSorErr))
+end
+local GPS = GPSorErr
+
 local Helpers = require("core.utils.helpers")
 
 ---@class Favorite
@@ -7,6 +13,8 @@ local Helpers = require("core.utils.helpers")
 local Favorite = {}
 Favorite.__index = Favorite
 
+local BLANK_GPS = "1000000.1000000.1"
+
 --- Constructor for Favorite
 -- @param gps string The GPS string
 -- @param locked boolean|nil Optional, defaults to false
@@ -15,7 +23,18 @@ Favorite.__index = Favorite
 function Favorite:new(gps, locked, map_tag)
   local obj = setmetatable({}, self)
   ---@type string
-  obj.gps = gps or ""
+  if type(gps) == "string" and gps:match("^%[gps=") then
+    -- Parse [gps=x,y,s] format and normalize
+    local x, y, s = gps:match("%[gps=(%-?%d+),(%-?%d+),(%-?%d+)%]")
+    x, y, s = tonumber(x), tonumber(y), tonumber(s)
+    if x and y and s then
+      obj.gps = GPS.gps_from_map_position({x=x, y=y}, math.floor(s))
+    else
+      obj.gps = BLANK_GPS
+    end
+  else
+    obj.gps = gps or BLANK_GPS
+  end
   ---@type boolean
   obj.locked = locked or false
   ---@type table|nil
@@ -34,10 +53,16 @@ function Favorite:toggle_locked()
   self.locked = not self.locked
 end
 
---- Create a new blank Favorite object
--- @return Favorite
+--- Returns a blank favorite (sentinel for unused slot)
 function Favorite.get_blank_favorite()
-  return Favorite:new("")
+  return Favorite:new(BLANK_GPS, false, nil)
+end
+
+--- Checks if a favorite is blank (unused slot)
+function Favorite.is_blank_favorite(fav)
+  if type(fav) ~= "table" then return false end
+  if next(fav) == nil then return true end
+  return (fav.gps == "" or fav.gps == nil or fav.gps == BLANK_GPS) and (fav.locked == false or fav.locked == nil)
 end
 
 function Favorite:valid()

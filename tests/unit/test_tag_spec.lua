@@ -1,31 +1,10 @@
--- tests/unit/test_tag.lua
--- Unit tests for core.tag.tag
+---@diagnostic disable
 local Tag = require("core.tag.tag")
-local GPS = require("core.gps.gps")
+local Helpers = require("tests.mocks.mock_helpers")
+local make_player = require("tests.mocks.mock_player")
+local make_surface = require("tests.mocks.mock_surface")
 local Constants = require("constants")
-
-local function mock_player(index, name, surface_index)
-  return {
-    index = index or 1,
-    name = name or "TestPlayer",
-    surface = { index = surface_index or 1 },
-    valid = true,
-    teleport = function() return true end,
-    print = function(self, message) return message end,
-    character = true,
-    driving = false,
-    vehicle = nil,
-    riding_state = nil,
-  }
-end
-
-local function mock_surface(index)
-  return {
-    index = index or 1,
-    find_non_colliding_position = function() return {x=0, y=0} end,
-    can_place_entity = function() return true end,
-  }
-end
+local BLANK_GPS = "1000000.1000000.1"
 
 local function test_tag_creation()
   local tag = Tag.new("1.2.1", {1,2})
@@ -45,7 +24,7 @@ end
 
 local function test_tag_is_player_favorite()
   local tag = Tag.new("1.2.1", {2,3})
-  local player = mock_player(2)
+  local player = make_player(2)
   assert(tag:is_player_favorite(player), "Should be favorite")
   player.index = 1
   assert(not tag:is_player_favorite(player), "Should not be favorite")
@@ -54,7 +33,7 @@ end
 local function test_tag_is_owner()
   local tag = Tag.new("1.2.1")
   tag.chart_tag = { last_user = "TestPlayer" }
-  local player = mock_player(1, "TestPlayer")
+  local player = make_player(1, "TestPlayer")
   assert(tag:is_owner(player), "Should be owner")
   player.name = "OtherPlayer"
   assert(not tag:is_owner(player), "Should not be owner")
@@ -62,33 +41,49 @@ end
 
 local function test_teleport_player_with_messaging_success()
   local tag = Tag.new("1.2.1")
-  local player = mock_player(1)
+  local player = make_player(1)
+  player.driving = false
+  player.vehicle = nil
   local pos = {x=0, y=0}
-  local surface = mock_surface(1)
+  local surface = make_surface(1)
   local result = Tag.teleport_player_with_messaging(player, pos, surface)
+  print("[TEST] Tag.teleport_player_with_messaging result:", result, "Expected:", Constants.enums.return_state.SUCCESS)
   assert(result == Constants.enums.return_state.SUCCESS, "Teleport should succeed")
 end
 
 local function test_teleport_player_with_messaging_failures()
   local tag = Tag.new("1.2.1")
-  local player = mock_player(1)
+  local player = make_player(1)
   local pos = {x=0, y=0}
   -- No surface
   local result = Tag.teleport_player_with_messaging(player, pos, nil)
   assert(type(result) == "string" and result:find("Surface is missing"), "Should fail if surface is missing")
   -- No player
-  result = Tag.teleport_player_with_messaging(nil, pos, mock_surface(1))
+  result = Tag.teleport_player_with_messaging(nil, pos, make_surface(1))
   assert(type(result) == "string" and result:find("Player is missing"), "Should fail if player is missing")
 end
 
-local function run_all()
-  test_tag_creation()
-  test_tag_add_remove_faved_by_player()
-  test_tag_is_player_favorite()
-  test_tag_is_owner()
-  test_teleport_player_with_messaging_success()
-  test_teleport_player_with_messaging_failures()
-  print("All Tag tests passed.")
+local function test_create_for_favorite()
+  it("should create tag for valid favorite", function()
+    local favorite = {gps = "1.2.3", text = "Test Tag", locked = false}
+    local tag = Tag.create_for_favorite(favorite)
+    assert.is_not_nil(tag, "Tag should be created")
+    assert.equals(tag.gps, "1.2.3", "Tag GPS should match favorite GPS")
+    assert.equals(tag.text, "Test Tag", "Tag text should match favorite text")
+    assert.is_false(tag.locked, "Tag should not be locked")
+  end)
+
+  it("should not create tag for blank favorite", function()
+        local blank = {gps = BLANK_GPS, text = "", locked = false}
+        assert.is_false(Tag.create_for_favorite(blank))
+    end)
 end
 
-run_all()
+describe("Tag", function()
+  it("should create a tag and check fields", test_tag_creation)
+  it("should add and remove faved_by_player", test_tag_add_remove_faved_by_player)
+  it("should check is_player_favorite", test_tag_is_player_favorite)
+  it("should check is_owner", test_tag_is_owner)
+  it("should teleport player with messaging (success)", test_teleport_player_with_messaging_success)
+  it("should handle teleport player with messaging failures", test_teleport_player_with_messaging_failures)
+end)

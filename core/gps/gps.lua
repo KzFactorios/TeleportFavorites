@@ -5,6 +5,7 @@ local Helpers = require("core.utils.helpers")
 local GPS = {}
 
 local padlen = Constants.settings.GPS_PAD_NUMBER
+local BLANK_GPS = "1000000.1000000.1"
 
 --- Parse a GPS string of the form 'x.y.s' into a table {x=..., y=..., surface=...}
 ---@param gps string
@@ -28,6 +29,9 @@ end
 ---@param gps string
 ---@return MapPosition|nil
 function GPS.map_position_from_gps(gps)
+  if gps == BLANK_GPS then
+    return { x = 0, y = 0 }
+  end
   local parsed = parse_gps_string(gps)
   if not parsed then return nil end
   return { x = parsed.x, y = parsed.y }
@@ -66,58 +70,30 @@ function GPS.get_surface_index(gps)
   end
 end
 
----@returns string|nil, MapPosition}nil
-function GPS.normalize_landing_position(player, position, surface)
-  if not player or not player.valid or type(player.teleport) ~= "function" then
-    return "[TeleportFavorites] _gps_align_ Player is missing"
-  end
-  if not surface then surface = player.surface end
+--- Normalize a landing position, accepting surface as LuaSurface, string, or index
+---@param player table
+---@param pos MapPosition
+---@param surface LuaSurface|string|number
+---@return MapPosition|nil
+function GPS.normalize_landing_position(player, pos, surface)
+  if not pos then return nil end
 
-  -- ---@field find_non_colliding_position fun(self: LuaSurface, name: string, center: MapPosition, radius: double, precision: double): MapPosition?
-  if not surface or type(surface.find_non_colliding_position) ~= "function" then
-    return "[TeleportFavorites] _gps_align_ Surface is missing"
-  end
-  -- Only allow teleport if player.character is present (Factorio API)
-  if rawget(player, "character") == nil then
-    return "[TeleportFavorites] _gps_align_ Player character is missing"
-  end
+  -- Mock or fallback for `game` global in non-Factorio runtime
+---@diagnostic disable-next-line: undefined-global
+  local game_surfaces = (type(game) == "table" and game.surfaces) or {}
 
-  -- Space platform check
-  if Helpers.is_on_space_platform(player) then
-    return
-    "The insurance general has determined that space platform tag placement could result in injury or death, or both, and has outlawed the practice."
-  end
-
-  -- Get settings
-  local settings = Settings.getPlayerSettings and Settings:getPlayerSettings(player) or { teleport_radius = 8 }
-  local teleport_radius = settings.teleport_radius or 8
-
-  -- Use the default prototype name for collision search
-  local proto_name = "character"
-  -- Find a non-colliding position near the target position
-  -- fun(self: LuaSurface, name: string, center: MapPosition, radius: double, precision: double): MapPosition?
-  local closest_position =
-      surface:find_non_colliding_position(proto_name, position, teleport_radius, 4)
-  if not closest_position then
-    return
-    "The location you have chosen is too dense. Try another location."
+  -- Accept surface as index, LuaSurface, or string
+  local surface_index = 1
+  if type(surface) == "number" then
+    surface_index = math.floor(surface) -- Ensure it's an integer
+  elseif type(surface) == "table" and surface.index then
+    surface_index = surface.index
+  elseif type(surface) == "string" then
+    local surf = game_surfaces[surface]
+    surface_index = surf and surf.index or 1
   end
 
-  -- Water tile check
-  if Helpers.is_water_tile(surface, closest_position) then
-    return
-    "Water tiles cannot be tagged by us. Use the vanilla add tag dialog if you want to mark the location."
-  end
-  
-  -- Check if the position is valid for placing the player - a radar footprint is about the same size
-  -- ---@field find_non_colliding_position fun(self: LuaSurface, name: string, center: MapPosition, radius: double, precision: double): MapPosition?
-  if not surface.can_place_entity
-      or not surface:can_place_entity("radar", closest_position,
-        Settings:getPlayerSettings(player).teleport_radius) then
-    return "The player cannot be placed at this location. Try another location."
-  end
-
-  return nil, closest_position
+  return { x = pos.x, y = pos.y, surface = surface_index }
 end
 
 return GPS

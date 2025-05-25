@@ -1,6 +1,9 @@
 -- tests/unit/test_helpers.lua
 -- Unit tests for core.utils.Helpers
 local Helpers = require("core.utils.helpers")
+local mock_game = require("tests.mocks.mock_game")
+local mock_helpers = require("tests.mocks.mock_helpers")
+mock_helpers.set_global_game(mock_game)
 
 local function test_trim()
   assert(Helpers.trim("  foo  ") == "foo", "Trim should remove leading/trailing spaces")

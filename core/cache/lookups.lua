@@ -1,4 +1,5 @@
 local GPS = require("core.gps.gps")
+local Favorite = require("core.favorite.favorite")
 
 ---@diagnostic disable: undefined-global
 ---@class Lookups
@@ -9,6 +10,7 @@ local Lookups = {}
 Lookups.__index = Lookups
 
 local CACHE_KEY = "Lookups"
+local BLANK_GPS = "1000000.1000000.1"
 
 function Lookups.ensure_surface_cache(surface_index)
   local cache = Lookups.ensure_cache()

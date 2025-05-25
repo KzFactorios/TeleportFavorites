@@ -1,6 +1,9 @@
--- tests/unit/test_gps.lua
--- Unit tests for core.gps.gps
+---@diagnostic disable
 local GPS = require("core.gps.gps")
+local Favorite = require("core.favorite.favorite")
+local Helpers = require("tests.mocks.mock_helpers")
+local Constants = require("constants")
+local BLANK_GPS = "1000000.1000000.1"
 
 local function test_gps_from_map_position()
   local pos = {x=123, y=456}
@@ -27,12 +30,42 @@ local function test_get_surface_index()
   assert(GPS.get_surface_index("bad.gps") == 1, "Should default to 1 on bad input")
 end
 
+local function test_blank_gps()
+  assert(GPS.map_position_from_gps(BLANK_GPS).x == 0, "BLANK_GPS should decode to x=0")
+  assert(GPS.map_position_from_gps(BLANK_GPS).y == 0, "BLANK_GPS should decode to y=0")
+  assert(GPS.get_surface_index(BLANK_GPS) == 1, "BLANK_GPS should have surface index 1")
+  assert(GPS.coords_string_from_gps(BLANK_GPS) == "1000000.1000000", "BLANK_GPS should have the corresponding coords string")
+end
+
 local function run_all()
   test_gps_from_map_position()
   test_map_position_from_gps()
   test_coords_string_from_gps()
   test_get_surface_index()
+  test_blank_gps()
   print("All GPS tests passed.")
 end
 
 run_all()
+
+describe("Favorite GPS handling", function()
+    it("should recognize blank gps as blank favorite", function()
+        assert.is_true(Favorite.is_blank_favorite({gps = BLANK_GPS}))
+    end)
+    it("should decode gps string to position", function()
+        local pos = GPS.map_position_from_gps("123.456.1")
+        assert.is_not_nil(pos)
+        if pos then
+            assert.is_true(pos.x == 123)
+            assert.is_true(pos.y == 456)
+        end
+    end)
+    it("BLANK_GPS should decode to x=0, y=0", function()
+        local pos = GPS.map_position_from_gps(BLANK_GPS)
+        assert.is_not_nil(pos)
+        if pos then
+            assert.is_true(pos.x == 0)
+            assert.is_true(pos.y == 0)
+        end
+    end)
+end)

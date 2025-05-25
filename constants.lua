@@ -28,7 +28,7 @@ constants.settings = {
 
 constants.enums = {
   return_state = {
-    SUCCESS = "sucess",
+    SUCCESS = "success",
     FAILURE = "failure"
   },
   events = {
