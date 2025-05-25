@@ -43,7 +43,7 @@ function handlers.on_teleport_to_favorite(event, i)
   local Cache = get_cache()
   local favorites = Cache.get_player_favorites(player)
   if type(favorites) ~= "table" or not i or not favorites[i] then
-    player.print(player, { "teleport-favorite-no-location" })
+    player:print({ "teleport-favorite-no-location" })
     return
   end
   local favorite = favorites[i]
@@ -58,10 +58,10 @@ function handlers.on_teleport_to_favorite(event, i)
     local surface = game.surfaces[surface_index]
     local result = Tag.teleport_player_with_messaging(player, pos, surface)
     if result ~= Constants.enums.return_state.SUCCESS then
-      player.print(player, result)
+      player:print(result)
     end
   else
-    player.print(player, { "teleport-favorite-no-location" })
+    player:print({ "teleport-favorite-no-location" })
   end
 end
 

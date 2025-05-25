@@ -11,7 +11,7 @@ Lookups.__index = Lookups
 local CACHE_KEY = "Lookups"
 
 function Lookups.ensure_surface_cache(surface_index)
-  local cache = ensure_cache()
+  local cache = Lookups.ensure_cache()
   local surface_data = cache.surfaces or {}
   surface_data[surface_index] = surface_data[surface_index] or {}
   surface_data[surface_index].chart_tags = surface_data[surface_index].chart_tags or {}
@@ -22,14 +22,12 @@ end
 --- Ensure the cache table exists in global (non-persistent)
 local function ensure_cache()
   _G[CACHE_KEY] = _G[CACHE_KEY] or {}
-  local cache = _G[CACHE_KEY] 
+  local cache = _G[CACHE_KEY]
   cache.surfaces = cache.surfaces or {}
-  local num_surfaces = not next(cache_surfaces) or #cache_surfaces == 0 or 1
-  for i = 1, num_surfaces do
-    cache.surfaces[i] = cache.surfaces[i] or Lookups.ensure_surface_cache(i)
-  end
-  return _G[CACHE_KEY]
+  return cache
 end
+
+Lookups.ensure_cache = ensure_cache
 
 --- Get a value from the cache
 function Lookups.get(key)
@@ -135,6 +133,14 @@ function Lookups.clear_chart_tag_cache(surface_index)
       surface.chart_tag_cache_by_gps = {}
     end
   end
+end
+
+--- Initialize the Lookups cache (for tests or mod init)
+function Lookups.init()
+  _G[CACHE_KEY] = {}
+  local cache = _G[CACHE_KEY]
+  cache.surfaces = {}
+  return cache
 end
 
 return Lookups

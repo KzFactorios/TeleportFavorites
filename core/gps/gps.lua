@@ -113,7 +113,7 @@ function GPS.normalize_landing_position(player, position, surface)
   -- ---@field find_non_colliding_position fun(self: LuaSurface, name: string, center: MapPosition, radius: double, precision: double): MapPosition?
   if not surface.can_place_entity
       or not surface:can_place_entity("radar", closest_position,
-        Settings:getPlayerSettings(player).settings.teleport_radius) then
+        Settings:getPlayerSettings(player).teleport_radius) then
     return "The player cannot be placed at this location. Try another location."
   end
 

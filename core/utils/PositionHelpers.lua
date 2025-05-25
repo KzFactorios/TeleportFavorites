@@ -21,9 +21,7 @@ function PositionHelpers.position_can_be_tagged(player, map_position)
     return false
   end
   if not player.force:is_chunk_charted(player.surface, chunk_position) then
-    player.print(player,
-      "[TeleportFavorites] You are trying to create a tag in uncharted territory: " ..
-      GPS.map_position_to_gps(map_position))
+    player:print("[TeleportFavorites] You are trying to create a tag in uncharted territory: " .. GPS.map_position_to_gps(map_position))
     return false
   end
   local tile = player.surface.get_tile(player.surface, math.floor(map_position.x), math.floor(map_position.y))
@@ -48,7 +46,7 @@ function PositionHelpers.on_raise_teleported(event, game)
     -- do not add the [TeleportFavorites] at the head of the output to reduce clutter
     local gps_string = GPS.coords_string_from_gps(GPS.gps_from_map_position(pos, player.surface.index))
     ---@diagnostic disable-next-line
-    player.print({ "teleported-to", player.name, gps_string })
+    player:print({ "teleported-to", player.name, gps_string })
   end
   --Slots.update_slots(player)
 end

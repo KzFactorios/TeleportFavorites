@@ -281,8 +281,8 @@ end
 ---@param pos table
 ---@return boolean
 function Helpers.is_water_tile(surface, pos)
-  local tile = surface:get_tile(math.floor(pos.x), math.floor(pos.y))
-  ---@diagnostic disable-next-line
+  if not surface or not surface.get_tile then return false end
+  local tile = surface.get_tile(surface, math.floor(pos.x), math.floor(pos.y))
   if tile and tile.prototype and tile.prototype.collision_mask then
     for _, mask in pairs(tile.prototype.collision_mask) do
       if mask == "water-tile" then
@@ -290,8 +290,23 @@ function Helpers.is_water_tile(surface, pos)
       end
     end
   end
-
   return false
+end
+
+--- Normalize a player index to integer
+---@param player LuaPlayer|number|string
+---@return integer
+function Helpers.normalize_player_index(player)
+  if type(player) == "table" and player.index then return player.index end
+  return math.floor(tonumber(player) or 0)
+end
+
+--- Normalize a surface index to integer
+---@param surface LuaSurface|number|string
+---@return integer
+function Helpers.normalize_surface_index(surface)
+  if type(surface) == "table" and surface.index then return surface.index end
+  return math.floor(tonumber(surface) or 0)
 end
 
 return Helpers

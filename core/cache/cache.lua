@@ -17,8 +17,16 @@ local mod_version = require("core.utils.version")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local Lookups = require("core.cache.lookups")
 local GPS = require("core.gps.gps")
+local Helpers = require("core.utils.Helpers")
 
 ---@diagnostic disable: undefined-global
+
+-- Helper to safely convert to a positive integer index
+local function safe_index(idx)
+  idx = tonumber(idx)
+  if not idx or idx < 1 then return 0 end
+  return math.floor(idx)
+end
 
 --- Persistent and runtime cache management for TeleportFavorites mod.
 ---@class Cache
@@ -94,13 +102,13 @@ local function init_player_data(player)
   if not storage then return {} end
   if not storage.cache then Cache.init() end
   storage.players = storage.players or {}
-  local pidx = safe_index(player.index)
+  local pidx = Helpers.normalize_player_index(player)
   storage.players[pidx] = storage.players[pidx] or {}
   local player_data = storage.players[pidx]
   player_data.toggle_fav_bar_buttons = player_data.toggle_fav_bar_buttons or true
   player_data.render_mode = player_data.render_mode or player.render_mode
   player_data.surfaces = player_data.surfaces or {}
-  local sidx = safe_index(player.surface.index)
+  local sidx = Helpers.normalize_surface_index(player.surface)
   player_data.surfaces[sidx] = player_data.surfaces[sidx] or {}
   local player_surface = player_data.surfaces[sidx]
   player_surface.favorites = player_surface.favorites or PlayerFavorites.new(player)
@@ -121,7 +129,7 @@ local function init_surface_data(surface_index)
   if not storage then return {} end
   if not storage.cache then Cache.init() end
   storage.surfaces = storage.surfaces or {}
-  local idx = safe_index(surface_index)
+  local idx = tonumber(surface_index) or 0
   storage.surfaces[idx] = storage.surfaces[idx] or {}
   local surface_data = storage.surfaces[idx]
   surface_data.tags = surface_data.tags or {}
@@ -149,7 +157,7 @@ function Cache.remove_stored_tag(gps)
   if not gps or type(gps) ~= "string" then return end
   local surface_index = GPS.get_surface_index(gps)
   if not surface_index then return end
-  local idx = safe_index(surface_index)
+  local idx = Helpers.normalize_surface_index(surface_index)
   if idx == 0 then return end
   local surface_data = init_surface_data(idx)
   if not surface_data or not surface_data.tags then return end
