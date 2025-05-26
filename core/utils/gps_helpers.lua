@@ -22,7 +22,7 @@ local Helpers = require("core.utils.helpers")
 local Constants = require("constants")
 
 local padlen = Constants.settings.GPS_PAD_NUMBER
-local BLANK_GPS = "1000000.1000000.1"
+local BLANK_GPS = Constants.settings.BLANK_GPS
 
 --- Parse a GPS string of the form 'x.y.s' into a table {x=..., y=..., surface=...}
 ---@param gps string

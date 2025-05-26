@@ -8,8 +8,6 @@ local gps_helpers = require("core.utils.gps_helpers")
 local Favorite = {}
 Favorite.__index = Favorite
 
-local BLANK_GPS = gps_helpers.BLANK_GPS
-
 --- Constructor for Favorite
 -- @param gps string The GPS string
 -- @param locked boolean|nil Optional, defaults to false
@@ -32,10 +30,10 @@ function Favorite.new(self, gps, locked, tag)
     if x and y and s then
       obj.gps = gps_helpers.gps_from_map_position({x=x, y=y}, math.floor(s))
     else
-      obj.gps = BLANK_GPS
+      obj.gps = gps_helpers.BLANK_GPS
     end
   else
-    obj.gps = gps or BLANK_GPS
+    obj.gps = gps or gps_helpers.BLANK_GPS
   end
   ---@type boolean
   obj.locked = locked or false
@@ -79,24 +77,24 @@ end
 
 --- Returns a blank favorite (sentinel for unused slot)
 function Favorite.get_blank_favorite()
-  return Favorite:new(BLANK_GPS, false, nil)
+  return Favorite:new(gps_helpers.BLANK_GPS, false, nil)
 end
 
 --- Checks if a favorite is blank (unused slot)
 function Favorite.is_blank_favorite(fav)
   if type(fav) ~= "table" then return false end
   if next(fav) == nil then return true end
-  return (fav.gps == "" or fav.gps == nil or fav.gps == BLANK_GPS) and (fav.locked == false or fav.locked == nil)
+  return (fav.gps == "" or fav.gps == nil or fav.gps == gps_helpers.BLANK_GPS) and (fav.locked == false or fav.locked == nil)
 end
 
 function Favorite:valid()
-  return type(self) == "table" and type(self.gps) == "string" and self.gps ~= "" and self.gps ~= BLANK_GPS
+  return type(self) == "table" and type(self.gps) == "string" and self.gps ~= "" and self.gps ~= gps_helpers.BLANK_GPS
 end
 
 --- Format a tooltip string for this Favorite
 -- @return string Tooltip text
 function Favorite:formatted_tooltip()
-  if not self.gps or self.gps == "" or self.gps == BLANK_GPS then return "Empty favorite slot" end
+  if not self.gps or self.gps == "" or self.gps == gps_helpers.BLANK_GPS then return "Empty favorite slot" end
   local GPS = require("core.gps.gps")
   local tooltip = GPS.coords_string_from_gps(self.gps) or self.gps
   if self.tag ~= nil and type(self.tag) == "table" and self.tag.text ~= nil and self.tag.text ~= "" then

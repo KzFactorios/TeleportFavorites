@@ -6,7 +6,7 @@ local PlayerFavorites = require("core.favorite.player_favorites")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local GPS = require("core.gps.gps")
 local Constants = require("constants")
-local Lookups = require("core.lookup.lookups")
+local Lookups = require("core.cache.lookups")
 local Favorite = require("core.favorite.favorite")
 local Cache = require("core.cache.cache")
 

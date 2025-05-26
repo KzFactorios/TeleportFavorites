@@ -10,7 +10,6 @@ local Lookups = {}
 Lookups.__index = Lookups
 
 local CACHE_KEY = "Lookups"
-local BLANK_GPS = gps_helpers.BLANK_GPS
 
 local function normalize_surface_index(surface_index)
   local idx = tonumber(surface_index)

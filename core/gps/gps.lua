@@ -6,7 +6,6 @@ local gps_helpers = require("core.utils.gps_helpers")
 local GPS = {}
 
 local padlen = Constants.settings.GPS_PAD_NUMBER
-local BLANK_GPS = gps_helpers.BLANK_GPS
 
 GPS.gps_from_map_position = gps_helpers.gps_from_map_position
 GPS.map_position_from_gps = gps_helpers.map_position_from_gps

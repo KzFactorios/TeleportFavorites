@@ -10,8 +10,6 @@ local Favorite = require("core.favorite.favorite")
 local Helpers = require("core.utils.helpers")
 local Cache = require("core.cache.cache")
 
-local BLANK_GPS = "1000000.1000000.1"
-
 ---
 --- PlayerFavorites class with encapsulated access, O(1) lookup, and strict typing
 --- @class PlayerFavorites
