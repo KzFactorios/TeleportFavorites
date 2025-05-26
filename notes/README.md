@@ -38,7 +38,7 @@ This document summarizes and organizes the key points from all files in the `not
   - Per-line suppression comments preferred.
   - Strict EmmyLua annotation, modularity, surface-awareness, descriptive naming.
   - Requires at top, alphabetized.
-- **Structure:** Organized by concern, helpers in `core/utils/`, GUI in `gui/`, tests in `tests/`.
+- **Structure:** Organized by concern, helpers in `core/utils/`, GUI in `gui/`, tests in `tests/`. Top-level event handlers are split into extension modules (`control_fave_bar.lua`, `control_tag_editor.lua`, `control_data_viewer.lua`).
 - **Persistent Data:** Only via `Cache`, primitives only, schema in `data_schema.md`.
 - **Testing:** 100% coverage, edge/multiplayer cases, mirrored filenames.
 - **Documentation:** Update all docs as project evolves, use EmmyLua, document all public APIs.

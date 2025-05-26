@@ -17,7 +17,7 @@ This document describes the architecture of the TeleportFavorites mod, including
 ## Module Breakdown
 - All modules should use a class paradigm. Use emmylua definitions to achieve this goal. Store external type in the core/types folder
 - `core/cache/` – Persistent data cache, schema, init methods and helpers.
-- `core/control/` – Lifecycle, event, and utility modules.
+- `core/control/` – Lifecycle, event, and utility modules. Top-level event handlers are now split into extension modules (see `control_fave_bar.lua`, `control_tag_editor.lua`, `control_data_viewer.lua`).
 - `core/pattern/` – eg: Observer, singleton, etc modules. Base files to handle design pattern logic
 - `core/tag/sync.lua` – tag synchronization and migration logic.
 - `core/types/` – for external type definitions

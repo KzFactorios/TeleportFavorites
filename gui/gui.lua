@@ -23,7 +23,7 @@ function gui.create_icon_button(parent, name, sprite, tooltip, style, enabled)
         name = name,
         sprite = sprite,
         tooltip = tooltip,
-        style = style or "slot_button"
+        style = style or "tf_slot_button"
     }
     btn.enabled = enabled ~= false
     return btn

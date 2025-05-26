@@ -322,4 +322,46 @@ function Helpers.normalize_surface_index(surface)
   return math.floor(tonumber(surface) or 0)
 end
 
+--- Print a message to a player, robust to nil/invalid player and supports LocalisedString.
+--- @param player LuaPlayer|nil The player to print to.
+--- @param message string|LocalisedString The message to print (supports Factorio LocalisedString table).
+function Helpers.player_print(player, message)
+  if player and player.valid and type(player.print) == "function" then
+    player.print(message)
+  end
+end
+
+--- Teleport a player safely to a position on a surface.
+--- @param player LuaPlayer
+--- @param pos table
+--- @param surface LuaSurface
+function Helpers.safe_teleport(player, pos, surface)
+  if player and player.valid and type(player.teleport) == "function" and pos and surface then
+    if pos.x and pos.y then
+      return player.teleport({x=pos.x, y=pos.y}, surface)
+    elseif pos[1] and pos[2] then
+      return player.teleport({x=pos[1], y=pos[2]}, surface)
+    end
+  end
+  return false
+end
+
+--- Safely destroy a GUI frame if it exists and is valid.
+--- @param parent LuaGuiElement
+--- @param frame_name string
+function Helpers.safe_destroy_frame(parent, frame_name)
+  if parent and parent[frame_name] and parent[frame_name].valid and type(parent[frame_name].destroy) == "function" then
+    parent[frame_name].destroy()
+  end
+end
+
+--- Play a sound for a player, robust to linter/runtime issues with argument types.
+--- @param player LuaPlayer
+--- @param sound table
+function Helpers.safe_play_sound(player, sound)
+  if player and player.valid and type(player.play_sound) == "function" and type(sound) == "table" then
+    pcall(function() player.play_sound(sound, {}) end)
+  end
+end
+
 return Helpers

@@ -32,7 +32,7 @@ This document provides a high-level overview of the mod's goals, architecture, a
 - `core/cache/` – Persistent data cache and helpers (all persistent data is stored in `storage`).
 - `core/chart_tag/` – Class definitions and methods for managing chart_tags
 - `core/tag/` – Class definitions and methods for managing tags
-- `core/control/` – Lifecycle, event, and utility modules.
+- `core/control/` – Lifecycle, event, and utility modules. Top-level event handlers are now split into extension modules (see `control_fave_bar.lua`, `control_tag_editor.lua`, `control_data_viewer.lua`).
 - `core/pattern/` – Class definitions and methods for managing design patterns
 - `core/sync_tag/` – sync taghronization and migration logic.
 - `core/types/` – Annotations and definitions for external types

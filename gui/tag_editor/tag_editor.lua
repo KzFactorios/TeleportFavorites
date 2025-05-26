@@ -24,7 +24,7 @@ function tag_editor.build(player, parent, tag_data)
         elem_type = "signal",
         signal = tag_data.icon or nil,
         tooltip = {"tf-gui.icon_tooltip"},
-        style = "slot_button"
+        style = "tf_slot_button"
     }
 
     -- Text box
@@ -33,12 +33,12 @@ function tag_editor.build(player, parent, tag_data)
 
     -- Button row
     local btn_row = gui.create_hflow(frame, "button_row")
-    gui.create_icon_button(btn_row, "move_btn", "utility/enter", {"tf-gui.move_tooltip"}, "slot_button")
-    gui.create_icon_button(btn_row, "delete_btn", "utility/trash", {"tf-gui.delete_tooltip"}, "slot_button")
-    gui.create_icon_button(btn_row, "teleport_btn", "utility/enter", {"tf-gui.teleport_tooltip"}, "slot_button")
-    gui.create_icon_button(btn_row, "favorite_btn", "utility/star_white", {"tf-gui.favorite_tooltip"}, "slot_button")
-    local confirm_btn = gui.create_icon_button(btn_row, "confirm_btn", "utility/check_mark", {"tf-gui.confirm_tooltip"}, "slot_button")
-    gui.create_icon_button(btn_row, "cancel_btn", "utility/close_white", {"tf-gui.cancel_tooltip"}, "slot_button")
+    gui.create_icon_button(btn_row, "move_btn", "utility/enter", {"tf-gui.move_tooltip"}, "tf_slot_button")
+    gui.create_icon_button(btn_row, "delete_btn", "utility/trash", {"tf-gui.delete_tooltip"}, "tf_slot_button")
+    gui.create_icon_button(btn_row, "teleport_btn", "utility/enter", {"tf-gui.teleport_tooltip"}, "tf_slot_button")
+    gui.create_icon_button(btn_row, "favorite_btn", "utility/star_white", {"tf-gui.favorite_tooltip"}, "tf_slot_button")
+    local confirm_btn = gui.create_icon_button(btn_row, "confirm_btn", "utility/check_mark", {"tf-gui.confirm_tooltip"}, "tf_slot_button")
+    gui.create_icon_button(btn_row, "cancel_btn", "utility/close_white", {"tf-gui.cancel_tooltip"}, "tf_slot_button")
 
     -- Error row for validation messages
     local error_row = frame.add{type="flow", name="error_row", direction="horizontal"}

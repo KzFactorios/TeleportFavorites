@@ -28,17 +28,17 @@ function data_viewer.build(player, parent, state)
     local tabs = gui.create_hflow(frame, "data_viewer_tabs")
     local tab_names = {"player_data", "surface_data", "lookups", "all_data"}
     for _, tab in ipairs(tab_names) do
-        local btn = gui.create_icon_button(tabs, "tab_"..tab, "utility/tab_icon", {"tf-gui.tab_"..tab}, "slot_button")
+        local btn = gui.create_icon_button(tabs, "tab_"..tab, "utility/tab_icon", {"tf-gui.tab_"..tab}, "tf_slot_button")
         if tab == active_tab then btn.style.font_color = {r=1,g=0.8,b=0.2} end
     end
 
     -- Controls row
     local controls = gui.create_hflow(frame, "controls_row")
-    gui.create_icon_button(controls, "opacity_btn", "utility/brush", {"tf-gui.opacity_tooltip"}, "slot_button")
-    gui.create_icon_button(controls, "font_plus_btn", "utility/add", {"tf-gui.font_plus_tooltip"}, "slot_button")
-    gui.create_icon_button(controls, "font_minus_btn", "utility/remove", {"tf-gui.font_minus_tooltip"}, "slot_button")
-    gui.create_icon_button(controls, "refresh_btn", "utility/refresh", {"tf-gui.refresh_tooltip"}, "slot_button")
-    gui.create_icon_button(controls, "close_btn", "utility/close_white", {"tf-gui.close_tooltip"}, "slot_button")
+    gui.create_icon_button(controls, "opacity_btn", "utility/brush", {"tf-gui.opacity_tooltip"}, "tf_slot_button")
+    gui.create_icon_button(controls, "font_plus_btn", "utility/add", {"tf-gui.font_plus_tooltip"}, "tf_slot_button")
+    gui.create_icon_button(controls, "font_minus_btn", "utility/remove", {"tf-gui.font_minus_tooltip"}, "tf_slot_button")
+    gui.create_icon_button(controls, "refresh_btn", "utility/refresh", {"tf-gui.refresh_tooltip"}, "tf_slot_button")
+    gui.create_icon_button(controls, "close_btn", "utility/close_white", {"tf-gui.close_tooltip"}, "tf_slot_button")
 
     -- Data panel (scrollable)
     local scroll = frame.add{ type = "scroll-pane", name = "data_panel" }

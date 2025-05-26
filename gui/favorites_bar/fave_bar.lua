@@ -20,7 +20,7 @@ function fave_bar.build(player, parent)
 
     -- Toggle button container
     local toggle_container = gui.create_hflow(frame, "fave_toggle_container")
-    local toggle_btn = gui.create_icon_button(toggle_container, "fave_toggle", "item/red_slot_button_20", {"tf-gui.toggle_fave_bar"}, "slot_button")
+    local toggle_btn = gui.create_icon_button(toggle_container, "fave_toggle", "item/red_tf_slot_button_20", {"tf-gui.toggle_fave_bar"}, "tf_slot_button")
 
     -- Favorite buttons container
     local fav_btns = gui.create_hflow(frame, "favorite_buttons")
@@ -32,7 +32,7 @@ function fave_bar.build(player, parent)
         local is_blank = Favorite.is_blank_favorite(fav)
         local is_locked = (fav and fav.locked) or false
         local icon = (fav and fav.tag and fav.tag.icon and fav.tag.icon ~= "") and fav.tag.icon or "default-map-tag"
-        local btn = gui.create_icon_button(fav_btns, "favorite_slot_"..i, icon, nil, "slot_button")
+        local btn = gui.create_icon_button(fav_btns, "favorite_slot_"..i, icon, nil, "tf_slot_button")
         btn.style.width = 36
         btn.style.height = 36
         btn.style.font = "default-small"
