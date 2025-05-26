@@ -1,21 +1,17 @@
 {
-    "factorio.versions": [
-        {
-            "name": "2_Gemini",
-            "factorioPath": "v:\\Fac2orios\\2_Gemini\\bin\\x64\\factorio.exe",
-            "active": true
-        }
-    ],
-    "Lua.workspace.library": [
-        "${workspaceFolder}/core/types",
-        "v:\\Fac2orios\\2_Gemini\\data"
-    ],
-    "Lua.workspace.userThirdParty": [
-        "c:\\Users\\rob\\AppData\\Roaming\\Code\\User\\workspaceStorage\\aee1f7749cbc174d121dc5776bc0c9ea\\justarandomgeek.factoriomod-debug\\sumneko-3rd"
-    ],
-    "Lua.workspace.checkThirdParty": "ApplyInMemory",
-    "editor.detectIndentation": false,
-    "workbench.colorCustomizations": {
-  "editor.background": "#181842"
-}
+  "factorio.versions": [
+    {
+      "name": "Gemini",
+      "factorioPath": "v:\\Fac2orios\\2_Gemini\\bin\\x64\\factorio.exe",
+      "active": true
+    }
+  ],
+  "Lua.workspace.library": [
+    "${workspaceFolder}/core/types",
+    "v:\\Fac2orios\\2_Gemini\\data"
+  ],
+  "Lua.workspace.userThirdParty": [
+    "c:\\Users\\rob\\AppData\\Roaming\\Code\\User\\workspaceStorage\\aee1f7749cbc174d121dc5776bc0c9ea\\justarandomgeek.factoriomod-debug\\sumneko-3rd"
+  ],
+  "Lua.workspace.checkThirdParty": "ApplyInMemory"
 }
