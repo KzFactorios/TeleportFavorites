@@ -17,33 +17,54 @@ local Cache = require("core.cache.cache")
 ---@diagnostic disable-next-line: undefined-global
 local game = game
 
--- Utility: robust player print (Factorio runtime API)
+---
+--- Utility: robust player print (Factorio runtime API)
+---
+--- Prints a message to the given player, if valid.
+--- @param player LuaPlayer|nil The player to print to
+--- @param message LocalisedString The message to print (must be a LocalisedString table or string)
 local function player_print(player, message)
   if player and player.valid and type(player.print) == "function" then
+    ---@cast message LocalisedString
     player.print(message)
   end
 end
 
--- Utility: robust teleport (handles MapPosition table or array)
+---
+--- Utility: robust teleport (handles MapPosition table or array)
+---
+--- Teleports the player to the given position on the given surface.
+--- Accepts pos as {x=..., y=...} or {1=..., 2=...}.
+--- @param player LuaPlayer The player to teleport
+--- @param pos table The position (MapPosition or array)
+--- @param surface LuaSurface|number|string The surface to teleport to
+--- @return boolean True if teleport succeeded, false otherwise
 local function safe_teleport(player, pos, surface)
-  -- Accepts pos as {x=..., y=...} or {1=..., 2=...}
+  if not (player and player.valid and type(player.teleport) == "function") then return false end
   if type(pos) == "table" then
-    if pos.x and pos.y then
-      return player.teleport({x=pos.x, y=pos.y}, surface)
-    elseif pos[1] and pos[2] then
-      return player.teleport({x=pos[1], y=pos[2]}, surface)
+    if (pos.x ~= nil and pos.y ~= nil) then
+      return player.teleport({x=pos.x, y=pos.y}, surface) == true
+    elseif (pos[1] ~= nil and pos[2] ~= nil) then
+      return player.teleport({[1]=pos[1], [2]=pos[2]}, surface) == true
     end
   end
   return false
 end
 
--- Centralized GUI event handling
+---
+--- Centralized GUI event handling for TeleportFavorites mod.
+--- Handles opening the favorites bar, tag editor, and data viewer GUIs.
+---
+--- @event tf-open-fave-bar Opens the favorites bar GUI for the player
+--- @event tf-open-tag-editor Opens the tag editor GUI for the player
+--- @event tf-open-data-viewer Opens the data viewer GUI for the player
+---
 script.on_event("tf-open-fave-bar", function(event)
   local player = game.get_player(event and event.player_index and 
     type(event.player_index) == "number" and tonumber(event.player_index) or -1)
   if not player then return end
   local parent = player.gui.top
-  if parent.fave_bar_frame and parent.fave_bar_frame.valid then parent.fave_bar_frame:destroy() end
+  safe_destroy_frame(parent, "fave_bar_frame")
   fave_bar.build(player, parent)
 end)
 
@@ -51,7 +72,7 @@ script.on_event("tf-open-tag-editor", function(event)
   local player = game.get_player(event.player_index)
   if not player then return end
   local parent = player.gui.screen
-  if parent.tag_editor_frame and parent.tag_editor_frame.valid then parent.tag_editor_frame:destroy() end
+  safe_destroy_frame(parent, "tag_editor_frame")
   tag_editor.build(player, parent, {})
 end)
 
@@ -59,10 +80,16 @@ script.on_event("tf-open-data-viewer", function(event)
   local player = game.get_player(event.player_index)
   if not player then return end
   local parent = player.gui.top
-  if parent.data_viewer_frame and parent.data_viewer_frame.valid then parent.data_viewer_frame:destroy() end
+  safe_destroy_frame(parent, "data_viewer_frame")
   data_viewer.build(player, parent, {})
 end)
 
+---
+--- Handles all on_gui_click events for TeleportFavorites GUIs.
+--- Includes logic for favorites bar, tag editor, and data viewer interactions.
+---
+--- @event defines.events.on_gui_click Handles GUI button clicks and drag-and-drop
+---
 script.on_event(defines.events.on_gui_click, function(event)
   local element = event.element
   if not element or not element.valid then return end
@@ -104,7 +131,7 @@ script.on_event(defines.events.on_gui_click, function(event)
           favorites:set_favorites(favs)
           -- Refresh the favorites bar GUI
           local parent = player.gui.top
-          if parent.fave_bar_frame and parent.fave_bar_frame.valid then parent.fave_bar_frame:destroy() end
+          safe_destroy_frame(parent, "fave_bar_frame")
           fave_bar.build(player, parent)
           player_print(player, {"tf-gui.fave_bar_reordered", drag_index, slot})
         end
@@ -130,7 +157,7 @@ script.on_event(defines.events.on_gui_click, function(event)
       -- Open tag editor for this favorite
       if fav and not Favorite.is_blank_favorite(fav) then
         local parent = player.gui.screen
-        if parent.tag_editor_frame and parent.tag_editor_frame.valid then parent.tag_editor_frame:destroy() end
+        safe_destroy_frame(parent, "tag_editor_frame")
         tag_editor.build(player, parent, fav.tag or {})
       end
     elseif event.button == defines.mouse_button_type.left and event.control then
@@ -253,7 +280,7 @@ script.on_event(defines.events.on_gui_click, function(event)
       player_print(player, {"tf-gui.tag_editor_icon_selected", tostring(element.elem_value or "none")})
       -- Rebuild tag editor to update confirm button enablement
       local parent = player.gui.screen
-      if parent.tag_editor_frame and parent.tag_editor_frame.valid then parent.tag_editor_frame:destroy() end
+      safe_destroy_frame(parent, "tag_editor_frame")
       require("gui.tag_editor.tag_editor").build(player, parent, tag_data)
     elseif element.name == "text_box" and element.type == "textfield" then
       -- Live update confirm button enablement on text change
@@ -261,7 +288,7 @@ script.on_event(defines.events.on_gui_click, function(event)
       tag_data.text = element.text
       Cache.set_tag_editor_data(player, tag_data)
       local parent = player.gui.screen
-      if parent.tag_editor_frame and parent.tag_editor_frame.valid then parent.tag_editor_frame:destroy() end
+      safe_destroy_frame(parent, "tag_editor_frame")
       require("gui.tag_editor.tag_editor").build(player, parent, tag_data)
     end
   end
@@ -335,18 +362,39 @@ script.on_event(defines.events.on_gui_click, function(event)
   end
 end)
 
--- Move mode helpers
+---
+--- Move mode helpers for tag editor GUI.
+---
+--- @param player LuaPlayer The player to check or clear move mode for
+--- @return boolean True if player is in move mode
 local function is_in_move_mode(player)
   local data = Cache.get_tag_editor_data(player)
-  return data and data.move_mode
+  return (data and data.move_mode) == true
 end
 
+---
+--- Clears move mode state for the tag editor for the given player.
+--- @param player LuaPlayer
 local function clear_move_mode(player)
   local data = Cache.get_tag_editor_data(player)
   if data then data.move_mode = nil; Cache.set_tag_editor_data(player, data) end
 end
 
--- Handle map click for move_mode (left-click in chart/chart_zoomed_in)
+-- Helper: safely destroy a GUI frame if it exists and is valid
+-- Must be defined before any event handler uses it
+--- @param parent LuaGuiElement The parent GUI element
+--- @param frame_name string The name of the frame to destroy
+function safe_destroy_frame(parent, frame_name)
+  if parent and parent[frame_name] and parent[frame_name].valid then
+    parent[frame_name].destroy(true)
+  end
+end
+
+---
+--- Handles map click for move_mode (left-click in chart/chart_zoomed_in).
+--- Moves a tag to a new location if in move mode.
+--- @event defines.events.on_player_selected_area Handles tag move mode placement
+---
 script.on_event(defines.events.on_player_selected_area, function(event)
   local player = game.get_player(event.player_index)
   if not player or not player.valid or not is_in_move_mode(player) then return end
@@ -368,11 +416,14 @@ script.on_event(defines.events.on_player_selected_area, function(event)
   player_print(player, {"tf-gui.tag_editor_move_success"})
   Cache.set_tag_editor_data(player, nil)
   local parent = player.gui.screen
-  if parent.tag_editor_frame and parent.tag_editor_frame.valid then parent.tag_editor_frame:destroy() end
+  safe_destroy_frame(parent, "tag_editor_frame")
   require("gui.tag_editor.tag_editor").build(player, parent, {tag = tag})
 end)
 
--- Cancel move_mode on right-click in chart mode
+---
+--- Cancels move_mode on right-click in chart mode.
+--- @event defines.events.on_player_alt_selected_area Cancels tag move mode
+---
 script.on_event(defines.events.on_player_alt_selected_area, function(event)
   local player = game.get_player(event.player_index)
   if not player or not player.valid or not is_in_move_mode(player) then return end
@@ -381,7 +432,10 @@ script.on_event(defines.events.on_player_alt_selected_area, function(event)
   player_print(player, {"tf-gui.tag_editor_move_cancelled"})
 end)
 
--- Update on_gui_click for move_mode cancel (right-click on map)
+---
+--- Updates on_gui_click for move_mode cancel (right-click on map).
+--- @event defines.events.on_gui_click Cancels move mode if right-clicked
+---
 local old_on_gui_click = script.get_event_handler and script.get_event_handler(defines.events.on_gui_click)
 script.on_event(defines.events.on_gui_click, function(event)
   local player = game.get_player(event.player_index)
@@ -397,7 +451,10 @@ script.on_event(defines.events.on_gui_click, function(event)
   if old_on_gui_click then old_on_gui_click(event) end
 end)
 
--- Clear tag_editor_data on player disconnect
+---
+--- Clears tag editor data on player disconnect.
+--- @event defines.events.on_player_left_game Cleans up tag editor state
+---
 script.on_event(defines.events.on_player_left_game, function(event)
   local player = game.get_player(event.player_index)
   if player then
@@ -409,4 +466,3 @@ end)
 -- Use the builder/command pattern: GUI modules build, event handlers command
 
 -- Remove duplicate requires in event handler functions
--- ...existing code...
