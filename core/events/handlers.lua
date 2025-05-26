@@ -66,7 +66,6 @@ function handlers.on_chart_tag_added(event)
 end
 
 function handlers.on_chart_tag_modified(event)
-  local Cache = get_cache()
 ---@diagnostic disable-next-line: undefined-global
   local player = event.player_index and game.get_player(event.player_index) or nil
   if not player or not event.tag or not event.tag.valid then return end
@@ -110,7 +109,6 @@ function handlers.on_chart_tag_modified(event)
 end
 
 function handlers.on_chart_tag_removed(event)
-  local Cache = get_cache()
   if not event or not event.tag or not event.tag.valid then return end
   local chart_tag = event.tag
   local gps = GPS.gps_from_map_position(chart_tag.position, chart_tag.surface and chart_tag.surface.index or 1)
