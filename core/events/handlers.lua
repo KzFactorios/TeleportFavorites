@@ -1,3 +1,27 @@
+--[[
+core/events/handlers.lua
+TeleportFavorites Factorio Mod
+-----------------------------
+Centralized event handler implementations for TeleportFavorites.
+
+- Handles Factorio events for tag creation, modification, removal, and player actions.
+- Ensures robust multiplayer and surface-aware updates to tags, chart tags, and player favorites.
+- Uses helpers for tag destruction, GPS conversion, and cache management.
+- All event logic is routed through this module for maintainability and separation of concerns.
+
+API:
+-----
+- handlers.on_init()                  -- Mod initialization logic.
+- handlers.on_load()                  -- Runtime-only structure re-initialization.
+- handlers.on_player_changed_surface(event) -- Ensures surface cache for player after surface change.
+- handlers.on_open_tag_editor(event)  -- (Stub) Handles opening the tag editor GUI.
+- handlers.on_teleport_to_favorite(event, i) -- Teleports player to favorite location.
+- handlers.on_chart_tag_added(event)  -- (Stub) Handles chart tag creation.
+- handlers.on_chart_tag_modified(event) -- Handles chart tag modification, GPS and favorite updates.
+- handlers.on_chart_tag_removed(event) -- Handles chart tag removal and cleanup.
+
+--]]
+
 -- core/events/handlers.lua
 -- Centralized event handler implementations for TeleportFavorites
 
@@ -99,11 +123,8 @@ function handlers.on_chart_tag_modified(event)
   
 ---@diagnostic disable-next-line: undefined-global
   for _, p in pairs(game.players) do
-    local faves = Cache.get_player_favorites(p)
-    for _, fav in ipairs(faves) do
-      if fav.gps == old_gps then
-        fav.gps = new_gps
-      end
+    for _, fav in ipairs(Cache.get_player_favorites(p)) do
+      if fav.gps == old_gps then fav.gps = new_gps end
     end
   end
 end

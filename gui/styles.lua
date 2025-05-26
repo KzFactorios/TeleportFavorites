@@ -1,6 +1,25 @@
--- Centralized GUI style and layout helpers for TeleportFavorites
--- This module provides runtime style presets and layout helpers for consistent, vanilla-aligned GUIs.
--- Use these helpers in all GUI modules to ensure maintainability and a native Factorio look.
+--[[
+Centralized GUI style and layout helpers for TeleportFavorites
+=============================================================
+Module: gui/styles.lua
+
+Provides runtime style presets and layout helpers for consistent, vanilla-aligned GUIs across the mod.
+
+Features:
+- Standardized padding, margin, and alignment values (multiples of 4px, matching vanilla Factorio).
+- Named style tables for common label/button/flow usage.
+- Helper functions for creating and customizing button styles and horizontal flows.
+- Ensures maintainability and a native Factorio look for all GUIs.
+
+API:
+- Style.padding, Style.margin: Tables of standard size values.
+- Style.align: Table of alignment string constants.
+- Style.favorite_label: Standard label style for favorite/tag editor GUIs.
+- Style.button(overrides): Returns a button style table, optionally merged with overrides.
+- Style.add_horizontal_flow(parent, name, opts): Adds a horizontal flow with standard spacing and alignment.
+
+All helpers and tables are intended for use in GUI modules to keep layout and style consistent.
+--]]
 
 local Style = {}
 
@@ -17,7 +36,7 @@ Style.margin = {
   large = 12,
 }
 
---- Alignment helpers
+--- Alignment helpers (string constants for alignment properties)
 Style.align = {
   left = "left",
   center = "center",
@@ -40,8 +59,8 @@ Style.favorite_label = {
 }
 
 --- Helper to apply vanilla button style with optional overrides
----@param overrides table|nil
----@return table
+-- @param overrides table|nil: Table of style properties to override
+-- @return table: Button style table
 function Style.button(overrides)
   local base = {
     type = "button_style",
@@ -58,10 +77,10 @@ function Style.button(overrides)
 end
 
 --- Helper to create a horizontal flow with standard spacing
----@param parent LuaGuiElement
----@param name string
----@param opts table|nil
----@return LuaGuiElement
+-- @param parent LuaGuiElement: Parent element
+-- @param name string: Name of the flow
+-- @param opts table|nil: Optional overrides for alignment, padding, margin
+-- @return LuaGuiElement: The created flow
 function Style.add_horizontal_flow(parent, name, opts)
   opts = opts or {}
   return parent:add{

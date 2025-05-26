@@ -1,7 +1,25 @@
--- tag_destroy_helper.lua
--- Centralized, recursion-safe destruction for tags and chart_tags in TeleportFavorites.
--- Ensures that tag <-> chart_tag destruction cannot recurse or overflow.
--- Use this helper from all tag/chart_tag destruction logic and event handlers.
+--[[
+core/tag/tag_destroy_helper.lua
+TeleportFavorites Factorio Mod
+-----------------------------
+Centralized, recursion-safe destruction for tags and chart_tags.
+
+- Ensures tag <-> chart_tag destruction cannot recurse or overflow.
+- Handles all edge cases for multiplayer, favorites, and persistent storage.
+- Use this helper from all tag/chart_tag destruction logic and event handlers.
+
+API:
+-----
+- destroy_tag_and_chart_tag(tag, chart_tag)      -- Safely destroy a tag and its associated chart_tag, or vice versa.
+- is_tag_being_destroyed(tag)                    -- Check if a tag is being destroyed (recursion guard).
+- is_chart_tag_being_destroyed(chart_tag)        -- Check if a chart_tag is being destroyed (recursion guard).
+- should_destroy(tag)                            -- Returns false for blank favorites.
+
+Notes:
+------
+- Always use this helper for tag/chart_tag destruction to avoid recursion and multiplayer edge cases.
+- All persistent data is updated and cleaned up, including player favorites and tag storage.
+--]]
 
 -- Weak tables to track objects being destroyed
 local destroying_tags = setmetatable({}, { __mode = "k" })
@@ -26,53 +44,31 @@ end
 ---@param tag table|nil Tag object (may be nil)
 ---@param chart_tag LuaCustomChartTag|nil Chart tag object (may be nil)
 function destroy_tag_and_chart_tag(tag, chart_tag)
-  -- Guard: prevent recursion for tag
+  local game = _G.game
   if tag and destroying_tags[tag] then return end
   if tag then destroying_tags[tag] = true end
-  -- Guard: prevent recursion for chart_tag
   if chart_tag and destroying_chart_tags[chart_tag] then return end
   if chart_tag then destroying_chart_tags[chart_tag] = true end
-
-  -- Destroy chart_tag if valid and not already being destroyed
-  if chart_tag and chart_tag.valid then
-    chart_tag:destroy() -- This may trigger an event; guard prevents recursion
-  end
-
-  -- Destroy tag if not already being destroyed
+  if chart_tag and chart_tag.valid then chart_tag:destroy() end
   if tag then
-    -- Remove from all player favorites
-    ---@diagnostic disable-next-line
     if game and type(game.players) == "table" then
-      ---@diagnostic disable-next-line
       for _, player in pairs(game.players) do
-        local faves = Cache.get_player_favorites(player)
-        if type(faves) == "table" then
-          for _, fave in pairs(faves) do
-            if fave.gps == tag.gps then
-              fave.gps = ""
-              fave.locked = false
-              -- Remove player index from faved_by_players
-              if tag.faved_by_players and type(tag.faved_by_players) == "table" then
-                for i = #tag.faved_by_players, 1, -1 do
-                  if tag.faved_by_players[i] == player.index then
-                    table.remove(tag.faved_by_players, i)
-                  end
-                end
+        for _, fave in pairs(Cache.get_player_favorites(player)) do
+          if fave.gps == tag.gps then
+            fave.gps = ""; fave.locked = false
+            if tag.faved_by_players and type(tag.faved_by_players) == "table" then
+              for i = #tag.faved_by_players, 1, -1 do
+                if tag.faved_by_players[i] == player.index then table.remove(tag.faved_by_players, i) end
               end
             end
           end
         end
       end
     end
-    -- Remove from persistent storage
     Cache.remove_stored_tag(tag.gps)
-    destroying_tags[tag] = nil -- clear tag guard only after all tag work is done
+    destroying_tags[tag] = nil
   end
-
-  -- Clear chart_tag guard immediately (no queue, no on_nth_tick)
-  if chart_tag then
-    destroying_chart_tags[chart_tag] = nil
-  end
+  if chart_tag then destroying_chart_tags[chart_tag] = nil end
 end
 
 --- Should this tag be destroyed? Returns false for blank favorites.

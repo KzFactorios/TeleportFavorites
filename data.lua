@@ -98,5 +98,12 @@ data:extend {
     key_sequence = "CONTROL + 0",
     consuming = "game-only",
     order = "cj"
+  },
+  {
+    type = "custom-input",
+    name = "tf-toggle-data-viewer",
+    key_sequence = "CONTROL + F12",
+    consuming = "game-only",
+    order = "z[data-viewer]"
   }
 }

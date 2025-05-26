@@ -97,7 +97,7 @@ This document describes the base pattern classes and key domain classes created 
   - `get_all_gps()`: Get all favorite GPS strings.
 
 ### Lookups (core/cache/lookups.lua)
-- **Purpose:** Handles the non-persistent in-game data cache for runtime lookups (e.g., chart_tag_cache, tag_editor_positions).
+- **Purpose:** Handles the non-persistent in-game data cache for runtime lookups (e.g., chart_tag_cache).
 - **Key Methods:**
   - `get(key)`, `set(key, value)`, `remove(key)`, `clear()`: Generic cache operations.
   - `get_chart_tag_cache(surface_index)`, `clear_chart_tag_cache(surface_index)`: Chart tag cache management.

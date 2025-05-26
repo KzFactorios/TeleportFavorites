@@ -1,6 +1,32 @@
+--[[
+core/gps/gps.lua
+TeleportFavorites Factorio Mod
+-----------------------------
+GPS utility module for converting between canonical GPS strings, Factorio rich text tags, and map positions.
+
+- Provides helpers for converting between map positions, GPS strings ('xxx.yyy.s'), and Factorio's [gps=x,y,s] rich text tags.
+- Handles surface-aware GPS string formatting and parsing.
+- Used throughout the mod for tag, favorite, and teleportation logic.
+
+API:
+-----
+- GPS.gps_from_map_position(map_position, surface_index) -- Canonical GPS string from map position and surface.
+- GPS.map_position_from_gps(gps)                        -- Map position from canonical GPS string.
+- GPS.get_surface_index(gps)                            -- Surface index from canonical GPS string.
+- GPS.normalize_landing_position(player, pos, surface)  -- Normalize landing position for teleportation.
+- GPS.coords_string_from_gps(gps)                       -- 'xxx.yyy' string from GPS (ignores surface).
+- GPS.gps_to_gps_tag(gps)                               -- Factorio [gps=x,y,s] tag from canonical GPS string.
+- GPS.gps_from_gps_tag(gps_tag)                         -- Canonical GPS string from Factorio [gps=x,y,s] tag.
+
+Notes:
+------
+- All GPS strings in this mod are canonical: 'xxx.yyy.s' (with padding and sign as needed).
+- Use these helpers for all GPS conversions to ensure consistency and compatibility.
+]]
+
 local Constants = require("constants")
 local Settings = require("settings")
-local Helpers = require("core.utils.helpers")
+local helpers = require("core.utils.helpers")
 local gps_helpers = require("core.utils.gps_helpers")
 
 local GPS = {}
@@ -15,24 +41,15 @@ GPS.normalize_landing_position = gps_helpers.normalize_landing_position
 --- Returns the x,y as a string xxx.yyy, ignores the surface component
 function GPS.coords_string_from_gps(gps)
   local parsed = gps_helpers.parse_gps_string(gps)
-  if not parsed then return nil end
-  return Helpers.pad(parsed.x, Constants.settings.GPS_PAD_NUMBER) .. "." .. Helpers.pad(parsed.y, Constants.settings.GPS_PAD_NUMBER)
+  return parsed and (helpers.pad(parsed.x, padlen) .. "." .. helpers.pad(parsed.y, padlen)) or nil
 end
-
---- Returns the full GPS string in canonical format xxx.yyy.s
---[[function GPS.gps_string_from_gps(gps)
-  local parsed = gps_helpers.parse_gps_string(gps)
-  if not parsed then return nil end
-  return Helpers.pad(parsed.x, Constants.settings.GPS_PAD_NUMBER) .. "." .. Helpers.pad(parsed.y, Constants.settings.GPS_PAD_NUMBER) .. "." .. tostring(parsed.s or parsed.surface or parsed.surface_index)
-end]]
 
 --- Converts our gps string (xxx.yyy.s) to Factorio's [gps=x,y,s] rich text tag
 ---@param gps string
 ---@return string|nil
 function GPS.gps_to_gps_tag(gps)
   local parsed = gps_helpers.parse_gps_string(gps)
-  if not parsed then return nil end
-  return string.format("[gps=%d,%d,%d]", parsed.x, parsed.y, parsed.surface_index)
+  return parsed and string.format("[gps=%d,%d,%d]", parsed.x, parsed.y, parsed.surface_index) or nil
 end
 
 --- Converts a Factorio [gps=x,y,s] rich text tag to our gps string (xxx.yyy.s)
@@ -41,9 +58,7 @@ end
 function GPS.gps_from_gps_tag(gps_tag)
   if type(gps_tag) ~= "string" then return nil end
   local x, y, s = gps_tag:match("%[gps=(%-?%d+),(%-?%d+),(%-?%d+)%]")
-  if not x or not y or not s then return nil end
-  -- Use the same padding as our canonical format
-  return Helpers.pad(tonumber(x), padlen) .. "." .. Helpers.pad(tonumber(y), padlen) .. "." .. tostring(tonumber(s))
+  return (x and y and s) and (helpers.pad(tonumber(x), padlen) .. "." .. helpers.pad(tonumber(y), padlen) .. "." .. tostring(tonumber(s))) or nil
 end
 
 return GPS

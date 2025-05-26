@@ -28,10 +28,10 @@ TeleportFavorites is a robust, multiplayer-safe Factorio mod for managing telepo
   - Error and confirmation messages are always clear and localizable.
 
 ### How to Use
-- **Open the Favorites Bar:** Use the assigned hotkey or command. Drag slots to reorder, right-click for tag editing.
+- **Favorites Bar Visibility:** The favorites bar is shown or hidden automatically based on mod settings and game state. There is no dedicated hotkey or command to open it.
 - **Edit a Tag:** Right-click a favorite or use the tag editor hotkey. Edit text/icon, move or delete the tag, or toggle favorite status.
 - **Move a Tag:** Enter move mode in the tag editor, then click a new location on the map.
-- **View Data:** Open the data viewer from the hotkey or command. Switch tabs for player, surface, or lookup data. Adjust font/opacity as needed.
+- **View Data:** Open the data viewer with Ctrl+F12 (default hotkey) or via command. Switch tabs for player, surface, or lookup data. Adjust font/opacity as needed.
 
 ### Advanced/Developer Features
 - All GUIs are modular and extensible.
@@ -56,7 +56,7 @@ TeleportFavorites is a robust, multiplayer-safe Factorio mod for managing telepo
 
 ### Known Issues & TODOs
 - Some linter false positives remain due to Factorio's dynamic API and LocalisedString handling.
-- Some GUI event logic could be further modularized (e.g., drag-and-drop, tag editor actions).
+- Some GUI event logic (notably drag-and-drop and certain tag editor actions) remains partially monolithic and could be further modularized into dedicated handler modules for maintainability.
 - More unit and integration tests are needed for helpers and GUI logic.
 - Some style/layout tweaks and accessibility improvements are still possible.
 - See `notes/TODO.md` for the current actionable TODO list.
@@ -64,7 +64,7 @@ TeleportFavorites is a robust, multiplayer-safe Factorio mod for managing telepo
 ### Suggestions for Improvement
 - Continue modularizing event logic and helpers.
 - Expand test coverage, especially for multiplayer and edge cases.
-- Add more robust error handling and user feedback for all GUIs.
+- Add more robust error handling and user feedback for all GUIs, with a touch of fantasy and mystique. Error and confirmation messages now include flavorful, lore-inspired phrasing to enhance immersion and fun, in keeping with the Factorio v2 spirit.
 - Consider lazy loading or paging for large data sets in the data viewer if needed.
 - All custom button styles are now unified: every interactive button in the mod uses the `tf_slot_button` style, defined in `prototypes/styles.lua` and referenced in all GUI modules. This ensures a consistent, accessible, and vanilla-aligned look across the entire mod.
 - Continue to update documentation as the project evolves.

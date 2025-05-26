@@ -1,6 +1,6 @@
 # TeleportFavorites Favorites Bar (Fave Bar)
 
-The favorites bar (fave_bar) is a persistent, player-specific GUI element that provides quick access to teleportation favorites. It is designed to be idiomatic for Factorio 2.0, robust in multiplayer, and visually consistent with vanilla UI paradigms. The bar should be built using the builder pattern for GUI construction and the command pattern for user/event handling.
+The favorites bar (fave_bar) is a persistent, player-specific GUI element that provides quick access to teleportation favorites. It is designed to be idiomatic for Factorio 2.0, robust in multiplayer, and visually consistent with vanilla UI paradigms. The bar is managed automatically by the GUI and mod settings; there is no dedicated hotkey or custom event for opening it. The bar should be built using the builder pattern for GUI construction and the command pattern for user/event handling.
 
 ## Core Features and Interactions
 - The fave_bar exists in the player's top GUI, ideally as the rightmost item.
@@ -54,8 +54,7 @@ Not at this time
 There will only be MAX_FAVORITE_SLOTS available and I don't see the number going much higher due to the fact that we just can't steal that many hotkeys away from the vanilla game :)!
 10. **Mod Compatibility:** Are there known issues with other mods that modify the top GUI or add similar bars?
 No known issues, but I would like to keep the fave bar as the last element in the top gui
-11. **Hotkey Support:** Should there be hotkeys for toggling the bar, jumping to a favorite, or reordering slots?
-Not at this time
+11. **Hotkey Support:** There is no hotkey for toggling the favorites bar, jumping to a favorite, or reordering slots. All bar visibility and interaction is managed by the GUI and mod settings.
 12. **Favorite State Sync:** How is favorite state synced if the player changes settings or reloads the mod?
 I am not sure exactly what you mean but player favorites are persisted in storage and the default settings keep favorite false until toggeled 
 13. **Favorite Bar Visibility:** Should the bar auto-hide in certain situations (e.g., cutscenes, map editor)?

@@ -24,6 +24,24 @@ This document defines the coding standards and best practices for the TeleportFa
 
 ---
 
+## Require Statement Best Practices
+- Always place all require statements at the very top of each file, before any logic or function definitions.
+- Never place require statements inside functions, methods, or event handlers. This is critical for Factorio modding and avoids runtime errors and performance issues.
+- When requiring multiple helpers from the same module (e.g., `core.utils.helpers`), require the module once as a table and destructure the needed helpers into local variables. Example:
+
+```lua
+local helpers = require("core.utils.helpers")
+local safe_destroy_frame = helpers.safe_destroy_frame
+local player_print = helpers.player_print
+```
+
+- Always use absolute paths in require statements, starting from the mod root.
+- Order require statements alphabetically for consistency and auditability.
+- If a module is used in multiple places, require it once at the top and reuse the local variable throughout the file.
+- This pattern must be followed in all files, including GUI, control, and core logic modules.
+
+---
+
 ## File and Module Structure
 - Organize code by concern: core logic, cache, GUI, sync tag, tests, etc. Each concern should have its own folder under `core/` or `gui/` as appropriate.
 - Place all persistent data helpers in `core/utils/`. These helpers should be surface-aware and multiplayer-safe, and should never access persistent storage directly (always go through the `Cache` module).

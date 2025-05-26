@@ -1,97 +1,83 @@
--- gps_helpers.lua
--- Shared GPS string helpers for TeleportFavorites
+--[[
+core/utils/gps_helpers.lua
+TeleportFavorites Factorio Mod
+-----------------------------
+Helpers for parsing, normalizing, and converting GPS strings and map positions.
 
--- GPS String Format and Usage
---
---  - GPS values must always be strings in the format 'xxx.yyy.s', where:
---      - 'xxx' is the X coordinate (may be negative, always padded to the configured length, including sign if negative)
---      - 'yyy' is the Y coordinate (may be negative, always padded to the configured length, including sign if negative)
---      - 's' is the surface index (always an integer)
---  - Valid examples:
---      - '-000123.000456.1'
---      - '000123.-000456.1'
---      - '-000123.-000456.1'
---      - '000123.000456.1'
---  - GPS must never be a table or any other type.
---  - Use helpers in this module to convert between GPS strings and tables for internal use, but always store and pass GPS as a string.
---  - If a GPS string is not valid, helpers will return nil or a blank GPS value. Always validate GPS strings before use.
---  - If a GPS string is encountered in the vanilla '[gps=x,y,s]' format, it will be normalized to the canonical string format.
---
+- Canonical GPS strings: 'xxx.yyy.s' (x/y padded, s = surface index)
+- Converts between GPS strings, MapPosition tables, and vanilla [gps=x,y,s] tags
+- All GPS values are always strings; helpers ensure robust validation and normalization
+- Used throughout the mod for tag, favorite, and teleportation logic
+]]
 
-local Helpers = require("core.utils.helpers")
+local helpers = require("core.utils.helpers") -- lowercase filename
 local Constants = require("constants")
+local padlen, BLANK_GPS = Constants.settings.GPS_PAD_NUMBER, Constants.settings.BLANK_GPS
 
-local padlen = Constants.settings.GPS_PAD_NUMBER
-local BLANK_GPS = Constants.settings.BLANK_GPS
-
---- Parse a GPS string of the form 'x.y.s' into a table {x=..., y=..., surface=...}
+--- Parse a GPS string 'x.y.s' into {x, y, surface_index} or nil if invalid
 ---@param gps string
 ---@return table|nil
 local function parse_gps_string(gps)
   if type(gps) ~= "string" then return nil end
-  local x, y, s = string.match(gps, "^([%d%.-]+)%.([%d%.-]+)%.([%d%.-]+)$")
-  if not x or not y or not s then return nil end
-  return { x = tonumber(x), y = tonumber(y), surface_index = tonumber(s) }
+  local x, y, s = gps:match("^([%d%.-]+)%.([%d%.-]+)%.([%d%.-]+)$")
+  return (x and y and s) and { x = tonumber(x), y = tonumber(y), surface_index = tonumber(s) } or nil
 end
 
--- Add tests for parse_gps_string edge cases:
--- 1. gps is nil
--- 2. gps is not a string
--- 3. gps is a string but not matching the pattern
--- 4. gps is a valid string
-
---- Return the GPS string in the format xxx.yyy.s
+--- Return canonical GPS string 'xxx.yyy.s' from map position and surface index
 ---@param map_position MapPosition
 ---@param surface_index uint
 ---@return string
 local function gps_from_map_position(map_position, surface_index)
-  return Helpers.pad(map_position.x, padlen) ..
-    "." .. Helpers.pad(map_position.y, padlen) .. "." .. tostring(surface_index)
+  return helpers.pad(map_position.x, padlen).."."..helpers.pad(map_position.y, padlen).."."..tostring(surface_index)
 end
 
---- Convert a gps string to a MapPosition {x,y}. Surface index is not included
+--- Convert GPS string to MapPosition {x, y} (surface not included)
 ---@param gps string
 ---@return MapPosition|nil
 local function map_position_from_gps(gps)
-  if gps == BLANK_GPS then
-    return { x = 0, y = 0 }
-  end
+  if gps == BLANK_GPS then return { x = 0, y = 0 } end
   local parsed = parse_gps_string(gps)
-  if not parsed then return nil end
-  return { x = parsed.x, y = parsed.y }
+  return parsed and { x = parsed.x, y = parsed.y } or nil
 end
 
---- Get the surface index from a gps string
+--- Get surface index from GPS string (returns 1 if invalid)
 ---@param gps string
 ---@return uint
 local function get_surface_index(gps)
   local parsed = parse_gps_string(gps)
-  if parsed then
-    return parsed.surface_index
-  else
-    return 1
-  end
+  return parsed and parsed.surface_index or 1
 end
 
---- Normalize a landing position, accepting surface as LuaSurface, string, or index
+--- Normalize a landing position; surface may be LuaSurface, string, or index
 ---@param player table
 ---@param pos MapPosition
 ---@param surface LuaSurface|string|number
 ---@return MapPosition|nil
 local function normalize_landing_position(player, pos, surface)
   if not pos then return nil end
-  ---@diagnostic disable-next-line: undefined-global
-  local game_surfaces = (type(game) == "table" and game.surfaces) or {}
-  local surface_index = 1
-  if type(surface) == "number" then
-    surface_index = math.floor(surface)
-  elseif type(surface) == "table" and surface.index then
-    surface_index = surface.index
-  elseif type(surface) == "string" then
-    local surf = game_surfaces[surface]
-    surface_index = surf and surf.index or 1
-  end
+  local game_surfaces = (type(_G.game) == "table" and _G.game.surfaces) or {}
+  local surface_index = type(surface) == "number" and math.floor(surface)
+    or (type(surface) == "table" and surface.index)
+    or (type(surface) == "string" and game_surfaces[surface] and game_surfaces[surface].index)
+    or 1
   return { x = pos.x, y = pos.y, surface = surface_index }
+end
+
+--- Parse and normalize a GPS string; accepts vanilla [gps=x,y,s] or canonical format
+---@param gps string
+---@return string
+local function parse_and_normalize_gps(gps)
+  if type(gps) == "string" and gps:match("^%[gps=") then
+    local x, y, s = gps:match("%[gps=(%-?%d+),(%-?%d+),(%-?%d+)%]")
+    if x and y and s then
+      local nx, ny, ns = tonumber(x), tonumber(y), tonumber(s)
+      if nx and ny and ns then
+        return gps_from_map_position({x=nx, y=ny}, math.floor(ns))
+      end
+    end
+    return BLANK_GPS
+  end
+  return gps or BLANK_GPS
 end
 
 return {
@@ -101,4 +87,5 @@ return {
   map_position_from_gps = map_position_from_gps,
   get_surface_index = get_surface_index,
   normalize_landing_position = normalize_landing_position,
+  parse_and_normalize_gps = parse_and_normalize_gps,
 }

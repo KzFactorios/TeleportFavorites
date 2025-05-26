@@ -28,7 +28,7 @@ This document summarizes and organizes the key points from all files in the `not
 - **Top-Level Schema:**
   - `players[player_index].surfaces[surface_index].favorites[slot] = {gps, slot_locked}`
   - `surfaces[surface_index].tags[gps] = {faved_by_players}`
-  - `_G["Lookups"].surfaces[surface_index] = {chart_tags, tag_editor_positions}`
+  - `_G["Lookups"].surfaces[surface_index] = {chart_tags}`
 - **GPS:** String format `xxx.yyy.s`, helpers for conversion, always surface-aware.
 - **Tag/ChartTag:** Tag requires a chart_tag; chart_tag may exist without tag. Deletion/move rules.
 - **Settings:** Per-player and mod-wide, versioned.

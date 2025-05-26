@@ -1,5 +1,37 @@
-local Helpers = require("core.utils.helpers")
+--[[
+core/favorite/favorite.lua
+TeleportFavorites Factorio Mod
+-----------------------------
+Favorite class for representing a player's favorite teleport location.
+
+- Each Favorite is identified by a GPS string (always in 'xxx.yyy.s' format).
+- Supports locked state (prevents removal or editing in the UI).
+- Optionally holds a tag table for tooltip formatting and richer UI.
+- Provides helpers for construction, copying, equality, blank/unused slot detection, and tooltip formatting.
+- Used throughout the mod for favorites bar, tag editor, and persistent player data.
+
+API:
+-----
+- Favorite.new(gps, locked, tag)         -- Constructor (supports both :new and .new).
+- Favorite:move(new_gps)                 -- Move this favorite to a new GPS location.
+- Favorite:update_gps(new_gps)           -- Update the GPS string for this favorite.
+- Favorite:toggle_locked()               -- Toggle the locked state.
+- Favorite.copy(fav)                     -- Deep copy a Favorite.
+- Favorite.equals(a, b)                  -- Equality check for two Favorites.
+- Favorite.get_blank_favorite()          -- Returns a blank favorite (sentinel for unused slot).
+- Favorite.is_blank_favorite(fav)        -- Checks if a favorite is blank (unused slot).
+- Favorite:valid()                       -- Returns true if this favorite is valid (not blank).
+- Favorite:formatted_tooltip()           -- Returns a formatted tooltip string for UI.
+
+Notes:
+------
+- GPS string must always be a string in the format 'xxx.yyy.s'. Never store or pass GPS as a table except for temporary parsing/conversion.
+- See README and gps_helpers.lua for details and valid examples.
+]]
+
+local helpers = require("core.utils.helpers")
 local gps_helpers = require("core.utils.gps_helpers")
+local parse_and_normalize_gps = gps_helpers.parse_and_normalize_gps
 
 ---@class Favorite
 ---@field gps string The GPS string identifying the location (must always be a string in the format 'xxx.yyy.s', see GPS String Format section)
@@ -22,22 +54,8 @@ function Favorite.new(self, gps, locked, tag)
     self = Favorite
   end
   local obj = setmetatable({}, self)
-  ---@type string
-  if type(gps) == "string" and gps:match("^%[gps=") then
-    -- Parse [gps=x,y,s] format and normalize
-    local x, y, s = gps:match("%[gps=(%-?%d+),(%-?%d+),(%-?%d+)%]")
-    x, y, s = tonumber(x), tonumber(y), tonumber(s)
-    if x and y and s then
-      obj.gps = gps_helpers.gps_from_map_position({x=x, y=y}, math.floor(s))
-    else
-      obj.gps = gps_helpers.BLANK_GPS
-    end
-  else
-    obj.gps = gps or gps_helpers.BLANK_GPS
-  end
-  ---@type boolean
+  obj.gps = parse_and_normalize_gps(gps)
   obj.locked = locked or false
-  ---@type table|nil
   obj.tag = tag
   return obj
 end
@@ -61,7 +79,7 @@ end
 
 function Favorite.copy(fav)
   if type(fav) ~= "table" then return nil end
-  local copy = Favorite:new(fav.gps, fav.locked, fav.tag and Helpers.deep_copy(fav.tag) or nil)
+  local copy = Favorite:new(fav.gps, fav.locked, fav.tag and helpers.deep_copy(fav.tag) or nil)
   for k, v in pairs(fav) do
     if copy[k] == nil then copy[k] = v end
   end
@@ -106,28 +124,21 @@ end
 --- Move this favorite to a new GPS location
 -- @param new_gps string The new GPS string (must be validated before calling)
 function Favorite:move(new_gps)
-  if type(new_gps) ~= "string" or new_gps == "" or new_gps == gps_helpers.BLANK_GPS then
-    return false, "Invalid GPS string"
-  end
+  if type(new_gps) ~= "string" or new_gps == "" or new_gps == gps_helpers.BLANK_GPS then return false, "Invalid GPS string" end
   self.gps = new_gps
-  if self.tag and type(self.tag) == "table" then
-    -- Update tag position if present
+  if type(self.tag) == "table" then
     if self.tag.position then
       local parsed = gps_helpers.parse_gps_string(new_gps)
       if parsed then
-        self.tag.position = {x = parsed.x, y = parsed.y}
-        self.tag.surface = parsed.surface_index
+        self.tag.position = {x = parsed.x, y = parsed.y}; self.tag.surface = parsed.surface_index
       end
     end
-    if self.tag.gps then
-      self.tag.gps = new_gps
-    end
+    if self.tag.gps then self.tag.gps = new_gps end
   end
   return true
 end
 
 -- GPS string must always be a string in the format 'xxx.yyy.s'.
 -- Never store or pass GPS as a table except for temporary parsing/conversion.
--- See README and gps_helpers.lua for details and valid examples.
 
 return Favorite

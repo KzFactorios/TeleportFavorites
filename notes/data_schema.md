@@ -14,6 +14,7 @@ Defines the persistent data structures for the mod, including player favorites, 
     [player_index] = {
       toggle_fave_bar_buttons = boolean,
       render_mode = string,
+      tag_editor_data = {},
       surfaces = {
         [surface_index] = {
           favorites = {
@@ -48,8 +49,7 @@ Defines the persistent data structures for the mod, including player favorites, 
 _G["Lookups"] = {
   surfaces = {
     [surface_index] = {
-      chart_tags = { LuaCustomChartTag[] },
-      tag_editor_positions = { [player_index] = gps },
+      chart_tags = { LuaCustomChartTag[] }
     }
   }
 }

@@ -1,22 +1,62 @@
 --[[
-  Cache.lua
-  TeleportFavorites Factorio Mod
-  -----------------------------
-  Persistent and runtime cache management for mod data, including player, surface, and tag storage.
-  Provides helpers for safe cache access, mutation, and removal, with strict EmmyLua annotations.
+Cache.lua
+TeleportFavorites Factorio Mod
+-----------------------------
+Persistent and runtime cache management for mod data, including player, surface, and tag storage.
 
-  @module Cache
-  @author Gemini
-  @license MIT
-  @see core.cache.lookups
-  @see core.favorite.player_favorites
-  @see core.gps.gps
+- Provides helpers for safe cache access, mutation, and removal, with strict EmmyLua annotations.
+- All persistent data is stored in the global table under _G.storage.cache, _G.storage.players, and _G.storage.surfaces.
+- Runtime (non-persistent) lookup tables are managed via the Lookups module.
+- Player and surface data are always initialized and normalized for safe multiplayer and multi-surface support.
+- All access to persistent cache should use the Cache API; do not access _G.storage directly.
+
+API:
+-----
+- Cache.init()                        -- Initialize the persistent cache table if not present.
+- Cache.get(key)                      -- Retrieve a value from the persistent cache by key.
+- Cache.set(key, value)               -- Set a value in the persistent cache by key.
+- Cache.remove(key)                   -- Remove a value from the persistent cache by key.
+- Cache.clear()                       -- Clear the entire persistent cache and runtime chart_tag_cache.
+- Cache.get_mod_version()             -- Get the mod version from the cache, if set.
+- Cache.get_player_data(player)       -- Get persistent player data for a given player.
+- Cache.get_surface_data(idx)         -- Get persistent surface data for a given surface index.
+- Cache.get_surface_tags(idx)         -- Get the persistent tag table for a given surface index.
+- Cache.remove_stored_tag(gps)        -- Remove a tag from persistent storage by GPS string.
+- Cache.get_tag_by_gps(gps)           -- Get a tag by GPS string (persistent, surface-aware).
+- Cache.get_player_favorites(player, surface) -- Get the favorites array for a player (persistent, surface-aware).
+- Cache.get_tag_editor_data(player)   -- Get the tag editor data for a player (persistent, per-player).
+- Cache.set_tag_editor_data(player, data) -- Set the tag editor data for a player (persistent, per-player).
+
+Data Structure:
+---------------
+_G.storage = {
+  cache = { ... },
+  players = {
+    [player_index] = {
+      tag_editor_data = { ... },
+      surfaces = {
+        [surface_index] = {
+          favorites = { ... },
+        },
+        ...
+      },
+      ...
+    },
+    ...
+  },
+  surfaces = {
+    [surface_index] = {
+      tags = { ... },
+    },
+    ...
+  },
+}
 ]]
 
 local mod_version = require("core.utils.version")
 local Lookups = require("core.cache.lookups")
 local GPS = require("core.gps.gps")
-local Helpers = require("core.utils.helpers")
+local helpers = require("core.utils.helpers")
 
 -- Helper to require PlayerFavorites only when needed
 local function get_player_favorites()
@@ -62,8 +102,7 @@ end
 ---@return any|nil The value set, or nil if storage is unavailable.
 function Cache.set(key, value)
   if not key or key == "" then return nil end
-  Cache.init()
-  _G.storage.cache[key] = value
+  Cache.init(); _G.storage.cache[key] = value
   return _G.storage.cache[key]
 end
 
@@ -71,15 +110,12 @@ end
 ---@param key string
 function Cache.remove(key)
   if not key or key == "" then return end
-  Cache.init()
-  _G.storage.cache[key] = nil
+  Cache.init(); _G.storage.cache[key] = nil
 end
 
 --- Clear the entire persistent cache.
 function Cache.clear()
-  Cache.init()
-  _G.storage.cache = {}
-  -- Also clear and sync Lookups chart_tag_cache and map for all surfaces
+  Cache.init(); _G.storage.cache = {}
   if package.loaded["core.cache.lookups"] then
     package.loaded["core.cache.lookups"].clear_chart_tag_cache()
   end
@@ -89,10 +125,7 @@ end
 ---@return string|nil
 function Cache.get_mod_version()
   local val = Cache.get("mod_version")
-  if val == nil or val == "" then
-    return nil
-  end
-  return tostring(val)
+  return (val and val ~= "") and tostring(val) or nil
 end
 
 --- Initialize and retrieve persistent player data for a given player.
@@ -102,19 +135,17 @@ local function init_player_data(player)
   if not _G.storage then return {} end
   if not _G.storage.cache then Cache.init() end
   _G.storage.players = _G.storage.players or {}
-  local pidx = tonumber(Helpers.normalize_player_index(player)) or 0
+  local pidx = tonumber(helpers.normalize_player_index(player)) or 0
   if type(pidx) ~= "number" or pidx < 1 then return {} end
-  _G.storage.players[pidx] = _G.storage.players[pidx] or {}
-  local player_data = _G.storage.players[pidx]
-  player_data.toggle_fav_bar_buttons = player_data.toggle_fav_bar_buttons or true
-  player_data.render_mode = player_data.render_mode or (player and player.render_mode)
-  player_data.surfaces = player_data.surfaces or {}
-  local sidx = tonumber(Helpers.normalize_surface_index(player and player.surface)) or 1
+  local pdata = _G.storage.players[pidx] or {}
+  pdata.toggle_fav_bar_buttons = pdata.toggle_fav_bar_buttons or true
+  pdata.render_mode = pdata.render_mode or (player and player.render_mode)
+  pdata.surfaces = pdata.surfaces or {}
+  local sidx = tonumber(helpers.normalize_surface_index(player and player.surface)) or 1
   if type(sidx) ~= "number" or sidx < 1 then sidx = 1 end
-  player_data.surfaces[sidx] = player_data.surfaces[sidx] or {}
-  local player_surface = player_data.surfaces[sidx]
-  player_surface.favorites = player_surface.favorites or {}
-  return player_data
+  pdata.surfaces[sidx] = pdata.surfaces[sidx] or {favorites={}}
+  _G.storage.players[pidx] = pdata
+  return pdata
 end
 
 --- Get persistent player data for a given player.
@@ -160,7 +191,7 @@ function Cache.remove_stored_tag(gps)
   if not gps or type(gps) ~= "string" then return end
   local surface_index = GPS.get_surface_index(gps)
   if not surface_index then return end
-  local idx = Helpers.normalize_surface_index(surface_index)
+  local idx = helpers.normalize_surface_index(surface_index)
   if idx == 0 then return end
   local surface_data = init_surface_data(idx)
   if not surface_data or not surface_data.tags then return end
@@ -176,8 +207,8 @@ function Cache.get_tag_by_gps(gps)
     surface_index = 1 --[[@as uint]] -- ensure this is always a positive unsigned integer (uint)
   end
   local tag_cache = Cache.get_surface_tags(surface_index)
-  local found = Helpers.find_by_predicate(tag_cache, function(v) return v.gps == gps end) or {}
-  if Helpers.table_count(found) > 0 then
+  local found = helpers.find_by_predicate(tag_cache, function(v) return v.gps == gps end) or {}
+  if helpers.table_count(found) > 0 then
     return found[1]
   end
   return nil

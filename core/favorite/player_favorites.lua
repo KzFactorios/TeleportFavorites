@@ -1,3 +1,32 @@
+--[[
+core/favorite/player_favorites.lua
+TeleportFavorites Factorio Mod
+-----------------------------
+PlayerFavorites class: manages a collection of favorites for a specific player.
+
+- Handles slot management, O(1) lookup, persistence, and favorite manipulation.
+- All persistent data is managed via the Cache module and is surface-aware.
+- Used for favorites bar, tag editor, and all player favorite operations.
+
+API:
+-----
+- PlayerFavorites.new(player)                -- Constructor for a player's favorites collection.
+- PlayerFavorites:get_all()                  -- Get the favorites array (1-based, no out-of-bounds).
+- PlayerFavorites:get_favorites()            -- Alias for get_all (test compatibility).
+- PlayerFavorites:get_favorite_by_gps(gps)   -- O(1) lookup of a favorite by GPS string.
+- PlayerFavorites:add_favorite(gps|Favorite) -- Add a favorite to the first available slot.
+- PlayerFavorites:remove_favorite(gps)       -- Remove a favorite by GPS, blanking the slot.
+- PlayerFavorites:set_favorites(new_faves)   -- Batch update all favorites at once.
+- PlayerFavorites.validate_gps(gps)          -- Centralized GPS string validation.
+
+Notes:
+------
+- All slot management is 1-based and respects MAX_FAVORITE_SLOTS from Constants.
+- Blank slots are always filled with Favorite.get_blank_favorite().
+- O(1) lookup is maintained via favorites_by_gps table.
+- All persistent data is surface-aware and managed via Cache.
+--]]
+
 -- PlayerFavorites.lua
 -- Wrapper for a collection of favorites for a specific player.
 -- Handles slot management, persistence, and favorite manipulation.
@@ -7,7 +36,7 @@
 
 local Constants = require("constants")
 local Favorite = require("core.favorite.favorite")
-local Helpers = require("core.utils.helpers")
+local helpers = require("core.utils.helpers")
 local Cache = require("core.cache.cache")
 
 ---
@@ -70,34 +99,24 @@ end
 function PlayerFavorites:get_all()
   local max = Constants.settings.MAX_FAVORITE_SLOTS
   local filtered = {}
-  for i = 1, max do
-    filtered[i] = self.favorites[i]
-  end
+  for i = 1, max do filtered[i] = self.favorites[i] end
   return filtered
 end
 
 --- Alias for test compatibility
-function PlayerFavorites:get_favorites()
-  return self:get_all()
-end
+function PlayerFavorites:get_favorites() return self:get_all() end
 
 --- Get a favorite by GPS (O(1) lookup)
 ---@param gps string
 ---@return Favorite|nil
-function PlayerFavorites:get_favorite_by_gps(gps)
-  return self.favorites_by_gps[gps]
-end
+function PlayerFavorites:get_favorite_by_gps(gps) return self.favorites_by_gps[gps] end
 
 --- Add a favorite GPS to the first available slot, allowing duplicates if intended, and preventing blank
 ---@param gps string|Favorite
 ---@return boolean success
 function PlayerFavorites:add_favorite(gps)
-  -- Accept either a gps string or a Favorite object
   local fav_obj = type(gps) == "table" and gps or Favorite:new(gps)
-  if Favorite.is_blank_favorite(fav_obj) then
-    return false -- Do not add blank favorite
-  end
-  -- Allow duplicates: do not check for existing gps in other slots
+  if Favorite.is_blank_favorite(fav_obj) then return false end
   for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
     if Favorite.is_blank_favorite(self.favorites[i]) then
       self.favorites[i] = setmetatable({ gps = fav_obj.gps, locked = fav_obj.locked or false, tag = fav_obj.tag }, Favorite)
@@ -105,7 +124,7 @@ function PlayerFavorites:add_favorite(gps)
       return true
     end
   end
-  return false -- No available slot
+  return false
 end
 
 --- Remove a favorite by GPS, set slot to blank if not found

@@ -1,4 +1,43 @@
-local Helpers = require("core.utils.helpers")
+--[[
+TeleportFavorites – Lookups Cache Module
+========================================
+Handles the non-persistent, runtime in-game data cache for fast lookups of chart tags and related objects.
+
+- All cache data is stored in the global table under the key 'Lookups'.
+- Provides O(1) lookup for chart tags by GPS string and surface index.
+- Used for efficient access to chart tags, tag caches, and related runtime data.
+- Not persistent: rebuilt as needed from game state.
+- All access is via the Lookups API; do not access global["Lookups"] directly.
+
+API:
+-----
+- Lookups.ensure_cache()                -- Ensures and returns the top-level cache table.
+- Lookups.ensure_surface_cache(idx)      -- Ensures and returns the cache for a given surface index.
+- Lookups.get(key)                      -- Gets a value from the cache by key.
+- Lookups.set(key, value)               -- Sets a value in the cache by key.
+- Lookups.remove(key)                   -- Removes a value from the cache by key.
+- Lookups.clear()                       -- Clears the entire cache.
+- Lookups.get_chart_tag_cache(idx)      -- Gets or rebuilds the chart_tag_cache for a surface.
+- Lookups.get_chart_tag_by_gps(gps)     -- O(1) lookup of a chart tag by GPS string.
+- Lookups.clear_chart_tag_cache(idx)    -- Clears the chart_tag_cache for a surface or all surfaces.
+- Lookups.init()                        -- Initializes the cache (for tests or mod init).
+
+Data Structure:
+---------------
+global["Lookups"] = {
+  surfaces = {
+    [surface_index] = {
+      chart_tag_cache = { ... },         -- Array of LuaCustomChartTag objects
+      chart_tag_cache_by_gps = { ... },  -- Map: gps string -> LuaCustomChartTag
+      chart_tags = { ... },              -- (legacy/compat)
+    },
+    ...
+  },
+  ...
+}
+--]]
+
+local helpers = require("core.utils.helpers")
 local gps_helpers = require("core.utils.gps_helpers")
 
 ---@diagnostic disable: undefined-global
@@ -22,7 +61,6 @@ function Lookups.ensure_surface_cache(surface_index)
   local surface_data = cache.surfaces or {}
   surface_data[surface_index] = surface_data[surface_index] or {}
   surface_data[surface_index].chart_tags = surface_data[surface_index].chart_tags or {}
-  surface_data[surface_index].tag_editor_positions = surface_data[surface_index].tag_editor_positions or {}
   return surface_data[surface_index]
 end
 
@@ -74,7 +112,7 @@ function Lookups.get_chart_tag_cache(surface_index)
   end
   -- Rebuild from game if empty
   ---@diagnostic disable-next-line
-  if Helpers.table_count(surface.chart_tag_cache) == 0 and game and game.forces and game.forces["player"] and game.surfaces and game.surfaces[idx] then
+  if helpers.table_count(surface.chart_tag_cache) == 0 and game and game.forces and game.forces["player"] and game.surfaces and game.surfaces[idx] then
     surface.chart_tag_cache = game.forces["player"]:find_chart_tags(game.surfaces[idx])
   end
   -- Always rebuild O(1) lookup map by gps after cache is cleared or rebuilt
@@ -105,34 +143,6 @@ function Lookups.get_chart_tag_by_gps(gps)
   return nil
 end
 
---- Set the tag editor position for a player on a surface
-function Lookups.set_tag_editor_position(player, map_position)
-  local tag_editor_positions = Lookups.get_tag_editor_positions(player.surface.index)
-  tag_editor_positions[player.index] = map_position
-end
-
---- Get the tag editor position for a player on a surface
-function Lookups.get_tag_editor_position(player)
-  local tag_editor_positions = Lookups.get_tag_editor_positions(player.surface.index)
-  return tag_editor_positions[player.index]
-end
-
---- Clear the tag editor position for a player on a surface
-function Lookups.clear_tag_editor_position(player)
-  local tag_editor_positions = Lookups.get_tag_editor_positions(player.surface.index)
-  tag_editor_positions[player.index] = nil
-end
-
---- Get or initialize the tag_editor_positions for a surface
-function Lookups.get_tag_editor_positions(surface_index)
-  local idx = normalize_surface_index(surface_index)
-  local cache = ensure_cache()
-  cache.surfaces[idx] = cache.surfaces[idx] or {}
-  local surface = cache.surfaces[idx]
-  surface.tag_editor_positions = surface.tag_editor_positions or {}
-  return surface.tag_editor_positions
-end
-
 --- Clear the chart_tag_cache for a given surface (or all surfaces if no index given)
 function Lookups.clear_chart_tag_cache(surface_index)
   local cache = ensure_cache()
@@ -159,16 +169,3 @@ function Lookups.init()
 end
 
 return Lookups
-
---[[
-tf_cache = {
-    surfaces[surface_index] = {
-        chart_tag_cache = {
-            an array of LuaCustomChartTag objects indexed by gps (converted from the position and the surface_index)
-        },
-        tag_editor_positions = {
-            [player_index] = gps
-        }
-    }
-}
-]]

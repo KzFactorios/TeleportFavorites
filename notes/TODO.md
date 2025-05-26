@@ -22,7 +22,6 @@
 - [ ] When a chart_tag is destroyed, ensure it destroys any linked tags (and vice versa). Refactor tag<->chart_tag destruction logic to a shared helper if possible.
 - [ ] Multiplayer: test and document tag ownership edge cases.
 - [ ] Match vanilla styling for delete and move button in the tag editor.
-- [ ] If the tag_editor can be available at game start, persist tag_editor_positions for all players.
 - [ ] Player favorites should mimic a first-in last-out (FILO) pattern. If trimming is needed, remove last-in items first to preserve oldest entries.
 - [ ] In control.lua.events.on_player_changed_surface, event.surface_index is not guaranteed. Use player.surface.index for the new surface.
 - [ ] Handle events from the vanilla tag editor and ensure mod GUI stays in sync.
