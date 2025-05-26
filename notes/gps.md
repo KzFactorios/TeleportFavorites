@@ -24,6 +24,33 @@
 - Helpers may parse GPS strings into tables for internal use, but the canonical value for all storage, comparison, and API is always a string.
 
 ---
+
+# IMPORTANT: GPS String Format in TeleportFavorites (NOT Factorio gps_tag)
+
+**The `gps` string used throughout the TeleportFavorites mod is NOT the same as Factorio's built-in `gps_tag` or `[gps=...]` rich text tags.**
+
+- **TeleportFavorites `gps` format:**
+  - Always a string in the format: `xxx.yyy.s` (e.g., `123.456.1`)
+  - Where `xxx` = x coordinate, `yyy` = y coordinate, `s` = surface index
+  - Used for persistent storage, lookups, and all favorite/tag logic in this mod.
+  - See `core/utils/gps_helpers.lua` for parsing and formatting helpers.
+
+- **Factorio's built-in `gps_tag`/rich text:**
+  - Format: `[gps=x,y,surface]` (e.g., `[gps=123,456,1]`)
+  - Used for chat, tooltips, and map pings in vanilla Factorio.
+  - Not used for persistent storage or as a key in this mod.
+
+## Why This Matters
+- **Do NOT confuse the two formats!**
+- All code, helpers, and persistent data in TeleportFavorites expect the `xxx.yyy.s` string format.
+- If you need to display a clickable GPS in chat or a tooltip, use the helpers in `core/gps/gps.lua` to convert to/from Factorio's `[gps=...]` format as needed.
+- Never store or pass a table or `[gps=...]` string as a favorite's `gps` value—always use the `xxx.yyy.s` string.
+
+## Workaround/Advice
+- If you need to interoperate with other mods or vanilla Factorio features that expect `[gps=...]`, always convert using the provided helpers.
+- If you see code or documentation referring to `gps_tag`, `gps rich text`, or `[gps=...]`, remember this is **not** the same as the `gps` string in this mod.
+
+---
 <!--
 Original user note for reference:
 why am i seeing gps=[gps=bad,20,1]? a gps value, and we have been overr this before, so please update the docs with this note:

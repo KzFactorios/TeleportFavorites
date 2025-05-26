@@ -196,6 +196,22 @@ function Cache.get_player_favorites(player, surface)
   return {}
 end
 
+--- Get the tag editor data for a player (persistent, per-player)
+---@param player LuaPlayer
+---@return table|nil
+function Cache.get_tag_editor_data(player)
+  local pdata = Cache.get_player_data(player)
+  return pdata and pdata.tag_editor_data or nil
+end
+
+--- Set the tag editor data for a player (persistent, per-player)
+---@param player LuaPlayer
+---@param data table|nil
+function Cache.set_tag_editor_data(player, data)
+  local pdata = Cache.get_player_data(player)
+  pdata.tag_editor_data = data
+end
+
 --- Normalize a player index to integer
 ---@param player LuaPlayer|number|string
 ---@return integer

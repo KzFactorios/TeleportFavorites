@@ -42,8 +42,6 @@ function Favorite.new(self, gps, locked, tag)
   return obj
 end
 
-Favorite.__index = Favorite
-
 setmetatable(Favorite, {
   __call = function(cls, ...)
     return cls:new(...)
@@ -94,13 +92,38 @@ end
 --- Format a tooltip string for this Favorite
 -- @return string Tooltip text
 function Favorite:formatted_tooltip()
-  if not self.gps or self.gps == "" or self.gps == gps_helpers.BLANK_GPS then return "Empty favorite slot" end
+  if not self.gps or self.gps == "" or self.gps == gps_helpers.BLANK_GPS then
+    return {"tf-gui.favorite_slot_empty"}
+  end
   local GPS = require("core.gps.gps")
   local tooltip = GPS.coords_string_from_gps(self.gps) or self.gps
   if self.tag ~= nil and type(self.tag) == "table" and self.tag.text ~= nil and self.tag.text ~= "" then
     tooltip = tooltip .. "\n" .. self.tag.text
   end
   return tooltip
+end
+
+--- Move this favorite to a new GPS location
+-- @param new_gps string The new GPS string (must be validated before calling)
+function Favorite:move(new_gps)
+  if type(new_gps) ~= "string" or new_gps == "" or new_gps == gps_helpers.BLANK_GPS then
+    return false, "Invalid GPS string"
+  end
+  self.gps = new_gps
+  if self.tag and type(self.tag) == "table" then
+    -- Update tag position if present
+    if self.tag.position then
+      local parsed = gps_helpers.parse_gps_string(new_gps)
+      if parsed then
+        self.tag.position = {x = parsed.x, y = parsed.y}
+        self.tag.surface = parsed.surface_index
+      end
+    end
+    if self.tag.gps then
+      self.tag.gps = new_gps
+    end
+  end
+  return true
 end
 
 -- GPS string must always be a string in the format 'xxx.yyy.s'.

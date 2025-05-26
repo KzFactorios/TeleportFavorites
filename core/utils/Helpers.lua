@@ -1,11 +1,11 @@
--- Helpers.lua
+-- helpers.lua
 -- Utility functions for math, tables, strings, and general helpers used throughout the mod.
 -- Provides static methods only. All helpers are namespaced under Helpers.
 --
 -- Math helpers: rounding, snapping, floor, etc.
 -- Table helpers: deep/shallow copy, equality, indexed array creation, sorting, searching, removal
 -- String helpers: splitting, trimming, nonempty check, padding
--- Position helpers moved to core/utils/PositionHelpers.lua to avoid circular dependencies with GPS
+-- Position helpers moved to core/utils/Positionhelpers.lua to avoid circular dependencies with GPS
 -- Tagging helpers: tag placement, collision, water/space checks
 
 --- Static helper class for utility functions used throughout the mod.
@@ -241,16 +241,16 @@ function Helpers.has_decimal_point(s)
   return tostring(s):find("%.") ~= nil
 end
 
--- POSITIONING (moved to PositionHelpers.lua)
+-- POSITIONING (moved to Positionhelpers.lua)
 
--- Tagging and map position helpers (moved to PositionHelpers.lua)
+-- Tagging and map position helpers (moved to Positionhelpers.lua)
 
 --- Returns true if a tag can be placed at the given map position for the player
 ---@param player LuaPlayer
 ---@param map_position table
 ---@return boolean
 function Helpers.position_can_be_tagged(player, map_position)
-  -- Moved to PositionHelpers.lua
+  -- Moved to Positionhelpers.lua
   return false
 end
 

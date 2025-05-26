@@ -1,6 +1,6 @@
--- PositionHelpers.lua
+-- Positionhelpers.lua
 -- Utility functions for position, map, and tag helpers that require game logic or GPS module.
--- This module is separated from Helpers.lua to avoid circular dependencies.
+-- This module is separated from helpers.lua to avoid circular dependencies.
 
 local GPS = require("core.gps.gps")
 
