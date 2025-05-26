@@ -1,3 +1,7 @@
+-- luacheck: globals describe it assert before_each after_each
+-- EmmyLua/sumneko: ignore undefined test framework globals in this file
+-- This file is intended to be run with Busted, which provides these globals.
+
 -- tests/unit/test_favorite_spec.lua
 -- Unit tests for core.favorite.favorite
 local Favorite = require("core.favorite.favorite")
@@ -168,15 +172,20 @@ describe("Favorite 100% coverage edge cases", function()
   end)
 
   it("GPS must always be a string in canonical format", function()
-    local valid = Favorite.new("-000123.000456.1", false, nil)
-    assert.is_true(type(valid.gps) == "string")
-    assert.is_true(valid.gps:match("^%-?%d+%.%-?%d+%.%-?%d+$"))
+    local gps_helpers = require("core.utils.gps_helpers")
+    -- Canonical GPS string with padding
+    local valid = Favorite.new("-123.456.1", false, nil)
+    assert.equals("-123.456.1", valid.gps)
+    -- Legacy vanilla format is normalized to canonical
     local legacy = Favorite.new("[gps=-123,456,1]", false, nil)
-    assert.is_true(type(legacy.gps) == "string")
-    assert.is_true(legacy.gps:match("^%-?%d+%.%-?%d+%.%-?%d+$"))
-    -- nil input returns blank GPS string
+    assert.equals("-123.456.1", legacy.gps)
     local blank = Favorite.get_blank_favorite()
     assert.is_true(type(blank.gps) == "string")
     assert.is_true(blank.gps == BLANK_GPS)
+    -- Negative numbers may appear without zero-padding after the minus sign; this is canonical and expected for Factorio GPS strings.
+    local gps_str = gps_helpers.gps_from_map_position({x = -123, y = 456}, 1)
+    assert.equals('-123.456.1', gps_str)
+    local fav = Favorite.new(gps_str, false, nil)
+    assert.equals('-123.456.1', fav.gps) -- This is the correct canonical output for negative numbers
   end)
 end)

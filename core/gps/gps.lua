@@ -17,7 +17,14 @@ GPS.normalize_landing_position = gps_helpers.normalize_landing_position
 function GPS.coords_string_from_gps(gps)
   local parsed = gps_helpers.parse_gps_string(gps)
   if not parsed then return nil end
-  return Helpers.pad(parsed.x, padlen) .. "." .. Helpers.pad(parsed.y, padlen)
+  return Helpers.pad(parsed.x, Constants.settings.GPS_PAD_NUMBER) .. "." .. Helpers.pad(parsed.y, Constants.settings.GPS_PAD_NUMBER)
+end
+
+--- Returns the full GPS string in canonical format xxx.yyy.s
+function GPS.gps_string_from_gps(gps)
+  local parsed = gps_helpers.parse_gps_string(gps)
+  if not parsed then return nil end
+  return Helpers.pad(parsed.x, Constants.settings.GPS_PAD_NUMBER) .. "." .. Helpers.pad(parsed.y, Constants.settings.GPS_PAD_NUMBER) .. "." .. tostring(parsed.s or parsed.surface or parsed.surface_index)
 end
 
 return GPS
