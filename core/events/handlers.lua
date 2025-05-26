@@ -33,23 +33,67 @@ local Constants = require("constants")
 local Lookups = require("core.cache.lookups")
 local Favorite = require("core.favorite.favorite")
 local Cache = require("core.cache.cache")
+local fave_bar = require("gui.favorites_bar.fave_bar")
+local tag_editor = require("gui.tag_editor.tag_editor")
+local Settings = require("settings")
+local game = _G.game
+local defines = _G.defines
 
 local handlers = {}
 
 function handlers.on_init()
-  -- Add any additional initialization logic here
+  for _, player in pairs(game.players) do
+    local parent = player.gui.top
+    local settings = Settings:getPlayerSettings(player)
+    if settings.favorites_on then
+      fave_bar.build(player, parent)
+    end
+  end
 end
 
 function handlers.on_load()
   -- Re-initialize runtime-only structures if needed
 end
 
+function handlers.on_player_created(event)
+  local player = game.get_player(event.player_index)
+  if player then
+    local parent = player.gui.top
+    local settings = Settings:getPlayerSettings(player)
+    if settings.favorites_on then
+      fave_bar.build(player, parent)
+    end
+  end
+end
+
 function handlers.on_player_changed_surface(event)
-  ---@diagnostic disable-next-line: undefined-global
+  local player = game.get_player(event.player_index)
+  if player then
+    local parent = player.gui.top
+    local settings = Settings:getPlayerSettings(player)
+    if settings.favorites_on then
+      fave_bar.build(player, parent)
+    end
+  end
+end
+
+-- Open tag_editor on right-click in chart/chart_zoomed_in view
+function handlers.on_player_selected_area(event)
   local player = game.get_player(event.player_index)
   if not player then return end
-  local surface_index = player.surface.index
-  Lookups.ensure_surface_cache(surface_index)
+  if player.render_mode ~= defines.render_mode.chart and player.render_mode ~= defines.render_mode.chart_zoomed_in then return end
+  if event.name ~= defines.events.on_player_selected_area then return end
+  if event.button ~= defines.mouse_button_type.right then return end
+  -- Find chart tag at cursor position (use force:find_chart_tags)
+  local surface = player.surface
+  local tags = player.force:find_chart_tags(surface, event.area)
+  if tags and #tags > 0 then
+    local tag = tags[1]
+    if tag then
+      local parent = player.gui.screen
+      tag_editor.build(player, parent, { chart_tag = tag })
+    end
+  end
 end
 
 function handlers.on_open_tag_editor(event)

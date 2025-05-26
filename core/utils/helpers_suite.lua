@@ -1,5 +1,5 @@
 --[[
-helpers.lua
+helpers_suite.lua
 TeleportFavorites Factorio Mod
 -----------------------------
 Comprehensive utility module for math, table, string, and general helpers used throughout the mod.

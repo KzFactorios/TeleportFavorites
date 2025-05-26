@@ -13,7 +13,7 @@ Tag model and utilities for managing teleportation tags, chart tags, and player 
 local Constants = require("constants")
 local Favorite = require("core.favorite.favorite")
 local Settings = require("settings")
-local helpers = require("core.utils.helpers")
+local helpers = require("core.utils.Helpers")
 local GPS = require("core.gps.gps")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local Lookups = require("core.cache.lookups")

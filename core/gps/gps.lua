@@ -26,7 +26,7 @@ Notes:
 
 local Constants = require("constants")
 local Settings = require("settings")
-local helpers = require("core.utils.helpers")
+local helpers = require("core.utils.Helpers")
 local gps_helpers = require("core.utils.gps_helpers")
 
 local GPS = {}

@@ -75,7 +75,7 @@ This document summarizes and organizes the key points from all files in the `not
   - `-000123.-000456.1`
   - `000123.000456.1`
 - **GPS must never be a table or any other type.**
-- **Helpers** in `core/utils/gps_helpers.lua` are provided to convert between GPS strings and tables for internal use, but the canonical value for all storage, comparison, and API is always a string.
+- **Helpers methods** in `core/utils/gps_helpers.lua` are provided to convert between GPS strings and tables for internal use, but the canonical value for all storage, comparison, and API is always a string.
 - **Parsing:** If a GPS string is not valid, helpers will return `nil` or a blank GPS value. Always validate GPS strings before use.
 - **Legacy/Vanilla Format:** If a GPS string is encountered in the vanilla `[gps=x,y,s]` format, it will be normalized to the canonical string format on construction.
 

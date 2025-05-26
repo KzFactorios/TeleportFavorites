@@ -56,7 +56,7 @@ _G.storage = {
 local mod_version = require("core.utils.version")
 local Lookups = require("core.cache.lookups")
 local GPS = require("core.gps.gps")
-local helpers = require("core.utils.helpers")
+local helpers = require("core.utils.Helpers")
 
 -- Helper to require PlayerFavorites only when needed
 local function get_player_favorites()
