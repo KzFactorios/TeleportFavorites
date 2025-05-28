@@ -10,10 +10,7 @@ local Constants = require("constants")
 ---@return Favorite[]
 local function init_player_favorites(pdata)
   pdata.favorites = pdata.favorites or {}
-  pdata.favorites_by_gps = pdata.favorites_by_gps or {}
-
   local pfaves = pdata.favorites or {}
-  local pfaves_by_gps = pdata.favorites_by_gps or {}
 
   for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
     if not pfaves[i] or type(pfaves[i]) ~= "table" then

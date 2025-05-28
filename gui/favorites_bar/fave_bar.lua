@@ -61,10 +61,11 @@ end
 
 local function build_favorite_buttons_row(slots_flow, player, pfaves, drag_index)
     -- slots_flow is now passed in, not created here
-    for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
+    for i = 1, #pfaves do
         local fav = type(pfaves[i]) == "table" and pfaves[i] or Constants.get_blank_favorite()
         local is_blank = Favorite.is_blank_favorite(fav)
         local is_locked = fav.locked or false
+        -- Always create the slot button, even if blank or just toggled
         local icon = (not is_blank and fav.tag and fav.tag.icon ~= "") and fav.tag.icon or nil
         local tooltip = not is_blank and Helpers.build_favorite_tooltip(fav) or nil
         -- Use normalized slot button naming: "fave_bar_slot_" .. i
@@ -105,9 +106,10 @@ function fave_bar.build(player, parent)
     local success, result = pcall(function()
         local player_settings = Settings:getPlayerSettings(player)
         if not player_settings.favorites_on then return end
+
         local mode = player and player.render_mode
         if not (mode == defines.render_mode.game or mode == defines.render_mode.chart or mode == defines.render_mode.chart_zoomed_in) then
-            return
+            return  
         end
         if parent.fave_bar_frame then
             parent.fave_bar_frame.destroy()
@@ -119,16 +121,15 @@ function fave_bar.build(player, parent)
         local toggle_btn = add_toggle_button(toggle_flow, player)
         -- Add slots flow and favorite buttons
         local slots_flow = GuiBase.create_hflow(bar_flow, "fave_bar_slots_flow")
-        local pfaves = PlayerFavorites.new(player):get_all()
-        local drag_index = _G.storage and _G.storage.players and _G.storage.players[player.index] and _G.storage.players[player.index].drag_favorite_index
-        local fav_btns = build_favorite_buttons_row(slots_flow, player, pfaves, drag_index)
+        local pfaves = PlayerFavorites.new(player):get_favorites()
+
+        local pdata = Cache.get_player_data(player)
+        local fav_btns = build_favorite_buttons_row(slots_flow, player, pfaves, pdata.drag_favorite_index)
+        local show = pdata.toggle_fav_bar_buttons
+        fav_btns.visible = show
+
         handle_overflow_error(fave_bar_frame, fav_btns, pfaves)
-        local function update_toggle_state()
-            local pdata = Cache.get_player_data(player)
-            local show = pdata.toggle_fav_bar_buttons ~= false
-            fav_btns.visible = show
-        end
-        update_toggle_state()
+
         return fave_bar_frame
     end)
     _fave_bar_building_guard[pid] = nil
@@ -149,8 +150,8 @@ function fave_bar.update_slot_row(player, bar_flow)
         end
     end
     local slots_flow = GuiBase.create_hflow(bar_flow, "fave_bar_slots_flow")
-    local pfaves = PlayerFavorites.new(player):get_all()
-    local drag_index = _G.storage and _G.storage.players and _G.storage.players[player.index] and _G.storage.players[player.index].drag_favorite_index
+    local pfaves = PlayerFavorites.new(player):get_favorites()
+    local drag_index = Cache.get_player_data(player).drag_favorite_index or -1
     local fav_btns = build_favorite_buttons_row(slots_flow, player, pfaves, drag_index)
     _G.print("[TF DEBUG] Built new fave_bar_slots_flow row.")
     return fav_btns

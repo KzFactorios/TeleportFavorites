@@ -94,7 +94,6 @@ This document describes the base pattern classes and key domain classes created 
   - `add_favorite(gps)`, `remove_favorite(gps)`: Add/remove favorites.
   - `swap_slots(idx1, idx2)`, `move_favorite(from_idx, to_idx)`: Slot manipulation.
   - `cascade_up(from_idx)`, `cascade_down(from_idx)`: Shift slots up/down, respecting locked slots.
-  - `get_all_gps()`: Get all favorite GPS strings.
 
 ### Lookups (core/cache/lookups.lua)
 - **Purpose:** Handles the non-persistent in-game data cache for runtime lookups (e.g., chart_tag_cache).

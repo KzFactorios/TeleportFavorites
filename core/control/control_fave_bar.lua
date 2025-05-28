@@ -156,13 +156,24 @@ local function handle_favorite_slot_click(event, player, favorites)
   end
   if handle_teleport(event, player, fav, slot, did_drag) then return end
   handle_tag_editor(event, player, fav, slot)
+  -- Always update the slot row after any favorite action to ensure button is visible
+  local parent = player.gui.top
+  local bar_frame = parent and parent.fave_bar_frame
+  local bar_flow = bar_frame and bar_frame.fave_bar_flow
+  if bar_flow then
+    fave_bar.update_slot_row(player, bar_flow)
+  else
+    -- If bar_flow is missing, rebuild the entire favorites bar
+    if parent then
+      fave_bar.build(player, parent)
+    end
+  end
 end
 
 local function handle_visible_fave_btns_toggle_click(player)
   local pdata = Cache.get_player_data(player)
   local show = not pdata.toggle_fav_bar_buttons
   pdata.toggle_fav_bar_buttons = show
-  --Cache.update_player_data(player, pdata)
 
   -- Immediately update the GUI visibility
   local parent = player.gui.top
@@ -172,6 +183,12 @@ local function handle_visible_fave_btns_toggle_click(player)
     for _, child in pairs(bar_flow.children) do
       if child.name == "fave_bar_slots_flow" then
         child.visible = show
+        -- Also ensure all children (the slot buttons) are visible when the flow is visible
+        if show then
+          for _, btn in pairs(child.children) do
+            btn.visible = true
+          end
+        end
       end
     end
   end

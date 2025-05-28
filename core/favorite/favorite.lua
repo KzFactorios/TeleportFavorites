@@ -55,9 +55,9 @@ Favorite.__index = Favorite
 function Favorite.new(self, gps, locked, tag)
   -- Support both Favorite.new(...) and Favorite:new(...)
   if self ~= Favorite then
+    gps = gps
     tag = tag
     locked = locked
-    gps = gps
     self = Favorite
   end
   local obj = setmetatable({}, self)

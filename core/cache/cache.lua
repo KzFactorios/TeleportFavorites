@@ -72,10 +72,7 @@ Cache.lookups = Cache.lookups or Lookups.init()
 
 --- Initialize the persistent cache table if not already present.
 function Cache.init()
-  storage = storage or {
-    players = {},
-    surfaces = {}
-  }
+  storage = storage or {}
   storage.cache = storage.cache or {
     players = {},
     surfaces = {}
@@ -127,18 +124,23 @@ end
 ---@param player LuaPlayer
 ---@return table Player data table (persistent)
 local function init_player_data(player)
-  Cache.init()
-  local pdata = storage.players[player.index] or {}
+    Cache.init()  
+
+  storage.cache.players[player.index] = storage[player.index] or {}
+  local pdata = storage.cache.players[player.index]
   if pdata.toggle_fav_bar_buttons == nil then
     pdata.toggle_fav_bar_buttons = true
   end
   pdata.render_mode = pdata.render_mode or (player and player.render_mode)
+  pdata.tag_editor_data = {}
+  pdata.drag_favorite_index = pdata.drag_favorite_index or -1
 
   pdata.surfaces = pdata.surfaces or {}
   pdata.surfaces[player.surface.index] = pdata.surfaces[player.surface.index] or { favorites = {} }
+
   favorites_helpers.init_player_favorites(pdata.surfaces[player.surface.index])
 
-  return storage.players[player.index]
+  return storage.cache.players[player.index]
 end
 
 --- Get persistent player data for a given player.
@@ -153,9 +155,9 @@ end
 ---@return table Surface data table (persistent)
 local function init_surface_data(surface_index)
   Cache.init()
-  storage.surfaces = storage.surfaces or {}
-  storage.surfaces[surface_index] = storage.surfaces[surface_index] or {}
-  local surface_data = storage.surfaces[surface_index]
+  storage.cache.surfaces = storage.cache.surfaces or {}
+  storage.cache.surfaces[surface_index] = storage.cache.surfaces[surface_index] or {}
+  local surface_data = storage.cache.surfaces[surface_index]
   surface_data.tags = surface_data.tags or {}
   return surface_data
 end

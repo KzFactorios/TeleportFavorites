@@ -10,7 +10,6 @@ Defines mod constants for TeleportFavorites.
 --- @field enums any
 local constants = {
   PREFIX = "tf_",
-  events = {},
   settings = {
     TELEPORT_RADIUS_DEFAULT = 8,
     TELEPORT_RADIUS_MIN = 1,
@@ -41,8 +40,8 @@ local constants = {
 function constants.get_blank_favorite()
   return {
     gps = "",
-    locked = false,
-    tag = nil
+    tag = nil,
+    locked = false
   }
 end
 

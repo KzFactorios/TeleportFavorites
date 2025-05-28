@@ -11,8 +11,7 @@ PlayerFavorites class: manages a collection of favorites for a specific player.
 API:
 -----
 - PlayerFavorites.new(player)                -- Constructor for a player's favorites collection.
-- PlayerFavorites:get_all()                  -- Get the favorites array (1-based, no out-of-bounds).
-- PlayerFavorites:get_favorites()            -- Alias for get_all (test compatibility).
+- PlayerFavorites:get_favorites()            -- 
 - PlayerFavorites:get_favorite_by_gps(gps)   --
 - PlayerFavorites:add_favorite(gps|Favorite) -- Add a favorite to the first available slot.
 - PlayerFavorites:remove_favorite(gps)       -- Remove a favorite by GPS, blanking the slot.
@@ -76,18 +75,6 @@ function PlayerFavorites.new(player)
   return obj
 end
 
---- Get the favorites array for this player (1-based, no out-of-bounds)
----@return Favorite[]
-function PlayerFavorites:get_all()
-  local max = Constants.settings.MAX_FAVORITE_SLOTS
-  local filtered = {}
-  for i = 1, max do filtered[i] = self.favorites[i] end
-  return filtered
-end
-
---- Alias for test compatibility
-function PlayerFavorites:get_favorites() return self:get_all() end
-
 --- Get a favorite by GPS (O(1) lookup)
 ---@param gps string
 ---@return Favorite|nil
@@ -130,6 +117,12 @@ function PlayerFavorites:remove_favorite(gps)
       self.favorites[i] = setmetatable({ gps = Constants.get_blank_favorite().gps, locked = false, tag = nil }, Favorite)
     end
   end
+end
+
+---@return Favorite[]
+
+function PlayerFavorites:get_favorites()
+  return self.favorites
 end
 
 --- Batch update favorites (replace all at once, 1-based only)

@@ -4,7 +4,7 @@ Expected nil or blank favorite, got: {locked=false,gps="000.000.1",}
 
 Action:
 
-Ensure that PlayerFavorites:get_all()[slot] (or similar) returns nil for out-of-bounds indices (e.g., 0, -1, >MAX).
+Ensure that PlayerFavorites:get_all_favorites()[slot] (or similar) returns nil for out-of-bounds indices (e.g., 0, -1, >MAX).
 If your code always returns a favorite object (even for invalid slots), update the test to accept this as a blank favorite only if it matches your BLANK_GPS sentinel.
 Update the is_blank_favorite helper to match your actual blank favorite structure, or update the code to return nil for invalid slots.
 2. Handles Duplicate GPS and Tag Entries
@@ -33,7 +33,7 @@ Action:
 
 Check the test and mocks: ensure the object being called has a get_favorites method.
 If using a mock, update it to include a stub for get_favorites.
-If the method was renamed (e.g., to get_all), update the test to use the correct method name.
+If the method was renamed (e.g., to get_favorites), update the test to use the correct method name.
 Summary Table
 Issue	Fix in Code	Fix in Test	Fix in Mock
 Off-by-one slot	Return nil or blank favorite for invalid slot	Accept only nil/BLANK_GPS as blank	N/A
