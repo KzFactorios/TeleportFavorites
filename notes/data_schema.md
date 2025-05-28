@@ -15,6 +15,7 @@ Defines the persistent data structures for the mod, including player favorites, 
       toggle_fave_bar_buttons = boolean,
       render_mode = string,
       tag_editor_data = {},
+      drag_favorite_index = number, --default -1
       surfaces = {
         [surface_index] = {
           favorites = {

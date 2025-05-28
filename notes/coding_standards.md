@@ -89,7 +89,7 @@ This policy applies to all Lua modules in the codebase.
 ## Testing
 - All core logic and helpers must be covered by automated tests. Use the `tests/` directory for all test files. Each core module and helper should have a corresponding test file, and all tests should be automated and cover edge cases and multiplayer scenarios.
 - Edge cases should be examined in all tests where applicable. Multiplayer scenarios must be tested to ensure correctness and robustness.
-- File names in `tests/` should mirror the modules they represent. This makes it easy to find and run tests for any given module.
+- File names in `tests/` should mirror the modules they represent and all test files should end with "_spec". This makes it easy to find and run tests for any given module.
 - If I delete all the files in the tests folder, do not recreate any tests unless I explicitly ask
 
 ---

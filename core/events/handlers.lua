@@ -59,7 +59,7 @@ function handlers.on_player_created(event)
     local parent = player.gui.top
     fave_bar.build(player, parent)
   end
-end
+  end
 
 function handlers.on_player_changed_surface(event)
   local player = game.get_player(event.player_index)

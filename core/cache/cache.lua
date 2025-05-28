@@ -72,11 +72,11 @@ Cache.lookups = Cache.lookups or Lookups.init()
 
 --- Initialize the persistent cache table if not already present.
 function Cache.init()
-  storage = storage or {}
-  storage.cache = storage.cache or {
-    players = {},
-    surfaces = {}
-  }
+  if not storage or (storage and next(storage) == nil) then
+    storage.players = {}
+    storage.surfaces = {}
+  end
+  return storage
 end
 
 --- Retrieve a value from the persistent cache by key.
@@ -85,7 +85,7 @@ end
 function Cache.get(key)
   if not key or key == "" then return nil end
   Cache.init()
-  return storage.cache[key]
+  return storage[key]
 end
 
 --- Set a value in the persistent cache by key.
@@ -95,19 +95,23 @@ end
 function Cache.set(key, value)
   if not key or key == "" then return nil end
   Cache.init(); storage.cache[key] = value
-  return storage.cache[key]
+  return storage[key]
 end
 
 --- Remove a value from the persistent cache by key.
 ---@param key string
 function Cache.remove(key)
   if not key or key == "" then return end
-  Cache.init(); storage.cache[key] = nil
+  Cache.init(); storage[key] = nil
 end
 
 --- Clear the entire persistent cache.
 function Cache.clear()
-  Cache.init(); storage.cache = {}
+  Cache.init()
+  storage = {
+    players = {},
+    surfaces = {}
+  }
   if package.loaded["core.cache.lookups"] then
     package.loaded["core.cache.lookups"].clear_chart_tag_cache()
   end
@@ -124,10 +128,10 @@ end
 ---@param player LuaPlayer
 ---@return table Player data table (persistent)
 local function init_player_data(player)
-    Cache.init()  
+  Cache.init()
 
-  storage.cache.players[player.index] = storage[player.index] or {}
-  local pdata = storage.cache.players[player.index]
+  storage.players[player.index] = storage[player.index] or {}
+  local pdata = storage.players[player.index]
   if pdata.toggle_fav_bar_buttons == nil then
     pdata.toggle_fav_bar_buttons = true
   end
@@ -140,7 +144,7 @@ local function init_player_data(player)
 
   favorites_helpers.init_player_favorites(pdata.surfaces[player.surface.index])
 
-  return storage.cache.players[player.index]
+  return storage.players[player.index]
 end
 
 --- Get persistent player data for a given player.
@@ -155,9 +159,9 @@ end
 ---@return table Surface data table (persistent)
 local function init_surface_data(surface_index)
   Cache.init()
-  storage.cache.surfaces = storage.cache.surfaces or {}
-  storage.cache.surfaces[surface_index] = storage.cache.surfaces[surface_index] or {}
-  local surface_data = storage.cache.surfaces[surface_index]
+  storage.surfaces = storage.surfaces or {}
+  storage.surfaces[surface_index] = storage.surfaces[surface_index] or {}
+  local surface_data = storage.surfaces[surface_index]
   surface_data.tags = surface_data.tags or {}
   return surface_data
 end
@@ -199,7 +203,7 @@ function Cache.get_tag_by_gps(gps)
   -- find_by_predicate: returns a table of matches, or empty table
   local function find_by_predicate(tbl, pred)
     for k, v in pairs(tbl) do
-      if pred(v, k) then return {v} end
+      if pred(v, k) then return { v } end
     end
     return {}
   end
