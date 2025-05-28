@@ -41,18 +41,23 @@ This policy applies to all Lua modules in the codebase.
 ## Require Statement Best Practices
 - Always place all require statements at the very top of each file, before any logic or function definitions.
 - Never place require statements inside functions, methods, or event handlers. This is critical for Factorio modding and avoids runtime errors and performance issues.
-- When requiring multiple helpers from the same module (e.g., `core.utils.helpers_suite`), require the module once as a table and destructure the needed helpers into local variables. Example:
-
-```lua
-local helpers = require("core.utils.helpers_suite")
-local safe_destroy_frame = helpers.safe_destroy_frame
-local player_print = helpers.player_print
-```
 
 - Always use absolute paths in require statements, starting from the mod root.
 - Order require statements alphabetically for consistency and auditability.
 - If a module is used in multiple places, require it once at the top and reuse the local variable throughout the file.
 - This pattern must be followed in all files, including GUI, control, and core logic modules.
+
+---
+
+## Module Requires: Placement and Circular Dependency Policy
+
+- **All `require` statements must appear at the top of each Lua file, after the file header and before any function or class definitions.**
+- **It is strictly prohibited to place `require` statements at the end of a file or after function definitions in an attempt to break circular dependencies.**
+    - This practice ("require-at-end") does not work reliably in Lua and can cause subtle bugs, including stack overflows ("too many C levels") and incomplete module initialization.
+    - All dependencies must be managed robustly by refactoring code, splitting helpers into minimal, dependency-free modules, or rethinking module structure.
+- If a circular dependency is detected, refactor the codebase to break the cycle. Do not attempt to "game" the Lua parser or module system.
+- Shared helpers/utilities must be placed in minimal, dependency-free modules (see `core/utils/basic_helpers.lua` as an example).
+- All code reviews must check for and reject any require-at-end or require-in-function patterns.
 
 ---
 
@@ -129,3 +134,40 @@ _Last updated: 2025-05-27_
 - `architecture.md` – Detailed architecture and module relationships.
 - `data_schema.md` – Persistent data schema and structure.
 - `factorio_specs.md` – Notes regarding how factorio modding works
+
+---
+
+# Coding Standards for TeleportFavorites Mod
+
+## General Principles
+- All code must be dependency-safe: modules must not create circular dependencies via `require`.
+- Shared utility functions must be placed in minimal, dependency-free modules (e.g., `core/utils/basic_helpers.lua`).
+- Do **not** use `require` at the end of a file as a workaround for circular dependencies. This is not a valid solution and can cause unpredictable behavior, stack overflows, or partial module loading. All `require` statements must be at the top of the file.
+- If a circular dependency is detected, refactor the code to move shared logic into a minimal helper module, or redesign the module boundaries.
+- Never rely on Lua's module caching or load order to resolve dependency issues.
+
+## Module Structure
+- Each module should declare all its dependencies at the top.
+- Helper modules must not depend on higher-level modules.
+- If a helper is needed in multiple places, move it to a lower-level, dependency-free module.
+
+## Example (What **not** to do):
+```lua
+-- BAD: This is forbidden!
+-- ...module code...
+local GPS = require("core.gps.gps")
+```
+
+## Example (Correct):
+```lua
+local GPS = require("core.gps.gps")
+-- ...module code...
+```
+
+## Refactoring Circular Dependencies
+- If you encounter a circular dependency, break the cycle by moving shared code to a new minimal helper module.
+- Never "game" the Lua parser by moving `require` to the end of a file.
+
+---
+
+**Violations of these standards will be treated as critical bugs.**

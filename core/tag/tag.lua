@@ -121,8 +121,8 @@ function Tag:rehome_chart_tag(player, destination_gps)
   local all_fave_tags = {}
   local game_players = (_G.game and _G.game.players) or {}
   for _, other_player in pairs(game_players) do
-    local favorites = Cache.get_player_favorites(other_player)
-    for _, favorite in pairs(favorites) do
+    local pfaves = Cache.get_player_favorites(other_player)
+    for _, favorite in pairs(pfaves) do
       if favorite.gps == current_gps then table.insert(all_fave_tags, favorite) end
     end
   end

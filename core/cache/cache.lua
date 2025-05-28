@@ -57,22 +57,9 @@ storage = {
 
 local mod_version = require("core.utils.version")
 local Lookups = require("core.cache.lookups")
+local basic_helpers = require("core.utils.basic_helpers")
+local favorites_helpers = require("core.utils.favorites_helpers")
 local GPS = require("core.gps.gps")
-local helpers = require("core.utils.helpers_suite")
-
--- Helper to require PlayerFavorites only when needed
-local function get_player_favorites()
-  return require("core.favorite.player_favorites")
-end
-
----@diagnostic disable: undefined-global
-
--- Helper to safely convert to a positive integer index
-local function safe_index(idx)
-  idx = tonumber(idx)
-  if not idx or idx < 1 then return 0 end
-  return math.floor(idx)
-end
 
 --- Persistent and runtime cache management for TeleportFavorites mod.
 ---@class Cache
@@ -85,8 +72,14 @@ Cache.lookups = Cache.lookups or Lookups.init()
 
 --- Initialize the persistent cache table if not already present.
 function Cache.init()
-  storage = storage or {}
-  storage.cache = storage.cache or {}
+  storage = storage or {
+    players = {},
+    surfaces = {}
+  }
+  storage.cache = storage.cache or {
+    players = {},
+    surfaces = {}
+  }
 end
 
 --- Retrieve a value from the persistent cache by key.
@@ -135,28 +128,17 @@ end
 ---@return table Player data table (persistent)
 local function init_player_data(player)
   Cache.init()
-  storage.players = storage.players or {}
-  local pidx = tonumber(helpers.normalize_player_index(player)) or 0
-
-
-  if type(pidx) ~= "number" or pidx < 1 then return {} end
-  --if not storage.players[pidx] then
-    --storage.players[pidx] = {}
-  --end
-  local pdata = storage.players[pidx] or {}
+  local pdata = storage.players[player.index] or {}
   if pdata.toggle_fav_bar_buttons == nil then
     pdata.toggle_fav_bar_buttons = true
   end
-  --pdata.toggle_fav_bar_buttons = pdata.toggle_fav_bar_buttons or true
   pdata.render_mode = pdata.render_mode or (player and player.render_mode)
-  pdata.surfaces = pdata.surfaces or {}
 
-  local sidx = tonumber(helpers.normalize_surface_index(player and player.surface)) or 1
-  if type(sidx) ~= "number" or sidx < 1 then sidx = 1 end
-  pdata.surfaces[sidx] = pdata.surfaces[sidx] or { favorites = {} }
-  storage.players[pidx] = pdata
-  
-  return pdata
+  pdata.surfaces = pdata.surfaces or {}
+  pdata.surfaces[player.surface.index] = pdata.surfaces[player.surface.index] or { favorites = {} }
+  favorites_helpers.init_player_favorites(pdata.surfaces[player.surface.index])
+
+  return storage.players[player.index]
 end
 
 --- Get persistent player data for a given player.
@@ -170,13 +152,10 @@ end
 ---@param surface_index uint
 ---@return table Surface data table (persistent)
 local function init_surface_data(surface_index)
-  if not storage then return {} end
-  if not storage.cache then Cache.init() end
+  Cache.init()
   storage.surfaces = storage.surfaces or {}
-  local idx = tonumber(surface_index) or 1
-  if type(idx) ~= "number" or idx < 1 then idx = 1 end
-  storage.surfaces[idx] = storage.surfaces[idx] or {}
-  local surface_data = storage.surfaces[idx]
+  storage.surfaces[surface_index] = storage.surfaces[surface_index] or {}
+  local surface_data = storage.surfaces[surface_index]
   surface_data.tags = surface_data.tags or {}
   return surface_data
 end
@@ -202,7 +181,7 @@ function Cache.remove_stored_tag(gps)
   if not gps or type(gps) ~= "string" then return end
   local surface_index = GPS.get_surface_index(gps)
   if not surface_index then return end
-  local idx = helpers.normalize_surface_index(surface_index)
+  local idx = basic_helpers.normalize_surface_index(surface_index)
   if idx == 0 then return end
   local surface_data = init_surface_data(idx)
   if not surface_data or not surface_data.tags then return end
@@ -210,16 +189,23 @@ function Cache.remove_stored_tag(gps)
 end
 
 --- @param gps string
---- @return Tag?
+--- @return Tag|nil
 function Cache.get_tag_by_gps(gps)
   if not gps or type(gps) ~= "string" or gps == "" then return nil end
-  local surface_index = GPS.get_surface_index(gps)
-  if type(surface_index) ~= "number" or surface_index < 1 then
-    surface_index = 1 --[[@as uint]] -- ensure this is always a positive unsigned integer (uint)
-  end
+  local surface_index = GPS.get_surface_index(gps) or 1
   local tag_cache = Cache.get_surface_tags(surface_index)
-  local found = helpers.find_by_predicate(tag_cache, function(v) return v.gps == gps end) or {}
-  if helpers.table_count(found) > 0 then
+  -- find_by_predicate: returns a table of matches, or empty table
+  local function find_by_predicate(tbl, pred)
+    for k, v in pairs(tbl) do
+      if pred(v, k) then return {v} end
+    end
+    return {}
+  end
+  local function table_count(tbl)
+    local c = 0; for _ in pairs(tbl) do c = c + 1 end; return c
+  end
+  local found = find_by_predicate(tag_cache, function(v) return v.gps == gps end) or {}
+  if table_count(found) > 0 then
     return found[1]
   end
   return nil
@@ -227,15 +213,11 @@ end
 
 --- Get the favorites array for a player (persistent, surface-aware)
 ---@param player LuaPlayer
----@param surface LuaSurface|nil
 ---@return Favorite[]
-function Cache.get_player_favorites(player, surface)
+function Cache.get_player_favorites(player)
   local pdata = Cache.get_player_data(player) or {}
-  local sidx = surface and surface.index or player.surface.index
-  if pdata.surfaces and pdata.surfaces[sidx] and pdata.surfaces[sidx].favorites then
-    return pdata.surfaces[sidx].favorites
-  end
-  return {}
+  local sidx = player.surface.index
+  return pdata.surfaces and pdata.surfaces[sidx] and pdata.surfaces[sidx].favorites or {}
 end
 
 --- Get the tag editor data for a player (persistent, per-player)
@@ -252,38 +234,6 @@ end
 function Cache.set_tag_editor_data(player, data)
   local pdata = Cache.get_player_data(player)
   pdata.tag_editor_data = data
-end
-
---- Set the persistent toggle state for the favorites bar buttons for a player.
----@param player LuaPlayer
----@param pdata table
-function Cache.update_player_data(player, pdata)
-  --local player_data = Cache.get_player_data(player)
-  --player_data = pdata
-
-  --[[if not storage then return end
-  storage.players = storage.players or {}
-  local pidx = tonumber(helpers.normalize_player_index(player)) or 0
-  if type(pidx) ~= "number" or pidx < 1 then return end
-  local player_data = storage.players[pidx] or {}
-  player_data.toggle_fav_bar_buttons = pdata.toggle_fav_bar_buttons
-  storage.players[pidx] = player_data]]
-end
-
---- Normalize a player index to integer
----@param player LuaPlayer|number|string
----@return integer
-local function normalize_player_index(player)
-  if type(player) == "table" and player.index then return player.index end
-  return math.floor(tonumber(player) or 0)
-end
-
---- Normalize a surface index to integer
----@param surface LuaSurface|number|string
----@return integer
-local function normalize_surface_index(surface)
-  if type(surface) == "table" and surface.index then return surface.index end
-  return math.floor(tonumber(surface) or 0)
 end
 
 return Cache

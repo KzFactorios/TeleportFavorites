@@ -39,7 +39,6 @@ global["Lookups"] = {
 }
 --]]
 
-local helpers = require("core.utils.helpers_suite")
 local gps_helpers = require("core.utils.gps_helpers")
 
 ---@diagnostic disable: undefined-global

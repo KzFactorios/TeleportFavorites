@@ -62,7 +62,7 @@ end
 local function build_favorite_buttons_row(slots_flow, player, pfaves, drag_index)
     -- slots_flow is now passed in, not created here
     for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
-        local fav = type(pfaves[i]) == "table" and pfaves[i] or Favorite.get_blank_favorite()
+        local fav = type(pfaves[i]) == "table" and pfaves[i] or Constants.get_blank_favorite()
         local is_blank = Favorite.is_blank_favorite(fav)
         local is_locked = fav.locked or false
         local icon = (not is_blank and fav.tag and fav.tag.icon ~= "") and fav.tag.icon or nil

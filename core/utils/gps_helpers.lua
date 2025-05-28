@@ -10,7 +10,7 @@ Helpers for parsing, normalizing, and converting GPS strings and map positions.
 - Used throughout the mod for tag, favorite, and teleportation logic
 ]]
 
-local helpers = require("core.utils.helpers_suite")
+local basic_helpers = require("core.utils.basic_helpers")
 local Constants = require("constants")
 local padlen, BLANK_GPS = Constants.settings.GPS_PAD_NUMBER, Constants.settings.BLANK_GPS
 
@@ -28,7 +28,7 @@ end
 ---@param surface_index uint
 ---@return string
 local function gps_from_map_position(map_position, surface_index)
-  return helpers.pad(map_position.x, padlen).."."..helpers.pad(map_position.y, padlen).."."..tostring(surface_index)
+  return basic_helpers.pad(map_position.x, padlen).."."..basic_helpers.pad(map_position.y, padlen).."."..tostring(surface_index)
 end
 
 --- Convert GPS string to MapPosition {x, y} (surface not included)

@@ -26,7 +26,7 @@ Notes:
 
 local Constants = require("constants")
 local Settings = require("settings")
-local helpers = require("core.utils.helpers_suite")
+local basic_helpers = require("core.utils.basic_helpers")
 local gps_helpers = require("core.utils.gps_helpers")
 
 local GPS = {}
@@ -41,7 +41,7 @@ GPS.normalize_landing_position = gps_helpers.normalize_landing_position
 --- Returns the x,y as a string xxx.yyy, ignores the surface component
 function GPS.coords_string_from_gps(gps)
   local parsed = gps_helpers.parse_gps_string(gps)
-  return parsed and (helpers.pad(parsed.x, padlen) .. "." .. helpers.pad(parsed.y, padlen)) or nil
+  return parsed and (basic_helpers.pad(parsed.x, padlen) .. "." .. basic_helpers.pad(parsed.y, padlen)) or nil
 end
 
 --- Converts our gps string (xxx.yyy.s) to Factorio's [gps=x,y,s] rich text tag
@@ -58,7 +58,7 @@ end
 function GPS.gps_from_gps_tag(gps_tag)
   if type(gps_tag) ~= "string" then return nil end
   local x, y, s = gps_tag:match("%[gps=(%-?%d+),(%-?%d+),(%-?%d+)%]")
-  return (x and y and s) and (helpers.pad(tonumber(x), padlen) .. "." .. helpers.pad(tonumber(y), padlen) .. "." .. tostring(tonumber(s))) or nil
+  return (x and y and s) and (basic_helpers.pad(tonumber(x), padlen) .. "." .. basic_helpers.pad(tonumber(y), padlen) .. "." .. tostring(tonumber(s))) or nil
 end
 
 return GPS

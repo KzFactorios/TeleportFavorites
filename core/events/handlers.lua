@@ -190,7 +190,8 @@ end
 
 local function update_favorites_gps(old_gps, new_gps)
   for _, p in pairs(game.players) do
-    for _, fav in ipairs(Cache.get_player_favorites(p)) do
+    local pfaves = Cache.get_player_favorites(p)
+    for _, fav in ipairs(pfaves) do
       if fav.gps == old_gps then fav.gps = new_gps end
     end
   end

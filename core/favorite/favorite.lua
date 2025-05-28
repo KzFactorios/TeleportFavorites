@@ -18,7 +18,6 @@ API:
 - Favorite:toggle_locked()               -- Toggle the locked state.
 - Favorite.copy(fav)                     -- Deep copy a Favorite.
 - Favorite.equals(a, b)                  -- Equality check for two Favorites.
-- Favorite.get_blank_favorite()          -- Returns a blank favorite (sentinel for unused slot).
 - Favorite.is_blank_favorite(fav)        -- Checks if a favorite is blank (unused slot).
 - Favorite:valid()                       -- Returns true if this favorite is valid (not blank).
 - Favorite:formatted_tooltip()           -- Returns a formatted tooltip string for UI.
@@ -29,9 +28,17 @@ Notes:
 - See README and gps_helpers.lua for details and valid examples.
 ]]
 
-local helpers = require("core.utils.helpers_suite")
 local gps_helpers = require("core.utils.gps_helpers")
 local parse_and_normalize_gps = gps_helpers.parse_and_normalize_gps
+
+local function deep_copy(orig)
+  if type(orig) ~= 'table' then return orig end
+  local copy = {}
+  for k, v in pairs(orig) do
+    copy[k] = type(v) == 'table' and deep_copy(v) or v
+  end
+  return copy
+end
 
 ---@class Favorite
 ---@field gps string The GPS string identifying the location (must always be a string in the format 'xxx.yyy.s', see GPS String Format section)
@@ -48,9 +55,9 @@ Favorite.__index = Favorite
 function Favorite.new(self, gps, locked, tag)
   -- Support both Favorite.new(...) and Favorite:new(...)
   if self ~= Favorite then
-    tag = locked
-    locked = gps
-    gps = self
+    tag = tag
+    locked = locked
+    gps = gps
     self = Favorite
   end
   local obj = setmetatable({}, self)
@@ -79,7 +86,7 @@ end
 
 function Favorite.copy(fav)
   if type(fav) ~= "table" then return nil end
-  local copy = Favorite:new(fav.gps, fav.locked, fav.tag and helpers.deep_copy(fav.tag) or nil)
+  local copy = Favorite:new(fav.gps, fav.locked, fav.tag and deep_copy(fav.tag) or nil)
   for k, v in pairs(fav) do
     if copy[k] == nil then copy[k] = v end
   end

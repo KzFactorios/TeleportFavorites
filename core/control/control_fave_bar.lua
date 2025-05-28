@@ -179,7 +179,6 @@ end
 
 --- Handle favorites bar GUI click events
 local function on_fave_bar_gui_click(event)
-  --print("[TF DEBUG] on_gui_click: " .. tostring(event.element and event.element.name) .. ", button=" .. tostring(event.button) .. ", control=" .. tostring(event.control))
   local element = event.element
   if not element or not element.valid then return end
 
@@ -188,7 +187,6 @@ local function on_fave_bar_gui_click(event)
 
   if element.name:find("^fave_bar_slot_") then
     local favorites = PlayerFavorites.new(player)
-    --  print("[TF DEBUG] fave_bar_slot click: name=" .. tostring(element.name) .. ", button=" .. tostring(event.button) .. ", control=" .. tostring(event.control))
     handle_favorite_slot_click(event, player, favorites)
     return
   end

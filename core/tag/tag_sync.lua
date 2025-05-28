@@ -12,19 +12,13 @@ local PlayerFavorites = require("core.favorite.player_favorites")
 local Favorite = require("core.favorite.favorite")
 local Cache = require("core.cache.cache")
 
----Get a player's favorites for their current surface.
----@param player LuaPlayer
----@return table
-local function get_player_favorites(player)
-  return Cache.get_player_favorites(player, player.surface)
-end
-
 ---Update all players' favorites, replacing old_gps with new_gps.
 ---@param old_gps string
 ---@param new_gps string
 local function update_player_favorites_gps(old_gps, new_gps)
   for _, player in pairs(game.players) do
-    for _, fave in pairs(get_player_favorites(player)) do
+    local pfaves = Cache.get_player_favorites(player)
+    for _, fave in pairs(pfaves) do
       if fave.gps == old_gps then fave.gps = new_gps end
     end
   end
@@ -70,19 +64,14 @@ end
 ---@param tag Tag
 local function remove_all_player_favorites_by_tag(tag)
   for _, player in pairs(game.players) do
-    for _, fave in pairs(get_player_favorites(player)) do
+    local pfaves = Cache.get_player_favorites(player)
+    for _, fave in pairs(pfaves) do
       if fave.gps == tag.gps then
         fave.gps, fave.locked = "", false
         Tag:remove_faved_by_player(player.index)
       end
     end
   end
-end
-
----Remove the chart tag associated with a tag.
----@param tag Tag
-local function remove_chart_tag_by_tag(tag)
-  if tag.chart_tag and tag.chart_tag.valid then tag.chart_tag.destroy() end
 end
 
 ---Remove a tag from storage by GPS.

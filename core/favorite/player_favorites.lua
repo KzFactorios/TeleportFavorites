@@ -13,7 +13,7 @@ API:
 - PlayerFavorites.new(player)                -- Constructor for a player's favorites collection.
 - PlayerFavorites:get_all()                  -- Get the favorites array (1-based, no out-of-bounds).
 - PlayerFavorites:get_favorites()            -- Alias for get_all (test compatibility).
-- PlayerFavorites:get_favorite_by_gps(gps)   -- O(1) lookup of a favorite by GPS string.
+- PlayerFavorites:get_favorite_by_gps(gps)   --
 - PlayerFavorites:add_favorite(gps|Favorite) -- Add a favorite to the first available slot.
 - PlayerFavorites:remove_favorite(gps)       -- Remove a favorite by GPS, blanking the slot.
 - PlayerFavorites:set_favorites(new_faves)   -- Batch update all favorites at once.
@@ -23,7 +23,6 @@ Notes:
 ------
 - All slot management is 1-based and respects MAX_FAVORITE_SLOTS from Constants.
 - Blank slots are always filled with Favorite.get_blank_favorite().
-- O(1) lookup is maintained via favorites_by_gps table.
 - All persistent data is surface-aware and managed via Cache.
 --]]
 
@@ -38,6 +37,7 @@ local Constants = require("constants")
 local Favorite = require("core.favorite.favorite")
 local helpers = require("core.utils.helpers_suite")
 local Cache = require("core.cache.cache")
+local favorites_helpers = require("core.utils.favorites_helpers")
 
 ---
 --- PlayerFavorites class with encapsulated access, O(1) lookup, and strict typing
@@ -46,7 +46,6 @@ local Cache = require("core.cache.cache")
 --- @field player_index uint
 --- @field surface_index uint
 --- @field favorites Favorite[]
---- @field favorites_by_gps table<string, Favorite>
 local PlayerFavorites = {}
 PlayerFavorites.__index = PlayerFavorites
 
@@ -72,25 +71,8 @@ function PlayerFavorites.new(player)
   obj.player = player
   obj.player_index = player.index
   obj.surface_index = player.surface.index
-  obj.favorites = {}
-  obj.favorites_by_gps = {}
-  -- Use Cache to get persistent favorites
-  local pfaves = Cache.get_player_favorites(player) or {}
-  for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
-    if not pfaves[i] or type(pfaves[i]) ~= "table" then
-      ---@diagnostic disable-next-line: assign-type-mismatch
-      pfaves[i] = Favorite.get_blank_favorite()
-    end
-    local fav = pfaves[i]
-    if fav then
-      fav.gps = fav.gps or ""
-      fav.locked = fav.locked or false
-      if fav.gps ~= "" then
-        obj.favorites_by_gps[fav.gps] = fav
-      end
-    end
-  end
-  obj.favorites = pfaves
+  -- Use favorites_helpers to get persistent favorites, always filled and normalized
+  obj.favorites = favorites_helpers.init_player_favorites({}) or {}
   return obj
 end
 
@@ -109,7 +91,9 @@ function PlayerFavorites:get_favorites() return self:get_all() end
 --- Get a favorite by GPS (O(1) lookup)
 ---@param gps string
 ---@return Favorite|nil
-function PlayerFavorites:get_favorite_by_gps(gps) return self.favorites_by_gps[gps] end
+function PlayerFavorites:get_favorite_by_gps(gps)
+  return helpers.find_by_predicate(self.favorites, function(v) return v.gps == gps end) or nil
+end
 
 --- Add a favorite GPS to the first available slot, allowing duplicates if intended, and preventing blank
 ---@param gps string|Favorite
@@ -119,7 +103,8 @@ function PlayerFavorites:add_favorite(gps)
   if Favorite.is_blank_favorite(fav_obj) then return false end
   for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
     if Favorite.is_blank_favorite(self.favorites[i]) then
-      self.favorites[i] = setmetatable({ gps = fav_obj.gps, locked = fav_obj.locked or false, tag = fav_obj.tag }, Favorite)
+      self.favorites[i] = setmetatable({ gps = fav_obj.gps, locked = fav_obj.locked or false, tag = fav_obj.tag },
+        Favorite)
       self.favorites_by_gps[fav_obj.gps] = self.favorites[i]
       return true
     end
@@ -134,7 +119,7 @@ function PlayerFavorites:remove_favorite(gps)
   for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
     local fav = self.favorites[i]
     if fav and fav.gps == gps then
-      self.favorites[i] = setmetatable({ gps = Favorite.get_blank_favorite().gps, locked = false, tag = nil }, Favorite)
+      self.favorites[i] = setmetatable({ gps = Constants.get_blank_favorite().gps, locked = false, tag = nil }, Favorite)
       self.favorites_by_gps[gps] = nil
       found = true
     end
@@ -142,7 +127,7 @@ function PlayerFavorites:remove_favorite(gps)
   -- If not found, ensure all blank slots are explicitly set to blank favorite
   if not found then
     for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
-      self.favorites[i] = setmetatable({ gps = Favorite.get_blank_favorite().gps, locked = false, tag = nil }, Favorite)
+      self.favorites[i] = setmetatable({ gps = Constants.get_blank_favorite().gps, locked = false, tag = nil }, Favorite)
     end
   end
 end
@@ -157,7 +142,7 @@ function PlayerFavorites:set_favorites(new_faves)
     if type(f) == "table" and not Favorite.is_blank_favorite(f) then
       filtered[i] = Favorite:new(f.gps, f.locked, f.tag)
     else
-      filtered[i] = Favorite.get_blank_favorite()
+      filtered[i] = Constants.get_blank_favorite()
     end
   end
   self.favorites = filtered

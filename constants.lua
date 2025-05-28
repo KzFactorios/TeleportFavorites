@@ -36,4 +36,14 @@ local constants = {
   }
 }
 
+--- Returns a blank favorite table for initialization.
+---@return table
+function constants.get_blank_favorite()
+  return {
+    gps = "",
+    locked = false,
+    tag = nil
+  }
+end
+
 return constants

@@ -53,7 +53,8 @@ function destroy_tag_and_chart_tag(tag, chart_tag)
   if tag then
     if game and type(game.players) == "table" then
       for _, player in pairs(game.players) do
-        for _, fave in pairs(Cache.get_player_favorites(player)) do
+        local pfaves = Cache.get_player_favorites(player)
+        for _, fave in pairs(pfaves) do
           if fave.gps == tag.gps then
             fave.gps = ""; fave.locked = false
             if tag.faved_by_players and type(tag.faved_by_players) == "table" then
