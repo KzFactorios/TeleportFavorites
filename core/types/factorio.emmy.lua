@@ -225,7 +225,32 @@
 ---@class LuaFurnace
 ---@class LuaGameScript
 ---@class LuaGenericOnOffControlBehavior
+
 ---@class LuaGui
+---Factorio player GUI root object. Provides access to the player's GUI roots and methods to manipulate GUI elements.
+---@field screen LuaGuiElement   # The root element for screen GUIs (modals, dialogs, etc.)
+---@field left LuaGuiElement     # The root element for the left side of the screen
+---@field center LuaGuiElement   # The root element for the center of the screen
+---@field top LuaGuiElement      # The root element for the top of the screen
+---@field mod LuaGuiElement      # The root element for mod GUIs (Factorio 2.0+)
+---@field relative LuaGuiElement # The root element for relative GUIs (Factorio 2.0+)
+---@field valid boolean          # Whether this LuaGui is valid
+---@field get_children fun(self: LuaGui): LuaGuiElement[] # Returns all root GUI elements
+---@field is_valid fun(self: LuaGui): boolean            # Returns whether the LuaGui is valid
+---@field clear fun(self: LuaGui)                        # Destroys all GUI elements created by mods
+---@field get_element fun(self: LuaGui, name: string): LuaGuiElement? # Gets a GUI element by name
+---@field add fun(self: LuaGui, spec: table): LuaGuiElement           # Adds a new GUI element to a root
+---@field remove fun(self: LuaGui, element: LuaGuiElement)            # Removes a GUI element
+---@field bring_to_front fun(self: LuaGui, element: LuaGuiElement)    # Brings a GUI element to the front
+---@field get_mod_settings fun(self: LuaGui): table                   # Gets mod settings for the GUI
+---@field get_style fun(self: LuaGui): LuaStyle                      # Gets the style for the GUI
+---@field get_or_create_child fun(self: LuaGui, name: string, spec: table): LuaGuiElement # Gets or creates a child element
+---@field get_child fun(self: LuaGui, name: string): LuaGuiElement?  # Gets a child element by name
+---@field get_location fun(self: LuaGui): MapPosition                # Gets the location of the GUI
+---@field set_location fun(self: LuaGui, location: MapPosition)      # Sets the location of the GUI
+---@field get_auto_center fun(self: LuaGui): boolean                 # Gets whether the GUI is auto-centered
+---@field set_auto_center fun(self: LuaGui, auto_center: boolean)    # Sets whether the GUI is auto-centered
+
 ---@class LuaGroup
 ---@class LuaHeatBufferPrototype
 ---@class LuaHeatEnergySourcePrototype
@@ -327,6 +352,7 @@
 ---@field ticks_to_respawn? uint
 ---@field vehicle? LuaEntity
 ---@field valid boolean
+---@field gui LuaGui
 ---@field walking_state {walking: boolean, direction: defines.direction}
 ---@field opened_self boolean
 ---@field opened_unit_number? uint
@@ -609,7 +635,8 @@
 ---@field get_saved_technology_progress fun(self: LuaForce, technology: string): double -- Gets saved tech progress.
 ---@field set_saved_technology_progress fun(self: LuaForce, technology: string, progress: double) -- Sets saved tech progress.
 ---@field print fun(self: LuaForce, message: LocalisedString) -- Prints a message to all players in the force.
----@field find_chart_tags fun(self: LuaForce, surface: LuaSurface, area?: BoundingBox): LuaCustomChartTag[]
+---@field find_chart_tags fun(surface: LuaSurface|string|uint, area?: BoundingBox): LuaCustomChartTag[]
+---@overload fun(self: LuaForce, surface: LuaSurface|string|uint, area?: BoundingBox): LuaCustomChartTag[]
 -- (Add more fields and methods as needed from the API)
 
 ---@class LuaGuiElement

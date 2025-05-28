@@ -36,7 +36,7 @@ Notes:
 
 local Constants = require("constants")
 local Favorite = require("core.favorite.favorite")
-local helpers = require("core.utils.Helpers")
+local helpers = require("core.utils.helpers_suite")
 local Cache = require("core.cache.cache")
 
 ---

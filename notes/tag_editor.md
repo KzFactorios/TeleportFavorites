@@ -8,7 +8,7 @@ The tag editor is a modal GUI for creating, editing, moving, and deleting map ta
 - **Modal Behavior:** Mouse clicks outside the tag editor's outer frame are ignored. ESC closes the GUI. The "e" key, when no fields are focused, confirms and saves/closes the dialog.
 - **Lifecycle:**
   - If the editor remains open after switching to game mode (not from the favorites bar), it self-closes after 30 ticks via on_tick. The on_tick event is unregistered on close.
-  - On open, set `player.open` to enable ESC to close the GUI.
+  - On open, set `player.opened` to enable ESC to close the GUI.
 - **Button Enablement:**
   - Only certain buttons are enabled depending on the player and tag state (see below).
   - The close button is always enabled and closes the dialog without saving.
@@ -94,7 +94,7 @@ Yes, allow whatever signals are available in the current game. If a mod change r
 ---
 ## Additional Open Questions / Considerations
 
-21. **Tag Deletion Confirmation:** Should there be an option to undo a tag deletion immediately after confirming, or is deletion always final? No there shouldn't be a need to confirm as hitting the delete button, which brings up a confirmation dialog, should handle this. if the deletion is confirmed then, if valid for deletion, the tag will be immediately deleted and the confirmation dialog and the tag editor should be closed. If the dlete confirmation is negative, than the confirmation should be closed and the tag_editor, already open with it's current data should be remained open. The confirmation dialog should also set player.open correctly
+21. **Tag Deletion Confirmation:** Should there be an option to undo a tag deletion immediately after confirming, or is deletion always final? No there shouldn't be a need to confirm as hitting the delete button, which brings up a confirmation dialog, should handle this. if the deletion is confirmed then, if valid for deletion, the tag will be immediately deleted and the confirmation dialog and the tag editor should be closed. If the dlete confirmation is negative, than the confirmation should be closed and the tag_editor, already open with it's current data should be remained open. The confirmation dialog should also set player.opened correctly
 22. **Favorite Button Disabled State:** Should the favorite button show a tooltip or message when disabled due to reaching the favorite slot limit? tooltip
 23. **Chart Tag/Tag Data Migration:** If the tag schema changes in a future version, how should migration of tag_editor_data and chart_tag data be handled? we are not concerning ourseleves with migrations just yet
 24. **Signal Selector Usability:** Should the signal selector for the icon button support search/filtering for large modded signal lists? absolutely
@@ -104,6 +104,41 @@ Yes, allow whatever signals are available in the current game. If a mod change r
 28. **Input Method Support:** Is the tag editor usable with gamepads or other non-mouse input devices? I am not sure and this will have to be tested separately at another time. Follow best practices and know fixes and idiomatic methods to resolve this. Let me know when I am creating conflicts to that goal
 29. **Tag Editor Analytics:** Should usage of the tag editor (opens, edits, deletes) be tracked for analytics or debugging? Not at this time
 30. **Error Recovery:** If a runtime error occurs while the tag editor is open, is there a recovery or auto-close strategy to prevent UI lockup? No, but we should emplore a way to handle
+
+---
+
+# Tag Editor GUI Hierarchy
+
+```
+tag_editor_frame (frame)
+└─ tag_editor_inner_flow (flow, vertical)
+    └─ tag_editor_titlebar_flow (flow, horizontal)
+      ├─ tag_editor_titlebar_label (label) localised text = "Tag Editor"
+      ├─ tag_editor_titlebar_filler (empty-widget) - drag-handle, draggable = true
+      └─ tag_editor_titlebar_close_btn (sprite-button) "X"
+    └─ tag_editor_content_flow (flow, vertical)
+      └─ tag_editor_last_user_row (flow, horizontal) - dark background
+          └─ tag_editor_last_user_label (label)
+      └─ tag_editor_teleport_row (flow, horizontal)
+          ├─ tag_editor_teleport_label (label - localised text = "Teleport to")
+          └─ tag_editor_teleport_to_btn (btn)
+      └─ tag_editor_favorite_row (flow, horizontal)
+          ├─ tag_editor_favorite_label (label - localised text = "Favorite")
+          └─ tag_editor_favorite_btn (choose-elem-btn) - default blank, shows green checkmark for true, toggle
+      └─ tag_editor_icon_row (flow, horizontal)
+          ├─ tag_editor_icon_label (label - localised text = "Icon")
+          └─ tag_editor_icon_btn (choose-elem-btn) - signalid
+      └─ tag_editor_text_row (flow, horizontal)
+          ├─ tag_editor_text_label (label - localised text = "Text")
+          └─ tag_editor_input_text (textfield)
+    └─ tag_editor_lower_actions_flow (flow, horizontal)
+      ├─ tag_editor_cancel_btn (sprite-button) localised text = "Cancel"
+      └─ tag_editor_confirm_btn (sprite-button) localised text = "Confirm"
+
+```
+- All element names use (for the most part) the `{gui_context}_{purpose}_{type}` convention.
+- The content and controls may vary depending on the tag being edited.
+
 
 ---
 <!--
@@ -154,7 +189,7 @@ tag_editor_outer_frame = {
           text_row_text_box.text = tag.chart_tag.text
         }
       }
-    },
+    }
     tag_editor_error_row_frame = {
       error_row_inner_frame -- invisible frame
       error_row_error_message -- is a label
@@ -174,11 +209,11 @@ place this gui into the screen gui and auto-center it
 
 for the most part, this gui should only be active in chart view or chart_zoomed_in
 
-the only time it should show in game mode is when it is opened from a fave_bar button click. 
+the only time it should show in game mode is when the tag_editor is opened from a fave_bar button click. 
 
 when the tag_editor is open, any mouse clicks outside the tag editor's outer frame should be ignored
 
-upon opening the player.open should be set to enable esc to close the gui.
+upon opening the player.opened should be set to enable esc to close the gui.
 
 if, for some reason, it is possible to have the tag_editor still open when exiting chart or chart_zoomed mode to game mode, then i would like to create an on_tick event to see if the editor is in game view and the editor was not opened by the fave_bar while in game view, then after 30 ticks the tag_editor should self-close. when the tag_editor is closed, the on_tick event should be unregistered (and re-registered upon opening)
 
@@ -215,4 +250,35 @@ If the new location is verified, update all the tag objects, other player's favo
 - the confirm button should only be enabled if either icon_button is set or text_box.text (trimmed) is not blank or nil in the dialog. check this in real time. if clicked, the input data should be validated immediately and saved back to the appropriate storage objects. Close the dialog box and save the data back to storage, where applicable and close the dialog box if there are no errors, otherwise display a user friendly error in the error_row_error_message and keep the dialog box open.
 
 -- if the last_user is empty, then any changes made should record the current player as the new last_user
+-->
+<!--
+Current tag editor structure (as of 2025-05-27):
+
+The tag editor dialog is structured as follows, matching vanilla Factorio dialog idioms:
+
+inside_shallow_frame_with_padding
+- tag_editor_inner_frame (frame, vertical)
+- tag_editor_titlebar (frame, style: 'frame_titlebar_flow', horizontal)
+- titlebar_label (label, style: 'frame_title')
+- titlebar_draggable (empty-widget, style: 'draggable_space_header', horizontally stretchable, drag_target = outer_frame)
+- titlebar_close_button (sprite-button, close icon, handled in event logic)
+- tag_editor_content_frame (frame, vertical)
+- tag_editor_content_inner_frame (frame, vertical)
+- tag_editor_last_user_row (flow, horizontal)
+- tag_editor_teleport_row (flow, horizontal)
+- tag_editor_favorite_row (flow, horizontal)
+- tag_editor_icon_row (flow, horizontal)
+- tag_editor_text_row (flow, horizontal)
+- tag_editor_error_row_frame (frame, vertical)
+- error_row_inner_frame (frame, vertical)
+- error_row_error_message (label)
+- tag_editor_last_row (flow, horizontal)
+- last_row_cancel_button (sprite-button)
+- last_row_confirm_button (sprite-button)
+
+This structure ensures:
+- The titlebar is a frame styled as 'frame_titlebar_flow', with a draggable grip and close button, matching vanilla dialogs.
+- No top_row or title_row: the titlebar is built directly as a frame.
+- The close button is handled in event logic and closes the dialog.
+- The dialog is modal, sets player.opened, and supports ESC/drag as in vanilla.
 -->

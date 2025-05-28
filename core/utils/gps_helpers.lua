@@ -10,7 +10,7 @@ Helpers for parsing, normalizing, and converting GPS strings and map positions.
 - Used throughout the mod for tag, favorite, and teleportation logic
 ]]
 
-local helpers = require("core.utils.Helpers") -- lowercase filename
+local helpers = require("core.utils.helpers_suite")
 local Constants = require("constants")
 local padlen, BLANK_GPS = Constants.settings.GPS_PAD_NUMBER, Constants.settings.BLANK_GPS
 

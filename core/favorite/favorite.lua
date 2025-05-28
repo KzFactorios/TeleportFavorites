@@ -29,7 +29,7 @@ Notes:
 - See README and gps_helpers.lua for details and valid examples.
 ]]
 
-local helpers = require("core.utils.Helpers")
+local helpers = require("core.utils.helpers_suite")
 local gps_helpers = require("core.utils.gps_helpers")
 local parse_and_normalize_gps = gps_helpers.parse_and_normalize_gps
 

@@ -51,3 +51,93 @@ if not gui_style.tf_slot_button then
   base.margin = 0
   gui_style.tf_slot_button = base
 end
+
+-- Titlebar flow style for tag editor dialogs (matches vanilla titlebar row)
+gui_style.frame_titlebar_flow = {
+  type = "horizontal_flow_style",
+  parent = "horizontal_flow",
+  horizontally_stretchable = "on",
+  vertically_stretchable = "off",
+  top_padding = 0,
+  bottom_padding = 0,
+  left_padding = 8,
+  right_padding = 4,
+  height = 32,
+  vertical_align = "center",
+  use_header_filler = true
+}
+
+-- Data Viewer GUI styles
+
+-- Frame style for data_viewer_frame
+if not gui_style.data_viewer_frame then
+  gui_style.data_viewer_frame = {
+    type = "frame_style",
+    parent = "frame",
+    width = 1000,
+    vertically_stretchable = "on",
+    padding = 0,
+    margin = 0
+  }
+end
+
+-- Inner flow style for data_viewer_inner_flow
+if not gui_style.data_viewer_inner_flow then
+  gui_style.data_viewer_inner_flow = {
+    type = "vertical_flow_style",
+    parent = "vertical_flow",
+    horizontally_stretchable = "on",
+    vertically_stretchable = "on",
+    padding = 0,
+    margin = 0
+  }
+end
+
+-- Titlebar flow style for data_viewer_titlebar_flow
+if not gui_style.data_viewer_titlebar_flow then
+  gui_style.data_viewer_titlebar_flow = {
+    type = "horizontal_flow_style",
+    parent = "frame_titlebar_flow",
+    horizontally_stretchable = "on",
+    vertically_stretchable = "off",
+    height = 32,
+    vertical_align = "center"
+  }
+end
+
+-- Tabs flow style for data_viewer_tabs_flow
+if not gui_style.data_viewer_tabs_flow then
+  gui_style.data_viewer_tabs_flow = {
+    type = "horizontal_flow_style",
+    parent = "horizontal_flow",
+    horizontally_stretchable = "on",
+    vertically_stretchable = "off",
+    padding = 0,
+    margin = 0
+  }
+end
+
+-- Content flow style for data_viewer_content_flow
+if not gui_style.data_viewer_content_flow then
+  gui_style.data_viewer_content_flow = {
+    type = "vertical_flow_style",
+    parent = "vertical_flow",
+    horizontally_stretchable = "on",
+    vertically_stretchable = "on",
+    padding = 0,
+    margin = 0
+  }
+end
+
+-- Table style for data_viewer_table
+if not gui_style.data_viewer_table then
+  gui_style.data_viewer_table = {
+    type = "table_style",
+    parent = "table",
+    horizontally_stretchable = "on",
+    vertically_stretchable = "on",
+    cell_padding = 2,
+    cell_spacing = 0,
+    use_header_filler = false
+  }
+end

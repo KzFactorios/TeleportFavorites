@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 --[[
 Cache.lua
 TeleportFavorites Factorio Mod
@@ -5,10 +7,10 @@ TeleportFavorites Factorio Mod
 Persistent and runtime cache management for mod data, including player, surface, and tag storage.
 
 - Provides helpers for safe cache access, mutation, and removal, with strict EmmyLua annotations.
-- All persistent data is stored in the global table under _G.storage.cache, _G.storage.players, and _G.storage.surfaces.
+- All persistent data is stored in the global table under  storage.cache,  storage.players, and  storage.surfaces.
 - Runtime (non-persistent) lookup tables are managed via the Lookups module.
 - Player and surface data are always initialized and normalized for safe multiplayer and multi-surface support.
-- All access to persistent cache should use the Cache API; do not access _G.storage directly.
+- All access to persistent cache should use the Cache API; do not access  storage directly.
 
 API:
 -----
@@ -29,7 +31,7 @@ API:
 
 Data Structure:
 ---------------
-_G.storage = {
+storage = {
   cache = { ... },
   players = {
     [player_index] = {
@@ -56,7 +58,7 @@ _G.storage = {
 local mod_version = require("core.utils.version")
 local Lookups = require("core.cache.lookups")
 local GPS = require("core.gps.gps")
-local helpers = require("core.utils.Helpers")
+local helpers = require("core.utils.helpers_suite")
 
 -- Helper to require PlayerFavorites only when needed
 local function get_player_favorites()
@@ -83,8 +85,8 @@ Cache.lookups = Cache.lookups or Lookups.init()
 
 --- Initialize the persistent cache table if not already present.
 function Cache.init()
-  _G.storage = _G.storage or {}
-  _G.storage.cache = _G.storage.cache or {}
+  storage = storage or {}
+  storage.cache = storage.cache or {}
 end
 
 --- Retrieve a value from the persistent cache by key.
@@ -93,7 +95,7 @@ end
 function Cache.get(key)
   if not key or key == "" then return nil end
   Cache.init()
-  return _G.storage.cache[key]
+  return storage.cache[key]
 end
 
 --- Set a value in the persistent cache by key.
@@ -102,20 +104,20 @@ end
 ---@return any|nil The value set, or nil if storage is unavailable.
 function Cache.set(key, value)
   if not key or key == "" then return nil end
-  Cache.init(); _G.storage.cache[key] = value
-  return _G.storage.cache[key]
+  Cache.init(); storage.cache[key] = value
+  return storage.cache[key]
 end
 
 --- Remove a value from the persistent cache by key.
 ---@param key string
 function Cache.remove(key)
   if not key or key == "" then return end
-  Cache.init(); _G.storage.cache[key] = nil
+  Cache.init(); storage.cache[key] = nil
 end
 
 --- Clear the entire persistent cache.
 function Cache.clear()
-  Cache.init(); _G.storage.cache = {}
+  Cache.init(); storage.cache = {}
   if package.loaded["core.cache.lookups"] then
     package.loaded["core.cache.lookups"].clear_chart_tag_cache()
   end
@@ -132,19 +134,28 @@ end
 ---@param player LuaPlayer
 ---@return table Player data table (persistent)
 local function init_player_data(player)
-  if not _G.storage then return {} end
-  if not _G.storage.cache then Cache.init() end
-  _G.storage.players = _G.storage.players or {}
+  Cache.init()
+  storage.players = storage.players or {}
   local pidx = tonumber(helpers.normalize_player_index(player)) or 0
+
+
   if type(pidx) ~= "number" or pidx < 1 then return {} end
-  local pdata = _G.storage.players[pidx] or {}
-  pdata.toggle_fav_bar_buttons = pdata.toggle_fav_bar_buttons or true
+  --if not storage.players[pidx] then
+    --storage.players[pidx] = {}
+  --end
+  local pdata = storage.players[pidx] or {}
+  if pdata.toggle_fav_bar_buttons == nil then
+    pdata.toggle_fav_bar_buttons = true
+  end
+  --pdata.toggle_fav_bar_buttons = pdata.toggle_fav_bar_buttons or true
   pdata.render_mode = pdata.render_mode or (player and player.render_mode)
   pdata.surfaces = pdata.surfaces or {}
+
   local sidx = tonumber(helpers.normalize_surface_index(player and player.surface)) or 1
   if type(sidx) ~= "number" or sidx < 1 then sidx = 1 end
-  pdata.surfaces[sidx] = pdata.surfaces[sidx] or {favorites={}}
-  _G.storage.players[pidx] = pdata
+  pdata.surfaces[sidx] = pdata.surfaces[sidx] or { favorites = {} }
+  storage.players[pidx] = pdata
+  
   return pdata
 end
 
@@ -159,13 +170,13 @@ end
 ---@param surface_index uint
 ---@return table Surface data table (persistent)
 local function init_surface_data(surface_index)
-  if not _G.storage then return {} end
-  if not _G.storage.cache then Cache.init() end
-  _G.storage.surfaces = _G.storage.surfaces or {}
+  if not storage then return {} end
+  if not storage.cache then Cache.init() end
+  storage.surfaces = storage.surfaces or {}
   local idx = tonumber(surface_index) or 1
   if type(idx) ~= "number" or idx < 1 then idx = 1 end
-  _G.storage.surfaces[idx] = _G.storage.surfaces[idx] or {}
-  local surface_data = _G.storage.surfaces[idx]
+  storage.surfaces[idx] = storage.surfaces[idx] or {}
+  local surface_data = storage.surfaces[idx]
   surface_data.tags = surface_data.tags or {}
   return surface_data
 end
@@ -241,6 +252,22 @@ end
 function Cache.set_tag_editor_data(player, data)
   local pdata = Cache.get_player_data(player)
   pdata.tag_editor_data = data
+end
+
+--- Set the persistent toggle state for the favorites bar buttons for a player.
+---@param player LuaPlayer
+---@param pdata table
+function Cache.update_player_data(player, pdata)
+  --local player_data = Cache.get_player_data(player)
+  --player_data = pdata
+
+  --[[if not storage then return end
+  storage.players = storage.players or {}
+  local pidx = tonumber(helpers.normalize_player_index(player)) or 0
+  if type(pidx) ~= "number" or pidx < 1 then return end
+  local player_data = storage.players[pidx] or {}
+  player_data.toggle_fav_bar_buttons = pdata.toggle_fav_bar_buttons
+  storage.players[pidx] = player_data]]
 end
 
 --- Normalize a player index to integer

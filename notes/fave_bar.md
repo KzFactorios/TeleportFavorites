@@ -5,8 +5,8 @@ The favorites bar (fave_bar) is a persistent, player-specific GUI element that p
 ## Core Features and Interactions
 - The fave_bar exists in the player's top GUI, ideally as the rightmost item.
 - The parent element is `fave_bar_frame`, which contains two horizontal containers:
-  - `fave_toggle_container`: Holds the `fave_toggle` button (red star icon). Clicking toggles visibility of the favorite buttons container. State is persisted in `storage.players[player_index].toggle_fave_bar_buttons`.
-  - `favorite_buttons` container: Contains `MAX_FAVORITE_SLOTS` slot buttons, each representing a favorite. Each slot button:
+  - `fave_bar_toggle_flow`: Holds the `fave_bar_visible_btns_toggle` button (red star icon). Clicking toggles visibility of the favorite buttons container. State is persisted in `storage.players[player_index].toggle_fave_bar_buttons`.
+  - `fave_bar_slots_flow` container: Contains `MAX_FAVORITE_SLOTS` slot buttons, each representing a favorite. Each slot button:
     - Shows the icon for the matched chart_tag, or `default_map_tag.png` if none.
     - Tooltip: First line is GPS (without surface), second line is chart_tag text (trimmed to 50 chars, see constant), no second line if no text.
     - Caption: Slot number (1-0), small font.
@@ -41,7 +41,7 @@ Yes. pretty sure I mentioned this below, but a locked favorite should show with 
 There should be a beep, and a message that indictaes that the player already has the max number of available slots.
 
 4. **Slot Button Accessibility:** Should slot buttons have tooltips for all states (locked, disabled, etc.)?
-yes and no. locked buttons sould just not react to any left clicks. right clicks should open the tag_editor with the faves info and a ctrl+left-click should toggle the locked state immediatley. ctrl-right-click should be ignored. Blank favorites should not show as disabled, they just shouldn't do anything if left,right, ctrl+? clicked. A blank favorite cannot be locked
+yes and no. locked buttons sould just not react to any left clicks. right clicks should open the tag_editor with the faves info and a ctrl+left-click should toggle the locked state immediatley. ctrl-right-click should be ignored. Blank favorites should not show as disabled, they just shouldn't do anything if left,right, ctrl+? clicked. A blank favorite cannot be locked, and a blank favorite should have no tooltip and no icon
 5. **Favorite Removal:** Is there a quick way to remove a favorite (e.g., middle-click or context menu)?
 You can delete by right clicking the favorite thereby open the tag editor with the favorites' information and the ability to delete if not locked and with all of the other ownership rules which are handled in the tag_editor
 6. **Favorite Sorting:** Should there be an option to auto-sort favorites (e.g., by name, location, last used)?
@@ -64,19 +64,42 @@ yes and i am counting on you to provdie a modern efficient, easy to maintain, sy
 15. **Favorite Bar API:** Should there be a remote interface for other mods to interact with the favorites bar?
 Not at this time
 
+## Slot Count Changes
+
+- The number of favorite slots (`MAX_FAVORITE_SLOTS`) is not expected to change frequently. If it does change (e.g., via a mod setting), the entire favorites bar GUI should be rebuilt for affected players to reflect the new slot count.
+- This is handled by listening for the `on_runtime_mod_setting_changed` event and triggering a full GUI rebuild for all players if the slot count setting changes.
+- Normal drag-and-drop reordering only rebuilds the slot row, not the entire bar, for efficiency. Only a slot count change requires a full bar rebuild.
+
+## Blank Favorite Slot Click Handling
+
+- Blank favorite slot buttons in the favorites bar remain enabled for consistent styling and UX.
+- All click events on blank favorite slots are ignored in the event handler (`handle_favorite_slot_click`). No action is taken and no error is raised.
+- This ensures blank slots are visually present and styled, but never trigger any logic or errors when clicked.
+- This is a strict design rule for the favorites bar and must be preserved in future refactors.
+
 ---
+
+# Favorites Bar GUI Hierarchy
+
+```
+fave_bar_frame (frame)
+└─ fave_bar_inner_flow (frame, invisible frame)
+    └─ fave_bar_toggle_flow (flow, horizontal)
+      └─ fave_bar_visible_btns_toggle (sprite-button)
+    └─ fave_bar_slots_flow (flow, horizontal)
+          ├─ Constants.settings.FAVE_BAR_SLOT_PREFIX_1 (sprite-button)
+          ├─ Constants.settings.FAVE_BAR_SLOT_PREFIX_2 (sprite-button)
+          ├─ ...
+          └─ Constants.settings.FAVE_BAR_SLOT_PREFIX_ .. Constants.settings.MAX_FAVORITE_SLOTS (sprite-button)
+```
+- All element names use (for the most part) the `{gui_context}_{purpose}_{type}` convention.
+- The number of slot buttons depends on the user’s settings.
 
 
 <!--
 the fave_bar will exist in the player's top gui. it should strive to be displayed as the rightmost item in the top gui. the parent element of the gui is fave_bar_frame
 
-the fave_bar_frame will have two horizontal containers. The first, the fave_toggle_container, will hold one button, fave_toggle. this button should use a red star as an icon. clicking on this button will immediately show or hide the next container in this gui, the favorite_buttons container. These containers sohuld sit side by side with the fave_toggle to the of the parent container. to keep the state of the fave_toggle button, it should live in persistent storage, like so:
-storage.players[player_index] = {
-  toggle_fave_bar_buttons = boolean,
-  ... other
-}
-
-the fave_buttons container: will have MAX_FAVORITE_SLOTS and show the player's favorites respective for the slot they are in. If the favorite's gps is not nil or == "", then the icon for the slot button will display the matched chart_tag's icon and if this is not specified, then use the default_map_tag.png, the tooltip will show, on the first line, the value of the gps without the surface component. I believe there is a coords_string method in GPS for this. The second line should show the text of the matched chart_tag, trimmed to reasonable number of allowed chars (50? create a constant to hold this value). If there is no text, then a second line should not be displayed. Each slot should also show a caption for it's slot number (1-0), the caption text should be rather small.
+the fave_bar_slots_flow container: will have MAX_FAVORITE_SLOTS and show the player's favorites respective for the slot they are in. If the favorite's gps is not nil or == "", then the icon for the slot button will display the matched chart_tag's icon and if this is not specified, then use the default_map_tag.png, the tooltip will show, on the first line, the value of the gps without the surface component. I believe there is a coords_string method in GPS for this. The second line should show the text of the matched chart_tag, trimmed to 50 chars. If there is no text, omit the second line. Each slot should also show a caption for it's slot number (1-0), the caption text should be rather small.
 
 all slot buttons (including toggle_favorite), should be slot buttons, at the standard size of 36x36
 

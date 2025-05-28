@@ -11,6 +11,8 @@ Features:
 - All new/changed features are documented inline and in notes/ as appropriate.
 ]]
 
+if _G.log then _G.log("[TeleportFavorites] control.lua loaded") end
+
 -- Modular event handler registration
 local handlers = require("core.events.handlers")
 
@@ -18,10 +20,7 @@ local script = _G.script
 local control_fave_bar = require("core.control.control_fave_bar")
 local control_tag_editor = require("core.control.control_tag_editor")
 local control_data_viewer = require("core.control.control_data_viewer")
-
-control_fave_bar.register(script)
-control_tag_editor.register(script)
-control_data_viewer.register(script)
+local gui_event_dispatcher = require("core.events.gui_event_dispatcher")
 
 -- Core lifecycle and area selection event wiring
 script.on_init(handlers.on_init)
@@ -29,3 +28,20 @@ script.on_load(handlers.on_load)
 script.on_event(_G.defines.events.on_player_created, handlers.on_player_created)
 script.on_event(_G.defines.events.on_player_changed_surface, handlers.on_player_changed_surface)
 script.on_event(_G.defines.events.on_player_selected_area, handlers.on_player_selected_area)
+script.on_event(_G.defines.events.on_player_joined_game, handlers.on_player_created)
+script.on_event("tf-open-tag-editor", handlers.on_open_tag_editor_custom_input)
+
+-- Handle mod setting changes (e.g., slot count change)
+script.on_event(_G.defines.events.on_runtime_mod_setting_changed, function(event)
+  -- TODO: If the changed setting is the favorite slot count, rebuild the favorites bar for all players
+  -- Example stub:
+  -- if event.setting == "your_slot_count_setting_name" then
+  --   for _, player in pairs(game.connected_players) do
+  --     require("gui.favorites_bar.fave_bar").build(player, player.gui.top)
+  --   end
+  -- end
+end)
+
+-- Register the shared GUI event handler for all GUIs
+-- Pass both script and defines so gui_event_dispatcher can register the dispatcher
+gui_event_dispatcher.register_gui_handlers(script)

@@ -1,5 +1,6 @@
 local Constants = require("constants")
-local Style require("gui.styles")
+require("prototypes.styles")
+local Style = require("gui.styles")
 
 
 ---@diagnostic disable-next-line: undefined-global
@@ -105,5 +106,19 @@ data:extend {
     key_sequence = "CONTROL + F12",
     consuming = "game-only",
     order = "z[data-viewer]"
+  },
+  {
+    type = "custom-input",
+    name = "tf-open-tag-editor",
+    key_sequence = "mouse-button-2",
+    consuming = "none"
+  },
+  {
+    type = "sprite",
+    name = "red_tf_slot_button_20",
+    filename = "__TeleportFavorites__/graphics/red_slot_button_20.png",
+    width = 36,
+    height = 36,
+    flags = { "gui-icon" }
   }
 }

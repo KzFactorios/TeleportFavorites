@@ -1,3 +1,4 @@
+---@diagnostic disable: undefined-global
 --[[
 Favorites Bar GUI for TeleportFavorites
 ======================================
@@ -19,73 +20,140 @@ Main Function:
 
 Event handling for slot clicks and drag is managed externally (see control.lua).
 --]]
-local gui = require("gui.gui")
+
+local GuiBase = require("gui.gui_base")
 local Constants = require("constants")
 local Favorite = require("core.favorite.favorite")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local GPS = require("core.gps.gps")
+local Helpers = require("core.utils.helpers_suite")
+local Settings = require("settings")
+local Cache = require("core.cache.cache")
 
 local fave_bar = {}
 
-function fave_bar.build(player, parent)
-    local frame = gui.create_frame(parent, "fave_bar_frame", "horizontal", "inside_shallow_frame_with_padding")
-    local s = frame.style
+local function create_fave_bar_frame(parent)
+    local fave_bar_frame = GuiBase.create_frame(parent, "fave_bar_frame", "horizontal", "inside_shallow_frame_with_padding")
+    local s = fave_bar_frame.style
     s.top_padding, s.bottom_padding, s.left_padding, s.right_padding = 2, 2, 4, 4
-    local toggle_btn = gui.create_icon_button(gui.create_hflow(frame, "fave_toggle_container"), "fave_toggle", "item/red_tf_slot_button_20", {"tf-gui.toggle_fave_bar"}, "tf_slot_button")
-    local fav_btns = gui.create_hflow(frame, "favorite_buttons")
-    local pfaves = PlayerFavorites.new(player):get_all()
-    local drag_index = _G.storage and _G.storage.players and _G.storage.players[player.index] and _G.storage.players[player.index].drag_favorite_index
+    return fave_bar_frame
+end
+
+local function add_toggle_button(toggle_flow, player)
+    -- Place the toggle button inside the toggle_flow
+    local btn = Helpers.create_slot_button(toggle_flow, "fave_bar_visible_btns_toggle", "red_tf_slot_button_20", {"tf-gui.toggle_fave_bar"})
+    btn.style.size = 36
+    btn.style.width = 36
+    btn.style.height = 36
+    btn.style.padding = 0
+    btn.style.margin = 0
+    btn.style.top_margin = 0
+    btn.style.bottom_margin = 0
+    btn.style.left_margin = 0
+    btn.style.right_margin = 0
+    btn.style.horizontally_stretchable = false
+    btn.style.vertically_stretchable = false
+    -- Store player index for event handler if needed
+    btn.tags = btn.tags or {}
+    btn.tags.player_index = player and player.index or nil
+    return btn
+end
+
+local function build_favorite_buttons_row(slots_flow, player, pfaves, drag_index)
+    -- slots_flow is now passed in, not created here
     for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
         local fav = type(pfaves[i]) == "table" and pfaves[i] or Favorite.get_blank_favorite()
         local is_blank = Favorite.is_blank_favorite(fav)
         local is_locked = fav.locked or false
-        local icon = (fav.tag and fav.tag.icon ~= "") and fav.tag.icon or "default-map-tag"
-        local btn = gui.create_icon_button(fav_btns, "favorite_slot_"..i, icon, nil, "tf_slot_button")
-        btn.style.width, btn.style.height, btn.style.font = 36, 36, "default-small"
-        -- Tooltip
-        if is_blank then
-            btn.tooltip = {"tf-gui.fave_slot_empty"}
-        else
-            local gps_str = fav.gps and (GPS.coords_string_from_gps(fav.gps) or fav.gps) or "?"
-            local tag_text = fav.tag and fav.tag.text ~= "" and fav.tag.text or nil
-            if type(tag_text) == "string" and #tag_text > 50 then tag_text = tag_text:sub(1, 50).."..." end
-            btn.tooltip = is_locked and {"tf-gui.fave_slot_locked_tooltip", gps_str, tag_text or ""}
-                or (tag_text and {"tf-gui.fave_slot_tooltip", gps_str, tag_text} or {"tf-gui.fave_slot_tooltip_one", gps_str})
-        end
+        local icon = (not is_blank and fav.tag and fav.tag.icon ~= "") and fav.tag.icon or nil
+        local tooltip = not is_blank and Helpers.build_favorite_tooltip(fav) or nil
+        -- Use normalized slot button naming: "fave_bar_slot_" .. i
+        local btn = Helpers.create_slot_button(slots_flow, "fave_bar_slot_"..i, icon, tooltip, {
+            locked = is_locked and not is_blank,
+            enabled = not is_blank,
+            border_color = drag_index == i and {r=0.2,g=0.7,b=1,a=1} or (drag_index and {r=1,g=1,b=0.2,a=1}) or (is_locked and not is_blank and {r=1,g=0.5,b=0,a=1}) or nil
+        })
         -- Slot number caption
-        local slot_caption = gui.create_label(btn, "slot_caption", tostring(i % 10), nil)
-        slot_caption.style.font = "default-tiny"
+        local slot_caption = GuiBase.create_label(btn, "fave_bar_slot_caption", tostring(i % 10), nil)
+        slot_caption.style.font = "default-small"
         slot_caption.style.right_padding, slot_caption.style.bottom_padding = 0, 0
         slot_caption.style.top_padding, slot_caption.style.left_padding = 18, 18
         slot_caption.ignored_by_interaction = true
-        -- Border/drag/locked visuals
-        local bstyle = btn.style
-        if drag_index == i then
-            bstyle.border_color, bstyle.shadow, bstyle.transition_duration = {r=0.2,g=0.7,b=1,a=1}, true, 0.2
-        elseif drag_index then
-            bstyle.border_color, bstyle.transition_duration = {r=1,g=1,b=0.2,a=1}, 0.2
-        elseif is_locked and not is_blank then
-            bstyle.border_color, bstyle.transition_duration = {r=1,g=0.5,b=0,a=1}, 0.2
-        else
-            bstyle.border_color, bstyle.transition_duration = nil, 0.1
-        end
-        if is_locked and not is_blank then
-            local lock_icon = btn.add{type="sprite", sprite="utility/lock", name="lock_overlay"}
-            lock_icon.style.width, lock_icon.style.height = 16, 16
-            lock_icon.style.left_margin, lock_icon.style.top_margin = 0, 0
-            lock_icon.ignored_by_interaction = true
-        elseif btn.lock_overlay then btn.lock_overlay.destroy() end
-        btn.drag_target, btn.tags, btn.enabled = fav_btns, {slot=i}, not is_blank
     end
-    -- Overflow error
-    if pfaves and #pfaves >= Constants.settings.MAX_FAVORITE_SLOTS then
-        for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
-            local btn = fav_btns["favorite_slot_"..i]
-            if btn then btn.tooltip = {"tf-gui.fave_slot_overflow"} end
-        end
-        frame.add{type="label", caption={"tf-gui.fave_bar_overflow_error"}, style="bold_label"}.style.font_color = {r=1,g=0.2,b=0.2}
+    return slots_flow
+end
+
+local function handle_overflow_error(frame, fav_btns, pfaves)
+    if pfaves and #pfaves > Constants.settings.MAX_FAVORITE_SLOTS then
+        Helpers.show_error_label(frame, { "tf-gui.fave_bar_overflow_error" })
+    else
+        Helpers.clear_error_label(frame)
     end
-    return frame
+end
+
+local _fave_bar_building_guard = _G._fave_bar_building_guard or {}
+_G._fave_bar_building_guard = _fave_bar_building_guard
+
+function fave_bar.build(player, parent)
+    local pid = player.index
+    if _fave_bar_building_guard[pid] then
+        _G.print("[TF DEBUG] fave_bar.build: re-entrant call for player " .. tostring(pid) .. ", skipping.")
+        return
+    end
+    _fave_bar_building_guard[pid] = true
+    _G.print("[TF DEBUG] fave_bar.build: ENTER for player " .. tostring(pid))
+    local success, result = pcall(function()
+        local player_settings = Settings:getPlayerSettings(player)
+        if not player_settings.favorites_on then return end
+        local mode = player and player.render_mode
+        if not (mode == defines.render_mode.game or mode == defines.render_mode.chart or mode == defines.render_mode.chart_zoomed_in) then
+            return
+        end
+        if parent.fave_bar_frame then
+            parent.fave_bar_frame.destroy()
+        end
+        local fave_bar_frame = create_fave_bar_frame(parent)
+        local bar_flow = GuiBase.create_hflow(fave_bar_frame, "fave_bar_flow")
+        -- Add toggle flow and button
+        local toggle_flow = GuiBase.create_hflow(bar_flow, "fave_bar_toggle_flow")
+        local toggle_btn = add_toggle_button(toggle_flow, player)
+        -- Add slots flow and favorite buttons
+        local slots_flow = GuiBase.create_hflow(bar_flow, "fave_bar_slots_flow")
+        local pfaves = PlayerFavorites.new(player):get_all()
+        local drag_index = _G.storage and _G.storage.players and _G.storage.players[player.index] and _G.storage.players[player.index].drag_favorite_index
+        local fav_btns = build_favorite_buttons_row(slots_flow, player, pfaves, drag_index)
+        handle_overflow_error(fave_bar_frame, fav_btns, pfaves)
+        local function update_toggle_state()
+            local pdata = Cache.get_player_data(player)
+            local show = pdata.toggle_fav_bar_buttons ~= false
+            fav_btns.visible = show
+        end
+        update_toggle_state()
+        return fave_bar_frame
+    end)
+    _fave_bar_building_guard[pid] = nil
+    _G.print("[TF DEBUG] fave_bar.build: EXIT for player " .. tostring(pid))
+    if not success then error(result) end
+    return result
+end
+
+--- Efficiently update only the slot row (fave_bar_slots_flow) for the given player
+-- parent: the bar_flow container (parent of fave_bar_slots_flow)
+function fave_bar.update_slot_row(player, bar_flow)
+    if not (bar_flow and bar_flow.valid and bar_flow.children) then return end
+    -- Destroy all children named fave_bar_slots_flow (robust to any state)
+    for _, child in pairs(bar_flow.children) do
+        if child.name == "fave_bar_slots_flow" then
+            child.destroy()
+            _G.print("[TF DEBUG] Destroyed fave_bar_slots_flow row.")
+        end
+    end
+    local slots_flow = GuiBase.create_hflow(bar_flow, "fave_bar_slots_flow")
+    local pfaves = PlayerFavorites.new(player):get_all()
+    local drag_index = _G.storage and _G.storage.players and _G.storage.players[player.index] and _G.storage.players[player.index].drag_favorite_index
+    local fav_btns = build_favorite_buttons_row(slots_flow, player, pfaves, drag_index)
+    _G.print("[TF DEBUG] Built new fave_bar_slots_flow row.")
+    return fav_btns
 end
 
 return fave_bar

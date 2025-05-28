@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 --[[
 TeleportFavorites – Lookups Cache Module
 ========================================
@@ -37,7 +39,7 @@ global["Lookups"] = {
 }
 --]]
 
-local helpers = require("core.utils.Helpers")
+local helpers = require("core.utils.helpers_suite")
 local gps_helpers = require("core.utils.gps_helpers")
 
 ---@diagnostic disable: undefined-global
@@ -113,7 +115,7 @@ function Lookups.get_chart_tag_cache(surface_index)
   -- Rebuild from game if empty
   ---@diagnostic disable-next-line
   if helpers.table_count(surface.chart_tag_cache) == 0 and game and game.forces and game.forces["player"] and game.surfaces and game.surfaces[idx] then
-    surface.chart_tag_cache = game.forces["player"]:find_chart_tags(game.surfaces[idx])
+    surface.chart_tag_cache = game.forces["player"].find_chart_tags(game.surfaces[idx])
   end
   -- Always rebuild O(1) lookup map by gps after cache is cleared or rebuilt
   surface.chart_tag_cache_by_gps = {}

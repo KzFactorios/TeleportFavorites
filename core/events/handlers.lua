@@ -22,32 +22,30 @@ API:
 
 --]]
 
+---@diagnostic disable: undefined-global
+
 -- core/events/handlers.lua
 -- Centralized event handler implementations for TeleportFavorites
 
 local Tag = require("core.tag.tag")
-local PlayerFavorites = require("core.favorite.player_favorites")
+local _PlayerFavorites = require("core.favorite.player_favorites")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local GPS = require("core.gps.gps")
 local Constants = require("constants")
 local Lookups = require("core.cache.lookups")
-local Favorite = require("core.favorite.favorite")
+local _Favorite = require("core.favorite.favorite")
 local Cache = require("core.cache.cache")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local tag_editor = require("gui.tag_editor.tag_editor")
-local Settings = require("settings")
-local game = _G.game
-local defines = _G.defines
+local _Settings = require("settings")
+local Helpers = require("core.utils.helpers_suite")
 
 local handlers = {}
 
 function handlers.on_init()
   for _, player in pairs(game.players) do
     local parent = player.gui.top
-    local settings = Settings:getPlayerSettings(player)
-    if settings.favorites_on then
-      fave_bar.build(player, parent)
-    end
+    fave_bar.build(player, parent)
   end
 end
 
@@ -59,10 +57,7 @@ function handlers.on_player_created(event)
   local player = game.get_player(event.player_index)
   if player then
     local parent = player.gui.top
-    local settings = Settings:getPlayerSettings(player)
-    if settings.favorites_on then
-      fave_bar.build(player, parent)
-    end
+    fave_bar.build(player, parent)
   end
 end
 
@@ -70,34 +65,44 @@ function handlers.on_player_changed_surface(event)
   local player = game.get_player(event.player_index)
   if player then
     local parent = player.gui.top
-    local settings = Settings:getPlayerSettings(player)
-    if settings.favorites_on then
-      fave_bar.build(player, parent)
-    end
+    fave_bar.build(player, parent)
   end
 end
 
--- Open tag_editor on right-click in chart/chart_zoomed_in view
-function handlers.on_player_selected_area(event)
+function handlers.on_open_tag_editor(_event)
+  --TagEditorGUI.on_open_tag_editor(event)
+  local stub = ""
+end
+
+function handlers.on_open_tag_editor_custom_input(event)
   local player = game.get_player(event.player_index)
   if not player then return end
   if player.render_mode ~= defines.render_mode.chart and player.render_mode ~= defines.render_mode.chart_zoomed_in then return end
-  if event.name ~= defines.events.on_player_selected_area then return end
-  if event.button ~= defines.mouse_button_type.right then return end
-  -- Find chart tag at cursor position (use force:find_chart_tags)
   local surface = player.surface
-  local tags = player.force:find_chart_tags(surface, event.area)
+  if not surface then
+    return
+  end
+  if not surface.valid or surface.valid ~= true then
+    return
+  end
+  local pos = player.position
+  local surface_id
+  if surface and surface.valid then
+    surface_id = surface
+  else
+    surface_id = 1
+  end
+  -- Use dot accessor and pass surface_id and area as arguments (no implicit self)
+  local tags = player.force.find_chart_tags(surface_id) or {}
+  local parent = player.gui.screen
   if tags and #tags > 0 then
     local tag = tags[1]
     if tag then
-      local parent = player.gui.screen
-      tag_editor.build(player, parent, { chart_tag = tag })
+      tag_editor.build(player, tag)
     end
+  else
+    tag_editor.build(player)
   end
-end
-
-function handlers.on_open_tag_editor(event)
-  --TagEditorGUI.on_open_tag_editor(event)
 end
 
 function handlers.on_teleport_to_favorite(event, i)
@@ -128,24 +133,41 @@ function handlers.on_teleport_to_favorite(event, i)
   end
 end
 
-function handlers.on_chart_tag_added(event)
+function handlers.on_chart_tag_added(_event)
   -- if no matching tag exists in the cache create a matching tag and save in storage.
   -- update the map that tracks tags
 end
 
-function handlers.on_chart_tag_modified(event)
----@diagnostic disable-next-line: undefined-global
-  local player = event.player_index and game.get_player(event.player_index) or nil
-  if not player or not event.tag or not event.tag.valid then return end
+local function is_valid_tag_modification(event, player)
+  if not player or not event.tag or not event.tag.valid then return false end
   if not event.tag.last_user or event.tag.last_user == "" then
     event.tag.last_user = player.name
   end
   if not event.tag.last_user or event.tag.last_user ~= player.name then
-    return
+    return false
   end
+  return true
+end
+
+local function extract_gps(event, player)
   local new_gps = (event.tag.position and GPS.gps_from_map_position(event.tag.position, event.tag.surface and event.tag.surface.index or player.surface.index))
   local old_gps = (event.old_position and GPS.gps_from_map_position(event.old_position, event.old_surface and event.old_surface.index or player.surface.index))
-  if not new_gps or not old_gps then return end
+  return new_gps, old_gps
+end
+
+local function get_or_create_chart_tag(new_gps, event, player)
+  local old_chart_tag = Lookups.get_chart_tag_by_gps(new_gps)
+  if not old_chart_tag then
+    Lookups.clear_chart_tag_cache(event.tag.surface and event.tag.surface.index or player.surface.index)
+    old_chart_tag = Lookups.get_chart_tag_by_gps(new_gps)
+    if not old_chart_tag then
+      error("[TeleportFavorites] Failed to find or create new chart tag after modification.")
+    end
+  end
+  return old_chart_tag
+end
+
+local function update_tag_and_cleanup(old_gps, new_gps, event, player)
   local old_chart_tag = Lookups.get_chart_tag_by_gps(old_gps)
   local new_chart_tag = Lookups.get_chart_tag_by_gps(new_gps)
   if not new_chart_tag then
@@ -164,13 +186,23 @@ function handlers.on_chart_tag_modified(event)
   if old_chart_tag ~= nil and old_chart_tag.valid then
     tag_destroy_helper.destroy_tag_and_chart_tag(nil, old_chart_tag)
   end
-  
----@diagnostic disable-next-line: undefined-global
+end
+
+local function update_favorites_gps(old_gps, new_gps)
   for _, p in pairs(game.players) do
     for _, fav in ipairs(Cache.get_player_favorites(p)) do
       if fav.gps == old_gps then fav.gps = new_gps end
     end
   end
+end
+
+function handlers.on_chart_tag_modified(event)
+  local player = event.player_index and game.get_player(event.player_index) or nil
+  if not is_valid_tag_modification(event, player) then return end
+  local new_gps, old_gps = extract_gps(event, player)
+  if not new_gps or not old_gps then return end
+  update_tag_and_cleanup(old_gps, new_gps, event, player)
+  update_favorites_gps(old_gps, new_gps)
 end
 
 function handlers.on_chart_tag_removed(event)

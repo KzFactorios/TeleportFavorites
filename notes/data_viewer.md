@@ -48,11 +48,48 @@ There should rarely be errors as we are only displaying a snapshot of the curren
 8. **Access Control:** Should the data viewer be restricted to admins or certain players?
 Not at this time
 9. **Hotkey Support:** Should there be a hotkey to open/close the data viewer or switch tabs?
-Not at this time
+There should a hotkey for openeing/closing the viewer ctrl+F12. Use tab and shift-tab to navigate tabs
 10. **Data Diffing:** Should the viewer support diffing between snapshots (e.g., before/after an event)?
 Not at this time
 
 ---
+
+# Data Viewer GUI Hierarchy
+
+```
+data_viewer_frame (frame)
+└─data_viewer_inner_flow (frame, vertical)
+  └─ data_viewer_titlebar_flow (flow, horizontal)
+    ├─ data_viewer_title_label (label)
+    ├─ data_viewer_titlebar_filler (empty-widget)
+    └─ data_viewer_close_btn (sprite-button)
+  └─ data_viewer_tabs_flow (flow, horizontal)
+    ├─ data_viewer_player_data_tab (button/sprite-button)
+    ├─ data_viewer_surface_data_tab (button/sprite-button)
+    ├─ data_viewer_lookup_tab (button/sprite-button)
+    ├─ data_viewer_all_data_tab (button/sprite-button)
+    └─ data_viewer_tab_actions_flow (flow, horizontal)
+        ├─ data_viewer_actions_font_size_flow (flow, horizontal)
+        |   ├─ data_viewer_actions_font_down_btn (button)
+        |   └─ data_viewer_actions_font_up_btn (button)
+        ├─ data_viewer_actions_opacity_flow (flow, horizontal)
+        |   ├─ data_viewer_actions_opacity_down_btn (button)
+        |   └─ data_viewer_actions_opacity_up_btn (button)
+        └─ data_viewer_tab_actions_refresh_data_btn
+  └─ data_viewer_content_flow (flow, vertical)
+    └─ data_viewer_table (table)
+        ├─ data_viewer_row_1_label (label)
+        ├─ data_viewer_row_1_value (label)
+        ├─ ...
+        └─ data_viewer_row_N_value (label)
+```
+- The author is unsure of how scrollbars will be structured, but they will control the viewing of data within the data_viewer_content_flow or the data_viewer_table
+- All element names use (for the most part) the `{gui_context}_{purpose}_{type}` convention.
+- The number of tab buttons and table rows may vary depending on the data being viewed.
+```
+
+---
+
 <!--
 The Data_Viewer:
 

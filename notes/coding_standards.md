@@ -5,6 +5,20 @@ This document defines the coding standards and best practices for the TeleportFa
 
 ---
 
+## Require Statements Policy
+All require statements MUST be placed at the very top of each Lua file, before any function or logic.
+
+Do NOT place require statements inside functions, event handlers, or conditional blocks.
+This rule is enforced to prevent circular dependencies, recursion errors, and stack overflows (e.g., "too many C levels" errors).
+If a circular dependency is encountered, refactor the code to break the cycle, but never move require inside a function as a workaround.
+This is a strict project policy. All agents and contributors must follow it.
+See also:
+
+gui_base.lua for an example and rationale.
+This policy applies to all Lua modules in the codebase.
+
+---
+
 ## General Guidelines
 - I have a condition called essential tremor which attributes to my attrocious typing skills. Do your best to follow along with my instructions. If there is any ambiguity then be sure to ask! And thank you for your patience!
 - Prefer per-line suppression comments (e.g., `---@diagnostic disable-next-line: ...`) over per-file suppressions. Prefer per-file suppressions over global suppressions. This ensures that static analysis is as precise and non-intrusive as possible, and that code remains readable and maintainable for all contributors.
@@ -27,10 +41,10 @@ This document defines the coding standards and best practices for the TeleportFa
 ## Require Statement Best Practices
 - Always place all require statements at the very top of each file, before any logic or function definitions.
 - Never place require statements inside functions, methods, or event handlers. This is critical for Factorio modding and avoids runtime errors and performance issues.
-- When requiring multiple helpers from the same module (e.g., `core.utils.helpers`), require the module once as a table and destructure the needed helpers into local variables. Example:
+- When requiring multiple helpers from the same module (e.g., `core.utils.helpers_suite`), require the module once as a table and destructure the needed helpers into local variables. Example:
 
 ```lua
-local helpers = require("core.utils.helpers")
+local helpers = require("core.utils.helpers_suite")
 local safe_destroy_frame = helpers.safe_destroy_frame
 local player_print = helpers.player_print
 ```
@@ -49,6 +63,7 @@ local player_print = helpers.player_print
 - Place all test files in `tests/`. Each core module and helper should have a corresponding test file, and all tests should be automated and cover edge cases and multiplayer scenarios.
 - All pattern base classes are located in `core/pattern/` or `core/patterns/` and are documented in `notes/pattern_class_notes.md`.
 - All domain classes (e.g., `Tag`, `Favorite`, `PlayerFavorites`) are located in their respective folders under `core/` and are strictly annotated and documented.
+- Modules and their methods should be modularized for eaier code maintenance and readability
 
 ---
 
@@ -92,6 +107,19 @@ local player_print = helpers.player_print
 - **Persistent vs. Runtime Data:** Persistent data must be managed via the `core/cache` module and stored in `storage`. Runtime-only (non-persistent) data must use the runtime cache (`core/cache/lookups.lua`) and never be stored in persistent storage.
 - **Strict EmmyLua Annotation:** All classes, fields, and methods must be annotated for strictness and IDE support. See `core/types/factorio.emmy.lua` for Factorio runtime types and type aliases.
 - **No leading underscores for private fields:** For private or internal fields in classes, do not use a leading underscore (e.g., use `chart_tag` instead of `_chart_tag`). This is the preferred convention for this codebase.
+
+---
+
+## GUI Element Naming Convention (Buttons, Labels, Fields, Containers)
+
+- All interactive and structural GUI element names (buttons, labels, textfields, frames, flows, etc.) must be prefixed with their GUI/module context, using the format:
+  - `{gui_context}_{purpose}_{type}`
+- This convention applies to all new and refactored GUI elements in the project.
+- The goal is to ensure clarity, avoid ambiguity, and make event handling and debugging easier.
+- Update all event handler checks and variable references to use the new names when refactoring or adding new elements.
+- This policy supersedes any previous element naming guidance.
+
+_Last updated: 2025-05-27_
 
 ---
 

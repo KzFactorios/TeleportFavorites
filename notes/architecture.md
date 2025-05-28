@@ -5,6 +5,20 @@ This document describes the architecture of the TeleportFavorites mod, including
 
 ---
 
+## Require Statements Policy
+All require statements MUST be placed at the very top of each Lua file, before any function or logic.
+
+Do NOT place require statements inside functions, event handlers, or conditional blocks.
+This rule is enforced to prevent circular dependencies, recursion errors, and stack overflows (e.g., "too many C levels" errors).
+If a circular dependency is encountered, refactor the code to break the cycle, but never move require inside a function as a workaround.
+This is a strict project policy. All agents and contributors must follow it.
+See also:
+
+gui_base.lua for an example and rationale.
+This policy applies to all Lua modules in the codebase.
+
+---
+
 ## High-Level Structure
 - **Persistent Data:** All persistent data is stored in `storage` and managed via the `core/cache` module.
 - **Core Modules:** Handle tag/favorite logic, context, and multiplayer safety.
