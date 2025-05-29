@@ -171,8 +171,11 @@ data:extend {
     type = "sprite",
     name = "slot_orange",
     filename = "__TeleportFavorites__/graphics/slot_orange.png",
+    priority = "extra-high-no-scale",
     width = 36,
     height = 36,
+    scale = 1,
+    mipmap_count = 2,
     flags = { "gui-icon" }
   },
   {
@@ -189,6 +192,22 @@ data:extend {
     filename = "__TeleportFavorites__/graphics/slot_white.png",
     width = 36,
     height = 36,
+    flags = { "gui-icon" }
+  },
+  {
+    type = "sprite",
+    name = "logo_36",
+    filename = "__TeleportFavorites__/graphics/prelim_logo_36.png",
+    width = 36,
+    height = 36,
+    flags = { "gui-icon" }
+  },
+  {
+    type = "sprite",
+    name = "logo_144",
+    filename = "__TeleportFavorites__/graphics/prelim_logo_144.png",
+    width = 144,
+    height = 144,
     flags = { "gui-icon" }
   }
 }

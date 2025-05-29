@@ -41,8 +41,8 @@ gui_style.te_tr_favorite_label = {
 if not gui_style.tf_slot_button then
   local base = {}
   for k, v in pairs(gui_style.slot_button) do base[k] = v end
-  -- Use vanilla slot_button graphical sets for a true vanilla look
-  -- Remove custom graphical_set and background overrides
+  base.width = 30
+  base.height = 30
   gui_style.tf_slot_button = base
 end
 
@@ -245,28 +245,16 @@ if not gui_style.tf_fave_slots_row_flow then
   }
 end
 
--- Custom orange slot button style for the favorite bar visibility toggle
-if not gui_style.tf_fave_toggle_button then
-  local base = {}
-  for k, v in pairs(gui_style.slot_button) do base[k] = v end
-  -- Use vanilla slot_button graphical_set with orange tint and rounded corners
-  local orange = { r = 1, g = 0.647, b = 0, a = 1 }
-  base.default_graphical_set = {
-    base = { position = { 68, 0 }, corner_size = 8, draw_type = "outer", tint = orange }
+-- Custom frame style for the favorites toggle container
+if not gui_style.tf_fave_toggle_container then
+  gui_style.tf_fave_toggle_container = {
+    type = "frame_style",
+    parent = "inside_deep_frame", -- match the slots row background
+    graphical_set = nil, -- use parent's background
+    padding = 0,
+    margin = 0,
+    horizontally_stretchable = "off",
+    vertically_stretchable = "off"
   }
-  base.hovered_graphical_set = {
-    base = { position = { 51, 0 }, corner_size = 8, draw_type = "outer", tint = orange }
-  }
-  base.clicked_graphical_set = {
-    base = { position = { 34, 0 }, corner_size = 8, draw_type = "outer", tint = orange }
-  }
-  base.disabled_graphical_set = {
-    base = { position = { 17, 0 }, corner_size = 8, draw_type = "outer", tint = { r = 1, g = 0.647, b = 0, a = 0.5 } }
-  }
-  base.width = 36
-  base.height = 36
-  base.icon_horizontal_align = "center"
-  base.icon_vertical_align = "center"
-  base.icon_size = 20 -- Make the heart icon smaller
-  gui_style.tf_fave_toggle_button = base
 end
+

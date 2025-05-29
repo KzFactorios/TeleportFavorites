@@ -58,28 +58,28 @@ function fave_bar.build_quickbar_style(player, parent)
     bar_frame.style.margin = 0
     bar_frame.style.vertically_stretchable = false
 
-    -- Toggle button in its own padded subframe (like the quickbar's number button)
-    local toggle_frame = bar_frame.add {
-        type = "frame",
-        name = "fave_bar_toggle_frame",
-        style = "tf_fave_slots_row",
-        direction = "horizontal",
-        padding = 0,
-        margin = 0
+    -- Add a horizontal flow to contain the toggle and slots row
+    local bar_flow = bar_frame.add {
+        type = "flow",
+        name = "fave_bar_flow",
+        direction = "horizontal"
     }
-    toggle_frame.style.vertically_stretchable = false
-    toggle_frame.style.horizontally_stretchable = false
 
-    local toggle_btn = toggle_frame.add {
+    -- Add a thin dark background frame for the toggle button
+    local toggle_container = bar_flow.add {
+        type = "frame",
+        name = "fave_bar_toggle_container",
+        style = "tf_fave_toggle_container",
+        direction = "vertical"
+    }
+    local toggle_btn = toggle_container.add {
         type = "sprite-button",
         name = "fave_bar_visible_btns_toggle",
-        style = "tf_fave_toggle_button",
-        sprite = SpriteEnum.HEART
+        style = "tf_slot_button",
+        sprite = "logo_36"
     }
-    toggle_btn.style.width = 36
-    toggle_btn.style.height = 36
-    toggle_btn.style.vertically_stretchable = false
-    toggle_btn.style.horizontally_stretchable = false
+    toggle_btn.style.margin = 2
+    --log("[TF DEBUG] Created fave_bar_visible_btns_toggle: " .. tostring(toggle_btn) .. ", valid=" .. tostring(toggle_btn and toggle_btn.valid))
 
     return bar_frame
 end
@@ -162,11 +162,7 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
         local btn = Helpers.create_slot_button(parent, "fave_bar_slot_" .. i, icon, tooltip, { style = style })
         btn.style = style
         btn.caption = tostring(i)
-        btn.style.horizontal_align = "center"
-        btn.style.vertical_align = "bottom"
-        btn.style.font = "default-small"
-        btn.style.top_padding = 0
-        btn.style.bottom_padding = 2 -- move text closer to bottom
+        -- All alignment, font, and padding must be set in the style prototype, not at runtime
     end
     return parent
 end

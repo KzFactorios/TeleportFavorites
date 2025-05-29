@@ -23,14 +23,28 @@ local control_data_viewer = require("core.control.control_data_viewer")
 local gui_event_dispatcher = require("core.events.gui_event_dispatcher")
 local custom_input_dispatcher = require("core.events.custom_input_dispatcher")
 
+-- Custom on_init to allow easy toggling of intro cutscene skip
+local function custom_on_init()
+  handlers.on_init()
+end
+
 -- Core lifecycle and area selection event wiring
-script.on_init(handlers.on_init)
+script.on_init(custom_on_init)
 script.on_load(handlers.on_load)
 script.on_event(_G.defines.events.on_player_created, handlers.on_player_created)
 script.on_event(_G.defines.events.on_player_changed_surface, handlers.on_player_changed_surface)
 script.on_event(_G.defines.events.on_player_selected_area, handlers.on_player_selected_area)
 script.on_event(_G.defines.events.on_player_joined_game, handlers.on_player_created)
 script.on_event("tf-open-tag-editor", handlers.on_open_tag_editor_custom_input)
+
+-- TODO remove this for production
+-- Instantly skip any cutscene (including intro) for all players
+script.on_event(defines.events.on_cutscene_started, function(event)
+  local player = game.get_player(event.player_index)
+  if player and player.valid then
+    player.exit_cutscene()
+  end
+end)
 
 -- Handle mod setting changes (e.g., slot count change)
 script.on_event(_G.defines.events.on_runtime_mod_setting_changed, function(event)
