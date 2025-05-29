@@ -71,10 +71,10 @@ function fave_bar.build_quickbar_style(player, parent)
     toggle_frame.style.horizontally_stretchable = false
 
     local toggle_btn = toggle_frame.add {
-        type = "button",
+        type = "sprite-button",
         name = "fave_bar_visible_btns_toggle",
         style = "tf_fave_toggle_button",
-        --icon = SpriteEnum.STAR
+        sprite = SpriteEnum.HEART
     }
     toggle_btn.style.width = 36
     toggle_btn.style.height = 36

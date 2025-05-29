@@ -1,7 +1,22 @@
+---@diagnostic disable: undefined-global
 local Constants = require("constants")
 require("prototypes.styles")
 local Style = require("gui.styles")
 
+
+if data then
+  -- Ensure the custom virtual signal subgroup exists
+  if not data.raw["item-subgroup"]["virtual-signal-special"] then
+    data:extend({
+      {
+        type = "item-subgroup",
+        name = "virtual-signal-special",
+        group = "signals",
+        order = "z"
+      }
+    })
+  end
+end
 
 ---@diagnostic disable-next-line: undefined-global
 data:extend {

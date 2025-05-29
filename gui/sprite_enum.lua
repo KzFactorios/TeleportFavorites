@@ -39,6 +39,7 @@ local SPRITE_ENUM = {
   EDIT = "utility/edit",
   ENTER = "utility/enter",
   EXPORT = "utility/export_slot",
+  HEART = "virtual-signal/signal-heart",
   IMPORT = "utility/import_slot",
   INFO = "utility/info",
   LIST_VIEW = "utility/list_view",
@@ -55,7 +56,7 @@ local SPRITE_ENUM = {
   SLOT_ORANGE = "slot_orange",
   SLOT_RED = "slot_red",
   SLOT_WHITE = "slot_white",
-  STAR = "utility/star",
+  STAR = "virtual-signal/signal-star", -- not working nor was star
   TRASH = "utility/trash",
   WARNING = "utility/warning_icon"
 }

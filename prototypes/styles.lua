@@ -245,12 +245,28 @@ if not gui_style.tf_fave_slots_row_flow then
   }
 end
 
--- Custom orange text button style for the favorite bar visibility toggle
+-- Custom orange slot button style for the favorite bar visibility toggle
 if not gui_style.tf_fave_toggle_button then
-  gui_style.tf_fave_toggle_button = {
-    type = "button_style",
-    parent = "slot_button",
-    horizontal_align = "center",
-    vertical_align = "center"
+  local base = {}
+  for k, v in pairs(gui_style.slot_button) do base[k] = v end
+  -- Use vanilla slot_button graphical_set with orange tint and rounded corners
+  local orange = { r = 1, g = 0.647, b = 0, a = 1 }
+  base.default_graphical_set = {
+    base = { position = { 68, 0 }, corner_size = 8, draw_type = "outer", tint = orange }
   }
+  base.hovered_graphical_set = {
+    base = { position = { 51, 0 }, corner_size = 8, draw_type = "outer", tint = orange }
+  }
+  base.clicked_graphical_set = {
+    base = { position = { 34, 0 }, corner_size = 8, draw_type = "outer", tint = orange }
+  }
+  base.disabled_graphical_set = {
+    base = { position = { 17, 0 }, corner_size = 8, draw_type = "outer", tint = { r = 1, g = 0.647, b = 0, a = 0.5 } }
+  }
+  base.width = 36
+  base.height = 36
+  base.icon_horizontal_align = "center"
+  base.icon_vertical_align = "center"
+  base.icon_size = 20 -- Make the heart icon smaller
+  gui_style.tf_fave_toggle_button = base
 end

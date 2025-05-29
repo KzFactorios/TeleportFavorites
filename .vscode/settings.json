@@ -16,4 +16,7 @@
   "Lua.workspace.checkThirdParty": "ApplyInMemory",
   "workbench.sideBar.location": "right",
   "editor.minimap.enabled": true,
+  "Lua.diagnostics.globals": [
+    "data"
+  ],
 }
