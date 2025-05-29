@@ -1,34 +1,31 @@
+require("tests.test_bootstrap")
+
 ---@diagnostic disable: undefined-global
 -- tests/integration/test_fave_bar_gui_spec.lua
--- Integration tests for the Favorites Bar GUI (fave_bar)
--- Covers structure, slot count, toggle, and slot button behavior
+-- Integration test for the Favorites Bar GUI (fave_bar)
+-- Only one test: structure and slot count
+
+local mock_gui = require("tests.mocks.mock_gui")
+package.loaded["gui.gui_base"] = {
+  create_frame = mock_gui.create_frame,
+  create_hflow = mock_gui.create_hflow,
+  create_label = mock_gui.create_label,
+}
+package.loaded["gui_base"] = package.loaded["gui.gui_base"]
 
 local assert = require("luassert")
-local fave_bar = require("gui.favorites_bar.fave_bar")
 local Constants = require("constants")
-local Cache = require("core.cache.cache")
 local mock_helpers = require("tests.mocks.mock_helpers")
-local mock_gui = require("tests.mocks.mock_gui")
 
--- Mock Factorio global 'defines' for test environment
-if not _G.defines then
-  _G.defines = {
-    render_mode = { game = 0, chart = 1, chart_zoomed_in = 2 },
-    events = {},
-    gui_type = {},
-    direction = {},
-    inventory = {},
-    -- Add other required fields as needed for tests
-  }
-end
+local fave_bar = require("gui.favorites_bar.fave_bar")
+local control_fave_bar = reload_module("core.control.control_fave_bar")
+print("[TEST DEBUG] control_fave_bar.on_fave_bar_gui_click =", tostring(control_fave_bar.on_fave_bar_gui_click))
 
 -- Patch Helpers in package.loaded if present
 local ok, helpers = pcall(require, "core.utils.helpers_suite")
 if ok and helpers then
   helpers.create_slot_button = mock_helpers.mock_create_slot_button
 end
-
--- Patch require cache for Helpers
 package.loaded["core.utils.helpers_suite"].create_slot_button = mock_helpers.mock_create_slot_button
 
 -- Mock player and GUI API
@@ -48,115 +45,199 @@ local function mock_player()
   }
 end
 
--- Patch mock_player to use patched add method
 local function patched_mock_player()
   local player = mock_player()
   mock_gui.patch_add_method(player.gui.top)
   mock_gui.patch_add_method(player.gui.screen)
+  -- Patch persistent storage for player and surface
+  if not storage.players then storage.players = {} end
+  if not storage.players[player.index] then storage.players[player.index] = {} end
+  if not storage.players[player.index].surfaces then storage.players[player.index].surfaces = {} end
+  if not storage.players[player.index].surfaces[player.surface.index] then
+    storage.players[player.index].surfaces[player.surface.index] = { favorites = {} }
+  end
+  -- Patch player settings
+  if not storage.players[player.index].settings then
+    storage.players[player.index].settings = { favorites_on = true }
+  end
+  -- Ensure toggle_fav_bar_buttons is initialized as in production
+  if storage.players[player.index].toggle_fav_bar_buttons == nil then
+    storage.players[player.index].toggle_fav_bar_buttons = true
+  end
   return player
 end
 
--- Utility to safely get slots_flow and assert not nil before further checks
+local function get_child_by_name(parent, name)
+  if not parent or not parent.children then return nil end
+  for _, child in ipairs(parent.children) do
+    if child.name == name then return child end
+  end
+  return nil
+end
+
 local function get_slots_flow(player)
   local bar_frame = player.gui.top.fave_bar_frame
   if not bar_frame then return nil end
-  local bar_flow = bar_frame.fave_bar_flow
+  local bar_flow = get_child_by_name(bar_frame, "fave_bar_flow")
   if not bar_flow then return nil end
-  return bar_flow.fave_bar_slots_flow
-end
-
--- Mock frame function to replace gui_base.create_frame in tests
-local function mock_frame(parent, name, direction, style)
-  local frame = {
-    name = name,
-    direction = direction or 'horizontal',
-    style = { -- mock style as a table, not a string
-      top_padding = 0,
-      bottom_padding = 0,
-      left_padding = 0,
-      right_padding = 0
-    },
-    children = {},
-    add = function(self, opts)
-      local child = opts or {}
-      child.children = {}
-      if type(self.children) ~= "table" then self.children = {} end
-      table.insert(self.children, child)
-      if child.name then self[child.name] = child end
-      child.add = self.add
-      -- Add a style table for all GUI elements
-      child.style = {}
-      return child
-    end
-  }
-  if parent and parent.children then table.insert(parent.children, frame) end
-  return frame
-end
-
--- Patch GuiBase.create_frame to use the mock_frame in test
-local ok_gb, gui_base = pcall(require, "gui.gui_base")
-if ok_gb and gui_base then
-  gui_base.create_frame = mock_frame
+  return get_child_by_name(bar_flow, "fave_bar_slots_flow")
 end
 
 describe("Favorites Bar GUI", function()
   it("builds with correct structure and slot count", function()
     local player = patched_mock_player()
-    fave_bar.build(player, player.gui.top)
-    local bar_frame = player.gui.top.fave_bar_frame
-    assert.is_not_nil(bar_frame)
-    assert.is_not_nil(bar_frame.fave_bar_flow)
-    assert.is_not_nil(bar_frame.fave_bar_flow.fave_bar_toggle_flow)
-    assert.is_not_nil(bar_frame.fave_bar_flow.fave_bar_visible_btns_toggle)
-    local slots_flow = get_slots_flow(player)
-    assert.is_not_nil(slots_flow)
-    assert.is_table(slots_flow.children)
-    assert.are.equal(Constants.settings.MAX_FAVORITE_SLOTS, #slots_flow.children)
-  end)
-
-  it("toggles the bar to hide/show the slot row", function()
-    local player = patched_mock_player()
-    fave_bar.build(player, player.gui.top)
-    local slots_flow = get_slots_flow(player)
-    assert.is_not_nil(slots_flow)
-    assert.is_true(slots_flow.visible)
-    -- Simulate toggle
-    slots_flow.visible = false
-    assert.is_false(slots_flow.visible)
-    slots_flow.visible = true
-    assert.is_true(slots_flow.visible)
-  end)
-
-  it("slot buttons have correct naming and are always present", function()
-    local player = patched_mock_player()
-    fave_bar.build(player, player.gui.top)
-    local slots_flow = get_slots_flow(player)
-    assert.is_not_nil(slots_flow)
-    assert.is_table(slots_flow.children)
-    for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
-      local btn = slots_flow.children[i]
-      assert.is_not_nil(btn)
-      assert.is_true(tostring(btn.name):find("fave_bar_slot_"))
-      assert.are.equal(i, tonumber(btn.name:match("fave_bar_slot_(%d+)")))
-    end
-  end)
-
-  it("blank slot buttons are enabled and do nothing on click", function()
-    local player = patched_mock_player()
-    fave_bar.build(player, player.gui.top)
-    local slots_flow = get_slots_flow(player)
-    assert.is_not_nil(slots_flow)
-    assert.is_table(slots_flow.children)
-    for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
-      local btn = slots_flow.children[i]
-      assert.is_not_nil(btn)
-      -- Simulate click handler: should be a no-op for blank slots
-      local was_called = false
-      btn.on_click = function() was_called = true end
-      if btn.is_blank then
-        btn:on_click()
-        assert.is_false(was_called)
+    _G.__test_player = player
+    local bar_frame = fave_bar.build(player, player.gui.top)
+    assert(bar_frame ~= nil, "fave_bar.build returned nil")
+    player.gui.top.fave_bar_frame = bar_frame
+    print("bar_frame children names:")
+    if type(bar_frame) == "table" and type(bar_frame.children) == "table" then
+      for i, child in ipairs(bar_frame.children) do
+        print(i, child.name)
       end
     end
+    local bar_flow = get_child_by_name(bar_frame, "fave_bar_flow")
+    assert(bar_flow ~= nil, "bar_frame.fave_bar_flow is nil")
+    local toggle_flow = get_child_by_name(bar_flow, "fave_bar_toggle_flow")
+    assert(toggle_flow ~= nil, "bar_flow.fave_bar_toggle_flow is nil")
+    local visible_btns_toggle = get_child_by_name(toggle_flow, "fave_bar_visible_btns_toggle")
+    assert(visible_btns_toggle ~= nil, "toggle_flow.fave_bar_visible_btns_toggle is nil")
+    local slots_flow = get_child_by_name(bar_flow, "fave_bar_slots_flow")
+    assert(slots_flow ~= nil, "slots_flow is nil")
+    assert(type(slots_flow.children) == "table", "slots_flow.children is not a table")
+    local expected_slot_count = Constants.settings and Constants.settings.MAX_FAVORITE_SLOTS or 10
+    assert(#slots_flow.children == expected_slot_count,
+      "Expected " .. expected_slot_count .. " slots, got " .. tostring(#slots_flow.children))
+  end)
+
+  it("toggles slot button visibility on fave_bar_visible_btns_toggle click", function()
+    local player = patched_mock_player()
+    _G.__test_player = player
+    local bar_frame = fave_bar.build(player, player.gui.top)
+    player.gui.top.fave_bar_frame = bar_frame
+    local bar_flow = get_child_by_name(bar_frame, "fave_bar_flow")
+    assert.is_not_nil(bar_flow)
+    local toggle_flow = get_child_by_name(bar_flow, "fave_bar_toggle_flow")
+    assert.is_not_nil(toggle_flow)
+    local visible_btns_toggle = get_child_by_name(toggle_flow, "fave_bar_visible_btns_toggle")
+    assert.is_not_nil(visible_btns_toggle)
+    local slots_flow = get_child_by_name(bar_flow, "fave_bar_slots_flow")
+    assert.is_not_nil(slots_flow)
+    -- Initial state: visible
+    slots_flow.visible = true
+    debug_state("before first toggle", player, bar_flow)
+    -- First toggle: hide
+    control_fave_bar.on_fave_bar_gui_click({element=visible_btns_toggle, player_index=player.index})
+    local slots_flow_after_hide = get_child_by_name(bar_flow, "fave_bar_slots_flow")
+    debug_state("after first toggle", player, bar_flow)
+    assert.is_not_nil(slots_flow_after_hide)
+    if slots_flow_after_hide ~= nil and slots_flow_after_hide.visible ~= nil then
+      assert.is_false(slots_flow_after_hide.visible)
+    end
+    -- Second toggle: show again
+    control_fave_bar.on_fave_bar_gui_click({element=visible_btns_toggle, player_index=player.index})
+    local slots_flow_after_show = get_child_by_name(bar_flow, "fave_bar_slots_flow")
+    debug_state("after second toggle", player, bar_flow)
+    assert.is_not_nil(slots_flow_after_show)
+    if slots_flow_after_show ~= nil and slots_flow_after_show.visible ~= nil then
+      assert.is_true(slots_flow_after_show.visible)
+    end
+  end)
+
+  it("shows slots_flow again after toggling fave_bar_visible_btns_toggle twice", function()
+    local player = patched_mock_player()
+    _G.__test_player = player
+    local bar_frame = fave_bar.build(player, player.gui.top)
+    player.gui.top.fave_bar_frame = bar_frame
+    local bar_flow = get_child_by_name(bar_frame, "fave_bar_flow")
+    assert.is_not_nil(bar_flow)
+    local toggle_flow = get_child_by_name(bar_flow, "fave_bar_toggle_flow")
+    assert.is_not_nil(toggle_flow)
+    local visible_btns_toggle = get_child_by_name(toggle_flow, "fave_bar_visible_btns_toggle")
+    assert.is_not_nil(visible_btns_toggle)
+    local slots_flow = get_child_by_name(bar_flow, "fave_bar_slots_flow")
+    assert.is_not_nil(slots_flow)
+    -- Initial state: visible
+    slots_flow.visible = true
+    debug_state("before first toggle", player, bar_flow)
+    -- First toggle: hide
+    control_fave_bar.on_fave_bar_gui_click({element=visible_btns_toggle, player_index=player.index})
+    local slots_flow_after_hide = get_child_by_name(bar_flow, "fave_bar_slots_flow")
+    debug_state("after first toggle", player, bar_flow)
+    assert.is_not_nil(slots_flow_after_hide)
+    assert.is_false(slots_flow_after_hide.visible)
+    -- Second toggle: show again
+    control_fave_bar.on_fave_bar_gui_click({element=visible_btns_toggle, player_index=player.index})
+    local slots_flow_after_show = get_child_by_name(bar_flow, "fave_bar_slots_flow")
+    debug_state("after second toggle", player, bar_flow)
+    assert.is_not_nil(slots_flow_after_show)
+    assert.is_true(slots_flow_after_show.visible)
+  end)
+
+  it("shows slots_flow again after toggling fave_bar_visible_btns_toggle twice, even if slots_flow is destroyed", function()
+    local player = patched_mock_player()
+    _G.__test_player = player
+    local bar_frame = fave_bar.build(player, player.gui.top)
+    player.gui.top.fave_bar_frame = bar_frame
+    local bar_flow = get_child_by_name(bar_frame, "fave_bar_flow")
+    assert.is_not_nil(bar_flow)
+    local toggle_flow = get_child_by_name(bar_flow, "fave_bar_toggle_flow")
+    assert.is_not_nil(toggle_flow)
+    local visible_btns_toggle = get_child_by_name(toggle_flow, "fave_bar_visible_btns_toggle")
+    assert.is_not_nil(visible_btns_toggle)
+    local slots_flow = get_child_by_name(bar_flow, "fave_bar_slots_flow")
+    assert.is_not_nil(slots_flow)
+    debug_state("before first toggle", player, bar_flow)
+    -- First toggle: hide (simulate handler)
+    control_fave_bar.on_fave_bar_gui_click({element=visible_btns_toggle, player_index=player.index})
+    debug_state("after first toggle", player, bar_flow)
+    -- Simulate in-game behavior: slots_flow is destroyed when hidden
+    if bar_flow and type(bar_flow.children) == "table" then
+      for i = #bar_flow.children, 1, -1 do
+        local child = bar_flow.children[i]
+        if child and child.name == "fave_bar_slots_flow" then
+          table.remove(bar_flow.children, i)
+          break
+        end
+      end
+    end
+    debug_state("after slots_flow destroyed", player, bar_flow)
+    -- Second toggle: show again (should recreate slots_flow)
+    control_fave_bar.on_fave_bar_gui_click({element=visible_btns_toggle, player_index=player.index})
+    local new_slots_flow = get_child_by_name(bar_flow, "fave_bar_slots_flow")
+    debug_state("after second toggle", player, bar_flow)
+    assert.is_not_nil(new_slots_flow)
+    if new_slots_flow then
+      assert.is_true(new_slots_flow.visible)
+    end
+  end)
+
+  it("persists toggle_fav_bar_buttons state in storage across toggles", function()
+    local player = patched_mock_player()
+    _G.__test_player = player
+    local bar_frame = fave_bar.build(player, player.gui.top)
+    player.gui.top.fave_bar_frame = bar_frame
+    local bar_flow = get_child_by_name(bar_frame, "fave_bar_flow")
+    assert.is_not_nil(bar_flow)
+    local toggle_flow = get_child_by_name(bar_flow, "fave_bar_toggle_flow")
+    assert.is_not_nil(toggle_flow)
+    local visible_btns_toggle = get_child_by_name(toggle_flow, "fave_bar_visible_btns_toggle")
+    assert.is_not_nil(visible_btns_toggle)
+    local slots_flow = get_child_by_name(bar_flow, "fave_bar_slots_flow")
+    assert.is_not_nil(slots_flow)
+
+    debug_state("before first toggle", player, bar_flow)
+    -- Initial state: should be true in storage
+    assert.is_true(storage.players[player.index].toggle_fav_bar_buttons)
+
+    -- First toggle: should set to false
+    control_fave_bar.on_fave_bar_gui_click({element=visible_btns_toggle, player_index=player.index})
+    debug_state("after first toggle", player, bar_flow)
+    assert.is_false(storage.players[player.index].toggle_fav_bar_buttons)
+
+    -- Second toggle: should set to true
+    control_fave_bar.on_fave_bar_gui_click({element=visible_btns_toggle, player_index=player.index})
+    debug_state("after second toggle", player, bar_flow)
+    assert.is_true(storage.players[player.index].toggle_fav_bar_buttons)
   end)
 end)

@@ -29,6 +29,7 @@ Internal Helpers:
 local GuiBase = require("gui.gui_base")
 local Constants = require("constants")
 local Helpers = require("core.utils.helpers_suite")
+local SpriteEnum = require("gui.sprite_enum")
 
 local tag_editor = {}
 
@@ -45,15 +46,21 @@ local function build_text_section(frame, tag_data)
 end
 
 -- Creates the row of action buttons for the tag editor
-local function build_button_row(frame)
+local function build_button_row(frame, tag_data)
     local tag_editor_button_row = GuiBase.create_hflow(frame, "tag_editor_button_row")
-    local tag_editor_move_btn = Helpers.create_slot_button(tag_editor_button_row, "tag_editor_move_btn", "utility/enter", { "tf-gui.move_tooltip" })
-    local tag_editor_delete_btn = Helpers.create_slot_button(tag_editor_button_row, "tag_editor_delete_btn", "utility/trash", { "tf-gui.delete_tooltip" })
-    local tag_editor_teleport_btn = Helpers.create_slot_button(tag_editor_button_row, "tag_editor_teleport_btn", "utility/enter", { "tf-gui.teleport_tooltip" })
-    local tag_editor_favorite_btn = Helpers.create_slot_button(tag_editor_button_row, "tag_editor_favorite_btn", "utility/check_mark", { "tf-gui.favorite_tooltip" })
+    local style = "tf_slot_button"
+    if tag_data and tag_data.move_mode then
+        style = "tf_slot_button_dragged"
+    elseif tag_data and tag_data.locked then
+        style = "tf_slot_button_locked"
+    end
+    local tag_editor_move_btn = Helpers.create_slot_button(tag_editor_button_row, "tag_editor_move_btn", SpriteEnum.ENTER, { "tf-gui.move_tooltip" }, {style=style})
+    local tag_editor_delete_btn = Helpers.create_slot_button(tag_editor_button_row, "tag_editor_delete_btn", SpriteEnum.TRASH, { "tf-gui.delete_tooltip" }, {style=style})
+    local tag_editor_teleport_btn = Helpers.create_slot_button(tag_editor_button_row, "tag_editor_teleport_btn", SpriteEnum.ENTER, { "tf-gui.teleport_tooltip" }, {style=style})
+    local tag_editor_favorite_btn = Helpers.create_slot_button(tag_editor_button_row, "tag_editor_favorite_btn", SpriteEnum.CHECK_MARK, { "tf-gui.favorite_tooltip" }, {style=style})
     local tag_editor_confirm_btn = Helpers.create_slot_button(tag_editor_button_row, "tag_editor_confirm_btn", {},
-        { "tf-gui.confirm_tooltip" })
-    local tag_editor_cancel_btn = Helpers.create_slot_button(tag_editor_button_row, "tag_editor_cancel_btn", "utility/close", { "tf-gui.cancel_tooltip" })
+        { "tf-gui.confirm_tooltip" }, {style=style})
+    local tag_editor_cancel_btn = Helpers.create_slot_button(tag_editor_button_row, "tag_editor_cancel_btn", SpriteEnum.CLOSE, { "tf-gui.cancel_tooltip" }, {style=style})
     return tag_editor_button_row, tag_editor_move_btn, tag_editor_delete_btn, tag_editor_teleport_btn, tag_editor_favorite_btn, tag_editor_confirm_btn, tag_editor_cancel_btn
 end
 
@@ -133,7 +140,7 @@ local function build_titlebar(inner)
     local draggable = tag_editor_titlebar.add{type="empty-widget", name="titlebar_draggable", style="draggable_space_header"}
     draggable.style.horizontally_stretchable = true
     draggable.drag_target = inner.parent -- set drag target to the outer frame
-    local close_btn = Helpers.create_slot_button(tag_editor_titlebar, "titlebar_close_button", "utility/close", {"tf-gui.cancel_tooltip"})
+    local close_btn = Helpers.create_slot_button(tag_editor_titlebar, "titlebar_close_button", SpriteEnum.CLOSE, {"tf-gui.cancel_tooltip"})
     return tag_editor_titlebar, close_btn
 end
 
@@ -149,22 +156,22 @@ local function build_last_user_row(content_inner, tag_data, player)
     GuiBase.create_label(tag_editor_last_user_container, "tag_editor_last_user_row_last_user_title", {"tf-gui.last_user_label"})
     GuiBase.create_label(tag_editor_last_user_container, "tag_editor_last_user_row_last_user_name", tag_data.last_user or player.name)
     local tag_editor_last_user_btn_container = GuiBase.create_hflow(tag_editor_last_user_row, "tag_editor_last_user_btn_container")
-    local move_btn = Helpers.create_slot_button(tag_editor_last_user_btn_container, "last_user_row_move_button", "utility/enter", {"tf-gui.move_tooltip"})
-    local delete_btn = Helpers.create_slot_button(tag_editor_last_user_btn_container, "last_user_row_delete_button", "utility/trash", {"tf-gui.delete_tooltip"})
+    local move_btn = Helpers.create_slot_button(tag_editor_last_user_btn_container, "last_user_row_move_button", SpriteEnum.ENTER, {"tf-gui.move_tooltip"})
+    local delete_btn = Helpers.create_slot_button(tag_editor_last_user_btn_container, "last_user_row_delete_button", SpriteEnum.TRASH, {"tf-gui.delete_tooltip"})
     return tag_editor_last_user_row, tag_editor_last_user_btn_container, move_btn, delete_btn
 end
 
 local function build_teleport_row(content_inner)
     local tag_editor_teleport_row = GuiBase.create_hflow(content_inner, "tag_editor_teleport_row")
     GuiBase.create_label(tag_editor_teleport_row, "tag_editor_teleport_row_label", {"tf-gui.teleport_to"})
-    local teleport_btn = Helpers.create_slot_button(tag_editor_teleport_row, "tag_editor_teleport_button", "utility/enter", {"tf-gui.teleport_tooltip"})
+    local teleport_btn = Helpers.create_slot_button(tag_editor_teleport_row, "tag_editor_teleport_button", SpriteEnum.ENTER, {"tf-gui.teleport_tooltip"})
     return tag_editor_teleport_row, teleport_btn
 end
 
 local function build_favorite_row(content_inner)
     local tag_editor_favorite_row = GuiBase.create_hflow(content_inner, "tag_editor_favorite_row")
     GuiBase.create_label(tag_editor_favorite_row, "tag_editor_favorite_row_label", {"tf-gui.favorite_row_label"})
-    local tag_editor_favorite_btn = Helpers.create_slot_button(tag_editor_favorite_row, "tag_editor_favorite_btn", "utility/check_mark", {"tf-gui.favorite_tooltip"})
+    local tag_editor_favorite_btn = Helpers.create_slot_button(tag_editor_favorite_row, "tag_editor_favorite_btn", SpriteEnum.CHECK_MARK, {"tf-gui.favorite_tooltip"})
     return tag_editor_favorite_row, tag_editor_favorite_btn
 end
 
@@ -192,8 +199,8 @@ end
 
 local function build_last_row(inner)
     local tag_editor_last_row = GuiBase.create_hflow(inner, "tag_editor_last_row")
-    local cancel_btn = Helpers.create_slot_button(tag_editor_last_row, "last_row_cancel_button", "utility/close", {"tf-gui.cancel_tooltip"})
-    local confirm_btn = Helpers.create_slot_button(tag_editor_last_row, "last_row_confirm_button", "utility/check_mark", {"tf-gui.confirm_tooltip"})
+    local cancel_btn = Helpers.create_slot_button(tag_editor_last_row, "last_row_cancel_button", SpriteEnum.CLOSE, {"tf-gui.cancel_tooltip"})
+    local confirm_btn = Helpers.create_slot_button(tag_editor_last_row, "last_row_confirm_button", SpriteEnum.CHECK_MARK, {"tf-gui.confirm_tooltip"})
     return tag_editor_last_row, cancel_btn, confirm_btn
 end
 
@@ -205,8 +212,8 @@ function tag_editor.build_confirmation_dialog(player, opts)
     frame.auto_center = true
     GuiBase.create_label(frame, "tag_editor_tf_confirm_dialog_label", opts.message or {"tf-gui.confirm_delete_message"}, "bold_label")
     local tag_editor_tf_confirm_dialog_btn_row = GuiBase.create_hflow(frame, "tag_editor_tf_confirm_dialog_btn_row")
-    local confirm_btn = Helpers.create_slot_button(tag_editor_tf_confirm_dialog_btn_row, "tf_confirm_dialog_confirm_btn", "utility/check_mark", {"tf-gui.confirm_delete_confirm"})
-    local cancel_btn = Helpers.create_slot_button(tag_editor_tf_confirm_dialog_btn_row, "tf_confirm_dialog_cancel_btn", "utility/close", {"tf-gui.confirm_delete_cancel"})
+    local confirm_btn = Helpers.create_slot_button(tag_editor_tf_confirm_dialog_btn_row, "tf_confirm_dialog_confirm_btn", SpriteEnum.CHECK_MARK, {"tf-gui.confirm_delete_confirm"})
+    local cancel_btn = Helpers.create_slot_button(tag_editor_tf_confirm_dialog_btn_row, "tf_confirm_dialog_cancel_btn", SpriteEnum.CLOSE, {"tf-gui.confirm_delete_cancel"})
     -- Set modal/ESC behavior
     player.opened = frame
     return frame, confirm_btn, cancel_btn

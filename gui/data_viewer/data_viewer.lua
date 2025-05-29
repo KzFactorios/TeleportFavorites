@@ -22,6 +22,7 @@ local Constants = require("constants")
 local Cache = require("core.cache.cache")
 local Lookups = require("core.cache.lookups")
 local Helpers = require("core.utils.helpers_suite")
+local SpriteEnum = require("gui.sprite_enum")
 
 local data_viewer = {}
 
@@ -30,7 +31,7 @@ local function build_titlebar(parent)
   GuiBase.create_label(flow, "data_viewer_title_label", {"tf-gui.data_viewer_title"}, "frame_title")
   local filler = flow.add{type="empty-widget", name="data_viewer_titlebar_filler", style="draggable_space_header"}
   filler.style.horizontally_stretchable = true
-  local close_btn = Helpers.create_slot_button(flow, "data_viewer_close_btn", "utility/close_white", {"tf-gui.close_tooltip"})
+  local close_btn = Helpers.create_slot_button(flow, "data_viewer_close_btn", SpriteEnum.CLOSE, {"tf-gui.close_tooltip"})
   return flow, close_btn
 end
 
@@ -43,7 +44,11 @@ local function build_tabs_row(parent, active_tab)
     {"data_viewer_all_data_tab", "tf-gui.tab_all_data"}
   }
   for _, def in ipairs(tab_defs) do
-    local btn = GuiBase.create_icon_button(tabs_flow, def[1], "utility/tab_icon", {def[2]}, "tf_slot_button")
+    local style = "tf_slot_button"
+    if active_tab and def[1]:find(active_tab) then
+      style = "tf_slot_button_dragged"
+    end
+    local btn = GuiBase.create_icon_button(tabs_flow, def[1], SpriteEnum.LIST_VIEW, {def[2]}, style)
     if active_tab and btn.name:find(active_tab) then btn.style.font_color = {r=1,g=0.8,b=0.2} end
   end
   return tabs_flow
@@ -53,14 +58,14 @@ local function build_tab_actions_row(parent)
   local actions_flow = GuiBase.create_hflow(parent, "data_viewer_tab_actions_flow")
   -- Font size controls
   local font_size_flow = GuiBase.create_hflow(actions_flow, "data_viewer_actions_font_size_flow")
-  Helpers.create_slot_button(font_size_flow, "data_viewer_actions_font_down_btn", "utility/remove", {"tf-gui.font_minus_tooltip"})
-  Helpers.create_slot_button(font_size_flow, "data_viewer_actions_font_up_btn", "utility/add", {"tf-gui.font_plus_tooltip"})
+  Helpers.create_slot_button(font_size_flow, "data_viewer_actions_font_down_btn", SpriteEnum.ARROW_DOWN, {"tf-gui.font_minus_tooltip"})
+  Helpers.create_slot_button(font_size_flow, "data_viewer_actions_font_up_btn", SpriteEnum.ARROW_UP, {"tf-gui.font_plus_tooltip"})
   -- Opacity controls
   local opacity_flow = GuiBase.create_hflow(actions_flow, "data_viewer_actions_opacity_flow")
-  Helpers.create_slot_button(opacity_flow, "data_viewer_actions_opacity_down_btn", "utility/remove", {"tf-gui.opacity_down_tooltip"})
-  Helpers.create_slot_button(opacity_flow, "data_viewer_actions_opacity_up_btn", "utility/add", {"tf-gui.opacity_up_tooltip"})
+  Helpers.create_slot_button(opacity_flow, "data_viewer_actions_opacity_down_btn", SpriteEnum.ARROW_DOWN, {"tf-gui.opacity_down_tooltip"})
+  Helpers.create_slot_button(opacity_flow, "data_viewer_actions_opacity_up_btn", SpriteEnum.ARROW_UP, {"tf-gui.opacity_up_tooltip"})
   -- Refresh button
-  Helpers.create_slot_button(actions_flow, "data_viewer_tab_actions_refresh_data_btn", "utility/refresh", {"tf-gui.refresh_tooltip"})
+  Helpers.create_slot_button(actions_flow, "data_viewer_tab_actions_refresh_data_btn", SpriteEnum.REFRESH, {"tf-gui.refresh_tooltip"})
   return actions_flow
 end
 
@@ -81,7 +86,12 @@ end
 
 function data_viewer.build(player, parent, state)
   local s = state or {}
-  local frame = GuiBase.create_frame(parent, "data_viewer_frame", "vertical", "inside_shallow_frame_with_padding")
+  -- Use the provided parent directly (should be tf_main_gui_flow)
+  local main_flow = parent
+  if main_flow.data_viewer_frame then
+    main_flow.data_viewer_frame.destroy()
+  end
+  local frame = GuiBase.create_frame(main_flow, "data_viewer_frame", "vertical", "inside_shallow_frame_with_padding")
   frame.style.width = 1000
   frame.style.vertically_stretchable = true
   local inner_flow = GuiBase.create_vflow(frame, "data_viewer_inner_flow")

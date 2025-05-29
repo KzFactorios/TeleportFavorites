@@ -127,3 +127,18 @@ the data panel sohuld be the same width and show below the tabs. Create a button
 
 keep things very simple as this only a dev utility
 -->
+## Working Vanilla Factorio Utility Sprites (for Data Viewer and General GUI)
+
+- utility/list_view         (generic tab icon)
+- utility/close             (close button)
+- utility/refresh           (refresh button)
+- utility/arrow-up          (increase, up)
+- utility/arrow-down        (decrease, down)
+- utility/arrow-left        (left)
+- utility/arrow-right       (right)
+
+> Note: Do NOT use utility/minus, utility/plus, utility/remove, utility/add, utility/tab_icon, utility/up_arrow, or utility/down_arrow. These do NOT exist in vanilla Factorio and will cause exceptions.
+
+If you need more icons, check the [Factorio Wiki: Prototype/Sprite](https://wiki.factorio.com/Prototype/Sprite#Sprites) or inspect the game's utility-sprites.png for available names.
+
+---

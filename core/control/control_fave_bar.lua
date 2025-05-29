@@ -1,3 +1,5 @@
+print("[DEBUG] control_fave_bar.lua loaded")
+
 ---@diagnostic disable: undefined-global
 
 -- control_fave_bar.lua
@@ -19,9 +21,8 @@ local function lstr(key, ...)
 end
 
 local function clear_drag_state(player)
-  if storage and storage.players and storage.players[player.index] then
-    storage.players[player.index].drag_favorite_index = nil
-  end
+  local pdata = Cache.get_player_data(player)
+  pdata.drag_favorite_index = nil
 end
 
 local function is_locked_favorite(fav)
@@ -30,7 +31,8 @@ local function is_locked_favorite(fav)
 end
 
 local function start_drag(player, fav, slot)
-  storage.players[player.index].drag_favorite_index = slot
+  local pdata = Cache.get_player_data(player)
+  pdata.drag_favorite_index = slot
   Helpers.player_print(player, lstr("tf-gui.fave_bar_drag_start", slot))
 end
 
@@ -146,7 +148,8 @@ local function handle_favorite_slot_click(event, player, favorites)
     return
   end
   print("[TF DEBUG] handle_favorite_slot_click: fav=" .. (fav and (fav.gps or "<no gps>") or "<nil fav>"))
-  local drag_index = storage.players[player.index].drag_favorite_index
+  local pdata = Cache.get_player_data(player)
+  local drag_index = pdata.drag_favorite_index
   local did_drag = false
   if not drag_index then
     did_drag = handle_drag_start(event, player, fav, slot)
@@ -157,41 +160,73 @@ local function handle_favorite_slot_click(event, player, favorites)
   if handle_teleport(event, player, fav, slot, did_drag) then return end
   handle_tag_editor(event, player, fav, slot)
   -- Always update the slot row after any favorite action to ensure button is visible
-  local parent = player.gui.top
-  local bar_frame = parent and parent.fave_bar_frame
+  local main_flow = fave_bar.get_or_create_main_flow(player.gui.top)
+  local bar_frame = main_flow and main_flow.fave_bar_frame
   local bar_flow = bar_frame and bar_frame.fave_bar_flow
   if bar_flow then
     fave_bar.update_slot_row(player, bar_flow)
   else
     -- If bar_flow is missing, rebuild the entire favorites bar
-    if parent then
-      fave_bar.build(player, parent)
+    if main_flow then
+      fave_bar.build(player, main_flow)
     end
   end
 end
 
 local function handle_visible_fave_btns_toggle_click(player)
+  print("[HANDLER DEBUG] handle_visible_fave_btns_toggle_click ENTERED", tostring(handle_visible_fave_btns_toggle_click))
   local pdata = Cache.get_player_data(player)
-  local show = not pdata.toggle_fav_bar_buttons
+  print("[HANDLER DEBUG] pdata address:", tostring(pdata))
+  local prev = pdata.toggle_fav_bar_buttons
+  local show = not prev
+  print("[HANDLER DEBUG] Before toggle: prev=", prev, "show=", show, "pdata.toggle_fav_bar_buttons=", pdata.toggle_fav_bar_buttons)
   pdata.toggle_fav_bar_buttons = show
+  print("[HANDLER DEBUG] After toggle: pdata.toggle_fav_bar_buttons=", pdata.toggle_fav_bar_buttons)
 
-  -- Efficiently toggle only the button container's visibility
-  local parent = player.gui.top
-  local bar_frame = parent and parent.fave_bar_frame
+  local main_flow = fave_bar.get_or_create_main_flow(player.gui.top)
+  print("[HANDLER DEBUG] main_flow address:", tostring(main_flow))
+  local bar_frame = main_flow and main_flow.fave_bar_frame
+  print("[HANDLER DEBUG] bar_frame address:", tostring(bar_frame))
   local bar_flow = bar_frame and bar_frame.fave_bar_flow
+  print("[HANDLER DEBUG] bar_flow address:", tostring(bar_flow))
+  if not bar_flow then
+    -- If bar_flow is missing, rebuild the entire favorites bar and try again
+    fave_bar.build(player, main_flow)
+    bar_frame = main_flow and main_flow.fave_bar_frame
+    bar_flow = bar_frame and bar_frame.fave_bar_flow
+    print("[HANDLER DEBUG] (after rebuild) bar_frame address:", tostring(bar_frame))
+    print("[HANDLER DEBUG] (after rebuild) bar_flow address:", tostring(bar_flow))
+  end
   if bar_flow then
-    for _, child in pairs(bar_flow.children) do
-      if child.name == "fave_bar_slots_flow" then
-        child.visible = show
+    -- Find or recreate the slots row
+    local slots_flow = nil
+    for _, child in pairs(bar_flow.children or {}) do
+      if child and child.name == "fave_bar_slots_flow" then
+        slots_flow = child
         break
       end
     end
+    if not slots_flow then
+      print("[HANDLER DEBUG] fave_bar_slots_flow missing, recreating slot row.")
+      slots_flow = fave_bar.update_slot_row(player, bar_flow)
+    end
+    if slots_flow then
+      print("[HANDLER DEBUG] fave_bar_slots_flow before mutation: address=", tostring(slots_flow), "visible=", tostring(slots_flow.visible))
+      slots_flow.visible = show
+      print("[HANDLER DEBUG] fave_bar_slots_flow after mutation: address=", tostring(slots_flow), "visible=", tostring(slots_flow.visible))
+    else
+      print("[HANDLER DEBUG] Failed to find or recreate fave_bar_slots_flow!")
+    end
+  else
+    print("[HANDLER DEBUG] bar_flow is still nil after rebuild. GUI may be out of sync.")
   end
 end
 
 --- Handle favorites bar GUI click events
 local function on_fave_bar_gui_click(event)
+  print("[HANDLER DEBUG] on_fave_bar_gui_click called")
   local element = event.element
+  print("[HANDLER DEBUG] event.element.name:", element and element.name)
   if not element or not element.valid then return end
 
   local player = game.get_player(event.player_index)
@@ -203,11 +238,15 @@ local function on_fave_bar_gui_click(event)
     return
   end
   if element.name == "fave_bar_visible_btns_toggle" then
-    handle_visible_fave_btns_toggle_click(player)
+    print("[HANDLER DEBUG] handle_visible_fave_btns_toggle_click pointer:", tostring(handle_visible_fave_btns_toggle_click))
+    print("[HANDLER DEBUG] calling handle_visible_fave_btns_toggle_click")
+    local ok, err = pcall(handle_visible_fave_btns_toggle_click, player)
+    print("[HANDLER DEBUG] after handle_visible_fave_btns_toggle_click, ok=", tostring(ok), "err=", tostring(err))
   end
 end
 
 M.on_fave_bar_gui_click = on_fave_bar_gui_click
+M.on_fave_bar_gui_click_impl = on_fave_bar_gui_click
 
 --- Register favorites bar event handlers (deprecated: use central dispatcher)
 --- @param script table The Factorio script object

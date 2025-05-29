@@ -29,8 +29,17 @@ local GPS = require("core.gps.gps")
 local Helpers = require("core.utils.helpers_suite")
 local Settings = require("settings")
 local Cache = require("core.cache.cache")
+local SpriteEnum = require("gui.sprite_enum")
 
 local fave_bar = {}
+
+local function get_or_create_main_flow(parent)
+    local flow = parent.tf_main_gui_flow
+    if not (flow and flow.valid) then
+        flow = parent.add{type="flow", name="tf_main_gui_flow", direction="vertical"}
+    end
+    return flow
+end
 
 local function create_fave_bar_frame(parent)
     local fave_bar_frame = GuiBase.create_frame(parent, "fave_bar_frame", "horizontal", "inside_shallow_frame_with_padding")
@@ -41,7 +50,7 @@ end
 
 local function add_toggle_button(toggle_flow, player)
     -- Place the toggle button inside the toggle_flow
-    local btn = Helpers.create_slot_button(toggle_flow, "fave_bar_visible_btns_toggle", "red_tf_slot_button_20", {"tf-gui.toggle_fave_bar"})
+    local btn = Helpers.create_slot_button(toggle_flow, "fave_bar_visible_btns_toggle", SpriteEnum.SLOT_ORANGE, {"tf-gui.toggle_fave_bar"})
     btn.style.size = 36
     btn.style.width = 36
     btn.style.height = 36
@@ -69,10 +78,18 @@ local function build_favorite_buttons_row(slots_flow, player, pfaves, drag_index
         local icon = (not is_blank and fav.tag and fav.tag.icon ~= "") and fav.tag.icon or nil
         local tooltip = not is_blank and Helpers.build_favorite_tooltip(fav) or nil
         -- Use normalized slot button naming: "fave_bar_slot_" .. i
+        local style = "tf_slot_button"
+        if drag_index == i then
+            style = "tf_slot_button_dragged"
+        elseif drag_index and drag_index > 0 then
+            style = "tf_slot_button_drag_target"
+        elseif is_locked and not is_blank then
+            style = "tf_slot_button_locked"
+        end
         local btn = Helpers.create_slot_button(slots_flow, "fave_bar_slot_"..i, icon, tooltip, {
             locked = is_locked and not is_blank,
             enabled = not is_blank,
-            border_color = drag_index == i and {r=0.2,g=0.7,b=1,a=1} or (drag_index and {r=1,g=1,b=0.2,a=1}) or (is_locked and not is_blank and {r=1,g=0.5,b=0,a=1}) or nil
+            style = style
         })
         -- Slot number caption
         local slot_caption = GuiBase.create_label(btn, "fave_bar_slot_caption", tostring(i % 10), nil)
@@ -98,11 +115,9 @@ _G._fave_bar_building_guard = _fave_bar_building_guard
 function fave_bar.build(player, parent)
     local pid = player.index
     if _fave_bar_building_guard[pid] then
-        _G.print("[TF DEBUG] fave_bar.build: re-entrant call for player " .. tostring(pid) .. ", skipping.")
         return
     end
     _fave_bar_building_guard[pid] = true
-    _G.print("[TF DEBUG] fave_bar.build: ENTER for player " .. tostring(pid))
     local success, result = pcall(function()
         local player_settings = Settings:getPlayerSettings(player)
         if not player_settings.favorites_on then return end
@@ -111,10 +126,12 @@ function fave_bar.build(player, parent)
         if not (mode == defines.render_mode.game or mode == defines.render_mode.chart or mode == defines.render_mode.chart_zoomed_in) then
             return  
         end
-        if parent.fave_bar_frame then
-            parent.fave_bar_frame.destroy()
+        -- Use shared vertical flow
+        local main_flow = get_or_create_main_flow(parent)
+        if main_flow.fave_bar_frame then
+            main_flow.fave_bar_frame.destroy()
         end
-        local fave_bar_frame = create_fave_bar_frame(parent)
+        local fave_bar_frame = create_fave_bar_frame(main_flow)
         local bar_flow = GuiBase.create_hflow(fave_bar_frame, "fave_bar_flow")
         -- Add toggle flow and button
         local toggle_flow = GuiBase.create_hflow(bar_flow, "fave_bar_toggle_flow")
@@ -133,7 +150,6 @@ function fave_bar.build(player, parent)
         return fave_bar_frame
     end)
     _fave_bar_building_guard[pid] = nil
-    _G.print("[TF DEBUG] fave_bar.build: EXIT for player " .. tostring(pid))
     if not success then error(result) end
     return result
 end
@@ -150,11 +166,15 @@ function fave_bar.update_slot_row(player, bar_flow)
         end
     end
     local slots_flow = GuiBase.create_hflow(bar_flow, "fave_bar_slots_flow")
+    local pdata = Cache.get_player_data(player)
+    slots_flow.visible = pdata.toggle_fav_bar_buttons
     local pfaves = PlayerFavorites.new(player):get_favorites()
-    local drag_index = Cache.get_player_data(player).drag_favorite_index or -1
+    local drag_index = pdata.drag_favorite_index or -1
     local fav_btns = build_favorite_buttons_row(slots_flow, player, pfaves, drag_index)
     _G.print("[TF DEBUG] Built new fave_bar_slots_flow row.")
     return fav_btns
 end
 
+fave_bar.update_slot_row = update_slot_row
+fave_bar.get_or_create_main_flow = get_or_create_main_flow
 return fave_bar

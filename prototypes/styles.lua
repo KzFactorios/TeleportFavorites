@@ -33,12 +33,7 @@ gui_style.te_tr_favorite_label = {
 }
 
 -- Custom slot button style for all TeleportFavorites GUIs
----@diagnostic disable-next-line: undefined-global
-local gui_style = data.raw["gui-style"].default
-
--- Inherit from vanilla slot_button, but allow for future tweaks
 if not gui_style.tf_slot_button then
-  ---@type table
   local base = {}
   for k, v in pairs(gui_style.slot_button) do base[k] = v end
   base.font = "default-bold"
@@ -50,6 +45,36 @@ if not gui_style.tf_slot_button then
   base.padding = 0
   base.margin = 0
   gui_style.tf_slot_button = base
+end
+
+-- Custom slot button style for drag highlight (blue border)
+if not gui_style.tf_slot_button_dragged then
+  local base = {}
+  for k, v in pairs(gui_style.tf_slot_button) do base[k] = v end
+  base.default_graphical_set = {
+    base = {position = {0, 0}, corner_size = 8, tint = {r=0.2, g=0.7, b=1, a=1}}
+  }
+  gui_style.tf_slot_button_dragged = base
+end
+
+-- Custom slot button style for locked highlight (orange border)
+if not gui_style.tf_slot_button_locked then
+  local base = {}
+  for k, v in pairs(gui_style.tf_slot_button) do base[k] = v end
+  base.default_graphical_set = {
+    base = {position = {0, 0}, corner_size = 8, tint = {r=1, g=0.5, b=0, a=1}}
+  }
+  gui_style.tf_slot_button_locked = base
+end
+
+-- Custom slot button style for drag target (yellow border)
+if not gui_style.tf_slot_button_drag_target then
+  local base = {}
+  for k, v in pairs(gui_style.tf_slot_button) do base[k] = v end
+  base.default_graphical_set = {
+    base = {position = {0, 0}, corner_size = 8, tint = {r=1, g=1, b=0.2, a=1}}
+  }
+  gui_style.tf_slot_button_drag_target = base
 end
 
 -- Titlebar flow style for tag editor dialogs (matches vanilla titlebar row)

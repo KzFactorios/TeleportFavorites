@@ -21,6 +21,7 @@ local control_fave_bar = require("core.control.control_fave_bar")
 local control_tag_editor = require("core.control.control_tag_editor")
 local control_data_viewer = require("core.control.control_data_viewer")
 local gui_event_dispatcher = require("core.events.gui_event_dispatcher")
+local custom_input_dispatcher = require("core.events.custom_input_dispatcher")
 
 -- Core lifecycle and area selection event wiring
 script.on_init(handlers.on_init)
@@ -42,6 +43,12 @@ script.on_event(_G.defines.events.on_runtime_mod_setting_changed, function(event
   -- end
 end)
 
+-- Register data viewer hotkey and GUI events
+control_data_viewer.register(script)
+
 -- Register the shared GUI event handler for all GUIs
 -- Pass both script and defines so gui_event_dispatcher can register the dispatcher
 gui_event_dispatcher.register_gui_handlers(script)
+
+-- Register custom input (keyboard shortcut) handlers
+custom_input_dispatcher.register_custom_inputs(script)

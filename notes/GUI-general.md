@@ -1,5 +1,11 @@
 # General GUI Implementation Questions – TeleportFavorites
 
+## Sprite Reference
+- For a comprehensive, up-to-date list of all valid vanilla Factorio utility sprites, see:
+  https://github.com/wube/factorio-data/blob/master/core/prototypes/utility-sprites.lua
+- Use this as the canonical source for sprite names when updating or adding GUI icons.
+
+
 This document collects open questions and considerations for the implementation of all major GUIs in the mod: the favorites bar, data viewer, and tag editor. These questions are intended to guide robust, idiomatic, and user-friendly Factorio mod development.
 
 ## Data & Storage

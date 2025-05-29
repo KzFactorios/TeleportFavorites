@@ -24,26 +24,6 @@ function Helpers.math_round(n)
   return tostring(rounded) == "-0" and 0 or rounded
 end
 
--- Format a sprite path for Factorio, with type and name
-function Helpers.format_sprite_path(type_or_icon, name, is_signal)
-  -- If called with only one argument, treat as icon string (for backward compatibility)
-  local icon = name and tostring(name) or tostring(type_or_icon)
-  -- If icon contains a slash, assume it's a full sprite path (e.g. 'item/iron-plate', 'utility/lock')
-  if icon:find("/") then
-    return icon
-  elseif icon:match("^utility%.") then
-    return icon:gsub("^utility%.", "utility/")
-  elseif icon:match("^item%.") then
-    local item_name = icon:match("^item%.(.+)$")
-    -- For custom slot button icons, return as-is (no prefix)
-    return item_name or icon
-  elseif icon:match("^virtual%-signal%.") then
-    return icon:gsub("^virtual%-signal%.", "virtual-signal/")
-  else
-    return icon
-  end
-end
-
 -- Table helpers
 function Helpers.tables_equal(a, b)
   if a == b then return true end
@@ -358,16 +338,17 @@ end
 -- Slot button creation and styling
 function Helpers.create_slot_button(parent, name, icon, tooltip, opts)
   opts = opts or {}
-  -- Use format_sprite_path for robust sprite path handling
-  local sprite = Helpers.format_sprite_path(icon)
-  if not sprite or sprite == "" or sprite == "nil" then
-    -- Do not set the sprite property if no valid icon is provided
-    return parent.add {
-      type = "sprite-button",
-      name = name,
-      tooltip = tooltip,
-      style = opts.style or "tf_slot_button"
-    }
+  local sprite = icon
+  -- Robust dynamic icon validation
+  if sprite and sprite ~= "" then
+    local is_valid = Helpers.is_valid_sprite_path(sprite)
+    if not is_valid then
+      print("[TeleportFavorites] WARNING: Invalid sprite '" ..
+      tostring(sprite) .. "' for button '" .. tostring(name) .. "'. Using fallback icon.")
+      sprite = opts.fallback_icon or nil -- fallback to nil (blank) or allow override
+    end
+  else
+    sprite = nil -- treat empty string as no icon
   end
   local btn = parent.add {
     type = "sprite-button",
@@ -380,7 +361,6 @@ function Helpers.create_slot_button(parent, name, icon, tooltip, opts)
   btn.style.height = opts.height or 36
   btn.style.font = opts.font or "default-small"
   if opts.enabled ~= nil then btn.enabled = opts.enabled end
-  if opts.border_color then btn.style.border_color = opts.border_color end
   if opts.locked then
     local lock_icon = btn.add { type = "sprite", sprite = "utility/lock", name = "lock_overlay" }
     lock_icon.style.width, lock_icon.style.height = 16, 16
@@ -405,6 +385,21 @@ end
 
 function Helpers.safe_pretty_table(tbl, indent)
   return tbl and Helpers.pretty_table(tbl, indent) or "<nil>"
+end
+
+-- Sprite path validation helper (robust for runtime and test)
+Helpers.is_valid_sprite_path = function(sprite)
+  if type(sprite) ~= "string" or sprite == "" then return false end
+  -- Use pcall to avoid deprecation warning and runtime errors
+  local ok, result = pcall(function()
+    ---@diagnostic disable-next-line: undefined-global
+    if helpers.is_valid_sprite_path then
+      ---@diagnostic disable-next-line: undefined-global
+      return helpers.is_valid_sprite_path(sprite)
+    end
+    return true -- fallback for test/mocks
+  end)
+    return ok and result or false
 end
 
 return Helpers

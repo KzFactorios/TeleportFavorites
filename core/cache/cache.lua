@@ -130,7 +130,9 @@ end
 local function init_player_data(player)
   Cache.init()
 
-  storage.players[player.index] = storage[player.index] or {}
+  if not storage.players[player.index] then
+    storage.players[player.index] = {}
+  end
   local pdata = storage.players[player.index]
   if pdata.toggle_fav_bar_buttons == nil then
     pdata.toggle_fav_bar_buttons = true

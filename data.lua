@@ -15,9 +15,9 @@ data:extend {
   {
     type = "sprite",
     name = "default-map-tag",
-    filename = "__TeleportFavorites__/graphics/default_map_tag.png",
+    filename = "__TeleportFavorites__/graphics/map_tag_default.png",
     priority = "extra-high",
-    size = { 32, 49 },
+    size = { 24, 36 },
     flags = { "gui-icon" },
   },
   {
@@ -102,7 +102,7 @@ data:extend {
   },
   {
     type = "custom-input",
-    name = "tf-toggle-data-viewer",
+    name = "dv-toggle-data-viewer",
     key_sequence = "CONTROL + F12",
     consuming = "game-only",
     order = "z[data-viewer]"
@@ -115,8 +115,56 @@ data:extend {
   },
   {
     type = "sprite",
-    name = "red_tf_slot_button_20",
-    filename = "__TeleportFavorites__/graphics/red_slot_button_20.png",
+    name = "slot_black",
+    filename = "__TeleportFavorites__/graphics/slot_black.png",
+    width = 36,
+    height = 36,
+    flags = { "gui-icon" }
+  },
+  {
+    type = "sprite",
+    name = "slot_blue",
+    filename = "__TeleportFavorites__/graphics/slot_blue.png",
+    width = 36,
+    height = 36,
+    flags = { "gui-icon" }
+  },
+  {
+    type = "sprite",
+    name = "slot_green",
+    filename = "__TeleportFavorites__/graphics/slot_green.png",
+    width = 36,
+    height = 36,
+    flags = { "gui-icon" }
+  },
+  {
+    type = "sprite",
+    name = "slot_grey",
+    filename = "__TeleportFavorites__/graphics/slot_grey.png",
+    width = 36,
+    height = 36,
+    flags = { "gui-icon" }
+  },
+  {
+    type = "sprite",
+    name = "slot_orange",
+    filename = "__TeleportFavorites__/graphics/slot_orange.png",
+    width = 36,
+    height = 36,
+    flags = { "gui-icon" }
+  },
+  {
+    type = "sprite",
+    name = "slot_red",
+    filename = "__TeleportFavorites__/graphics/slot_red.png",
+    width = 36,
+    height = 36,
+    flags = { "gui-icon" }
+  },
+  {
+    type = "sprite",
+    name = "slot_white",
+    filename = "__TeleportFavorites__/graphics/slot_white.png",
     width = 36,
     height = 36,
     flags = { "gui-icon" }

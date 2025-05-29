@@ -28,7 +28,10 @@ end
 --- Register shared GUI event handler for all GUIs
 -- Call this from control.lua, passing script and defines
 function M.register_gui_handlers(script)
+  local Cache = require("core.cache.cache")
   local function shared_on_gui_click(event)
+    -- Defensive: ensure persistent storage subfields are initialized (Factorio 2.0+)
+    Cache.init()
     if _tf_gui_click_guard then return end
     _tf_gui_click_guard = true
 
@@ -54,6 +57,15 @@ function M.register_gui_handlers(script)
           or element.name == "tag_editor_textfield"
       then
         control_tag_editor.on_tag_editor_gui_click(event, script)
+      elseif element.name == "data_viewer_close_btn" then
+        -- Data viewer close button logic
+        local player = game.get_player(event.player_index)
+        if player then
+          local get_or_create_main_flow = require("gui.data_viewer.data_viewer").get_or_create_main_flow
+          local main_flow = get_or_create_main_flow(player.gui.top)
+          local helpers = require("core.utils.helpers_suite")
+          helpers.safe_destroy_frame(main_flow, "data_viewer_frame")
+        end
       end
     end, function(e)
       _tf_gui_click_guard = false
@@ -81,8 +93,7 @@ function M.register_gui_handlers(script)
     end)
     _tf_gui_click_guard = false
     if not ok then
-      -- Always show the real error, do not mask with a generic message
-      error(err)
+      -- Always show the real error, do not mask with a generic mes      error(err)
     end
   end
   script.on_event(defines.events.on_gui_click, shared_on_gui_click)
