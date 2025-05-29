@@ -15,5 +15,5 @@
   ],
   "Lua.workspace.checkThirdParty": "ApplyInMemory",
   "workbench.sideBar.location": "right",
-  "editor.minimap.enabled": false,
+  "editor.minimap.enabled": true,
 }

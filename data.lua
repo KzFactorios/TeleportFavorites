@@ -13,6 +13,13 @@ data:extend {
     border = false -- Set to true if you want better readability with a border
   },
   {
+    type = "font",
+    name = "super_large_font",
+    from = "default-bold",
+    size = 64,
+    border = true
+  },
+  {
     type = "sprite",
     name = "default-map-tag",
     filename = "__TeleportFavorites__/graphics/map_tag_default.png",

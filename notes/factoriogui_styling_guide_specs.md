@@ -1,4 +1,3 @@
-
 Tables containing only primitive values (such as `{x=1, y=2}`) **are allowed** in Factorio's persisted storage (the `storage` table, formerly `global`). The Factorio serialization system supports storing tables of arbitrary nesting depth, as long as **all values within those tables are themselves serializable primitives**: `nil`, strings, numbers, or booleans[1].
 
 You **do not** need to flatten your data into a single-level table of primitives. Nested tables (e.g., a table of tables, or a table where each entry is `{x=number, y=number}`) are fully supported, provided you do not store non-primitive types (such as functions, userdata, or Factorio's custom runtime objects like `LuaPlayer` or `LuaCustomTable`)[1][2].
@@ -192,6 +191,8 @@ data.raw["gui-style"]["default"]["my_mod_custom_frame"] = {
 ### **References & Tools**
 
 - **Official GUI Style Specification:** [Factorio API: GuiStyle][5]
+- **Official Vanilla Style Definitions:** https://github.com/wube/factorio-data/blob/master/core/prototypes/style.lua
+  *This file contains all vanilla style definitions and should be referenced for any custom style or layout work to ensure full alignment with Factorio's UI.*
 - **Community Style Guide:** [Factorio GUI Style Guide][1]
 - **Style Inspector:** In-game, press `Ctrl+F6`
 - **Bounding Box Viewer:** In-game, press `Ctrl+F5`
