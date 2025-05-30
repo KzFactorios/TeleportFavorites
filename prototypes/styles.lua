@@ -120,15 +120,23 @@ gui_style.frame_titlebar_flow = {
 
 -- Data Viewer GUI styles
 
--- Frame style for data_viewer_frame
+-- Frame style for data_viewer_frame (make resizable)
 if not gui_style.data_viewer_frame then
   gui_style.data_viewer_frame = {
     type = "frame_style",
     parent = "frame",
     width = 1000,
+    horizontally_stretchable = "on",
     vertically_stretchable = "on",
+    minimal_width = 600,
+    maximal_width = 2000,
+    minimal_height = 200,
+    maximal_height = 1200,
+    resize_row = true, -- allow resizing
+    resize_column = true, -- allow resizing
     padding = 0,
-    margin = 0
+    margin = 0,
+    right_padding = 12
   }
 end
 
@@ -177,6 +185,24 @@ if not gui_style.data_viewer_content_flow then
     vertically_stretchable = "on",
     padding = 0,
     margin = 0
+  }
+end
+
+-- Scroll-pane style for data_viewer_content_scroll (make resizable)
+if not gui_style.data_viewer_content_scroll then
+  gui_style.data_viewer_content_scroll = {
+    type = "scroll_pane_style",
+    parent = "scroll_pane",
+    horizontally_stretchable = "on",
+    vertically_stretchable = "on",
+    minimal_width = 600,
+    maximal_width = 2000,
+    minimal_height = 200,
+    maximal_height = 1200,
+    width = 1000,
+    height = 600,
+    vertical_scroll_policy = "auto",
+    horizontal_scroll_policy = "auto"
   }
 end
 
@@ -271,5 +297,25 @@ if not gui_style.tf_fave_toggle_button then
   base.padding = 0
   base.margin = 0
   gui_style.tf_fave_toggle_button = base
+end
+
+-- Alternating row background for Data Viewer (odd rows)
+if not gui_style.data_viewer_row_odd then
+  gui_style.data_viewer_row_odd = {
+    type = "horizontal_flow_style",
+    parent = "horizontal_flow",
+    horizontally_stretchable = "on",
+    vertically_stretchable = "off",
+    padding = 0,
+    margin = 0,
+    -- Use a subtle vanilla-like background for odd rows
+    graphical_set = {
+      base = {
+        center = {position = {136, 0}, size = 1},
+        draw_type = "outer",
+        tint = {r=0.92, g=0.92, b=0.92, a=1}
+      }
+    }
+  }
 end
 

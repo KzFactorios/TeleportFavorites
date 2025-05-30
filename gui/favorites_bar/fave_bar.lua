@@ -76,8 +76,9 @@ function fave_bar.build_quickbar_style(player, parent)
     direction = "horizontal"
   }
   bar_frame.style.padding = 4
-  bar_frame.style.margin = 0
+  bar_frame.style.margin = {4, 0, 0, 4} -- top=8, right=0, bottom=0, left=8
   bar_frame.style.vertically_stretchable = false
+  bar_frame.style.horizontally_stretchable = false -- Prevents bar from expanding with parent
 
   -- Add a horizontal flow to contain the toggle and slots row
   local bar_flow = bar_frame.add {

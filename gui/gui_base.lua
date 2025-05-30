@@ -73,7 +73,12 @@ end
 -- @param style string: Optional style name
 -- @return LuaGuiElement: The created label
 function GuiBase.create_label(parent, name, caption, style)
-    return GuiBase.create_element('label', parent, {name = name, caption = caption, style = style})
+    -- Defensive: do not set .style if style is a button style (Factorio will error)
+    local elem = GuiBase.create_element('label', parent, {name = name, caption = caption})
+    if style and not (string.find(style, "button")) then
+        elem.style = style
+    end
+    return elem
 end
 
 --- Create a textfield with optional style.

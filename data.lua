@@ -209,5 +209,77 @@ data:extend {
     width = 144,
     height = 144,
     flags = { "gui-icon" }
+  },
+  {
+    type = "font",
+    name = "tf_font_6",
+    from = "default",
+    size = 6
+  },
+  {
+    type = "font",
+    name = "tf_font_8",
+    from = "default",
+    size = 8
+  },
+  {
+    type = "font",
+    name = "tf_font_10",
+    from = "default",
+    size = 10
+  },
+  {
+    type = "font",
+    name = "tf_font_12",
+    from = "default",
+    size = 12
+  },
+  {
+    type = "font",
+    name = "tf_font_14",
+    from = "default",
+    size = 14
+  },
+  {
+    type = "font",
+    name = "tf_font_16",
+    from = "default",
+    size = 16
+  },
+  {
+    type = "font",
+    name = "tf_font_18",
+    from = "default",
+    size = 18
+  },
+  {
+    type = "font",
+    name = "tf_font_20",
+    from = "default",
+    size = 20
+  },
+  {
+    type = "font",
+    name = "tf_font_22",
+    from = "default",
+    size = 22
+  },
+  {
+    type = "font",
+    name = "tf_font_24",
+    from = "default",
+    size = 24
+  },
+  {
+    type = "custom-input",
+    name = "tf-data-viewer-tab-next",
+    key_sequence = "TAB",
+    consuming = "none"
+  },
+  {
+    type = "custom-input",
+    name = "tf-data-viewer-tab-prev",
+    key_sequence = "SHIFT + TAB",
+    consuming = "none"
   }
 }

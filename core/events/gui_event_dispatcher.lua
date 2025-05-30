@@ -7,6 +7,9 @@
 local control_fave_bar = require("core.control.control_fave_bar")
 local control_tag_editor = require("core.control.control_tag_editor")
 local Constants = require("constants")
+local get_or_create_main_flow = require("gui.data_viewer.data_viewer").get_or_create_main_flow
+local helpers = require("core.utils.helpers_suite")
+local control_data_viewer = require("core.control.control_data_viewer")
 
 local M = {}
 
@@ -58,14 +61,21 @@ function M.register_gui_handlers(script)
       then
         control_tag_editor.on_tag_editor_gui_click(event, script)
       elseif element.name == "data_viewer_close_btn" then
-        -- Data viewer close button logic
+        -- Data viewer close button logic (robust to parent)
         local player = game.get_player(event.player_index)
         if player then
-          local get_or_create_main_flow = require("gui.data_viewer.data_viewer").get_or_create_main_flow
-          local main_flow = get_or_create_main_flow(player.gui.top)
-          local helpers = require("core.utils.helpers_suite")
-          helpers.safe_destroy_frame(main_flow, "data_viewer_frame")
+          -- Try both player.gui.top and player.gui as parent
+          for _, parent in ipairs({player.gui.top, player.gui}) do
+            local main_flow = helpers.find_child_by_name(parent, "tf_main_gui_flow")
+            if main_flow then
+              helpers.safe_destroy_frame(main_flow, "data_viewer_frame")
+            end
+          end
         end
+      elseif element.tags and element.tags.tab_key then
+        -- Data Viewer tab button clicked
+        control_data_viewer.on_data_viewer_tab_click(event)
+        return
       end
     end, function(e)
       _tf_gui_click_guard = false

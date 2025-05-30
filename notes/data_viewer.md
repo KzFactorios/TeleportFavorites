@@ -7,8 +7,7 @@ The Data Viewer is a developer utility for inspecting mod storage in real time. 
 - **Tabs:** Four tab buttons at the top: `player_data`, `surface_data`, `lookups`, `all_data`.
 - **Panel:** Data panel below tabs, width 1000px, always shows scrollbars. Each line shows one key and its value, with child tables indented by `Constants.settings.DATA_VIEWER_INDENT` (default: 4 spaces). Wrapped lines begin with `...\t`.
 - **Controls:**
-  - Opacity button (25%, 50%, 75%, 100%) updates panel opacity immediately.
-  - Font size buttons (+/-) adjust data panel font size per player (default: 12, stored in `storage.players[player_index].data_viewer_font_size`).
+  - Font size buttons (+/-) adjust data panel font size per player (default: 12, step 2, stored in `storage.players[player_index].data_viewer_settings.font_size`).
   - Refresh button reloads the current tab's data snapshot.
   - Close button hides the data panel.
   - Title bar: "Data Viewer", drag handle, close button.
@@ -20,13 +19,27 @@ The Data Viewer is a developer utility for inspecting mod storage in real time. 
 - **Live Updates:** Data panel tracks changes in real time; refresh button can force reload.
 - **Simplicity:** Keep code maintainable and easy to extend for future improvements.
 
+## Per-Player Data Viewer Settings Structure
+
+All per-player Data Viewer settings (such as font size, etc.) are now stored under a single table in player storage:
+
+```
+storage.players[player_index].data_viewer_settings = {
+    font_size = 12,      -- integer, default 12, range 6-24 (step 2)
+    -- future settings...
+}
+```
+
+- **Font size** is now accessed as `storage.players[player_index].data_viewer_settings.font_size`.
+- Add new settings to this table as needed for future features.
+
 ## Best Practices
 - Use vanilla Factorio styles and idioms for all controls and layout.
 - All controls should be accessible via keyboard and mouse.
 - All user-facing strings should be localizable.
 - Avoid excessive polling or performance impact in multiplayer.
 - Use scrollbars and fixed width for predictable layout.
-- Store per-player settings (font size, opacity) in persistent storage.
+- Store per-player settings (font size) in persistent storage.
 - Use the builder pattern for GUI construction and command pattern for event handling.
 
 ## Open Questions / Suggestions for Improvement
@@ -58,7 +71,7 @@ Not at this time
 
 ```
 data_viewer_frame (frame)
-└─data_viewer_inner_flow (frame, vertical)
+└─data_viewer_inner_flow (frame, vertical, invisible_frame)
   └─ data_viewer_titlebar_flow (flow, horizontal)
     ├─ data_viewer_title_label (label)
     ├─ data_viewer_titlebar_filler (empty-widget)
@@ -72,9 +85,6 @@ data_viewer_frame (frame)
         ├─ data_viewer_actions_font_size_flow (flow, horizontal)
         |   ├─ data_viewer_actions_font_down_btn (button)
         |   └─ data_viewer_actions_font_up_btn (button)
-        ├─ data_viewer_actions_opacity_flow (flow, horizontal)
-        |   ├─ data_viewer_actions_opacity_down_btn (button)
-        |   └─ data_viewer_actions_opacity_up_btn (button)
         └─ data_viewer_tab_actions_refresh_data_btn
   └─ data_viewer_content_flow (flow, vertical)
     └─ data_viewer_table (table)
@@ -96,8 +106,7 @@ The Data_Viewer:
 This is a component to aid in debugging only. 
 It's purpose is to provide the ability to view the state of the stored data at anytime.
 The data viewer's gui should live in the top gui underneath the fave bar. it should have 4 buttons, acting as tabs at the top labeled "player_data", "surface_data", "lookups", "all_data"
-There be a button to adjust the opacity with options 25%, 50%, 75% and 100%. Changing this value should immediatelty change the opacity of the data panel to show at the designated opacity
-Include another pair of buttons to increase the font size used for the data panel and update the data panel immediately upon any changes in this value. use a plus button minus button functionality for this. minus decrease the font size by one and the plus button increase the font-size by 1 for each click. use appropriate icons for these buttons. The default size sohuld be 12. This should be stored per player at storage.players[player_index].data_viewer_font_size
+Include another pair of buttons to increase the font size used for the data panel and update the data panel immediately upon any changes in this value. use a plus button minus button functionality for this. minus decrease the font size by one and the plus button increase the font-size by 1 for each click. use appropriate icons for these buttons. The default size sohuld be 12. This should be stored per player at storage.players[player_index].data_viewer_settings.font_size
 There should be another button to "Refresh Data" the data on the top row off to the right. and another button to close the data panel. Use an appropriate icon to display this button and make "Refresh Data" to be the tooltip
 Above all this should be a standard factorio title bar. The title is "Data Viewer" then a drag handle and finally a close button "X" to close the dialog
 
@@ -119,8 +128,6 @@ Any wrapped lines should begin with "..." \t
 implore scrollbars at all times to pan through the data. although the width should be a max amount of say 1000
 
 the data panel should be 1000 wide.
-
-the entire gui, with the exception of the tab selectors, should be able to be adjusted for opacity according to the top row button
 
 the tabs and buttons specified should arrange horizontally in the top row of the gui.
 the data panel sohuld be the same width and show below the tabs. Create a button handle the opening and closing of the data panel in the top row as well
