@@ -270,4 +270,8 @@ function tag_editor.build(player, tag_data)
     return refs
 end
 
+local function find_child_by_name(element, name)
+  return Helpers.find_child_by_name(element, name)
+end
+
 return tag_editor

@@ -174,52 +174,21 @@ local function handle_favorite_slot_click(event, player, favorites)
 end
 
 local function handle_visible_fave_btns_toggle_click(player)
-  print("[HANDLER DEBUG] handle_visible_fave_btns_toggle_click ENTERED", tostring(handle_visible_fave_btns_toggle_click))
   local pdata = Cache.get_player_data(player)
-  print("[HANDLER DEBUG] pdata address:", tostring(pdata))
-  local prev = pdata.toggle_fav_bar_buttons
-  local show = not prev
-  print("[HANDLER DEBUG] Before toggle: prev=", prev, "show=", show, "pdata.toggle_fav_bar_buttons=", pdata.toggle_fav_bar_buttons)
-  pdata.toggle_fav_bar_buttons = show
-  print("[HANDLER DEBUG] After toggle: pdata.toggle_fav_bar_buttons=", pdata.toggle_fav_bar_buttons)
-
   local main_flow = fave_bar.get_or_create_main_flow(player.gui.top)
-  print("[HANDLER DEBUG] main_flow address:", tostring(main_flow))
-  local bar_frame = main_flow and main_flow.fave_bar_frame
-  print("[HANDLER DEBUG] bar_frame address:", tostring(bar_frame))
-  local bar_flow = bar_frame and bar_frame.fave_bar_flow
-  print("[HANDLER DEBUG] bar_flow address:", tostring(bar_flow))
-  if not bar_flow then
-    -- If bar_flow is missing, rebuild the entire favorites bar and try again
-    fave_bar.build(player, main_flow)
-    bar_frame = main_flow and main_flow.fave_bar_frame
-    bar_flow = bar_frame and bar_frame.fave_bar_flow
-    print("[HANDLER DEBUG] (after rebuild) bar_frame address:", tostring(bar_frame))
-    print("[HANDLER DEBUG] (after rebuild) bar_flow address:", tostring(bar_flow))
+
+  -- Remove any old bar before toggling/building
+  if main_flow.fave_bar_frame then
+    main_flow.fave_bar_frame.destroy()
   end
-  if bar_flow then
-    -- Find or recreate the slots row
-    local slots_flow = nil
-    for _, child in pairs(bar_flow.children or {}) do
-      if child and child.name == "fave_bar_slots_flow" then
-        slots_flow = child
-        break
-      end
-    end
-    if not slots_flow then
-      print("[HANDLER DEBUG] fave_bar_slots_flow missing, recreating slot row.")
-      slots_flow = fave_bar.update_slot_row(player, bar_flow)
-    end
-    if slots_flow then
-      print("[HANDLER DEBUG] fave_bar_slots_flow before mutation: address=", tostring(slots_flow), "visible=", tostring(slots_flow.visible))
-      slots_flow.visible = show
-      print("[HANDLER DEBUG] fave_bar_slots_flow after mutation: address=", tostring(slots_flow), "visible=", tostring(slots_flow.visible))
-    else
-      print("[HANDLER DEBUG] Failed to find or recreate fave_bar_slots_flow!")
-    end
-  else
-    print("[HANDLER DEBUG] bar_flow is still nil after rebuild. GUI may be out of sync.")
-  end
+
+  -- Compute new state and update storage FIRST
+  local prev = pdata.toggle_fav_bar_buttons ~= false
+  local show = not prev
+  pdata.toggle_fav_bar_buttons = show
+
+  -- Always rebuild the bar after updating state
+  fave_bar.build(player, main_flow)
 end
 
 --- Handle favorites bar GUI click events
@@ -238,7 +207,8 @@ local function on_fave_bar_gui_click(event)
     return
   end
   if element.name == "fave_bar_visible_btns_toggle" then
-    print("[HANDLER DEBUG] handle_visible_fave_btns_toggle_click pointer:", tostring(handle_visible_fave_btns_toggle_click))
+    print("[HANDLER DEBUG] handle_visible_fave_btns_toggle_click pointer:",
+      tostring(handle_visible_fave_btns_toggle_click))
     print("[HANDLER DEBUG] calling handle_visible_fave_btns_toggle_click")
     local ok, err = pcall(handle_visible_fave_btns_toggle_click, player)
     print("[HANDLER DEBUG] after handle_visible_fave_btns_toggle_click, ok=", tostring(ok), "err=", tostring(err))

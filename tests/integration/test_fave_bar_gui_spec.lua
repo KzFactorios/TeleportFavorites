@@ -16,6 +16,7 @@ package.loaded["gui_base"] = package.loaded["gui.gui_base"]
 local assert = require("luassert")
 local Constants = require("constants")
 local mock_helpers = require("tests.mocks.mock_helpers")
+local Helpers = require("core.utils.helpers_suite")
 
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local control_fave_bar = reload_module("core.control.control_fave_bar")
@@ -67,20 +68,12 @@ local function patched_mock_player()
   return player
 end
 
-local function get_child_by_name(parent, name)
-  if not parent or not parent.children then return nil end
-  for _, child in ipairs(parent.children) do
-    if child.name == name then return child end
-  end
-  return nil
-end
-
 local function get_slots_flow(player)
   local bar_frame = player.gui.top.fave_bar_frame
   if not bar_frame then return nil end
-  local bar_flow = get_child_by_name(bar_frame, "fave_bar_flow")
+  local bar_flow = Helpers.find_child_by_name(bar_frame, "fave_bar_flow")
   if not bar_flow then return nil end
-  return get_child_by_name(bar_flow, "fave_bar_slots_flow")
+  return Helpers.find_child_by_name(bar_flow, "fave_bar_slots_flow")
 end
 
 describe("Favorites Bar GUI", function()
@@ -96,13 +89,13 @@ describe("Favorites Bar GUI", function()
         print(i, child.name)
       end
     end
-    local bar_flow = get_child_by_name(bar_frame, "fave_bar_flow")
+    local bar_flow = Helpers.find_child_by_name(bar_frame, "fave_bar_flow")
     assert(bar_flow ~= nil, "bar_frame.fave_bar_flow is nil")
-    local toggle_flow = get_child_by_name(bar_flow, "fave_bar_toggle_flow")
+    local toggle_flow = Helpers.find_child_by_name(bar_flow, "fave_bar_toggle_flow")
     assert(toggle_flow ~= nil, "bar_flow.fave_bar_toggle_flow is nil")
-    local visible_btns_toggle = get_child_by_name(toggle_flow, "fave_bar_visible_btns_toggle")
+    local visible_btns_toggle = Helpers.find_child_by_name(toggle_flow, "fave_bar_visible_btns_toggle")
     assert(visible_btns_toggle ~= nil, "toggle_flow.fave_bar_visible_btns_toggle is nil")
-    local slots_flow = get_child_by_name(bar_flow, "fave_bar_slots_flow")
+    local slots_flow = Helpers.find_child_by_name(bar_flow, "fave_bar_slots_flow")
     assert(slots_flow ~= nil, "slots_flow is nil")
     assert(type(slots_flow.children) == "table", "slots_flow.children is not a table")
     local expected_slot_count = Constants.settings and Constants.settings.MAX_FAVORITE_SLOTS or 10
@@ -115,31 +108,31 @@ describe("Favorites Bar GUI", function()
     _G.__test_player = player
     local bar_frame = fave_bar.build(player, player.gui.top)
     player.gui.top.fave_bar_frame = bar_frame
-    local bar_flow = get_child_by_name(bar_frame, "fave_bar_flow")
+    local bar_flow = Helpers.find_child_by_name(bar_frame, "fave_bar_flow")
     assert.is_not_nil(bar_flow)
-    local toggle_flow = get_child_by_name(bar_flow, "fave_bar_toggle_flow")
+    local toggle_flow = Helpers.find_child_by_name(bar_flow, "fave_bar_toggle_flow")
     assert.is_not_nil(toggle_flow)
-    local visible_btns_toggle = get_child_by_name(toggle_flow, "fave_bar_visible_btns_toggle")
+    local visible_btns_toggle = Helpers.find_child_by_name(toggle_flow, "fave_bar_visible_btns_toggle")
     assert.is_not_nil(visible_btns_toggle)
-    local slots_flow = get_child_by_name(bar_flow, "fave_bar_slots_flow")
+    local slots_flow = Helpers.find_child_by_name(bar_flow, "fave_bar_slots_flow")
     assert.is_not_nil(slots_flow)
     -- Initial state: visible
     slots_flow.visible = true
     debug_state("before first toggle", player, bar_flow)
     -- First toggle: hide
     control_fave_bar.on_fave_bar_gui_click({element=visible_btns_toggle, player_index=player.index})
-    local slots_flow_after_hide = get_child_by_name(bar_flow, "fave_bar_slots_flow")
+    local slots_flow_after_hide = Helpers.find_child_by_name(bar_flow, "fave_bar_slots_flow")
     debug_state("after first toggle", player, bar_flow)
     assert.is_not_nil(slots_flow_after_hide)
-    if slots_flow_after_hide ~= nil and slots_flow_after_hide.visible ~= nil then
+    if slots_flow_after_hide and slots_flow_after_hide.visible ~= nil then
       assert.is_false(slots_flow_after_hide.visible)
     end
     -- Second toggle: show again
     control_fave_bar.on_fave_bar_gui_click({element=visible_btns_toggle, player_index=player.index})
-    local slots_flow_after_show = get_child_by_name(bar_flow, "fave_bar_slots_flow")
+    local slots_flow_after_show = Helpers.find_child_by_name(bar_flow, "fave_bar_slots_flow")
     debug_state("after second toggle", player, bar_flow)
     assert.is_not_nil(slots_flow_after_show)
-    if slots_flow_after_show ~= nil and slots_flow_after_show.visible ~= nil then
+    if slots_flow_after_show and slots_flow_after_show.visible ~= nil then
       assert.is_true(slots_flow_after_show.visible)
     end
   end)
@@ -149,26 +142,26 @@ describe("Favorites Bar GUI", function()
     _G.__test_player = player
     local bar_frame = fave_bar.build(player, player.gui.top)
     player.gui.top.fave_bar_frame = bar_frame
-    local bar_flow = get_child_by_name(bar_frame, "fave_bar_flow")
+    local bar_flow = Helpers.find_child_by_name(bar_frame, "fave_bar_flow")
     assert.is_not_nil(bar_flow)
-    local toggle_flow = get_child_by_name(bar_flow, "fave_bar_toggle_flow")
+    local toggle_flow = Helpers.find_child_by_name(bar_flow, "fave_bar_toggle_flow")
     assert.is_not_nil(toggle_flow)
-    local visible_btns_toggle = get_child_by_name(toggle_flow, "fave_bar_visible_btns_toggle")
+    local visible_btns_toggle = Helpers.find_child_by_name(toggle_flow, "fave_bar_visible_btns_toggle")
     assert.is_not_nil(visible_btns_toggle)
-    local slots_flow = get_child_by_name(bar_flow, "fave_bar_slots_flow")
+    local slots_flow = Helpers.find_child_by_name(bar_flow, "fave_bar_slots_flow")
     assert.is_not_nil(slots_flow)
     -- Initial state: visible
     slots_flow.visible = true
     debug_state("before first toggle", player, bar_flow)
     -- First toggle: hide
     control_fave_bar.on_fave_bar_gui_click({element=visible_btns_toggle, player_index=player.index})
-    local slots_flow_after_hide = get_child_by_name(bar_flow, "fave_bar_slots_flow")
+    local slots_flow_after_hide = Helpers.find_child_by_name(bar_flow, "fave_bar_slots_flow")
     debug_state("after first toggle", player, bar_flow)
     assert.is_not_nil(slots_flow_after_hide)
     assert.is_false(slots_flow_after_hide.visible)
     -- Second toggle: show again
     control_fave_bar.on_fave_bar_gui_click({element=visible_btns_toggle, player_index=player.index})
-    local slots_flow_after_show = get_child_by_name(bar_flow, "fave_bar_slots_flow")
+    local slots_flow_after_show = Helpers.find_child_by_name(bar_flow, "fave_bar_slots_flow")
     debug_state("after second toggle", player, bar_flow)
     assert.is_not_nil(slots_flow_after_show)
     assert.is_true(slots_flow_after_show.visible)
@@ -179,13 +172,13 @@ describe("Favorites Bar GUI", function()
     _G.__test_player = player
     local bar_frame = fave_bar.build(player, player.gui.top)
     player.gui.top.fave_bar_frame = bar_frame
-    local bar_flow = get_child_by_name(bar_frame, "fave_bar_flow")
+    local bar_flow = Helpers.find_child_by_name(bar_frame, "fave_bar_flow")
     assert.is_not_nil(bar_flow)
-    local toggle_flow = get_child_by_name(bar_flow, "fave_bar_toggle_flow")
+    local toggle_flow = Helpers.find_child_by_name(bar_flow, "fave_bar_toggle_flow")
     assert.is_not_nil(toggle_flow)
-    local visible_btns_toggle = get_child_by_name(toggle_flow, "fave_bar_visible_btns_toggle")
+    local visible_btns_toggle = Helpers.find_child_by_name(toggle_flow, "fave_bar_visible_btns_toggle")
     assert.is_not_nil(visible_btns_toggle)
-    local slots_flow = get_child_by_name(bar_flow, "fave_bar_slots_flow")
+    local slots_flow = Helpers.find_child_by_name(bar_flow, "fave_bar_slots_flow")
     assert.is_not_nil(slots_flow)
     debug_state("before first toggle", player, bar_flow)
     -- First toggle: hide (simulate handler)
@@ -204,7 +197,7 @@ describe("Favorites Bar GUI", function()
     debug_state("after slots_flow destroyed", player, bar_flow)
     -- Second toggle: show again (should recreate slots_flow)
     control_fave_bar.on_fave_bar_gui_click({element=visible_btns_toggle, player_index=player.index})
-    local new_slots_flow = get_child_by_name(bar_flow, "fave_bar_slots_flow")
+    local new_slots_flow = Helpers.find_child_by_name(bar_flow, "fave_bar_slots_flow")
     debug_state("after second toggle", player, bar_flow)
     assert.is_not_nil(new_slots_flow)
     if new_slots_flow then
@@ -217,24 +210,21 @@ describe("Favorites Bar GUI", function()
     _G.__test_player = player
     local bar_frame = fave_bar.build(player, player.gui.top)
     player.gui.top.fave_bar_frame = bar_frame
-    local bar_flow = get_child_by_name(bar_frame, "fave_bar_flow")
+    local bar_flow = Helpers.find_child_by_name(bar_frame, "fave_bar_flow")
     assert.is_not_nil(bar_flow)
-    local toggle_flow = get_child_by_name(bar_flow, "fave_bar_toggle_flow")
+    local toggle_flow = Helpers.find_child_by_name(bar_flow, "fave_bar_toggle_flow")
     assert.is_not_nil(toggle_flow)
-    local visible_btns_toggle = get_child_by_name(toggle_flow, "fave_bar_visible_btns_toggle")
+    local visible_btns_toggle = Helpers.find_child_by_name(toggle_flow, "fave_bar_visible_btns_toggle")
     assert.is_not_nil(visible_btns_toggle)
-    local slots_flow = get_child_by_name(bar_flow, "fave_bar_slots_flow")
+    local slots_flow = Helpers.find_child_by_name(bar_flow, "fave_bar_slots_flow")
     assert.is_not_nil(slots_flow)
-
     debug_state("before first toggle", player, bar_flow)
     -- Initial state: should be true in storage
     assert.is_true(storage.players[player.index].toggle_fav_bar_buttons)
-
     -- First toggle: should set to false
     control_fave_bar.on_fave_bar_gui_click({element=visible_btns_toggle, player_index=player.index})
     debug_state("after first toggle", player, bar_flow)
     assert.is_false(storage.players[player.index].toggle_fav_bar_buttons)
-
     -- Second toggle: should set to true
     control_fave_bar.on_fave_bar_gui_click({element=visible_btns_toggle, player_index=player.index})
     debug_state("after second toggle", player, bar_flow)

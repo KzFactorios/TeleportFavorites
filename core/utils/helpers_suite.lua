@@ -402,4 +402,19 @@ Helpers.is_valid_sprite_path = function(sprite)
     return ok and result or false
 end
 
+--- Recursively search for a child element by name in a GUI element tree
+local function find_child_by_name(element, target_name)
+    if not (element and element.valid and element.children) then return nil end
+    for _, child in pairs(element.children) do
+        if child.name == target_name then
+            return child
+        end
+        local found = find_child_by_name(child, target_name)
+        if found then return found end
+    end
+    return nil
+end
+
+Helpers.find_child_by_name = find_child_by_name
+
 return Helpers

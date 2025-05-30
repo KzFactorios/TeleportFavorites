@@ -258,3 +258,18 @@ if not gui_style.tf_fave_toggle_container then
   }
 end
 
+-- Custom style for the favorite bar visible toggle button (no slot background)
+if not gui_style.tf_fave_toggle_button then
+  local base = {}
+  for k, v in pairs(gui_style.slot_button) do base[k] = v end
+  base.default_graphical_set = { base = { type = "none" } }
+  base.hovered_graphical_set = { base = { type = "none" } }
+  base.clicked_graphical_set = { base = { type = "none" } }
+  base.disabled_graphical_set = { base = { type = "none" } }
+  base.width = 30
+  base.height = 30
+  base.padding = 0
+  base.margin = 0
+  gui_style.tf_fave_toggle_button = base
+end
+

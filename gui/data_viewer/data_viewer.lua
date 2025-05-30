@@ -84,6 +84,10 @@ local function fill_data_table(table_elem, data)
   end
 end
 
+local function find_child_by_name(element, name)
+  return Helpers.find_child_by_name(element, name)
+end
+
 function data_viewer.build(player, parent, state)
   local s = state or {}
   -- Use the provided parent directly (should be tf_main_gui_flow)
