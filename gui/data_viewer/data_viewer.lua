@@ -29,6 +29,73 @@ local SpriteEnum = require("gui.sprite_enum")
 
 local data_viewer = {}
 
+-- Shared helpers for data rendering and retrieval
+local function set_label_font(lbl, font_size)
+  local font_name = "tf_font_"..tostring(font_size)
+  pcall(function() lbl.style.font = font_name end)
+  -- Do NOT set lbl.style.height or any other style property here
+end
+local function render_table_tree(parent, data, indent, visited, font_size, row_index)
+  indent = indent or 0
+  visited = visited or {}
+  font_size = font_size or 12
+  row_index = row_index or 1
+  local prefix = string.rep("\t", indent)
+  local function add_row(parent, caption, font_size, row_index)
+    local style = (row_index % 2 == 1) and "data_viewer_row_odd_label" or "data_viewer_row_even_label"
+    local lbl = parent.add{type="label", caption=caption, style=style}
+    set_label_font(lbl, font_size)
+    lbl.style.top_margin = 2
+    lbl.style.font_color = {r=1, g=1, b=1} -- White for all data rows
+    -- Do NOT set lbl.style.height or any other style property here
+    return lbl
+  end
+  if type(data) ~= "table" then
+    add_row(parent, prefix..tostring(data).." ["..type(data).."]", font_size, row_index)
+    return row_index + 1
+  end
+  if visited[data] then
+    add_row(parent, prefix.."<recursion>", font_size, row_index)
+    return row_index + 1
+  end
+  visited[data] = true
+  for k, v in pairs(data) do
+    local is_table = type(v) == "table"
+    if is_table then
+      add_row(parent, prefix..tostring(k)..": {", font_size, row_index)
+      row_index = row_index + 1
+      row_index = render_table_tree(parent, v, indent + 2, visited, font_size, row_index)
+      add_row(parent, string.rep("\t", indent).."}", font_size, row_index)
+      row_index = row_index + 1
+    else
+      local valstr = tostring(v)
+      if type(v) ~= "string" and type(v) ~= "number" then valstr = valstr.." ["..type(v).."]" end
+      add_row(parent, prefix..tostring(k).." = "..valstr, font_size, row_index)
+      row_index = row_index + 1
+    end
+  end
+  visited[data] = nil
+  return row_index
+end
+local function get_player_data(player)
+  return (player and Cache.get_player_data(player)) or {}
+end
+local function get_surface_data(player)
+  local sidx = (player and player.surface and player.surface.index) or nil
+  if sidx then
+    return Cache.get_surface_data(sidx)
+  end
+  return {}
+end
+local function get_lookup_data()
+  local ldata = Lookups.get and Lookups.get("chart_tag_cache")
+  if not ldata or next(ldata) == nil then
+    ldata = { no_objects = true }
+  end
+  -- Always return as { chart_tag_cache = ... } for clarity in Data Viewer
+  return { chart_tag_cache = ldata }
+end
+
 local function build_titlebar(parent)
   local flow = GuiBase.create_hflow(parent, "data_viewer_titlebar_flow")
   GuiBase.create_label(flow, "data_viewer_title_label", {"tf-gui.data_viewer_title"}, "frame_title")
@@ -38,6 +105,7 @@ local function build_titlebar(parent)
   return flow, close_btn
 end
 
+-- Helper to build the tab row and tab actions as per new hierarchy
 local function build_tabs_row(parent, active_tab)
   local tabs_flow = GuiBase.create_hflow(parent, "data_viewer_tabs_flow")
   local tab_defs = {
@@ -46,8 +114,6 @@ local function build_tabs_row(parent, active_tab)
     {"data_viewer_lookup_tab", "tf-gui.tab_lookups", "lookup"},
     {"data_viewer_all_data_tab", "tf-gui.tab_all_data", "all_data"}
   }
-  local tab_width = 140
-  local tab_height = 32
   for i, def in ipairs(tab_defs) do
     local is_active = (active_tab == def[3])
     local btn = tabs_flow.add{
@@ -59,249 +125,246 @@ local function build_tabs_row(parent, active_tab)
       tags = { tab_key = def[3] },
       selected = is_active
     }
-    -- Only set supported properties. All visual indicator is via 'selected' and style.
     btn.style.horizontally_stretchable = false
     btn.style.vertically_stretchable = false
-    btn.style.width = tab_width
-    btn.style.height = tab_height
+    btn.style.width = 140
+    btn.style.height = 32
     btn.style.top_padding = 0
     btn.style.bottom_padding = 0
     btn.style.left_padding = 8
     btn.style.right_padding = 8
     btn.style.margin = 0
-    if i > 1 then btn.style.left_margin = 4 end -- small gap between tabs
+    if i > 1 then btn.style.left_margin = 4 end
   end
-  -- Add a filler to push actions to the right
+  -- Tab actions flow (right-aligned)
   local filler = tabs_flow.add{type="empty-widget", name="data_viewer_tabs_filler"}
   filler.style.horizontally_stretchable = true
-  -- Inline action buttons (font size, refresh)
-  local actions_flow = GuiBase.create_hflow(tabs_flow, "data_viewer_tab_actions_inline_flow")
+  local actions_flow = GuiBase.create_hflow(tabs_flow, "data_viewer_tab_actions_flow")
   actions_flow.style.vertical_align = "center"
   actions_flow.style.horizontal_spacing = 12
   -- Font size controls
   local font_size_flow = GuiBase.create_hflow(actions_flow, "data_viewer_actions_font_size_flow")
   font_size_flow.style.vertical_align = "center"
   font_size_flow.style.horizontal_spacing = 2
-  GuiBase.create_label(font_size_flow, "data_viewer_font_label", {"tf-gui.font_label"}).style.right_margin = 2
   Helpers.create_slot_button(font_size_flow, "data_viewer_actions_font_down_btn", SpriteEnum.ARROW_DOWN, {"tf-gui.font_minus_tooltip"}).style.margin = 0
   Helpers.create_slot_button(font_size_flow, "data_viewer_actions_font_up_btn", SpriteEnum.ARROW_UP, {"tf-gui.font_plus_tooltip"}).style.margin = 0
-  -- Refresh controls
-  local refresh_flow = GuiBase.create_hflow(actions_flow, "data_viewer_actions_refresh_flow")
-  refresh_flow.style.vertical_align = "center"
-  refresh_flow.style.horizontal_spacing = 2
-  GuiBase.create_label(refresh_flow, "data_viewer_refresh_label", {"tf-gui.refresh_label"}).style.right_margin = 2
-  Helpers.create_slot_button(refresh_flow, "data_viewer_tab_actions_refresh_data_btn", SpriteEnum.REFRESH, {"tf-gui.refresh_tooltip"}).style.margin = 0
-  return tabs_flow
+  -- Refresh button
+  Helpers.create_slot_button(actions_flow, "data_viewer_tab_actions_refresh_data_btn", SpriteEnum.REFRESH, {"tf-gui.refresh_tooltip"}).style.margin = 0
+  return  tabs_flow    
 end
 
-local function build_content_flow(parent)
-  -- Use a vertical flow for tree view, wrapped in a frame for styling
-  local frame = parent.add{type="frame", name="data_viewer_content_frame", style="inside_deep_frame"}
-  local content_flow = GuiBase.create_vflow(frame, "data_viewer_content_flow")
-  content_flow.style.left_margin = 8
-  content_flow.style.right_margin = 8
-  content_flow.style.horizontally_stretchable = true
-  return content_flow, frame
+local function get_lookup_data()
+  local ldata = Lookups.get and Lookups.get("chart_tag_cache")
+  if not ldata or next(ldata) == nil then
+    ldata = { no_objects = true }
+  end
+  -- Always return as { chart_tag_cache = ... } for clarity in Data Viewer
+  return { chart_tag_cache = ldata }
+end
+
+-- Helper to parse a table row into a compact string, combining simple tables onto one line
+local function rowline_parser(key, value, indent, max_line_len)
+  local INDENT_STR = "  "
+  indent = indent or 0
+  max_line_len = max_line_len or 80
+  local prefix = string.rep(INDENT_STR, indent)
+  if type(value) ~= "table" then
+    local valstr = tostring(value)
+    if type(value) ~= "string" and type(value) ~= "number" then valstr = valstr.." ["..type(value).."]" end
+    local line = prefix..tostring(key).." = "..valstr
+    return line, false
+  end
+  -- If table is empty
+  local n = 0; for _ in pairs(value) do n = n + 1 end
+  if n == 0 then
+    return prefix..tostring(key).." = {}", true
+  end
+  -- If table is shallow and all scalars, combine onto one line
+  local parts = {}
+  local all_scalar = true
+  for k, v in pairs(value) do
+    if type(v) == "table" or type(v) == "function" then all_scalar = false; break end
+    local valstr = tostring(v)
+    if type(v) ~= "string" and type(v) ~= "number" then valstr = valstr.." ["..type(v).."]" end
+    table.insert(parts, tostring(k).." = "..valstr)
+  end
+  if all_scalar and #parts > 0 then
+    local line = prefix..tostring(key).." = { "..table.concat(parts, ", ").." }"
+    if #line <= max_line_len then
+      return line, true
+    end
+  end
+  -- Otherwise, not compactable
+  return prefix..tostring(key).." = {", false
+end
+
+-- Render the data as a compact, hierarchical, property-only table with alternating row colors, indentation, and line wrapping
+local function render_compact_data_rows(parent, data, indent, font_size, row_index, visited, force_white)
+  indent = indent or 0
+  font_size = font_size or 12
+  row_index = row_index or 1
+  visited = visited or {}
+  local INDENT_STR = "  "
+  local MAX_LINE_LEN = 80
+  local function is_method(val)
+    return type(val) == "function"
+  end
+  local function add_row(parent, text, font_size, row_index)
+    local style = (row_index % 2 == 1) and "data_viewer_row_odd_label" or "data_viewer_row_even_label"
+    local lbl = parent.add{type="label", caption=text, style=style}
+    set_label_font(lbl, font_size)
+    lbl.style.top_margin = 2
+    lbl.style.font_color = {r=1, g=1, b=1} -- White for all data rows
+    return lbl
+  end
+  if type(data) ~= "table" then
+    local valstr = tostring(data) .. " ["..type(data).."]"
+    if #valstr > MAX_LINE_LEN then
+      local first = valstr:sub(1, MAX_LINE_LEN)
+      local rest = valstr:sub(MAX_LINE_LEN+1)
+      add_row(parent, string.rep(INDENT_STR, indent)..first, font_size, row_index)
+      row_index = row_index + 1
+      add_row(parent, string.rep(INDENT_STR, indent+1)..rest, font_size, row_index)
+      row_index = row_index + 1
+    else
+      add_row(parent, string.rep(INDENT_STR, indent)..valstr, font_size, row_index)
+      row_index = row_index + 1
+    end
+    return row_index
+  end
+  if visited[data] then
+    add_row(parent, string.rep(INDENT_STR, indent).."<recursion>", font_size, row_index)
+    return row_index + 1
+  end
+  visited[data] = true
+  for k, v in pairs(data) do
+    if not is_method(v) then
+      local line, compact = rowline_parser(k, v, indent, MAX_LINE_LEN)
+      if compact == true then
+        add_row(parent, line, font_size, row_index)
+        row_index = row_index + 1
+      elseif type(v) == "table" then
+        add_row(parent, line, font_size, row_index)
+        row_index = row_index + 1
+        row_index = render_compact_data_rows(parent, v, indent+1, font_size, row_index, visited)
+        add_row(parent, string.rep(INDENT_STR, indent).."}", font_size, row_index)
+        row_index = row_index + 1
+      else
+        add_row(parent, line, font_size, row_index)
+        row_index = row_index + 1
+      end
+    end
+  end
+  visited[data] = nil
+  return row_index
+end
+
+-- Show flying text when data is refreshed
+function data_viewer.show_refresh_flying_text(player)
+  if not (player and player.valid) then return end
+  local pos = player.position or {0,0}
+  -- Offset flying text upward so it appears above the Data Viewer panel
+  pos = {x = pos.x, y = pos.y - 4}
+  player.create_local_flying_text{
+    text = {"tf-gui.data_refreshed_flying_text"},
+    position = pos,
+    color = {r=0.8, g=0.95, b=1, a=1}
+  }
 end
 
 function data_viewer.build(player, parent, state)
-  -- Ensure a valid tab is selected
-  local valid_tabs = { player_data = true, surface_data = true, lookup = true, all_data = true }
-  if not state.active_tab or not valid_tabs[state.active_tab] then
-    state.active_tab = "player_data"
+  if not (state and state.data and type(state.data) == "table") then
+    return
   end
+  local n = 0
+  for _ in pairs(state.data) do n = n + 1 end
+  -- Ensure data and top_key are defined from state
+  local data = state and state.data
+  local top_key = state and state.top_key
+
+  local font_size = (state and state.font_size) or 10
   -- Main dialog frame (resizable)
   local frame = parent.add{type="frame", name="data_viewer_frame", style="data_viewer_frame", direction="vertical"}
   frame.caption = ""
-  --frame.force_auto_center() -- optional: keep centered on open
-
-  -- Main vertical frame for dialog content (per hierarchy spec)
+  frame.style.minimal_width = 480
+  frame.style.minimal_height = 320
+  -- Remove debug label at the very top
+  -- frame.add{type="label", caption="[TF DEBUG] Data Viewer GUI visible for player: "..(player and player.name or "nil"), style="data_viewer_row_odd_label"}
+  -- Titlebar
+  local titlebar = GuiBase.create_hflow(frame, "data_viewer_titlebar_flow")
+  GuiBase.create_label(titlebar, "data_viewer_title_label", {"tf-gui.data_viewer_title"}, "frame_title")
+  local filler = titlebar.add{type="empty-widget", name="data_viewer_titlebar_filler", style="draggable_space_header"}
+  filler.style.horizontally_stretchable = true
+  Helpers.create_slot_button(titlebar, "data_viewer_close_btn", SpriteEnum.CLOSE, {"tf-gui.close_tooltip"})
+  -- Inner flow (vertical, invisible_frame)
   local inner_flow = frame.add{type="frame", name="data_viewer_inner_flow", style="invisible_frame", direction="vertical"}
-
-  -- Title bar (top row)
-  local title_flow, close_btn = build_titlebar(inner_flow)
-
-  -- Tabs row (second row, now includes actions)
-  local tabs_flow = build_tabs_row(inner_flow, state.active_tab)
-
-  -- Content area (tree view, vertical flow)
-  -- Use a frame for inside_deep_frame, then a scroll-pane for content
-  local content_frame = inner_flow.add{type="frame", name="data_viewer_content_frame", style="inside_deep_frame"}
-  local content_scroll = content_frame.add{type="scroll-pane", name="data_viewer_content_scroll", style="data_viewer_content_scroll", direction="vertical"}
-  content_scroll.style.left_margin = 8
-  content_scroll.style.right_margin = 8
-  content_scroll.style.horizontally_stretchable = true
-  content_scroll.style.vertically_stretchable = true
-  -- Remove explicit width/height assignments; use style for resizing
-  -- content_scroll.style.width = 1000
-  -- content_scroll.style.maximal_width = 1000
-  -- content_scroll.style.minimal_width = 600
-  -- content_scroll.style.height = 600
-  -- content_scroll.style.maximal_height = 600
-  -- content_scroll.style.minimal_height = 200
-  content_scroll.vertical_scroll_policy = "auto"
-  content_scroll.horizontal_scroll_policy = "auto"
-
-  local content_flow = content_scroll.add{type="flow", name="data_viewer_content_flow", direction="vertical"}
+  -- Tabs row (with tab actions)
+  build_tabs_row(inner_flow, state.active_tab)
+  -- Content area: vertical flow, then table
+  local content_flow = inner_flow.add{type="flow", name="data_viewer_content_flow", direction="vertical"}
   content_flow.style.horizontally_stretchable = true
-  content_flow.style.vertically_stretchable = false
+  content_flow.style.vertically_stretchable = true
 
-  -- Keyboard navigation for tabs (tab/shift-tab)
-  -- (No .focusable or .focus() in Factorio API; navigation is handled by custom input events)
+  -- Table for data rows (single column for compactness)
+  local data_table = content_flow.add{type="table", name="data_viewer_table", column_count=1, style="data_viewer_table"}
+  data_table.style.horizontally_stretchable = true
+  data_table.style.vertically_stretchable = true -- Fix: allow table to stretch vertically
+  data_table.style.minimal_width = 400
+  data_table.style.minimal_height = 400
+  data_table.style.top_padding = 8
+  data_table.style.bottom_padding = 16
+  data_table.style.left_padding = 8
+  data_table.style.right_padding = 12
+  data_table.style.width = 1000 -- Fix: force table width to match viewer
+  data_table.style.maximal_width = 1000
 
-  -- Helper to get or set player data_viewer_settings
-  local function get_settings()
-    local pdata = Cache.get_player_data(player)
-    pdata.data_viewer_settings = pdata.data_viewer_settings or { font_size = 12 }
-    return pdata.data_viewer_settings
+  -- REMOVE DEBUG LABEL: Remove debug_data_str label
+  -- data_table.add{type="label", caption=debug_data_str, style="data_viewer_row_even_label"}
+  -- Patch: If data is nil or empty, always show top_key = { } and closing brace, never [NO DATA TO DISPLAY]
+  if data == nil or (type(data) == "table" and next(data) == nil) then
+    if not top_key then top_key = "player_data" end
+    local style = "data_viewer_row_odd_label"
+    local lbl = data_table.add{type="label", caption=top_key.." = {", style=style}
+    set_label_font(lbl, font_size)
+    lbl.style.font_color = {r=1, g=1, b=1}
+    lbl.style.top_margin = 2
+    local lbl2 = data_table.add{type="label", caption="}", style="data_viewer_row_even_label"}
+    set_label_font(lbl2, font_size)
+    lbl2.style.font_color = {r=1, g=1, b=1}
+    lbl2.style.top_margin = 2
+    return frame
   end
+  
+  -- Defensive: ensure top_key is always set
+  if not top_key then top_key = "player_data" end
 
-  -- In render_table_tree, set font using .style.font if available
-  local function set_label_font(lbl, font_size)
-    local font_name = "tf_font_"..tostring(font_size)
-    pcall(function() lbl.style.font = font_name end)
-  end
-  local function render_table_tree(parent, data, indent, visited, font_size, row_index)
-    indent = indent or 0
-    visited = visited or {}
-    font_size = font_size or 12
-    row_index = row_index or 1
-    local prefix = string.rep("\t", indent)
-    if type(data) ~= "table" then
-      local row = parent.add{type="flow", direction="horizontal"}
-      if row_index % 2 == 1 then row.style = "data_viewer_row_odd" end
-      local lbl = row.add{type="label", caption=prefix..tostring(data).." ["..type(data).."]"}
-      set_label_font(lbl, font_size)
-      if lbl.style then lbl.style.single_line = false end
-      return row_index + 1
+  -- Show the top-level key and render the data as a tree under it
+  local style = "data_viewer_row_odd_label"
+  local lbl = data_table.add{type="label", caption=top_key.." = {", style=style}
+  set_label_font(lbl, font_size)
+  lbl.style.font_color = {r=1, g=1, b=1} -- White for top key
+  lbl.style.top_margin = 2
+  
+  local row_start = 1
+  local row_end = 1
+  if type(data) == "table" then
+    row_end = render_compact_data_rows(data_table, data, 0, font_size, row_start, nil, true)
+    if row_end == row_start then
+      local no_data_lbl2 = data_table.add{type="label", caption="[NO DATA TO DISPLAY]", style="data_viewer_row_even_label"}
+      no_data_lbl2.style.font_color = {r=1, g=0, b=0} -- Bright red for debug
     end
-    if visited[data] then
-      local row = parent.add{type="flow", direction="horizontal"}
-      if row_index % 2 == 1 then row.style = "data_viewer_row_odd" end
-      local lbl = row.add{type="label", caption=prefix.."<recursion>"}
-      set_label_font(lbl, font_size)
-      if lbl.style then lbl.style.single_line = false end
-      return row_index + 1
-    end
-    visited[data] = true
-    for k, v in pairs(data) do
-      local is_table = type(v) == "table"
-      if is_table then
-        local row = parent.add{type="flow", direction="horizontal"}
-        if row_index % 2 == 1 then row.style = "data_viewer_row_odd" end
-        local lbl = row.add{type="label", caption=prefix..tostring(k)..": {"}
-        set_label_font(lbl, font_size)
-        if lbl.style then lbl.style.single_line = false end
-        row_index = row_index + 1
-        row_index = render_table_tree(parent, v, indent + 2, visited, font_size, row_index)
-        local close_row = parent.add{type="flow", direction="horizontal"}
-        if row_index % 2 == 1 then close_row.style = "data_viewer_row_odd" end
-        local close_lbl = close_row.add{type="label", caption=string.rep("\t", indent).."}"}
-        set_label_font(close_lbl, font_size)
-        if close_lbl.style then close_lbl.style.single_line = false end
-        row_index = row_index + 1
-      else
-        local row = parent.add{type="flow", direction="horizontal"}
-        if row_index % 2 == 1 then row.style = "data_viewer_row_odd" end
-        local valstr = tostring(v)
-        if type(v) ~= "string" and type(v) ~= "number" then valstr = valstr.." ["..type(v).."]" end
-        local lbl = row.add{type="label", caption=prefix..tostring(k).." = "..valstr}
-        set_label_font(lbl, font_size)
-        if lbl.style then lbl.style.single_line = false end
-        row_index = row_index + 1
-      end
-    end
-    visited[data] = nil
-    return row_index
+  else
+    local no_data_lbl3 = data_table.add{type="label", caption="[NO DATA TO DISPLAY]", style="data_viewer_row_even_label"}
+    no_data_lbl3.style.font_color = {r=1, g=0, b=0} -- Bright red for debug
   end
-
-  -- Helper functions to get data for each tab
-  local function get_player_data()
-    return (player and Cache.get_player_data(player)) or {}
-  end
-  local function get_surface_data()
-    local sidx = (player and player.surface and player.surface.index) or nil
-    if sidx then
-      return Cache.get_surface_data(sidx)
-    end
-    return {}
-  end
-  local function get_lookup_data()
-    local ldata = Lookups.get and Lookups.get("chart_tag_cache")
-    if not ldata then
-      ldata = Lookups.ensure_cache and Lookups.ensure_cache() or { ["error"] = "No lookup data available" }
-    end
-    return ldata
-  end
-  local function get_all_data()
-    local pdata = get_player_data()
-    local sdata = get_surface_data()
-    local gdata = global and global.teleport_favorites or {}
-    return {
-      player_data = pdata,
-      surface_data = sdata,
-      global_data = gdata
-    }
-  end
-
-  -- Initial population of content area with player data
-  local function update_content()
-    content_flow.clear()
-    local settings = get_settings()
-    local font_size = settings.font_size or 12
-    local active_tab = state.active_tab
-    if active_tab == "player_data" then
-      render_table_tree(content_flow, get_player_data(), 0, nil, font_size)
-    elseif active_tab == "surface_data" then
-      render_table_tree(content_flow, get_surface_data(), 0, nil, font_size)
-    elseif active_tab == "lookup" then
-      render_table_tree(content_flow, get_lookup_data(), 0, nil, font_size)
-    elseif active_tab == "all_data" then
-      render_table_tree(content_flow, get_all_data(), 0, nil, font_size)
-    end
-  end
-
-  -- Initial content update
-  update_content()
-
-  -- Event handlers
-  local function on_close_btn_click()
-    frame.destroy()
-  end
-  local function on_tab_btn_click(event)
-    local new_tab = event.element.tags.tab_key
-    if new_tab and new_tab ~= state.active_tab then
-      state.active_tab = new_tab
-      -- Update tab button styles
-      for _, btn in ipairs(tabs_flow.children) do
-        if btn.type == "sprite-button" then
-          btn.selected = (btn.tags.tab_key == new_tab)
-          btn.style = (btn.tags.tab_key == new_tab) and "frame_action_button" or "button"
-        end
-      end
-      -- Update content for new tab
-      update_content()
-    end
-  end
-  local function on_font_size_btn_click(event)
-    local btn = event.element
-    local settings = get_settings()
-    local font_size = settings.font_size or 12
-    if btn.name == "data_viewer_actions_font_down_btn" and font_size > 8 then
-      font_size = font_size - 1
-    elseif btn.name == "data_viewer_actions_font_up_btn" and font_size < 24 then
-      font_size = font_size + 1
-    end
-    settings.font_size = font_size
-    update_content()
-  end
-  local function on_refresh_btn_click()
-    update_content()
-  end
-
-  -- Event subscriptions
-  -- Remove all direct .on_click assignments; handled by event dispatcher
-
+  
+  local lbl2 = data_table.add{type="label", caption="}", style="data_viewer_row_even_label"}
+  set_label_font(lbl2, font_size)
+  lbl2.style.font_color = {r=1, g=1, b=1} -- White for closing brace
+  lbl2.style.top_margin = 2
+  -- REMOVE TEST LABEL: Remove visible test label for Data Viewer GUI
+  -- caption = "[TEST] Data Viewer GUI is visible!",
+  -- Always return the frame so the GUI is built
   return frame
 end
 

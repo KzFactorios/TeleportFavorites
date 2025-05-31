@@ -76,6 +76,12 @@ function M.register_gui_handlers(script)
         -- Data Viewer tab button clicked
         control_data_viewer.on_data_viewer_tab_click(event)
         return
+      elseif element.name == "data_viewer_actions_font_up_btn"
+          or element.name == "data_viewer_actions_font_down_btn"
+          or element.name == "data_viewer_tab_actions_refresh_data_btn" then
+        -- Data Viewer font size and refresh buttons
+        control_data_viewer.on_data_viewer_gui_click(event)
+        return
       end
     end, function(e)
       _tf_gui_click_guard = false

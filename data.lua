@@ -175,7 +175,6 @@ data:extend {
     width = 36,
     height = 36,
     scale = 1,
-    mipmap_count = 2,
     flags = { "gui-icon" }
   },
   {

@@ -71,27 +71,27 @@ Not at this time
 
 ```
 data_viewer_frame (frame)
-└─data_viewer_inner_flow (frame, vertical, invisible_frame)
   └─ data_viewer_titlebar_flow (flow, horizontal)
     ├─ data_viewer_title_label (label)
     ├─ data_viewer_titlebar_filler (empty-widget)
     └─ data_viewer_close_btn (sprite-button)
-  └─ data_viewer_tabs_flow (flow, horizontal)
-    ├─ data_viewer_player_data_tab (button/sprite-button)
-    ├─ data_viewer_surface_data_tab (button/sprite-button)
-    ├─ data_viewer_lookup_tab (button/sprite-button)
-    ├─ data_viewer_all_data_tab (button/sprite-button)
-    └─ data_viewer_tab_actions_flow (flow, horizontal)
-        ├─ data_viewer_actions_font_size_flow (flow, horizontal)
-        |   ├─ data_viewer_actions_font_down_btn (button)
-        |   └─ data_viewer_actions_font_up_btn (button)
-        └─ data_viewer_tab_actions_refresh_data_btn
-  └─ data_viewer_content_flow (flow, vertical)
-    └─ data_viewer_table (table)
-        ├─ data_viewer_row_1_label (label)
-        ├─ data_viewer_row_1_value (label)
-        ├─ ...
-        └─ data_viewer_row_N_value (label)
+  └─data_viewer_inner_flow (frame, vertical, invisible_frame)
+    └─ data_viewer_tabs_flow (flow, horizontal)
+      ├─ data_viewer_player_data_tab (button/sprite-button)
+      ├─ data_viewer_surface_data_tab (button/sprite-button)
+      ├─ data_viewer_lookup_tab (button/sprite-button)
+      ├─ data_viewer_all_data_tab (button/sprite-button)
+      └─ data_viewer_tab_actions_flow (flow, horizontal)
+          ├─ data_viewer_actions_font_size_flow (flow, horizontal)
+          |   ├─ data_viewer_actions_font_down_btn (button)
+          |   └─ data_viewer_actions_font_up_btn (button)
+          └─ data_viewer_tab_actions_refresh_data_btn
+    └─ data_viewer_content_flow (flow, vertical)
+      └─ data_viewer_table (table)
+          ├─ data_viewer_row_1_label (label)
+          ├─ data_viewer_row_1_value (label)
+          ├─ ...
+          └─ data_viewer_row_N_value (label)
 ```
 - The author is unsure of how scrollbars will be structured, but they will control the viewing of data within the data_viewer_content_flow or the data_viewer_table
 - All element names use (for the most part) the `{gui_context}_{purpose}_{type}` convention.

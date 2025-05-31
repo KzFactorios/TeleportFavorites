@@ -8,6 +8,7 @@ Persistent and runtime cache management for mod data, including player, surface,
 
 - Provides helpers for safe cache access, mutation, and removal, with strict EmmyLua annotations.
 - All persistent data is stored in the global table under  storage.cache,  storage.players, and  storage.surfaces.
+- Each player entry in storage.players[player_index] now includes a player_name field for the Factorio player name.
 - Runtime (non-persistent) lookup tables are managed via the Lookups module.
 - Player and surface data are always initialized and normalized for safe multiplayer and multi-surface support.
 - All access to persistent cache should use the Cache API; do not access  storage directly.
@@ -21,6 +22,7 @@ API:
 - Cache.clear()                       -- Clear the entire persistent cache and runtime chart_tag_cache.
 - Cache.get_mod_version()             -- Get the mod version from the cache, if set.
 - Cache.get_player_data(player)       -- Get persistent player data for a given player.
+- Cache.player_name_from_storage(player) -- Get the stored player_name for a given player.
 - Cache.get_surface_data(idx)         -- Get persistent surface data for a given surface index.
 - Cache.get_surface_tags(idx)         -- Get the persistent tag table for a given surface index.
 - Cache.remove_stored_tag(gps)        -- Remove a tag from persistent storage by GPS string.
@@ -35,6 +37,7 @@ storage = {
   cache = { ... },
   players = {
     [player_index] = {
+      player_name = "FactorioPlayerName", -- ADDED: stores the player's name for this index
       tag_editor_data = { ... },
       surfaces = {
         [surface_index] = {
@@ -67,15 +70,22 @@ local GPS = require("core.gps.gps")
 local Cache = {}
 Cache.__index = Cache
 
+-- Ensure storage is always a reference to global.storage for persistence
+if rawget(_G, "global") == nil then _G.global = {} end
+if not global.storage then global.storage = {} end
+storage = global.storage
+
 --- Lookup tables for chart tags and other runtime data.
 Cache.lookups = Cache.lookups or Lookups.init()
 
 --- Initialize the persistent cache table if not already present.
 function Cache.init()
-  if not storage or (storage and next(storage) == nil) then
-    storage.players = {}
-    storage.surfaces = {}
-  end
+  if rawget(_G, "global") == nil then _G.global = {} end
+  if not global.storage then global.storage = {} end
+  storage = global.storage
+  if not storage.players then storage.players = {} end
+  if not storage.surfaces then storage.surfaces = {} end
+  if not storage.cache then storage.cache = {} end
   return storage
 end
 
@@ -108,10 +118,9 @@ end
 --- Clear the entire persistent cache.
 function Cache.clear()
   Cache.init()
-  storage = {
-    players = {},
-    surfaces = {}
-  }
+  if rawget(_G, "global") == nil then _G.global = {} end
+  global.storage = { players = {}, surfaces = {} }
+  storage = global.storage
   if package.loaded["core.cache.lookups"] then
     package.loaded["core.cache.lookups"].clear_chart_tag_cache()
   end
@@ -129,23 +138,23 @@ end
 ---@return table Player data table (persistent)
 local function init_player_data(player)
   Cache.init()
-
   if not storage.players[player.index] then
     storage.players[player.index] = {}
   end
   local pdata = storage.players[player.index]
+  -- Ensure player_name is always set and up to date
+  if not pdata.player_name or pdata.player_name ~= (player and player.name) then
+    pdata.player_name = player and player.name or "?"
+  end
   if pdata.toggle_fav_bar_buttons == nil then
     pdata.toggle_fav_bar_buttons = true
   end
   pdata.render_mode = pdata.render_mode or (player and player.render_mode)
   pdata.tag_editor_data = {}
   pdata.drag_favorite_index = pdata.drag_favorite_index or -1
-
   pdata.surfaces = pdata.surfaces or {}
   pdata.surfaces[player.surface.index] = pdata.surfaces[player.surface.index] or { favorites = {} }
-
   favorites_helpers.init_player_favorites(pdata.surfaces[player.surface.index])
-
   return storage.players[player.index]
 end
 
@@ -242,6 +251,16 @@ end
 function Cache.set_tag_editor_data(player, data)
   local pdata = Cache.get_player_data(player)
   pdata.tag_editor_data = data
+end
+
+--- Accessor for the stored player_name for a given player
+---@param player LuaPlayer
+---@return string|nil
+function Cache.player_name_from_storage(player)
+  if not player or not player.index then return nil end
+  Cache.init()
+  local pdata = storage.players[player.index]
+  return pdata and pdata.player_name or nil
 end
 
 return Cache

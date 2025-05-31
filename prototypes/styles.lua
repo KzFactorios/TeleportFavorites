@@ -132,10 +132,12 @@ if not gui_style.data_viewer_frame then
     maximal_width = 2000,
     minimal_height = 200,
     maximal_height = 1200,
-    resize_row = true, -- allow resizing
+    resize_row = true,    -- allow resizing
     resize_column = true, -- allow resizing
     padding = 0,
-    margin = 0,
+    top_margin = 16,
+    left_margin = 4,
+    left_padding = 12,
     right_padding = 12
   }
 end
@@ -188,24 +190,6 @@ if not gui_style.data_viewer_content_flow then
   }
 end
 
--- Scroll-pane style for data_viewer_content_scroll (make resizable)
-if not gui_style.data_viewer_content_scroll then
-  gui_style.data_viewer_content_scroll = {
-    type = "scroll_pane_style",
-    parent = "scroll_pane",
-    horizontally_stretchable = "on",
-    vertically_stretchable = "on",
-    minimal_width = 600,
-    maximal_width = 2000,
-    minimal_height = 200,
-    maximal_height = 1200,
-    width = 1000,
-    height = 600,
-    vertical_scroll_policy = "auto",
-    horizontal_scroll_policy = "auto"
-  }
-end
-
 -- Table style for data_viewer_table
 if not gui_style.data_viewer_table then
   gui_style.data_viewer_table = {
@@ -215,7 +199,8 @@ if not gui_style.data_viewer_table then
     vertically_stretchable = "on",
     cell_padding = 2,
     cell_spacing = 0,
-    use_header_filler = false
+    use_header_filler = false,
+    left_margin = 12
   }
 end
 
@@ -276,7 +261,7 @@ if not gui_style.tf_fave_toggle_container then
   gui_style.tf_fave_toggle_container = {
     type = "frame_style",
     parent = "inside_deep_frame", -- match the slots row background
-    graphical_set = nil, -- use parent's background
+    graphical_set = nil,          -- use parent's background
     padding = 0,
     margin = 0,
     horizontally_stretchable = "off",
@@ -311,11 +296,54 @@ if not gui_style.data_viewer_row_odd then
     -- Use a subtle vanilla-like background for odd rows
     graphical_set = {
       base = {
-        center = {position = {136, 0}, size = 1},
+        center = { position = { 136, 0 }, size = 1 },
         draw_type = "outer",
-        tint = {r=0.92, g=0.92, b=0.92, a=1}
+        tint = { r = 0.92, g = 0.92, b = 0.92, a = 1 }
       }
     }
   }
 end
 
+-- Alternating row background for Data Viewer (odd rows, label version)
+if not gui_style.data_viewer_row_odd_label then
+  gui_style.data_viewer_row_odd_label = {
+    type = "label_style",
+    parent = "label",
+    font = "default",
+    horizontally_stretchable = "on",
+    vertically_stretchable = "on",
+    padding = 0,
+    margin = 0,
+    font_color = { r = 1, g = 1, b = 1 }, -- white text
+    single_line = false,
+    graphical_set = {
+      base = {
+        center = { position = { 136, 0 }, size = 1 },
+        draw_type = "outer",
+        tint = { r = 0.92, g = 0.92, b = 0.92, a = 1 }
+      }
+    }
+  }
+end
+
+-- Alternating row background for Data Viewer (even rows, label version)
+if not gui_style.data_viewer_row_even_label then
+  gui_style.data_viewer_row_even_label = {
+    type = "label_style",
+    parent = "label",
+    horizontally_stretchable = "on",
+    vertically_stretchable = "on",
+    padding = 0,
+    margin = 0,
+    font = "default",
+    font_color = { r = 1, g = 1, b = 1 }, -- white text
+    single_line = false,
+    graphical_set = {
+      base = {
+        center = { position = { 136, 0 }, size = 1 },
+        draw_type = "outer",
+        tint = { r = 0.82, g = 0.82, b = 0.82, a = 1 }
+      }
+    }
+  }
+end
