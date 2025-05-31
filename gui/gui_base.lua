@@ -35,7 +35,7 @@ local Constants = require("constants")
 -- @return LuaGuiElement: The created element
 function GuiBase.create_element(type, parent, opts)
     if opts.type then opts.type = nil end -- Prevent accidental overwrite
-    local params = {type = type}
+    local params = { type = type }
     for k, v in pairs(opts) do params[k] = v end
     local elem = parent.add(params)
     if opts.style then elem.style = opts.style end
@@ -49,7 +49,8 @@ end
 -- @param style string: Optional style name (default: 'inside_shallow_frame_with_padding')
 -- @return LuaGuiElement: The created frame
 function GuiBase.create_frame(parent, name, direction, style)
-    return GuiBase.create_element('frame', parent, {name = name, direction = direction or 'horizontal', style = style or 'inside_shallow_frame_with_padding'})
+    return GuiBase.create_element('frame', parent,
+        { name = name, direction = direction or 'horizontal', style = style or 'inside_shallow_frame_with_padding' })
 end
 
 --- Create a sprite button with icon, tooltip, and style.
@@ -61,7 +62,8 @@ end
 -- @param enabled bool: Optional, default true
 -- @return LuaGuiElement: The created button
 function GuiBase.create_icon_button(parent, name, sprite, tooltip, style, enabled)
-    local btn = GuiBase.create_element('sprite-button', parent, {name = name, sprite = sprite, tooltip = tooltip, style = style or 'tf_slot_button'})
+    local btn = GuiBase.create_element('sprite-button', parent,
+        { name = name, sprite = sprite, tooltip = tooltip, style = style or 'tf_slot_button' })
     btn.enabled = enabled ~= false
     return btn
 end
@@ -74,7 +76,7 @@ end
 -- @return LuaGuiElement: The created label
 function GuiBase.create_label(parent, name, caption, style)
     -- Defensive: do not set .style if style is a button style (Factorio will error)
-    local elem = GuiBase.create_element('label', parent, {name = name, caption = caption})
+    local elem = GuiBase.create_element('label', parent, { name = name, caption = caption })
     if style and not (string.find(style, "button")) then
         elem.style = style
     end
@@ -88,7 +90,7 @@ end
 -- @param style? string: Optional style name
 -- @return LuaGuiElement: The created textfield
 function GuiBase.create_textfield(parent, name, text, style)
-    return GuiBase.create_element('textfield', parent, {name = name, text = text, style = style})
+    return GuiBase.create_element('textfield', parent, { name = name, text = text, style = style })
 end
 
 --- Create a horizontal flow container.
@@ -96,7 +98,7 @@ end
 -- @param name string: Name of the flow
 -- @return LuaGuiElement: The created flow
 function GuiBase.create_hflow(parent, name)
-    return GuiBase.create_element('flow', parent, {name = name, direction = 'horizontal'})
+    return GuiBase.create_element('flow', parent, { name = name, direction = 'horizontal' })
 end
 
 --- Create a vertical flow container.
@@ -104,24 +106,28 @@ end
 -- @param name string: Name of the flow
 -- @return LuaGuiElement: The created flow
 function GuiBase.create_vflow(parent, name)
-    return GuiBase.create_element('flow', parent, {name = name, direction = 'vertical'})
+    return GuiBase.create_element('flow', parent, { name = name, direction = 'vertical' })
 end
 
 --- Create a draggable titlebar with optional close button.
 -- @param parent LuaGuiElement: Parent element
 -- @param title LocalisedString|string: Title text
--- @param close_callback function|nil: Optional callback for close button
+-- @param close_button_name string
+-- @param debug boolean: Optional, default false. If true, use debug style for draggable space.
 -- @return LuaGuiElement: The created titlebar flow
-function GuiBase.create_titlebar(parent, title, close_callback)
+function GuiBase.create_titlebar(parent, title, close_button_name)
     local bar = GuiBase.create_hflow(parent, "titlebar")
-    GuiBase.create_label(bar, "gui_base_title_label", title, "frame_title")
-    local filler = bar.add{type="empty-widget", style="draggable_space_header"}
+    bar.style.vertical_align = "center"
+
+    local title_label = GuiBase.create_label(bar, "gui_base_title_label", title, "frame_title")
+    
+    local filler = bar.add { type = "empty-widget", style = "draggable_space" }
     filler.style.horizontally_stretchable = true
-    if close_callback then
-        local gui_base_close_btn = GuiBase.create_icon_button(bar, "gui_base_close_btn", "utility/close", {"gui.close"}, "frame_action_button")
-        gui_base_close_btn.style.right_margin = 4
-        -- To handle close, use on_gui_click event in your event handler, not onclick property
-    end
+    filler.style.height = 24 -- vanilla rib lines are only visible at height 24
+    filler.style.padding = {0,8,0,8} 
+
+    local gui_base_close_btn = GuiBase.create_icon_button(bar, close_button_name, "utility/close", { "gui.close" },
+        "frame_action_button")
     return bar
 end
 

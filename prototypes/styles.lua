@@ -347,3 +347,109 @@ if not gui_style.data_viewer_row_even_label then
     }
   }
 end
+
+-- Dark background frame for tag editor content (mimics vanilla tag dialog)
+if not gui_style.dark_frame then
+  gui_style.dark_frame = {
+    type = "frame_style",
+    parent = "frame",
+    graphical_set = {
+      base = {position = {136, 0}, corner_size = 8, draw_type = "outer", tint = {r=0.13, g=0.13, b=0.13, a=1}},
+    },
+    padding = 8,
+    top_padding = 8,
+    bottom_padding = 8,
+    left_padding = 8,
+    right_padding = 8,
+    horizontally_stretchable = "on",
+    vertically_stretchable = "off",
+    use_header_filler = false
+  }
+end
+
+-- Confirm button style (large, green, right-aligned)
+if not gui_style.tf_confirm_button then
+  gui_style.tf_confirm_button = {
+    type = "button_style",
+    parent = "confirm_button",
+    horizontally_stretchable = "on",
+    font = "default-bold",
+    height = 36,
+    width = 120,
+    top_margin = 8,
+    right_margin = 8
+  }
+end
+
+-- Delete button style (red, visually distinct)
+if not gui_style.tf_delete_button then
+  gui_style.tf_delete_button = {
+    type = "button_style",
+    parent = "red_button",
+    horizontally_stretchable = "off",
+    font = "default-bold",
+    height = 32,
+    width = 36,
+    top_margin = 0,
+    right_margin = 4
+  }
+end
+
+-- Teleport button style (vanilla icon, orange background)
+if not gui_style.tf_teleport_button then
+  gui_style.tf_teleport_button = {
+    type = "button_style",
+    parent = "confirm_button",
+    --default_font_color = {r=1, g=0.7, b=0, a=1},
+    horizontal_align = "center",
+    height = 32,
+    --width = 36,
+    top_margin = 0,
+    right_margin = 4
+  }
+end
+
+-- Debug style for draggable_space_header with visible background and border
+if not gui_style.tf_draggable_space_header_debug then
+  gui_style.tf_draggable_space_header_debug = {
+    type = "empty_widget_style",
+    parent = "draggable_space_header",
+    graphical_set = {
+      base = {
+        center = { position = { 136, 0 }, size = 1 },
+        draw_type = "outer",
+        tint = { r = 1, g = 0, b = 0, a = 0.2 } -- semi-transparent red
+      }
+    },
+    border = {
+      color = { r = 1, g = 0, b = 0, a = 0.7 },
+      width = 1
+    },
+    height = 24,
+    horizontally_stretchable = "on"
+  }
+end
+
+-- Custom style for last user label with blue background
+if not gui_style.tf_last_user_label_row then
+  gui_style.tf_last_user_label_row = {
+    type = "frame_style",
+    parent = "frame",
+    horizontally_stretchable = "on",
+    vertically_stretchable = "on",
+    --height = 28,
+    graphical_set = {
+      base = {
+        position = {136, 0},
+        corner_size = 8,
+        draw_type = "outer",
+        tint = { r = 0.5, g = 0.5, b = 0.5, a = 1 }
+      }
+    },
+    top_padding = 0,
+    bottom_padding = 0,
+    left_padding = 0,
+    right_padding = 0,
+    font = "default-bold"
+  }
+end

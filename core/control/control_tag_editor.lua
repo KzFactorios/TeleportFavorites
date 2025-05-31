@@ -110,15 +110,7 @@ end
 
 local function handle_favorite_btn(player, tag_data)
   tag_data.is_favorite = not tag_data.is_favorite
-  local pfaves = PlayerFavorites.new(player)
-  local tag = tag_data.tag or {}
-  if tag_data.is_favorite then
-    pfaves:add_favorite(tag.gps)
-    player_print(player, {"tf-gui.tag_editor_favorite_added", "The tag is now marked as a favorite in the Book of Portals!"})
-  else
-    pfaves:remove_favorite(tag.gps)
-    player_print(player, {"tf-gui.tag_editor_favorite_removed", "The tag's star has faded from your astral ledger."})
-  end
+  -- Only update the UI state, do not persist to PlayerFavorites here
   update_tag_data_and_refresh(player, tag_data, {})
 end
 
@@ -165,6 +157,22 @@ local function handle_icon_button_click(player, tag_data)
   update_tag_data_and_refresh(player, tag_data, {error_message = nil})
 end
 
+local function close_tag_editor(player)
+  -- Always clear tag_editor_data and close all tag editor frames
+  Cache.set_tag_editor_data(player, nil)
+  local screen = player.gui.screen
+  local outer = Helpers.find_child_by_name(screen, "tag_editor_outer_frame")
+  if outer then outer.destroy() end
+  local inner = Helpers.find_child_by_name(screen, "tag_editor_inner_frame")
+  if inner then inner.destroy() end
+  local confirm = Helpers.find_child_by_name(screen, "tf_confirm_dialog_frame")
+  if confirm then confirm.destroy() end
+  player.opened = nil
+end
+
+-- Expose close_tag_editor for external event handlers
+M.close_tag_editor = close_tag_editor
+
 --- Tag editor GUI click handler for shared dispatcher
 local function on_tag_editor_gui_click(event, script)
   local element = event.element
@@ -172,21 +180,14 @@ local function on_tag_editor_gui_click(event, script)
   local player = game.get_player(event.player_index)
   if not player then return end
   local tag_data = Cache.get_tag_editor_data(player) or {}
+  -- Robust close for all close/cancel buttons
+  if element.name == "titlebar_close_button" or element.name == "tag_editor_cancel_btn" or element.name == "last_row_cancel_button" then
+    close_tag_editor(player)
+    return
+  end
   if element.parent and element.parent.name == "tag_editor_frame" then
     if element.name == "tag_editor_confirm_btn" then
       return handle_confirm_btn(player, element, tag_data)
-    elseif element.name == "tag_editor_cancel_btn" or element.name == "last_row_cancel_button" then
-      if element and (element.name == "tag_editor_cancel_btn" or element.name == "last_row_cancel_button") then
-        local parent = element.parent
-        while parent do
-          if parent.name == "tag_editor_frame" or parent.name == "tag_editor_outer_frame" then
-            player_print(player, {"tf-gui.tag_editor_cancelled"})
-            clear_and_close_tag_editor(player, parent)
-            return
-          end
-          parent = parent.parent
-        end
-      end
     elseif element.name == "tag_editor_move_btn" then
       return handle_move_btn(player, tag_data, script)
     elseif element.name == "tag_editor_delete_btn" then
@@ -236,9 +237,10 @@ local function on_tag_editor_gui_click(event, script)
       show_tag_editor_error(player, tag_data, "The tag has already faded from existence.")
     end
   elseif element.name == "tf_confirm_dialog_cancel_btn" then
-    Helpers.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
-    local tag_editor_frame = player.gui.screen["tag_editor_outer_frame"]
-    if tag_editor_frame then player.opened = tag_editor_frame end
+    local confirm = Helpers.find_child_by_name(player.gui.screen, "tf_confirm_dialog_frame")
+    if confirm then confirm.destroy() end
+    local outer = Helpers.find_child_by_name(player.gui.screen, "tag_editor_outer_frame")
+    if outer then player.opened = outer end
   end
 end
 

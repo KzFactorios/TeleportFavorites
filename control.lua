@@ -66,3 +66,7 @@ gui_event_dispatcher.register_gui_handlers(script)
 
 -- Register custom input (keyboard shortcut) handlers
 custom_input_dispatcher.register_custom_inputs(script)
+
+-- Register on_gui_closed handler for ESC key/modal close support
+local on_gui_closed_handler = require("core.events.on_gui_closed_handler")
+script.on_event(defines.events.on_gui_closed, on_gui_closed_handler.on_gui_closed)

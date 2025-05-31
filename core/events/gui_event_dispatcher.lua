@@ -47,19 +47,22 @@ function M.register_gui_handlers(script)
         ---@diagnostic disable-next-line: undefined-global
         control_fave_bar.on_fave_bar_gui_click(event)
       elseif (element.parent and element.parent.name == "tag_editor_frame")
-          or element.name == "tf_confirm_dialog_confirm_btn"
-          or element.name == "tf_confirm_dialog_cancel_btn"
-          or element.name == "tag_editor_icon_btn"
-          or element.name == "last_user_row_move_button"
-          or element.name == "last_user_row_delete_button"
-          or element.name == "tag_editor_teleport_button"
-          or element.name == "tag_editor_favorite_btn"
+          or element.name == "titlebar_close_button"
           or element.name == "tag_editor_cancel_btn"
           or element.name == "last_row_cancel_button"
-          or element.name == "last_row_confirm_button"
+          or element.name == "tag_editor_confirm_btn"
+          or element.name == "tag_editor_move_btn"
+          or element.name == "tag_editor_delete_btn"
+          or element.name == "tag_editor_teleport_btn"
+          or element.name == "tag_editor_favorite_btn"
+          or element.name == "icon_row_icon_button"
+          or element.name == "tag_editor_icon_elem_btn"
           or element.name == "tag_editor_textfield"
+          or element.name == "tf_confirm_dialog_confirm_btn"
+          or element.name == "tf_confirm_dialog_cancel_btn"
       then
         control_tag_editor.on_tag_editor_gui_click(event, script)
+        return
       elseif element.name == "data_viewer_close_btn" then
         -- Data viewer close button logic (robust to parent)
         local player = game.get_player(event.player_index)
