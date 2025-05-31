@@ -7,7 +7,7 @@ The favorites bar (fave_bar) is a persistent, player-specific GUI element that p
 - The parent element is `fave_bar_frame`, which contains two horizontal containers:
   - `fave_bar_toggle_flow`: Holds the `fave_bar_visible_btns_toggle` button (red star icon). Clicking toggles visibility of the favorite buttons container. State is persisted in `storage.players[player_index].toggle_fave_bar_buttons`.
   - `fave_bar_slots_flow` container: Contains `MAX_FAVORITE_SLOTS` slot buttons, each representing a favorite. Each slot button:
-    - Shows the icon for the matched chart_tag, or `default_map_tag.png` if none.
+    - Shows the icon for the matched chart_tag, or `utility/pin` if none.
     - Tooltip: First line is GPS (without surface), second line is chart_tag text (trimmed to 50 chars, see constant), no second line if no text.
     - Caption: Slot number (1-0), small font.
     - Size: 36x36, use slot button style.
@@ -99,7 +99,7 @@ fave_bar_frame (frame)
 <!--
 the fave_bar will exist in the player's top gui. it should strive to be displayed as the rightmost item in the top gui. the parent element of the gui is fave_bar_frame
 
-the fave_bar_slots_flow container: will have MAX_FAVORITE_SLOTS and show the player's favorites respective for the slot they are in. If the favorite's gps is not nil or == "", then the icon for the slot button will display the matched chart_tag's icon and if this is not specified, then use the default_map_tag.png, the tooltip will show, on the first line, the value of the gps without the surface component. I believe there is a coords_string method in GPS for this. The second line should show the text of the matched chart_tag, trimmed to 50 chars. If there is no text, omit the second line. Each slot should also show a caption for it's slot number (1-0), the caption text should be rather small.
+the fave_bar_slots_flow container: will have MAX_FAVORITE_SLOTS and show the player's favorites respective for the slot they are in. If the favorite's gps is not nil or == "", then the icon for the slot button will display the matched chart_tag's icon and if this is not specified, then use the utlity/pin, the tooltip will show, on the first line, the value of the gps without the surface component. I believe there is a coords_string method in GPS for this. The second line should show the text of the matched chart_tag, trimmed to 50 chars. If there is no text, omit the second line. Each slot should also show a caption for it's slot number (1-0), the caption text should be rather small.
 
 all slot buttons (including toggle_favorite), should be slot buttons, at the standard size of 36x36
 

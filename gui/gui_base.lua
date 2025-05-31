@@ -121,11 +121,11 @@ function GuiBase.create_titlebar(parent, title, close_button_name)
     bar.style.bottom_margin = 4
 
     GuiBase.create_label(bar, "gui_base_title_label", title, "frame_title")
-    
+
     local filler = bar.add { type = "empty-widget", style = "draggable_space" }
     filler.style.horizontally_stretchable = true
     filler.style.height = 24 -- vanilla rib lines are only visible at height 24
-    filler.style.padding = {0,8,0,8} 
+    filler.style.padding = { 0, 8, 0, 8 }
 
     GuiBase.create_icon_button(bar, close_button_name, "utility/close", { "gui.close" },
         "frame_action_button")

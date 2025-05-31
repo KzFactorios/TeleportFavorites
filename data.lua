@@ -36,14 +36,6 @@ data:extend {
   },
   {
     type = "sprite",
-    name = "default-map-tag",
-    filename = "__TeleportFavorites__/graphics/map_tag_default.png",
-    priority = "extra-high",
-    size = { 24, 36 },
-    flags = { "gui-icon" },
-  },
-  {
-    type = "sprite",
     name = "move_tag_icon",
     filename = "__core__/graphics/icons/mip/move-tag.png",
     width = 24,
@@ -280,5 +272,13 @@ data:extend {
     name = "tf-data-viewer-tab-prev",
     key_sequence = "SHIFT + TAB",
     consuming = "none"
+  },
+  {
+    type = "sprite",
+    name = "insert_rich_text_icon",
+    filename = "__TeleportFavorites__/graphics/insert_rich_text_icon.png",
+    width = 16,
+    height = 16,
+    flags = { "gui-icon" }
   }
 }

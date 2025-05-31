@@ -190,8 +190,8 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
     if fav and not Favorite.is_blank_favorite(fav) then
       if fav.icon and fav.icon ~= "" then
         icon = fav.icon
-      elseif SpriteEnum.DEFAULT_MAP_TAG then
-        icon = SpriteEnum.DEFAULT_MAP_TAG
+      elseif SpriteEnum.PIN then
+        icon = SpriteEnum.PIN
       end
       tooltip = Helpers.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }
       if fav.locked then style = "tf_slot_button_locked" end

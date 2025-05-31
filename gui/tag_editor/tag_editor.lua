@@ -200,6 +200,8 @@ function tag_editor.build(player, tag_data)
         "tag_editor_is_favorite_button", "utility/check_mark", { "tf-gui.favorite_tooltip" }, "tf_slot_button")
 
 
+
+
     -- Icon row
     local tag_editor_icon_row = GuiBase.create_hflow(tag_editor_content_inner_frame, "tag_editor_icon_row")
     tag_editor_icon_row.style.height = line_height
@@ -220,27 +222,69 @@ function tag_editor.build(player, tag_data)
         { "tf-gui.text_label" })
     tag_editor_text_label.style.width = label_width
     tag_editor_text_label.style.vertical_align = "center"
+
+
+    
     local tag_editor_text_input = GuiBase.create_textfield(tag_editor_text_row, "tag_editor_text_input",
         tag_data.text or "")
+
+
+
+
+    -- Rich text input row (for icons, like vanilla tag editor)
+    local tag_editor_rich_text_row = GuiBase.create_hflow(tag_editor_content_inner_frame, "tag_editor_rich_text_row")
+    tag_editor_rich_text_row.style.height = line_height
+    tag_editor_rich_text_row.style.vertical_align = "center"
+
+
+
+    -- Use a textfield for now, but Factorio does not support true rich text editing in GUIs
+    local tag_editor_rich_text_input = GuiBase.create_textfield(tag_editor_rich_text_row, "tag_editor_rich_text_input",
+        tag_data.rich_text or "")
+    tag_editor_rich_text_input.style.horizontally_stretchable = true
+    tag_editor_rich_text_input.style.vertically_stretchable = false
+    tag_editor_rich_text_input.style.font = "default"
+    tag_editor_rich_text_input.tooltip = { "tf-gui.rich_text_tooltip" }
+    -- Optionally, you could add a button to insert icons or show a list of allowed icons
+    -- Use a valid vanilla utility icon, e.g. utility/list_view
+    local tag_editor_rich_text_icon_button = GuiBase.create_icon_button(tag_editor_rich_text_row,
+        "tag_editor_rich_text_icon_button",
+        SpriteEnum.INSERT_RICH_TEXT_ICON, { "tf-gui.insert_icon_tooltip" }, "tf_insert_rich_text_button")
+    tag_editor_rich_text_icon_button.style.maximal_width = 20
+    tag_editor_rich_text_icon_button.style.maximal_height = 20
+    tag_editor_rich_text_icon_button.style.left_margin = -28 -- a little trickery to get the button to sit at the end of the text input
+
 
 
     -- Error row
     local tag_editor_error_row_frame = GuiBase.create_frame(tag_editor_outer_frame, "tag_editor_error_row_frame",
         "vertical")
-    local error_row_inner_frame = GuiBase.create_frame(tag_editor_error_row_frame, "error_row_inner_frame", "vertical", "invisible_frame")
+    local error_row_inner_frame = GuiBase.create_frame(tag_editor_error_row_frame, "error_row_inner_frame", "vertical",
+        "invisible_frame")
     local error_row_error_message = GuiBase.create_label(error_row_inner_frame, "error_row_error_message",
         tag_data.error_message or "")
+
+
 
 
 
     -- Last row (confirm/cancel) - move to outer frame (after inner frame)
     local tag_editor_last_row = GuiBase.create_hflow(tag_editor_outer_frame, "tag_editor_last_row")
     tag_editor_last_row.style.vertical_align = "center"
-    tag_editor_last_row.style.height = line_height
+    tag_editor_last_row.style.height = line_height + 4
+
     local last_row_cancel_button = GuiBase.create_icon_button(tag_editor_last_row, "last_row_cancel_button",
         "utility/close", { "tf-gui.cancel_tooltip" }, "tf_slot_button")
+
     local last_row_confirm_button = GuiBase.create_icon_button(tag_editor_last_row, "last_row_confirm_button",
-        "utility/check_mark", { "tf-gui.confirm_tooltip" }, "tf_confirm_button")
+        nil, { "tf-gui.confirm_tooltip" }, "tf_confirm_button")
+    last_row_confirm_button.caption = { "tf-gui.confirm" }
+
+
+
+
+
+
 
 
     local refs = {

@@ -230,7 +230,7 @@ Citations:
 
 ---
 
-
+The maximum length for LuaCustomChartTag.text is very likely 200 characters. - not verified
 
 
 
