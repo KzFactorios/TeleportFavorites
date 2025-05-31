@@ -110,6 +110,8 @@ function tag_editor.build(player, tag_data)
     if not player then error("tag_editor.build: player is required") end
     if not tag_data then tag_data = {} end
     local last_user = tag_data.last_user or ""
+    local line_height = 44
+    local label_width = 100
 
     local parent = player.gui.screen
     local tag_editor_outer_frame = GuiBase.create_frame(parent, "tag_editor_outer_frame", "vertical", "slot_window_frame")
@@ -117,53 +119,67 @@ function tag_editor.build(player, tag_data)
     tag_editor_outer_frame.style.padding = { 4, 8, 8, 8 }
 
 
+    -- titlle bar
     GuiBase.create_titlebar(tag_editor_outer_frame, { "tf-gui.tag_editor_title" }, "titlebar_close_button")
     -- Make the dialog draggable by setting the draggable target to the titlebar's draggable space
     local tag_editor_titlebar = tag_editor_outer_frame["tag_editor_titlebar"]
     if tag_editor_titlebar then
         local draggable = tag_editor_titlebar["titlebar_draggable"]
         if draggable then
-            draggable.style.height = 24
+            --draggable.style.height = 24
             tag_editor_outer_frame.force_auto_center() -- Ensure dialog is centered after drag
             tag_editor_outer_frame.drag_target = draggable
         end
     end
 
+    -- inner frame
     local tag_editor_inner_frame = GuiBase.create_frame(tag_editor_outer_frame, "tag_editor_inner_frame", "vertical",
         "invisible_frame")
+    tag_editor_inner_frame.style.padding = { 0, 0, 0, 0 }
+    tag_editor_inner_frame.style.margin = { 0, 0, 0, 0 }
+
 
     -- Content background
     local tag_editor_content_frame = GuiBase.create_frame(tag_editor_inner_frame, "tag_editor_content_frame", "vertical")
     tag_editor_content_frame.style.padding = 0
+    tag_editor_content_frame.style.margin = 0
+
 
     -- Last user row (frame, horizontal)
     local tag_editor_last_user_row = GuiBase.create_frame(tag_editor_content_frame, "tag_editor_last_user_row",
         "horizontal", "tf_last_user_label_row")
     tag_editor_last_user_row.style.horizontally_stretchable = true
     tag_editor_last_user_row.style.vertically_stretchable = false
+    tag_editor_last_user_row.style.height = line_height - 8
+    tag_editor_last_user_row.style.vertical_align = "center"
+    tag_editor_last_user_row.style.horizontal_align = "left"
     tag_editor_last_user_row.style.width = nil
     tag_editor_last_user_row.style.maximal_width = 10000
-    tag_editor_last_user_row.style.height = 36
-    tag_editor_last_user_row.style.padding = { 8, 8, 8, 8 } -- Uniform padding (top, right, bottom, left)
-    tag_editor_last_user_row.style.vertical_align = "center"
+    tag_editor_last_user_row.style.padding = { 8, 8, 4, 12 } -- Uniform padding (top, right, bottom, left)
+    tag_editor_last_user_row.style.margin = { 0, 0, 0, 0 }   -- Uniform padding (top, right, bottom, left)
     tag_editor_last_user_row.style.minimal_width = 100
-    tag_editor_last_user_row.style.maximal_width = 10000 -- Allow to stretch fully
-    tag_editor_last_user_row.style.horizontal_align = "left"
+    tag_editor_last_user_row.style.maximal_width = 10000     -- Allow to stretch fully
+
     local tag_editor_last_user_label = GuiBase.create_label(tag_editor_last_user_row, "tag_editor_last_user_label",
         { "tf-gui.last_user_label", last_user })
+    tag_editor_last_user_label.style.font = "default-bold"
+
+
 
     -- Content inner frame (vertical)
     local tag_editor_content_inner_frame = GuiBase.create_frame(tag_editor_content_frame,
         "tag_editor_content_inner_frame", "vertical")
+    tag_editor_content_inner_frame.style.padding = { 8, 8, 8, 12 } -- Uniform padding (top, right, bottom, left)
+
+
 
     -- Teleport row
     local tag_editor_teleport_row = GuiBase.create_hflow(tag_editor_content_inner_frame, "tag_editor_teleport_row")
+    tag_editor_teleport_row.style.height = line_height
+    tag_editor_teleport_row.style.vertical_align = "center"
     local tag_editor_teleport_label = GuiBase.create_label(tag_editor_teleport_row, "tag_editor_teleport_label",
         { "tf-gui.teleport_to" })
-    tag_editor_teleport_label.style.width = 110
-
-
-
+    tag_editor_teleport_label.style.width = label_width
     local tag_editor_teleport_button = GuiBase.create_icon_button(tag_editor_teleport_row, "tag_editor_teleport_button",
         nil, { "tf-gui.teleport_tooltip" }, "tf_teleport_button")
     tag_editor_teleport_button.style.horizontally_stretchable = true
@@ -172,49 +188,60 @@ function tag_editor.build(player, tag_data)
     tag_editor_teleport_button.caption = "location"
 
 
-
-
     -- Favorite row
     local tag_editor_favorite_row = GuiBase.create_hflow(tag_editor_content_inner_frame, "tag_editor_favorite_row")
+    tag_editor_favorite_row.style.height = line_height
     tag_editor_favorite_row.style.vertical_align = "center"
-    tag_editor_favorite_row.style.height = 40
     local tag_editor_is_favorite_label = GuiBase.create_label(tag_editor_favorite_row, "tag_editor_is_favorite_label",
         { "tf-gui.favorite_row_label" })
-    tag_editor_is_favorite_label.style.width = 110
+    tag_editor_is_favorite_label.style.width = label_width
+    tag_editor_is_favorite_label.style.vertical_align = "center"
     local tag_editor_is_favorite_button = GuiBase.create_icon_button(tag_editor_favorite_row,
         "tag_editor_is_favorite_button", "utility/check_mark", { "tf-gui.favorite_tooltip" }, "tf_slot_button")
 
+
     -- Icon row
     local tag_editor_icon_row = GuiBase.create_hflow(tag_editor_content_inner_frame, "tag_editor_icon_row")
+    tag_editor_icon_row.style.height = line_height
+    tag_editor_icon_row.style.vertical_align = "center"
     local tag_editor_icon_label = GuiBase.create_label(tag_editor_icon_row, "tag_editor_icon_label",
         { "tf-gui.icon_row_label" })
-    tag_editor_icon_label.style.width = 110
+    tag_editor_icon_label.style.width = label_width
+    tag_editor_icon_label.style.vertical_align = "center"
     local tag_editor_icon_button = GuiBase.create_icon_button(tag_editor_icon_row, "tag_editor_icon_button",
         tag_data.icon or "", { "tf-gui.icon_tooltip" }, "tf_slot_button")
 
+
     -- Text row
     local tag_editor_text_row = GuiBase.create_hflow(tag_editor_content_inner_frame, "tag_editor_text_row")
+    tag_editor_text_row.style.height = line_height
+    tag_editor_text_row.style.vertical_align = "center"
     local tag_editor_text_label = GuiBase.create_label(tag_editor_text_row, "tag_editor_text_label",
         { "tf-gui.text_label" })
-    tag_editor_text_label.style.width = 110
+    tag_editor_text_label.style.width = label_width
+    tag_editor_text_label.style.vertical_align = "center"
     local tag_editor_text_input = GuiBase.create_textfield(tag_editor_text_row, "tag_editor_text_input",
         tag_data.text or "")
 
+
     -- Error row
-    local tag_editor_error_row_frame = GuiBase.create_frame(tag_editor_content_inner_frame, "tag_editor_error_row_frame",
+    local tag_editor_error_row_frame = GuiBase.create_frame(tag_editor_outer_frame, "tag_editor_error_row_frame",
         "vertical")
-    local error_row_inner_frame = GuiBase.create_frame(tag_editor_error_row_frame, "error_row_inner_frame", "vertical")
+    local error_row_inner_frame = GuiBase.create_frame(tag_editor_error_row_frame, "error_row_inner_frame", "vertical", "invisible_frame")
     local error_row_error_message = GuiBase.create_label(error_row_inner_frame, "error_row_error_message",
         tag_data.error_message or "")
+
+
 
     -- Last row (confirm/cancel) - move to outer frame (after inner frame)
     local tag_editor_last_row = GuiBase.create_hflow(tag_editor_outer_frame, "tag_editor_last_row")
     tag_editor_last_row.style.vertical_align = "center"
-
+    tag_editor_last_row.style.height = line_height
     local last_row_cancel_button = GuiBase.create_icon_button(tag_editor_last_row, "last_row_cancel_button",
         "utility/close", { "tf-gui.cancel_tooltip" }, "tf_slot_button")
     local last_row_confirm_button = GuiBase.create_icon_button(tag_editor_last_row, "last_row_confirm_button",
         "utility/check_mark", { "tf-gui.confirm_tooltip" }, "tf_confirm_button")
+
 
     local refs = {
         outer = tag_editor_outer_frame,

@@ -118,16 +118,18 @@ end
 function GuiBase.create_titlebar(parent, title, close_button_name)
     local bar = GuiBase.create_hflow(parent, "titlebar")
     bar.style.vertical_align = "center"
+    bar.style.bottom_margin = 4
 
-    local title_label = GuiBase.create_label(bar, "gui_base_title_label", title, "frame_title")
+    GuiBase.create_label(bar, "gui_base_title_label", title, "frame_title")
     
     local filler = bar.add { type = "empty-widget", style = "draggable_space" }
     filler.style.horizontally_stretchable = true
     filler.style.height = 24 -- vanilla rib lines are only visible at height 24
     filler.style.padding = {0,8,0,8} 
 
-    local gui_base_close_btn = GuiBase.create_icon_button(bar, close_button_name, "utility/close", { "gui.close" },
+    GuiBase.create_icon_button(bar, close_button_name, "utility/close", { "gui.close" },
         "frame_action_button")
+
     return bar
 end
 

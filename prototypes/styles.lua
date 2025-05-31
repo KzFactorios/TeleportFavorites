@@ -450,6 +450,5 @@ if not gui_style.tf_last_user_label_row then
     bottom_padding = 0,
     left_padding = 0,
     right_padding = 0,
-    font = "default-bold"
   }
 end
