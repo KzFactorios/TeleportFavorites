@@ -197,7 +197,7 @@ function M.on_data_viewer_gui_click(event)
     return
   end
   -- Close button
-  if element.name == "data_viewer_close_btn" then
+  if element.name == "titlebar_close_btn" then
     helpers.safe_destroy_frame(main_flow, "data_viewer_frame")
     return
   end
@@ -232,7 +232,7 @@ function M.register(script)
       return
     end
     -- Handle close button click in data viewer
-    if element.name == "data_viewer_close_btn" then
+    if element.name == "titlebar_close_btn" then
       safe_destroy_frame(main_flow, "data_viewer_frame")
       return
     end
@@ -290,7 +290,7 @@ function M.register(script)
       return
     end
     -- Handle close button click in data viewer
-    if element.name == "data_viewer_close_btn" then
+    if element.name == "titlebar_close_btn" then
       safe_destroy_frame(main_flow, "data_viewer_frame")
       return
     end

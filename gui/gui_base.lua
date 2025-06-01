@@ -119,7 +119,7 @@ function GuiBase.create_draggable(parent, name, style)
     local dragger = parent.add{type = "empty-widget", name = name, style = style or "draggable_space" }
     dragger.style.horizontally_stretchable = true
     dragger.style.height = 24 --- vanilla rib lines are only visible at height 24
-    dragger.style.padding = { 0, 8, 0, 8 }
+    dragger.style.margin = { 0, 8, 0, 8 }
 end
 
 --- Create a draggable titlebar with optional close button.
@@ -132,13 +132,9 @@ end
 function GuiBase.create_titlebar(parent, name, title, close_button_name)
     local titlebar = GuiBase.create_hflow(parent, name or "titlebar")
     titlebar.style.vertical_align = "center"
-    titlebar.style.bottom_margin = 4
+    titlebar.style.bottom_margin = 2
 
     local title_label = GuiBase.create_label(titlebar, "gui_base_title_label", title, "frame_title")
-    --[[if title_label ~= nil then
-        title_label.caption = title
-    end
-    ]]
 
     GuiBase.create_draggable(titlebar, "title_bar_draggable")
 

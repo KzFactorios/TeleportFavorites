@@ -91,17 +91,19 @@ end
 ---
 --- @param player LuaPlayer
 --- @param tag_data table|nil
-function tag_editor.build(player, tag_data)
+--- @param editor_position table|nil  -- {x=number, y=number} or nil
+function tag_editor.build(player, tag_data, editor_position)
     if not player then error("tag_editor.build: player is required") end
     if not tag_data then tag_data = {} end
     local last_user = tag_data.last_user or ""
     local line_height = 44
-    local label_width = 100
+    -- Store the editor position for use in the editor (from map right-click or fave bar)
+    local _editor_position = editor_position
 
     local parent = player.gui.screen
     local tag_editor_outer_frame = GuiBase.create_frame(parent, "tag_editor_outer_frame", "vertical", "slot_window_frame")
     tag_editor_outer_frame.auto_center = true
-    tag_editor_outer_frame.style.top_padding = 4
+    tag_editor_outer_frame.style.top_padding = 2
     tag_editor_outer_frame.style.right_padding = 8
     tag_editor_outer_frame.style.bottom_padding = 8
     tag_editor_outer_frame.style.left_padding = 8
@@ -111,12 +113,6 @@ function tag_editor.build(player, tag_data)
     local tag_editor_titlebar = GuiBase.create_titlebar(tag_editor_outer_frame, "tag_editor_titlebar",
         {"tf-gui.tag_editor_title_text"},
         "tag_editor_title_row_close")
-        
-
-    --local title_label = Helpers.find_child_by_name('tag_editor_titlebar', 'gui_base_title_label')
-    --title_label.caption = {"oof"}
-
-
     -- Make the dialog draggable by setting the draggable target to the titlebar's draggable space
     local draggable = tag_editor_titlebar["title_bar_draggable"]
     if draggable then
@@ -153,7 +149,7 @@ function tag_editor.build(player, tag_data)
     -- Content inner frame (vertical)
     local tag_editor_content_inner_frame = GuiBase.create_frame(tag_editor_content_frame,
         "tag_editor_content_inner_frame", "vertical", "tf_content_inner_frame")
-    tag_editor_content_inner_frame.style.margin = { 16, 0, 0, 0 }
+    tag_editor_content_inner_frame.style.margin = { 12, 0, 0, 0 }
     tag_editor_content_inner_frame.style.padding = { 0, 12, 0, 12 }
 
     -- Teleport+Favorite row (favorite button at head, no labels)
@@ -195,8 +191,7 @@ function tag_editor.build(player, tag_data)
     local error_row_error_message = GuiBase.create_label(error_row_inner_frame, "error_row_error_message",
         tag_data.error_message or "")
 
-
-
+        
 
 
     -- Last row (confirm/cancel) - move to outer frame (after inner frame)
@@ -219,6 +214,7 @@ function tag_editor.build(player, tag_data)
         icon_btn = tag_editor_icon_button,
         rich_text_input = tag_editor_rich_text_input,
         rich_text_icon_btn = tag_editor_rich_text_icon_button,
+        editor_position = _editor_position, -- <-- add this for event logic
         -- ...other refs as needed...
     }
     setup_tag_editor_ui(refs, tag_data, player)

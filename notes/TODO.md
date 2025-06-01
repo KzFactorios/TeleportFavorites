@@ -27,3 +27,4 @@
 - [ ] Handle events from the vanilla tag editor and ensure mod GUI stays in sync.
 - [ ] allow a creator of a tag to be able to allow(or not) the favoriting of the tag by other players
 - [x] Clarify and document that GPS must always be a string in the format 'xxx.yyy.s', never a table. Update README, gps_helpers.lua, and favorite.lua with explicit rules and examples.
+- [ ] Ensure that the tag editor's close button doesn't close the data viewer and vice versa. The titlebar close buttons are named the same. 

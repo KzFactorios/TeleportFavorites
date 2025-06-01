@@ -116,7 +116,7 @@ gui_style.frame_titlebar_flow = {
   bottom_padding = 0,
   left_padding = 8,
   right_padding = 4,
-  height = 32,
+  height = 28,
   vertical_align = "center",
   use_header_filler = true
 }
