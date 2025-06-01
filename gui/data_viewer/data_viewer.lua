@@ -101,7 +101,7 @@ local function build_titlebar(parent)
   GuiBase.create_label(flow, "data_viewer_title_label", {"tf-gui.data_viewer_title"}, "frame_title")
   local filler = flow.add{type="empty-widget", name="data_viewer_titlebar_filler", style="draggable_space_header"}
   filler.style.horizontally_stretchable = true
-  local close_btn = Helpers.create_slot_button(flow, "data_viewer_close_btn", SpriteEnum.CLOSE, {"tf-gui.close_tooltip"})
+  local close_btn = Helpers.create_slot_button(flow, "data_viewer_close_btn", SpriteEnum.CLOSE, {"tf-gui.close"})
   return flow, close_btn
 end
 
@@ -137,7 +137,7 @@ local function build_tabs_row(parent, active_tab)
     if i > 1 then btn.style.left_margin = 4 end
   end
   -- Tab actions flow (right-aligned)
-  local filler = tabs_flow.add{type="empty-widget", name="data_viewer_tabs_filler"}
+  local filler = tabs_flow:add{type="empty-widget", name="data_viewer_tabs_filler"}
   filler.style.horizontally_stretchable = true
   local actions_flow = GuiBase.create_hflow(tabs_flow, "data_viewer_tab_actions_flow")
   actions_flow.style.vertical_align = "center"
@@ -295,7 +295,7 @@ function data_viewer.build(player, parent, state)
   GuiBase.create_label(titlebar, "data_viewer_title_label", {"tf-gui.data_viewer_title"}, "frame_title")
   local filler = titlebar.add{type="empty-widget", name="data_viewer_titlebar_filler", style="draggable_space_header"}
   filler.style.horizontally_stretchable = true
-  Helpers.create_slot_button(titlebar, "data_viewer_close_btn", SpriteEnum.CLOSE, {"tf-gui.close_tooltip"})
+  Helpers.create_slot_button(titlebar, "data_viewer_close_btn", SpriteEnum.CLOSE, {"tf-gui.close"})
   -- Inner flow (vertical, invisible_frame)
   local inner_flow = frame.add{type="frame", name="data_viewer_inner_flow", style="invisible_frame", direction="vertical"}
   -- Tabs row (with tab actions)

@@ -17,7 +17,7 @@
 - [ ] Add localization for any new user-facing strings.
 - [ ] Document any further style or layout tweaks in this file for future reference.
 - [ ] Test for the display of unforeseen large strings (e.g., player names, chart tag text). Limit string length in GUI where appropriate.
-- [ ] Check limits on size for chart tag text and enforce in GUI logic/helpers.
+- [ ] Check limits on size for chart tag text and enforce in GUI logic/helpers. Set the limit to 1024 chars, but make this a constant variable
 - [ ] Check for map editor functionality and ensure compatibility.
 - [ ] When a chart_tag is destroyed, ensure it destroys any linked tags (and vice versa). Refactor tag<->chart_tag destruction logic to a shared helper if possible.
 - [ ] Multiplayer: test and document tag ownership edge cases.

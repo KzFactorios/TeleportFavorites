@@ -1,3 +1,4 @@
+---@diagnostic disable: undefined-global
 --[[
 TeleportFavorites Factorio Mod - Control Script
 Main event handler and public API entry points.

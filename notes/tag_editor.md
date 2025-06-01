@@ -107,39 +107,31 @@ Yes, allow whatever signals are available in the current game. If a mod change r
 
 ---
 
-# Tag Editor GUI Structure (Vanilla-Inspired)
+# Tag Editor GUI Hierarchy (Updated)
 
 ```
-tag_editor_outer_frame (vertical, slot_window_frame)
-├── tag_editor_titlebar (horizontal, frame_titlebar_flow)
-│   ├── tag_editor_titlebar_label (frame_title)
-│   ├── titlebar_draggable (empty-widget, draggable_space_header)
-│   └── titlebar_close_button (icon_button, frame_action_button)
-├── tag_editor_inner_frame (vertical)
-│   └── tag_editor_content_background_frame (vertical, dark_frame)
-│       └── tag_editor_content_frame (vertical)
-│           ├── tag_editor_last_user_row (horizontal)
-│           │   └── tag_editor_last_user_label
-│           ├── tag_editor_content_inner_frame (vertical)
-│           │   ├── tag_editor_teleport_row (horizontal)
-│           │   │   ├── tag_editor_teleport_label
-│           │   │   └── tag_editor_teleport_button
-│           │   ├── tag_editor_favorite_row (horizontal)
-│           │   │   ├── tag_editor_is_favorite_label
-│           │   │   └── tag_editor_is_favorite_button
-│           │   ├── tag_editor_icon_row (horizontal)
-│           │   │   ├── tag_editor_icon_label
-│           │   │   └── tag_editor_icon_button
-│           │   ├── tag_editor_text_row (horizontal)
-│           │   │   ├── tag_editor_text_label
-│           │   │   └── tag_editor_text_input
-│           │   ├── tag_editor_error_row_frame (vertical)
-│           │   │   └── error_row_inner_frame (vertical)
-│           │   │       └── error_row_error_message
-├── tag_editor_last_row (horizontal)
-│   ├── last_row_cancel_button
-│   └── last_row_confirm_button
+tag_editor_outer_frame (frame, vertical, slot_window_frame)
+├─ tag_editor_titlebar (flow, horizontal)
+├─ tag_editor_inner_frame (frame, vertical, invisible_frame)
+│  └─ tag_editor_content_frame (frame, vertical)
+│     ├─ tag_editor_last_user_row (frame, horizontal, tf_last_user_row)
+│     └─ tag_editor_content_inner_frame (frame, vertical)
+│         ├─ tag_editor_teleport_favorite_row (flow, horizontal)
+│         │   ├─ tag_editor_is_favorite_button (sprite-button)
+│         │   └─ tag_editor_teleport_button (sprite-button)
+│         ├─ tag_editor_rich_text_row (flow, horizontal)
+│         │   ├─ tag_editor_icon_button (sprite-button)
+│         │   ├─ tag_editor_rich_text_input (textfield)
+│         │   └─ tag_editor_rich_text_icon_button (sprite-button)
+│         └─ ... (other content rows as needed)
+├─ tag_editor_error_row_frame (frame, vertical)
+│  └─ error_row_inner_frame (frame, vertical, invisible_frame)
+│      └─ error_row_error_message (label)
+└─ tag_editor_last_row (flow, horizontal)
+    ├─ last_row_cancel_button (sprite-button)
+    └─ last_row_confirm_button (sprite-button)
 ```
 
-- The titlebar and the bottom confirm/cancel row are now both direct children of `tag_editor_outer_frame` (not inside `tag_editor_inner_frame`).
-- All element names and hierarchy match the code.
+- The favorite button is now at the head of the teleport row (tag_editor_teleport_favorite_row).
+- The favorite row and both labels have been removed.
+- All element names and hierarchy now match the refactored code as of 2025-05-31.

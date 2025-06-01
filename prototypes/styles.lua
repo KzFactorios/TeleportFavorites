@@ -17,6 +17,9 @@ Usage:
 
 local Constants = require("constants")
 
+local black = { r = 0.0, g = 0.0, b = 0.0, a = 1 }
+local factorio_label_color = { r = 1, b = 0.79, g = .93, a = 1 } -- rgb(244,222,186) rbg = { r = 0.96, b = 0.73, g = .87, a = 1 } - needs to be lighter
+local grey_medium = { r = 0.5, g = 0.5, b = 0.5, a = 1 }
 local blue = { r = 0.502, g = 0.808, b = 0.941, a = 1 }
 local green = { r = 0, g = 1.0, b = 0, a = 1 }    -- #ffa500
 local orange = { r = 1, g = 0.647, b = 0, a = 1 } -- #ffa500
@@ -354,7 +357,7 @@ if not gui_style.dark_frame then
     type = "frame_style",
     parent = "frame",
     graphical_set = {
-      base = {position = {136, 0}, corner_size = 8, draw_type = "outer", tint = {r=0.13, g=0.13, b=0.13, a=1}},
+      base = { position = { 136, 0 }, corner_size = 8, draw_type = "outer", tint = { r = 0.13, g = 0.13, b = 0.13, a = 1 } },
     },
     padding = 8,
     top_padding = 8,
@@ -431,25 +434,30 @@ if not gui_style.tf_draggable_space_header_debug then
 end
 
 -- Custom style for last user label with blue background
-if not gui_style.tf_last_user_label_row then
-  gui_style.tf_last_user_label_row = {
+if not gui_style.tf_last_user_row then
+  gui_style.tf_last_user_row = {
     type = "frame_style",
     parent = "frame",
     horizontally_stretchable = "on",
     vertically_stretchable = "on",
+    -- font_color = factorio_label_color,
     --height = 28,
     graphical_set = {
       base = {
-        position = {136, 0},
+        position = { 136, 0 },
         corner_size = 8,
         draw_type = "outer",
-        tint = { r = 0.5, g = 0.5, b = 0.5, a = 1 }
+        tint = grey_medium
       }
+    },
+    border = {
+      bottom = { color = black, width = 8 }
     },
     top_padding = 0,
     bottom_padding = 0,
     left_padding = 0,
     right_padding = 0,
+    bottom_margin = 0
   }
 end
 
@@ -458,7 +466,14 @@ if not gui_style.tf_insert_rich_text_button then
   local base = {}
   for k, v in pairs(gui_style.slot_button) do base[k] = v end
   base.default_graphical_set = { base = { type = "none" } }
-  base.hovered_graphical_set = { base = { type = "none" } }
+  base.hovered_graphical_set = {
+    base = {
+      position = { 136, 0 },
+      corner_size = 4,
+      draw_type = "outer",
+      tint = orange
+    }
+  }
   base.clicked_graphical_set = { base = { type = "none" } }
   base.disabled_graphical_set = { base = { type = "none" } }
   base.width = 16
@@ -466,4 +481,18 @@ if not gui_style.tf_insert_rich_text_button then
   base.padding = 2
   base.margin = 0
   gui_style.tf_insert_rich_text_button = base
+end
+
+
+
+-- Custom style for the tag editor content inner frame
+if not gui_style.tf_content_inner_frame then
+  gui_style.tf_content_inner_frame = {
+    type = "frame_style",
+    parent = "invisible_frame",
+    horizontally_stretchable = "on",
+    vertically_stretchable = "on",
+    padding = 8,
+    margin = 0
+  }
 end

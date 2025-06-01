@@ -111,7 +111,7 @@ function handlers.on_teleport_to_favorite(event, i)
   if not player then return end
   local favorites = Cache.get_player_favorites(player)
   if type(favorites) ~= "table" or not i or not favorites[i] then
-    player:print({ "teleport-favorite-no-location" })
+    player:print({ "tf-handler.teleport-favorite-no-location" })
     return
   end
   local favorite = favorites[i]
@@ -119,7 +119,7 @@ function handlers.on_teleport_to_favorite(event, i)
     local gps = favorite.gps
     local pos = GPS.map_position_from_gps(gps)
     if not pos then 
-      error({'teleport-favorite-no-matching-position'})
+      error({'tf-handler.teleport-favorite-no-matching-position'})
     end
     local surface_index = GPS.get_surface_index(gps)
     ---@diagnostic disable-next-line: undefined-global
@@ -129,7 +129,7 @@ function handlers.on_teleport_to_favorite(event, i)
       player:print(result)
     end
   else
-    player:print({ "teleport-favorite-no-location" })
+    player:print({ "tf-handler.teleport-favorite-no-location" })
   end
 end
 

@@ -32,52 +32,37 @@ local SpriteEnum = require("gui.sprite_enum")
 
 local tag_editor = {}
 
+local factorio_label_color = { r = 1, b = 0.79, g = .93, a = 1 } -- rgb(244,222,186) rbg = { r = 0.96, b = 0.73, g = .87, a = 1 } - needs to be lighter
+
 -- Sets up the tag editor UI, including all controls and their state
 -- This function now only sets state, tooltips, and styles. It does NOT create any elements.
 local function setup_tag_editor_ui(refs, tag_data, player)
-    local tag_editor_icon_elem_btn = refs.icon_btn or refs.tag_editor_icon_elem_btn
-    local tag_editor_move_btn = refs.move_btn or refs.tag_editor_move_btn
-    local tag_editor_delete_btn = refs.delete_btn or refs.tag_editor_delete_btn
-    local tag_editor_teleport_btn = refs.teleport_btn or refs.tag_editor_teleport_btn
-    local tag_editor_favorite_btn = refs.favorite_btn or refs.tag_editor_favorite_btn
-    local tag_editor_textfield = refs.text_input or refs.tag_editor_textfield
-    local tag_editor_confirm_btn = refs.confirm_btn or refs.tag_editor_confirm_btn
-    local tag_editor_cancel_btn = refs.cancel_btn or refs.tag_editor_cancel_btn
-    local error_label = refs.error_label
+    -- Only set button state for elements that exist in refs
+    if refs.icon_btn then Helpers.set_button_state(refs.icon_btn, true) end
+    if refs.teleport_btn then Helpers.set_button_state(refs.teleport_btn, true) end
+    if refs.favorite_btn then Helpers.set_button_state(refs.favorite_btn, true) end
+    if refs.rich_text_input then Helpers.set_button_state(refs.rich_text_input, true) end
+    if refs.rich_text_icon_btn then Helpers.set_button_state(refs.rich_text_icon_btn, true) end
+    -- Add more as needed for your current refs structure
 
-    local frame = refs.inner or refs.outer
-    local trimmed = (tag_data.text or ""):gsub("%s+$", "")
-    local is_owner = not tag_data.last_user or tag_data.last_user == "" or (player and tag_data.last_user == player.name)
-    local faved = tag_data.faved_by_players or {}
-    local is_favorited_by_others = #faved > 1 or (#faved == 1 and player and faved[1] ~= player.index)
-
-    Helpers.set_button_state(tag_editor_move_btn, is_owner)
-    Helpers.set_button_state(tag_editor_delete_btn, is_owner and not is_favorited_by_others)
-    Helpers.set_button_state(tag_editor_icon_elem_btn, is_owner)
-    Helpers.set_button_state(tag_editor_textfield, is_owner)
-    local max_faves = Constants.settings.MAX_FAVORITE_SLOTS or 10
-    Helpers.set_button_state(tag_editor_favorite_btn,
-        tag_data.is_favorite or ((tag_data.non_blank_faves or 0) < max_faves))
-    Helpers.set_button_state(tag_editor_teleport_btn, true)
-    Helpers.set_button_state(tag_editor_cancel_btn, true)
-    Helpers.set_button_state(tag_editor_confirm_btn, not ((not tag_data.icon or tag_data.icon == "") and trimmed == ""))
     -- Button style/tooltips
-    if tag_editor_icon_elem_btn then tag_editor_icon_elem_btn.tooltip = { "tf-gui.icon_tooltip" } end
-    if tag_editor_textfield then tag_editor_textfield.tooltip = { "tf-gui.text_tooltip" } end
-    if tag_editor_move_btn then tag_editor_move_btn.tooltip = { "tf-gui.move_tooltip" } end
-    if tag_editor_delete_btn then tag_editor_delete_btn.tooltip = { "tf-gui.delete_tooltip" } end
-    if tag_editor_teleport_btn then tag_editor_teleport_btn.tooltip = { "tf-gui.teleport_tooltip" } end
-    if tag_editor_favorite_btn then tag_editor_favorite_btn.tooltip = { "tf-gui.favorite_tooltip" } end
-    if tag_editor_confirm_btn then tag_editor_confirm_btn.tooltip = { "tf-gui.confirm_tooltip" } end
-    if tag_editor_cancel_btn then tag_editor_cancel_btn.tooltip = { "tf-gui.cancel_tooltip" } end
+    if refs.icon_btn then refs.icon_btn.tooltip = { "tf-gui.icon_tooltip" } end
+    if refs.text_input then refs.text_input.tooltip = { "tf-gui.text_tooltip" } end
+    if refs.move_btn then refs.move_btn.tooltip = { "tf-gui.move_tooltip" } end
+    if refs.delete_btn then refs.delete_btn.tooltip = { "tf-gui.delete_tooltip" } end
+    if refs.teleport_btn then refs.teleport_btn.tooltip = { "tf-gui.teleport_tooltip" } end
+    if refs.favorite_btn then refs.favorite_btn.tooltip = { "tf-gui.favorite_tooltip" } end
+    if refs.confirm_btn then refs.confirm_btn.tooltip = { "tf-gui.confirm_tooltip" } end
+    if refs.cancel_btn then refs.cancel_btn.tooltip = { "tf-gui.cancel_tooltip" } end
     -- Move mode visual
-    if frame then
+    if refs.inner then
         if tag_data.move_mode then
-            frame.tooltip = { "tf-gui.move_mode_active" }
+            refs.inner.tooltip = { "tf-gui.move_mode_active" }
         else
-            frame.tooltip = nil
+            refs.inner.tooltip = nil
         end
     end
+    local error_label = refs.error_label
     if error_label then
         error_label.caption = tag_data.error_message or ""
         error_label.visible = (tag_data.error_message ~= nil and tag_data.error_message ~= "") and true or false
@@ -116,21 +101,28 @@ function tag_editor.build(player, tag_data)
     local parent = player.gui.screen
     local tag_editor_outer_frame = GuiBase.create_frame(parent, "tag_editor_outer_frame", "vertical", "slot_window_frame")
     tag_editor_outer_frame.auto_center = true
-    tag_editor_outer_frame.style.padding = { 4, 8, 8, 8 }
+    tag_editor_outer_frame.style.top_padding = 4
+    tag_editor_outer_frame.style.right_padding = 8
+    tag_editor_outer_frame.style.bottom_padding = 8
+    tag_editor_outer_frame.style.left_padding = 8
 
 
-    -- titlle bar
-    GuiBase.create_titlebar(tag_editor_outer_frame, { "tf-gui.tag_editor_title" }, "titlebar_close_button")
+    -- title bar
+    local tag_editor_titlebar = GuiBase.create_titlebar(tag_editor_outer_frame, "tag_editor_titlebar",
+        {"tf-gui.tag_editor_title_text"},
+        "tag_editor_title_row_close")
+        
+
+    --local title_label = Helpers.find_child_by_name('tag_editor_titlebar', 'gui_base_title_label')
+    --title_label.caption = {"oof"}
+
+
     -- Make the dialog draggable by setting the draggable target to the titlebar's draggable space
-    local tag_editor_titlebar = tag_editor_outer_frame["tag_editor_titlebar"]
-    if tag_editor_titlebar then
-        local draggable = tag_editor_titlebar["titlebar_draggable"]
-        if draggable then
-            --draggable.style.height = 24
-            tag_editor_outer_frame.force_auto_center() -- Ensure dialog is centered after drag
-            tag_editor_outer_frame.drag_target = draggable
-        end
+    local draggable = tag_editor_titlebar["title_bar_draggable"]
+    if draggable then
+        draggable.drag_target = tag_editor_outer_frame
     end
+
 
     -- inner frame
     local tag_editor_inner_frame = GuiBase.create_frame(tag_editor_outer_frame, "tag_editor_inner_frame", "vertical",
@@ -146,114 +138,53 @@ function tag_editor.build(player, tag_data)
 
 
     -- Last user row (frame, horizontal)
-    local tag_editor_last_user_row = GuiBase.create_frame(tag_editor_content_frame, "tag_editor_last_user_row",
-        "horizontal", "tf_last_user_label_row")
-    tag_editor_last_user_row.style.horizontally_stretchable = true
-    tag_editor_last_user_row.style.vertically_stretchable = false
-    tag_editor_last_user_row.style.height = line_height - 8
-    tag_editor_last_user_row.style.vertical_align = "center"
-    tag_editor_last_user_row.style.horizontal_align = "left"
-    tag_editor_last_user_row.style.width = nil
-    tag_editor_last_user_row.style.maximal_width = 10000
-    tag_editor_last_user_row.style.padding = { 8, 8, 4, 12 } -- Uniform padding (top, right, bottom, left)
-    tag_editor_last_user_row.style.margin = { 0, 0, 0, 0 }   -- Uniform padding (top, right, bottom, left)
-    tag_editor_last_user_row.style.minimal_width = 100
-    tag_editor_last_user_row.style.maximal_width = 10000     -- Allow to stretch fully
-
-    local tag_editor_last_user_label = GuiBase.create_label(tag_editor_last_user_row, "tag_editor_last_user_label",
-        { "tf-gui.last_user_label", last_user })
-    tag_editor_last_user_label.style.font = "default-bold"
-
+    local tag_editor_last_user_row
+    do
+        tag_editor_last_user_row = GuiBase.create_frame(tag_editor_content_frame, "tag_editor_last_user_row",
+            "horizontal", "tf_last_user_row")
+        local label_text = { "tf-gui.last_user_label", tag_data.last_user or "" }
+        local label = GuiBase.create_label(tag_editor_last_user_row, "tag_editor_last_user_label", label_text)
+        label.style.padding = { 8, 12, 4, 16 }
+        label.style.font = "default-bold"
+        label.style.font_color = factorio_label_color
+    end
 
 
     -- Content inner frame (vertical)
     local tag_editor_content_inner_frame = GuiBase.create_frame(tag_editor_content_frame,
-        "tag_editor_content_inner_frame", "vertical")
-    tag_editor_content_inner_frame.style.padding = { 8, 8, 8, 12 } -- Uniform padding (top, right, bottom, left)
+        "tag_editor_content_inner_frame", "vertical", "tf_content_inner_frame")
+    tag_editor_content_inner_frame.style.margin = { 16, 0, 0, 0 }
+    tag_editor_content_inner_frame.style.padding = { 0, 12, 0, 12 }
 
+    -- Teleport+Favorite row (favorite button at head, no labels)
+    local tag_editor_teleport_favorite_row, tag_editor_is_favorite_button, tag_editor_teleport_button
+    do
+        local teleport_tooltip = { "tf-gui.teleport_tooltip" }
+        local favorite_tooltip = { "tf-gui.favorite_tooltip" }
+        tag_editor_teleport_favorite_row = GuiBase.create_hflow(tag_editor_content_inner_frame,
+            "tag_editor_teleport_favorite_row")
+        tag_editor_teleport_favorite_row.style.vertical_align = "center"
+        tag_editor_teleport_favorite_row.style.height = line_height
+        tag_editor_teleport_button = GuiBase.create_icon_button(tag_editor_teleport_favorite_row,
+            "tag_editor_teleport_button", "", { "tf-gui.teleport_tooltip" }, "tf_teleport_button")
+        tag_editor_is_favorite_button = GuiBase.create_icon_button(tag_editor_teleport_favorite_row,
+            "tag_editor_is_favorite_button", "utility/check_mark", { "tf-gui.favorite_tooltip" }, "tf_slot_button")
+    end
 
-
-    -- Teleport row
-    local tag_editor_teleport_row = GuiBase.create_hflow(tag_editor_content_inner_frame, "tag_editor_teleport_row")
-    tag_editor_teleport_row.style.height = line_height
-    tag_editor_teleport_row.style.vertical_align = "center"
-    local tag_editor_teleport_label = GuiBase.create_label(tag_editor_teleport_row, "tag_editor_teleport_label",
-        { "tf-gui.teleport_to" })
-    tag_editor_teleport_label.style.width = label_width
-    local tag_editor_teleport_button = GuiBase.create_icon_button(tag_editor_teleport_row, "tag_editor_teleport_button",
-        nil, { "tf-gui.teleport_tooltip" }, "tf_teleport_button")
-    tag_editor_teleport_button.style.horizontally_stretchable = true
-    tag_editor_teleport_button.style.vertically_stretchable = false
-    -- TOD assign correct location
-    tag_editor_teleport_button.caption = "location"
-
-
-    -- Favorite row
-    local tag_editor_favorite_row = GuiBase.create_hflow(tag_editor_content_inner_frame, "tag_editor_favorite_row")
-    tag_editor_favorite_row.style.height = line_height
-    tag_editor_favorite_row.style.vertical_align = "center"
-    local tag_editor_is_favorite_label = GuiBase.create_label(tag_editor_favorite_row, "tag_editor_is_favorite_label",
-        { "tf-gui.favorite_row_label" })
-    tag_editor_is_favorite_label.style.width = label_width
-    tag_editor_is_favorite_label.style.vertical_align = "center"
-    local tag_editor_is_favorite_button = GuiBase.create_icon_button(tag_editor_favorite_row,
-        "tag_editor_is_favorite_button", "utility/check_mark", { "tf-gui.favorite_tooltip" }, "tf_slot_button")
-
-
-
-
-    -- Icon row
-    local tag_editor_icon_row = GuiBase.create_hflow(tag_editor_content_inner_frame, "tag_editor_icon_row")
-    tag_editor_icon_row.style.height = line_height
-    tag_editor_icon_row.style.vertical_align = "center"
-    local tag_editor_icon_label = GuiBase.create_label(tag_editor_icon_row, "tag_editor_icon_label",
-        { "tf-gui.icon_row_label" })
-    tag_editor_icon_label.style.width = label_width
-    tag_editor_icon_label.style.vertical_align = "center"
-    local tag_editor_icon_button = GuiBase.create_icon_button(tag_editor_icon_row, "tag_editor_icon_button",
-        tag_data.icon or "", { "tf-gui.icon_tooltip" }, "tf_slot_button")
-
-
-    -- Text row
-    local tag_editor_text_row = GuiBase.create_hflow(tag_editor_content_inner_frame, "tag_editor_text_row")
-    tag_editor_text_row.style.height = line_height
-    tag_editor_text_row.style.vertical_align = "center"
-    local tag_editor_text_label = GuiBase.create_label(tag_editor_text_row, "tag_editor_text_label",
-        { "tf-gui.text_label" })
-    tag_editor_text_label.style.width = label_width
-    tag_editor_text_label.style.vertical_align = "center"
-
-
-    
-    local tag_editor_text_input = GuiBase.create_textfield(tag_editor_text_row, "tag_editor_text_input",
-        tag_data.text or "")
-
-
-
-
-    -- Rich text input row (for icons, like vanilla tag editor)
-    local tag_editor_rich_text_row = GuiBase.create_hflow(tag_editor_content_inner_frame, "tag_editor_rich_text_row")
-    tag_editor_rich_text_row.style.height = line_height
-    tag_editor_rich_text_row.style.vertical_align = "center"
-
-
-
-    -- Use a textfield for now, but Factorio does not support true rich text editing in GUIs
-    local tag_editor_rich_text_input = GuiBase.create_textfield(tag_editor_rich_text_row, "tag_editor_rich_text_input",
-        tag_data.rich_text or "")
-    tag_editor_rich_text_input.style.horizontally_stretchable = true
-    tag_editor_rich_text_input.style.vertically_stretchable = false
-    tag_editor_rich_text_input.style.font = "default"
-    tag_editor_rich_text_input.tooltip = { "tf-gui.rich_text_tooltip" }
-    -- Optionally, you could add a button to insert icons or show a list of allowed icons
-    -- Use a valid vanilla utility icon, e.g. utility/list_view
-    local tag_editor_rich_text_icon_button = GuiBase.create_icon_button(tag_editor_rich_text_row,
-        "tag_editor_rich_text_icon_button",
-        SpriteEnum.INSERT_RICH_TEXT_ICON, { "tf-gui.insert_icon_tooltip" }, "tf_insert_rich_text_button")
-    tag_editor_rich_text_icon_button.style.maximal_width = 20
-    tag_editor_rich_text_icon_button.style.maximal_height = 20
-    tag_editor_rich_text_icon_button.style.left_margin = -28 -- a little trickery to get the button to sit at the end of the text input
-
+    -- Rich Text row
+    local tag_editor_rich_text_row, tag_editor_icon_button, tag_editor_rich_text_input, tag_editor_rich_text_icon_button
+    do
+        local icon_tooltip = { "tf-gui.icon_tooltip" }
+        local insert_icon_tooltip = { "tf-gui.insert_icon_tooltip" }
+        tag_editor_rich_text_row = GuiBase.create_hflow(tag_editor_content_inner_frame, "tag_editor_rich_text_row")
+        tag_editor_icon_button = GuiBase.create_icon_button(tag_editor_rich_text_row, "tag_editor_icon_button",
+            tag_data.icon or "", icon_tooltip, "tf_slot_button")
+        tag_editor_rich_text_input = GuiBase.create_textfield(tag_editor_rich_text_row, "tag_editor_rich_text_input",
+            tag_data.rich_text or "", nil)
+        tag_editor_rich_text_icon_button = GuiBase.create_icon_button(tag_editor_rich_text_row,
+            "tag_editor_rich_text_icon_button", SpriteEnum.INSERT_RICH_TEXT_ICON, { "tf-gui.insert_icon_tooltip" },
+            "tf_insert_rich_text_button")
+    end
 
 
     -- Error row
@@ -270,42 +201,25 @@ function tag_editor.build(player, tag_data)
 
     -- Last row (confirm/cancel) - move to outer frame (after inner frame)
     local tag_editor_last_row = GuiBase.create_hflow(tag_editor_outer_frame, "tag_editor_last_row")
-    tag_editor_last_row.style.vertical_align = "center"
-    tag_editor_last_row.style.height = line_height + 4
-
+    local cancel_tooltip = { "tf-gui.cancel_tooltip" }
+    local confirm_tooltip = { "tf-gui.confirm_tooltip" }
     local last_row_cancel_button = GuiBase.create_icon_button(tag_editor_last_row, "last_row_cancel_button",
         "utility/close", { "tf-gui.cancel_tooltip" }, "tf_slot_button")
-
     local last_row_confirm_button = GuiBase.create_icon_button(tag_editor_last_row, "last_row_confirm_button",
-        nil, { "tf-gui.confirm_tooltip" }, "tf_confirm_button")
-    last_row_confirm_button.caption = { "tf-gui.confirm" }
+        "utility/check_mark", { "tf-gui.confirm_tooltip" }, "tf_confirm_button")
 
 
-
-
-
-
-
-
+    -- Build refs table for event handlers and logic
     local refs = {
-        outer = tag_editor_outer_frame,
-        inner = tag_editor_inner_frame,
-        content_frame = tag_editor_content_frame,
-        content_inner = tag_editor_content_inner_frame,
         last_user_row = tag_editor_last_user_row,
-        teleport_row = tag_editor_teleport_row,
+        teleport_favorite_row = tag_editor_teleport_favorite_row,
         teleport_btn = tag_editor_teleport_button,
-        favorite_row = tag_editor_favorite_row,
         favorite_btn = tag_editor_is_favorite_button,
-        icon_row = tag_editor_icon_row,
+        rich_text_row = tag_editor_rich_text_row,
         icon_btn = tag_editor_icon_button,
-        text_row = tag_editor_text_row,
-        text_input = tag_editor_text_input,
-        error_row_frame = tag_editor_error_row_frame,
-        error_label = error_row_error_message,
-        last_row = tag_editor_last_row,
-        cancel_btn = last_row_cancel_button,
-        confirm_btn = last_row_confirm_button
+        rich_text_input = tag_editor_rich_text_input,
+        rich_text_icon_btn = tag_editor_rich_text_icon_button,
+        -- ...other refs as needed...
     }
     setup_tag_editor_ui(refs, tag_data, player)
     if tag_editor_outer_frame and player and player.valid then

@@ -1,3 +1,4 @@
+---@diagnostic disable: undefined-global
 -- Handles on_gui_closed (ESC key or GUI close) for the tag editor
 local control_tag_editor = require("core.control.control_tag_editor")
 local Cache = require("core.cache.cache")

@@ -79,7 +79,7 @@ local function teleport_to_favorite(player, fav, slot)
   local pos = GPS.map_position_from_gps(fav.gps)
   if pos then
     Helpers.safe_teleport(player, pos, player.surface)
-    Helpers.player_print(player, lstr("tf-gui.teleported_to_favorite", slot))
+    Helpers.player_print(player, lstr("tf-gui.teleported_to", player.name, slot.gps))
   else
     Helpers.player_print(player, lstr("tf-gui.teleport_failed"))
   end
