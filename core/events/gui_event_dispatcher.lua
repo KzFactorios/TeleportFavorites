@@ -48,6 +48,7 @@ function M.register_gui_handlers(script)
         control_fave_bar.on_fave_bar_gui_click(event)
       elseif (element.parent and element.parent.name == "tag_editor_frame")
           or element.name == "titlebar_close_button"
+          or element.name == "tag_editor_title_row_close"
           or element.name == "tag_editor_cancel_btn"
           or element.name == "last_row_cancel_button"
           or element.name == "tag_editor_confirm_btn"

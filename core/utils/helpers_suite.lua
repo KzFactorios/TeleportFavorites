@@ -93,7 +93,7 @@ end
 
 --- Returns the value and the index of the first element in the table that matches the predicate function.
 --- If no match is found, returns nil, nil.
----@param _table table: The table to search 
+---@param _table table: The table to search
 ---@param predicate function: A function that takes two arguments (value, key) and returns true if it matches
 ---@return any, number: The value and key_index of the first matching element, or nil if not found
 function Helpers.find_by_predicate(_table, predicate)
@@ -168,7 +168,7 @@ function Helpers.is_space_tile(surface, pos)
   return false
 end
 
---- Normalize an index to a valid integer 
+--- Normalize an index to a valid integer
 --- @param index number|string: The index to normalize
 --- @return number?: The normalized index, or nil if invalid
 function Helpers.normalize_index(index)

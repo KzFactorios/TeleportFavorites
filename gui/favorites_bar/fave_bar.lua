@@ -40,7 +40,7 @@ Event handling for slot clicks and drag is managed externally (see control.lua).
 
 local GuiBase = require("gui.gui_base")
 local Constants = require("constants")
-local Favorite = require("core.favorite.favorite")
+local FavoriteUtils = require("core.favorite.favorite")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local GPS = require("core.gps.gps")
 local Helpers = require("core.utils.helpers_suite")
@@ -51,7 +51,19 @@ local SpriteEnum = require("gui.sprite_enum")
 local fave_bar = {}
 
 
---[[Create a diagram of the fave_bar element heirarchy]]
+
+--[[
+Element Hierarchy Diagram:
+fave_bar_frame (frame)
+  └─ fave_bar_flow (flow, horizontal)
+      ├─ fave_bar_toggle_container (frame, vertical)
+      │   └─ fave_bar_visible_btns_toggle (sprite-button)
+      └─ fave_bar_slots_flow (frame, horizontal, visible toggled at runtime)
+          ├─ fave_bar_slot_1 (sprite-button)
+          ├─ fave_bar_slot_2 (sprite-button)
+          ├─ ...
+          └─ fave_bar_slot_N (sprite-button)
+]]
 
 
 
@@ -184,7 +196,7 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
     local icon = pfaves[i].icon or nil
     local tooltip = { "tf-gui.fave_slot_tooltip", i }
     local style = "tf_slot_button_smallfont"
-    if fav and not Favorite.is_blank_favorite(fav) then
+    if fav and not FavoriteUtils.is_blank_favorite(fav) then
       if fav.icon and fav.icon ~= "" then
         icon = fav.icon
       elseif SpriteEnum.PIN then

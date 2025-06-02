@@ -102,13 +102,13 @@ function tag_editor.build(player, tag_data)
     local editor_target_position = GPS.map_position_from_gps(editor_gps)
     local editor_coords_string = GPS.coords_string_from_gps(editor_gps)
 
+
     local parent = player.gui.screen
-    local tag_editor_outer_frame = GuiBase.create_frame(parent, "tag_editor_outer_frame", "vertical", "slot_window_frame")
+    if parent["tag_editor_outer_frame"] then
+        parent["tag_editor_outer_frame"].destroy()
+    end
+    local tag_editor_outer_frame = GuiBase.create_frame(parent, "tag_editor_outer_frame", "vertical", "tf_tag_editor_outer_frame")
     tag_editor_outer_frame.auto_center = true
-    tag_editor_outer_frame.style.top_padding = 2
-    tag_editor_outer_frame.style.right_padding = 8
-    tag_editor_outer_frame.style.bottom_padding = 8
-    tag_editor_outer_frame.style.left_padding = 8
 
 
     -- title bar
@@ -123,36 +123,26 @@ function tag_editor.build(player, tag_data)
 
 
     -- inner frame
-    local tag_editor_inner_frame = GuiBase.create_frame(tag_editor_outer_frame, "tag_editor_inner_frame", "vertical",
-        "invisible_frame")
-    tag_editor_inner_frame.style.padding = { 0, 0, 0, 0 }
-    tag_editor_inner_frame.style.margin = { 0, 0, 0, 0 }
+    local tag_editor_inner_frame = GuiBase.create_frame(tag_editor_outer_frame, "tag_editor_inner_frame", "vertical", "tf_tag_editor_inner_frame")
 
 
     -- Content background
-    local tag_editor_content_frame = GuiBase.create_frame(tag_editor_inner_frame, "tag_editor_content_frame", "vertical")
-    tag_editor_content_frame.style.padding = 0
-    tag_editor_content_frame.style.margin = 0
+    local tag_editor_content_frame = GuiBase.create_frame(tag_editor_inner_frame, "tag_editor_content_frame", "vertical", "tf_tag_editor_content_frame")
 
 
-    -- Last user row (frame, horizontal)
+    -- Last user row (horizontal flow)
     local tag_editor_last_user_row
     do
-        tag_editor_last_user_row = GuiBase.create_frame(tag_editor_content_frame, "tag_editor_last_user_row",
-            "horizontal", "tf_last_user_row")
+        tag_editor_last_user_row = GuiBase.create_frame(tag_editor_content_frame, "tag_editor_last_user_row", "horizontal", "tf_last_user_row")
         local label_text = { "tf-gui.last_user_label", tag_data.last_user or "" }
-        local label = GuiBase.create_label(tag_editor_last_user_row, "tag_editor_last_user_label", label_text)
-        label.style.padding = { 8, 12, 4, 16 }
-        label.style.font = "default-bold"
+        local label = GuiBase.create_label(tag_editor_last_user_row, "tag_editor_last_user_label", label_text, "tf_tag_editor_label")
         label.style.font_color = factorio_label_color
     end
 
 
     -- Content inner frame (vertical)
     local tag_editor_content_inner_frame = GuiBase.create_frame(tag_editor_content_frame,
-        "tag_editor_content_inner_frame", "vertical", "tf_content_inner_frame")
-    tag_editor_content_inner_frame.style.margin = { 8, 0, 0, 0 }
-    tag_editor_content_inner_frame.style.padding = { 0, 12, 0, 12 }
+        "tag_editor_content_inner_frame", "vertical", "tf_tag_editor_content_inner_frame")
 
     -- Teleport+Favorite row (favorite button at head, no labels)
     local tag_editor_teleport_favorite_row, tag_editor_is_favorite_button, tag_editor_teleport_button
@@ -160,11 +150,8 @@ function tag_editor.build(player, tag_data)
         local teleport_tooltip = { "tf-gui.teleport_tooltip" }
         local favorite_tooltip = { "tf-gui.favorite_tooltip" }
         tag_editor_teleport_favorite_row = GuiBase.create_hflow(tag_editor_content_inner_frame,
-            "tag_editor_teleport_favorite_row")
-
-        tag_editor_teleport_favorite_row.style.vertical_align = "center"
+            "tag_editor_teleport_favorite_row", "tf_tag_editor_teleport_favorite_row")
         tag_editor_teleport_favorite_row.style.height = line_height
-        tag_editor_teleport_favorite_row.style.horizontally_stretchable = true
         tag_editor_teleport_button = GuiBase.create_icon_button(tag_editor_teleport_favorite_row,
             "tag_editor_teleport_button", "", { "tf-gui.teleport_tooltip" }, "tf_teleport_button")
         tag_editor_teleport_button.caption = editor_coords_string
@@ -220,7 +207,7 @@ function tag_editor.build(player, tag_data)
         icon_btn = tag_editor_icon_button,
         rich_text_input = tag_editor_rich_text_input,
         rich_text_icon_btn = tag_editor_rich_text_icon_button,
-        editor_position = editor_target_position, 
+        editor_position = editor_target_position,
         editor_gps = editor_gps
         -- ...other refs as needed...
     }

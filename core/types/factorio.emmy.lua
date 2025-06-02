@@ -1,6 +1,4 @@
 ---@diagnostic disable: undefined-global, lowercase-global, duplicate-set-field, duplicate-doc-field, assign-type-mismatch, param-type-mismatch, return-type-mismatch, redundant-parameter, missing-return, cast-local-type, need-check-nil, deprecated, undefined-field, redefined-local, unused-local, unused-function, unused-label, trailing-space
-
-
 --- @class defines
 --- @diagnostic disable-next-line: duplicate-doc-alias
 --- @enum defines.print_sound

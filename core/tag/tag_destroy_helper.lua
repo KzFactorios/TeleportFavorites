@@ -25,7 +25,7 @@ Notes:
 local destroying_tags = setmetatable({}, { __mode = "k" })
 local destroying_chart_tags = setmetatable({}, { __mode = "k" })
 local Cache = require("core.cache.cache")
-local Favorite = require("core.favorite.favorite")
+local FavoriteUtils = require("core.favorite.favorite")
 
 --- Check if a tag is being destroyed
 ---@param tag table|nil
@@ -75,7 +75,7 @@ end
 --- Should this tag be destroyed? Returns false for blank favorites.
 ---@param tag table|nil
 local function should_destroy(tag)
-  return not Favorite.is_blank_favorite(tag)
+  return not FavoriteUtils.is_blank_favorite(tag)
 end
 
 return {

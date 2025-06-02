@@ -29,107 +29,81 @@ local function deep_copy(orig)
   return copy
 end
 
----@class Favorite
----@field gps string The GPS string identifying the location (must always be a string in the format 'xxx.yyy.s', see GPS String Format section)
----@field locked boolean Whether the favorite is locked (default: false)
----@field tag? table 
-local Favorite = {}
-Favorite.__index = Favorite
 
---- Constructor for Favorite
--- @param gps string The GPS string
--- @param locked? boolean
--- @param tag? Tag
--- @return Favorite
-function Favorite.new(gps, locked, tag)
-  local self = setmetatable({}, Favorite)
-  self.gps = parse_and_normalize_gps(gps)
-  self.locked = locked or false
-  self.tag = tag or nil
+local FavoriteUtils = {}
 
-  self.new = Favorite.new
-  self.update_gps = Favorite.update_gps
-  self.toggle_locked = Favorite.toggle_locked
-  self.move = Favorite.move
-  self.formatted_tooltip = Favorite.formatted_tooltip
-  self.valid = Favorite.valid
-  self.equals = Favorite.equals
-  self.copy = Favorite.copy
-  self.is_blank_favorite = Favorite.is_blank_favorite
-  self.get_blank_favorite = Favorite.get_blank_favorite
-  self.__index = Favorite
-  return self
+function FavoriteUtils.new(gps, locked, tag)
+  return {
+    gps = parse_and_normalize_gps(gps),
+    locked = locked or false,
+    tag = tag or nil
+  }
 end
-
 --- Update the GPS string for this favorite
--- @param new_gps string The new GPS string
-function Favorite:update_gps(new_gps)
-  self.gps = new_gps
+function FavoriteUtils.update_gps(fav, new_gps)
+  fav.gps = new_gps
 end
 
 --- Toggle the locked state of this favorite
-function Favorite:toggle_locked()
-  self.locked = not self.locked
+function FavoriteUtils.toggle_locked(fav)
+  fav.locked = not fav.locked
 end
 
-function Favorite.copy(fav)
+function FavoriteUtils.copy(fav)
   if type(fav) ~= "table" then return nil end
-  local copy = Favorite.new(fav.gps, fav.locked, fav.tag and deep_copy(fav.tag) or nil)
+  local copy = FavoriteUtils.new(fav.gps, fav.locked, fav.tag and deep_copy(fav.tag) or nil)
   for k, v in pairs(fav) do
     if copy[k] == nil then copy[k] = v end
   end
   return copy
 end
 
-function Favorite.equals(a, b)
+function FavoriteUtils.equals(a, b)
   if type(a) ~= "table" or type(b) ~= "table" then return false end
   return a.gps == b.gps and a.locked == b.locked and (a.tag and a.tag.text or nil) == (b.tag and b.tag.text or nil)
 end
 
---- Returns a blank favorite (sentinel for unused slot)
---- @return Favorite
-function Favorite.get_blank_favorite()
-  return Favorite.new(gps_helpers.BLANK_GPS, false, nil)
+function FavoriteUtils.get_blank_favorite()
+  return FavoriteUtils.new(gps_helpers.BLANK_GPS, false, nil)
 end
 
---- Checks if a favorite is blank (unused slot)
-function Favorite.is_blank_favorite(fav)
+function FavoriteUtils.is_blank_favorite(fav)
   if type(fav) ~= "table" then return false end
   if next(fav) == nil then return true end
   return (fav.gps == "" or fav.gps == nil or fav.gps == gps_helpers.BLANK_GPS) and (fav.locked == false or fav.locked == nil)
 end
 
-function Favorite:valid()
-  return type(self) == "table" and type(self.gps) == "string" and self.gps ~= "" and self.gps ~= gps_helpers.BLANK_GPS
+function FavoriteUtils.valid(fav)
+  return type(fav) == "table" and type(fav.gps) == "string" and fav.gps ~= "" and fav.gps ~= gps_helpers.BLANK_GPS
 end
 
 --- Format a tooltip string for this Favorite
 -- @return string Tooltip text
-function Favorite:formatted_tooltip()
-  if not self.gps or self.gps == "" or self.gps == gps_helpers.BLANK_GPS then
+function FavoriteUtils.formatted_tooltip(fav)
+  if not fav.gps or fav.gps == "" or fav.gps == gps_helpers.BLANK_GPS then
     return {"tf-gui.favorite_slot_empty"}
   end
   local GPS = require("core.gps.gps")
-  local tooltip = GPS.coords_string_from_gps(self.gps) or self.gps
-  if self.tag ~= nil and type(self.tag) == "table" and self.tag.text ~= nil and self.tag.text ~= "" then
-    tooltip = tooltip .. "\n" .. self.tag.text
+  local tooltip = GPS.coords_string_from_gps(fav.gps) or fav.gps
+  if fav.tag ~= nil and type(fav.tag) == "table" and fav.tag.text ~= nil and fav.tag.text ~= "" then
+    tooltip = tooltip .. "\n" .. fav.tag.text
   end
   return tooltip
 end
 
 --- Move this favorite to a new GPS location
 -- @param new_gps string The new GPS string (must be validated before calling)
-function Favorite:move(new_gps)
+function FavoriteUtils.move(fav, new_gps)
   if type(new_gps) ~= "string" or new_gps == "" or new_gps == gps_helpers.BLANK_GPS then return false, "Invalid GPS string" end
-  self.gps = new_gps
-  if type(self.tag) == "table" then
-    if self.tag.position then
+  fav.gps = new_gps
+  if type(fav.tag) == "table" then
+    if fav.tag.position then
       local parsed = gps_helpers.parse_gps_string(new_gps)
       if parsed then
-        self.tag.position = {x = parsed.x, y = parsed.y}; self.tag.surface = parsed.surface_index
+        fav.tag.position = {x = parsed.x, y = parsed.y}; fav.tag.surface = parsed.surface_index
       end
     end
-    if self.tag.gps then self.tag.gps = new_gps end
+    if fav.tag.gps then fav.tag.gps = new_gps end
   end
   return true
 end
@@ -137,4 +111,4 @@ end
 -- GPS string must always be a string in the format 'xxx.yyy.s'.
 -- Never store or pass GPS as a table except for temporary parsing/conversion.
 
-return Favorite
+return FavoriteUtils

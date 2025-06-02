@@ -22,13 +22,11 @@ Notes:
 --
 
 local Constants = require("constants")
-local Favorite = require("core.favorite.favorite")
+local FavoriteUtils = require("core.favorite.favorite")
 local Helpers = require("core.utils.helpers_suite")
 local basic_helpers = require("core.utils.basic_helpers")
 local gps_helpers = require("core.utils.gps_helpers")
 local Cache = require("core.cache.cache")
-
-
 --- PlayerFavorites class with encapsulated access, O(1) lookup, and strict typing
 --- @class PlayerFavorites
 --- @field player LuaPlayer
@@ -60,7 +58,7 @@ function PlayerFavorites:add_favorite(gps)
 
   -- find the first available index
   for _i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
-    if Favorite.is_blank_favorite(self.favorites[_i]) then
+    if FavoriteUtils.is_blank_favorite(self.favorites[_i]) then
       slot_idx = _i
       break
     end
@@ -70,7 +68,7 @@ function PlayerFavorites:add_favorite(gps)
   -- this means the favorites are full and we cannot add a new one
   if slot_idx == 0 then return nil end
 
-  local new_favorite = Favorite.new(gps, false, existing_tag)
+  local new_favorite = FavoriteUtils.new(gps, false, existing_tag)
   if not new_favorite then return nil end
 
   -- find the matching tag from the cache and update faved_by_players list by ensuring the
@@ -108,7 +106,7 @@ function PlayerFavorites:remove_favorite(gps)
   end
 
   -- update the slot to a blank favorite
-  self.favorites[remove_idx] = Favorite.get_blank_favorite()
+  self.favorites[remove_idx] = FavoriteUtils.get_blank_favorite()
 
   storage.players[self.player_index].surfaces[self.surface_index].favorites = self.favorites
 end
@@ -124,7 +122,7 @@ function PlayerFavorites.new(player)
   --- build a new favorites array filled with blank favorites - dont call cache as it could get circular
   local faves = {}
   for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
-    faves[i] = Favorite.get_blank_favorite()
+    faves[i] = FavoriteUtils.get_blank_favorite()
   end
   obj.favorites = faves
 

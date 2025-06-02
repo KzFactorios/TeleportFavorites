@@ -181,7 +181,7 @@ local function on_tag_editor_gui_click(event, script)
   if not player then return end
   local tag_data = Cache.get_tag_editor_data(player) or {}
   -- Robust close for all close/cancel buttons
-  if element.name == "titlebar_close_button" or element.name == "tag_editor_cancel_btn" or element.name == "last_row_cancel_button" then
+  if element.name == "titlebar_close_button" or element.name == "tag_editor_title_row_close" or element.name == "tag_editor_cancel_btn" or element.name == "last_row_cancel_button" then
     close_tag_editor(player)
     return
   end

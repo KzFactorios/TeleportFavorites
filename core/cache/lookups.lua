@@ -66,7 +66,7 @@ local function ensure_surface_cache(surface_index)
   end
 
   -- if the number of chart_tags does not equal the number of chart_tags_mapped_by_gps, we need to rebuild the map
-  if not cache.surfaces[surface_idx].chart_tags_mapped_by_gps or 
+  if not cache.surfaces[surface_idx].chart_tags_mapped_by_gps or
     (#cache.surfaces[surface_idx].chart_tags ~= #cache.surfaces[surface_idx].chart_tags_mapped_by_gps) then
     -- force a fresh start
     cache.surfaces[surface_idx].chart_tags_mapped_by_gps = {}

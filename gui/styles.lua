@@ -11,12 +11,7 @@ Features:
 - Helper functions for creating and customizing button styles and horizontal flows.
 - Ensures maintainability and a native Factorio look for all GUIs.
 
-API:
-- Style.padding, Style.margin: Tables of standard size values.
-- Style.align: Table of alignment string constants.
-- Style.favorite_label: Standard label style for favorite/tag editor GUIs.
-- Style.button(overrides): Returns a button style table, optionally merged with overrides.
-- Style.add_horizontal_flow(parent, name, opts): Adds a horizontal flow with standard spacing and alignment.
+
 
 All helpers and tables are intended for use in GUI modules to keep layout and style consistent.
 --]]
@@ -46,17 +41,6 @@ Style.align = {
   bottom = "bottom",
 }
 
---- Standard label style for favorite/tag editor (matches prototypes/styles.lua)
-Style.favorite_label = {
-  type = "label_style",
-  parent = "label",
-  single_line = true,
-  horizontally_stretchable = "off",
-  vertically_stretchable = "off",
-  font = "default-bold",
-  minimal_width = 100,
-  maximal_width = 100,
-}
 
 --- Helper to apply vanilla button style with optional overrides
 -- @param overrides table|nil: Table of style properties to override

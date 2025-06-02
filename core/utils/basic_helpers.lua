@@ -64,7 +64,7 @@ function basic_helpers.normalize_index(index)
       return math.floor(num)
     end
   end
-  return nil -- Default to nil if invalid 
+  return nil -- Default to nil if invalid
 end
 
 return basic_helpers

@@ -111,7 +111,7 @@ function GuiBase.create_vflow(parent, name)
     return GuiBase.create_element('flow', parent, { name = name, direction = 'vertical' })
 end
 
---- Create a draggable space 
+--- Create a draggable space
 --- @param parent LuaGuiElement: Parent element
 --- @param name string: Name of the flow
 --- @param style? string|nil
@@ -124,7 +124,7 @@ end
 
 --- Create a draggable titlebar with optional close button.
 --- @param parent LuaGuiElement: Parent element
---- @param name string: name of the titlebar element 
+--- @param name string: name of the titlebar element
 --- @param title LocalisedString|string: Title text
 --- @param close_button_name? string|nil
 --- @param debug boolean: Optional, default false. If true, use debug style for draggable space.

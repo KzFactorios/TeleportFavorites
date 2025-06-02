@@ -102,7 +102,7 @@ function handlers.on_teleport_to_favorite(event, i)
   if type(favorite) == "table" and favorite.gps ~= nil then
     local gps = favorite.gps
     local pos = GPS.map_position_from_gps(gps)
-    if not pos then 
+    if not pos then
       error({'tf-handler.teleport-favorite-no-matching-position'})
     end
     local surface_index = GPS.get_surface_index(gps)

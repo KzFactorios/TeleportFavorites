@@ -46,7 +46,7 @@ local mod_version = require("core.utils.version")
 local Lookups = require("core.cache.lookups")
 local basic_helpers = require("core.utils.basic_helpers")
 local GPS = require("core.gps.gps")
-local Favorite = require("core.favorite.favorite")
+local FavoriteUtils = require("core.favorite.favorite")
 local Constants = require("constants")
 
 
@@ -130,7 +130,7 @@ local function init_player_data(player)
 
     for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
       if not pfaves[i] or type(pfaves[i]) ~= "table" then
-        pfaves[i] = Favorite.get_blank_favorite()
+        pfaves[i] = FavoriteUtils.get_blank_favorite()
       end
       pfaves[i].gps = pfaves[i].gps or ""
       pfaves[i].locked = pfaves[i].locked or false

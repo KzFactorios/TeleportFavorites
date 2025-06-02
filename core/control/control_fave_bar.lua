@@ -6,7 +6,7 @@ print("[DEBUG] control_fave_bar.lua loaded")
 -- Handles favorites bar GUI events for TeleportFavorites
 
 local PlayerFavorites = require("core.favorite.player_favorites")
-local Favorite = require("core.favorite.favorite")
+local FavoriteUtils = require("core.favorite.favorite")
 local GPS = require("core.gps.gps")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local Cache = require("core.cache.cache")
@@ -92,7 +92,7 @@ local function open_tag_editor(player, favorite, gps)
 end
 
 local function can_start_drag(fav)
-  return fav and not Favorite.is_blank_favorite(fav) and not is_locked_favorite(fav)
+  return fav and not FavoriteUtils.is_blank_favorite(fav) and not is_locked_favorite(fav)
 end
 
 local function handle_drag_start(event, player, fav, slot)
@@ -115,7 +115,7 @@ end
 
 local function handle_teleport(event, player, fav, slot, did_drag)
   if event.button == defines.mouse_button_type.left and not event.control and not did_drag then
-    if fav and not Favorite.is_blank_favorite(fav) then
+    if fav and not FavoriteUtils.is_blank_favorite(fav) then
       teleport_to_favorite(player, fav, slot)
       return true
     end
@@ -125,7 +125,7 @@ end
 
 local function handle_tag_editor(event, player, fav, slot)
   if event.button == defines.mouse_button_type.right then
-    if fav and not Favorite.is_blank_favorite(fav) then
+    if fav and not FavoriteUtils.is_blank_favorite(fav) then
       open_tag_editor(player, fav, fav.gps or "")
       return true
     end
@@ -143,7 +143,7 @@ local function handle_favorite_slot_click(event, player, favorites)
     print("[TF DEBUG] handle_favorite_slot_click: fav is nil, ignoring click.")
     return
   end
-  if Favorite.is_blank_favorite(fav) then
+  if FavoriteUtils.is_blank_favorite(fav) then
     print("[TF DEBUG] handle_favorite_slot_click: blank favorite, ignoring click.")
     return
   end

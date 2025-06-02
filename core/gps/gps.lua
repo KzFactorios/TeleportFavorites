@@ -6,8 +6,6 @@ GPS utility module for converting between canonical GPS strings, Factorio rich t
 
 - Provides helpers for converting between map positions, GPS strings ('xxx.yyy.s'), and Factorio's [gps=x,y,s] rich text tags.
 - Handles surface-aware GPS string formatting and parsing.
-- Used throughout the mod for tag, favorite, and teleportation logic.
-
 
 Notes:
 ------
