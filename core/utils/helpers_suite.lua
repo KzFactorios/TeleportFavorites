@@ -91,10 +91,15 @@ function Helpers.index_is_in_table(_table, idx)
   return false, -1
 end
 
+--- Returns the value and the index of the first element in the table that matches the predicate function.
+--- If no match is found, returns nil, nil.
+---@param _table table: The table to search 
+---@param predicate function: A function that takes two arguments (value, key) and returns true if it matches
+---@return any, number: The value and key_index of the first matching element, or nil if not found
 function Helpers.find_by_predicate(_table, predicate)
-  if type(_table) ~= "table" or type(predicate) ~= "function" then return nil, nil end
+  if type(_table) ~= "table" or type(predicate) ~= "function" then return nil, 0 end
   for k, v in pairs(_table) do if predicate(v, k) then return v, k end end
-  return nil, nil
+  return nil, 0
 end
 
 function Helpers.table_count(t)
@@ -121,43 +126,8 @@ function Helpers.table_remove_value(tbl, value)
   return false
 end
 
--- String helpers
-function Helpers.trim(s)
-  if type(s) ~= "string" then return s end
-  return s:match("^%s*(.-)%s*$") or ""
-end
 
-function Helpers.split_string(str, delimiter)
-  local result = {}
-  if type(str) ~= "string" or type(delimiter) ~= "string" or delimiter == "" then return result end
-  local pattern = string.format("([^%s]+)", delimiter:gsub("%%", "%%%%"))
-  for match in str:gmatch(pattern) do table.insert(result, match) end
-  return result
-end
 
-function Helpers.is_nonempty_string(s)
-  return type(s) == "string" and s:match("%S") ~= nil
-end
-
-function Helpers.pad(n, padlen)
-  if type(n) ~= "number" or type(padlen) ~= "number" then return tostring(n or "") end
-  local floorn = math.floor(n + 0.5)
-  local absn = math.abs(floorn)
-  local s = tostring(absn)
-  padlen = math.floor(padlen or 3)
-  if #s < padlen then s = string.rep("0", padlen - #s) .. s end
-  if floorn < 0 then s = "-" .. s end
-  return s
-end
-
-function Helpers.has_decimal_point(s)
-  return tostring(s):find("%.") ~= nil
-end
-
--- Positioning/tagging helpers (moved to position_helpers.lua)
-function Helpers.position_can_be_tagged(player, map_position)
-  return false
-end
 
 function Helpers.is_on_space_platform(player)
   if not player or not player.surface or not player.surface.name then return false end
@@ -187,14 +157,23 @@ function Helpers.is_water_tile(surface, pos)
   return false
 end
 
-function Helpers.normalize_player_index(player)
-  if type(player) == "table" or type(player) == "userdata" and player.index then return player.index end
-  return math.floor(tonumber(player) or 0)
+function Helpers.is_space_tile(surface, pos)
+  if not surface or not surface.get_tile then return false end
+  local tile = surface.get_tile(surface, math.floor(pos.x), math.floor(pos.y))
+  if tile and tile.prototype and tile.prototype.collision_mask then
+    for _, mask in pairs(tile.prototype.collision_mask) do
+      if mask == "space" then return true end
+    end
+  end
+  return false
 end
 
-function Helpers.normalize_surface_index(surface)
-  if type(surface) == "table" or type(surface) == "userdata" and surface.index then return surface.index end
-  return math.floor(tonumber(surface) or 0)
+--- Normalize an index to a valid integer 
+--- @param index number|string: The index to normalize
+--- @return number?: The normalized index, or nil if invalid
+function Helpers.normalize_index(index)
+  local idx = math.floor(tonumber(index) or -1)
+  return (idx >= 0) and idx or nil
 end
 
 ---

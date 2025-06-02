@@ -14,7 +14,7 @@ Features:
 - Sets player.opened for modal/ESC support; titlebar is draggable and visually matches vanilla Factorio dialogs.
 
 Main Functions:
-- tag_editor.build(player, tag_data):
+- tag_editor.build(player, tag_data, editor_target_position):
     Constructs and returns the tag editor modal frame for the given player and tag data.
     Handles all UI element creation, state logic, tooltips, error display, and move mode visuals.
     The tag_editor is always presented in the player.gui.screen.
@@ -29,6 +29,7 @@ local GuiBase = require("gui.gui_base")
 local Constants = require("constants")
 local Helpers = require("core.utils.helpers_suite")
 local SpriteEnum = require("gui.sprite_enum")
+local GPS = require("core.gps.gps")
 
 local tag_editor = {}
 
@@ -90,15 +91,16 @@ end
 -- Main builder for the tag editor, matching the full semantic/nested structure from notes/tag_editor.md
 ---
 --- @param player LuaPlayer
---- @param tag_data table|nil
---- @param editor_position table|nil  -- {x=number, y=number} or nil
-function tag_editor.build(player, tag_data, editor_position)
+--- @param tag_data Tag|nil
+function tag_editor.build(player, tag_data)
     if not player then error("tag_editor.build: player is required") end
     if not tag_data then tag_data = {} end
     local last_user = tag_data.last_user or ""
     local line_height = 44
     -- Store the editor position for use in the editor (from map right-click or fave bar)
-    local _editor_position = editor_position
+    local editor_gps = tag_data.gps
+    local editor_target_position = GPS.map_position_from_gps(editor_gps)
+    local editor_coords_string = GPS.coords_string_from_gps(editor_gps)
 
     local parent = player.gui.screen
     local tag_editor_outer_frame = GuiBase.create_frame(parent, "tag_editor_outer_frame", "vertical", "slot_window_frame")
@@ -111,7 +113,7 @@ function tag_editor.build(player, tag_data, editor_position)
 
     -- title bar
     local tag_editor_titlebar = GuiBase.create_titlebar(tag_editor_outer_frame, "tag_editor_titlebar",
-        {"tf-gui.tag_editor_title_text"},
+        { "tf-gui.tag_editor_title_text" },
         "tag_editor_title_row_close")
     -- Make the dialog draggable by setting the draggable target to the titlebar's draggable space
     local draggable = tag_editor_titlebar["title_bar_draggable"]
@@ -149,7 +151,7 @@ function tag_editor.build(player, tag_data, editor_position)
     -- Content inner frame (vertical)
     local tag_editor_content_inner_frame = GuiBase.create_frame(tag_editor_content_frame,
         "tag_editor_content_inner_frame", "vertical", "tf_content_inner_frame")
-    tag_editor_content_inner_frame.style.margin = { 12, 0, 0, 0 }
+    tag_editor_content_inner_frame.style.margin = { 8, 0, 0, 0 }
     tag_editor_content_inner_frame.style.padding = { 0, 12, 0, 12 }
 
     -- Teleport+Favorite row (favorite button at head, no labels)
@@ -159,10 +161,13 @@ function tag_editor.build(player, tag_data, editor_position)
         local favorite_tooltip = { "tf-gui.favorite_tooltip" }
         tag_editor_teleport_favorite_row = GuiBase.create_hflow(tag_editor_content_inner_frame,
             "tag_editor_teleport_favorite_row")
+
         tag_editor_teleport_favorite_row.style.vertical_align = "center"
         tag_editor_teleport_favorite_row.style.height = line_height
+        tag_editor_teleport_favorite_row.style.horizontally_stretchable = true
         tag_editor_teleport_button = GuiBase.create_icon_button(tag_editor_teleport_favorite_row,
             "tag_editor_teleport_button", "", { "tf-gui.teleport_tooltip" }, "tf_teleport_button")
+        tag_editor_teleport_button.caption = editor_coords_string
         tag_editor_is_favorite_button = GuiBase.create_icon_button(tag_editor_teleport_favorite_row,
             "tag_editor_is_favorite_button", "utility/check_mark", { "tf-gui.favorite_tooltip" }, "tf_slot_button")
     end
@@ -173,6 +178,7 @@ function tag_editor.build(player, tag_data, editor_position)
         local icon_tooltip = { "tf-gui.icon_tooltip" }
         local insert_icon_tooltip = { "tf-gui.insert_icon_tooltip" }
         tag_editor_rich_text_row = GuiBase.create_hflow(tag_editor_content_inner_frame, "tag_editor_rich_text_row")
+
         tag_editor_icon_button = GuiBase.create_icon_button(tag_editor_rich_text_row, "tag_editor_icon_button",
             tag_data.icon or "", icon_tooltip, "tf_slot_button")
         tag_editor_rich_text_input = GuiBase.create_textfield(tag_editor_rich_text_row, "tag_editor_rich_text_input",
@@ -191,7 +197,7 @@ function tag_editor.build(player, tag_data, editor_position)
     local error_row_error_message = GuiBase.create_label(error_row_inner_frame, "error_row_error_message",
         tag_data.error_message or "")
 
-        
+
 
 
     -- Last row (confirm/cancel) - move to outer frame (after inner frame)
@@ -214,9 +220,11 @@ function tag_editor.build(player, tag_data, editor_position)
         icon_btn = tag_editor_icon_button,
         rich_text_input = tag_editor_rich_text_input,
         rich_text_icon_btn = tag_editor_rich_text_icon_button,
-        editor_position = _editor_position, -- <-- add this for event logic
+        editor_position = editor_target_position, 
+        editor_gps = editor_gps
         -- ...other refs as needed...
     }
+
     setup_tag_editor_ui(refs, tag_data, player)
     if tag_editor_outer_frame and player and player.valid then
         player.opened = tag_editor_outer_frame

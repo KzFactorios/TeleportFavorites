@@ -85,10 +85,10 @@ local function teleport_to_favorite(player, fav, slot)
   end
 end
 
-local function open_tag_editor(player, fav)
+local function open_tag_editor(player, favorite, gps)
   local parent = player.gui.screen
   Helpers.safe_destroy_frame(parent, "tag_editor_frame")
-  tag_editor.build(player, fav.tag or {})
+  tag_editor.build(player, favorite.tag or {})
 end
 
 local function can_start_drag(fav)
@@ -126,7 +126,7 @@ end
 local function handle_tag_editor(event, player, fav, slot)
   if event.button == defines.mouse_button_type.right then
     if fav and not Favorite.is_blank_favorite(fav) then
-      open_tag_editor(player, fav)
+      open_tag_editor(player, fav, fav.gps or "")
       return true
     end
   end

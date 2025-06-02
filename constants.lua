@@ -16,7 +16,7 @@ local constants = {
     TELEPORT_RADIUS_MAX = 64,
     MAX_FAVORITE_SLOTS = 10,
     FAVE_BAR_SLOT_PREFIX = "fave_bar_slot_", 
-    GPS_PAD_NUMBER = 6, -- min digits for gps x/y
+    GPS_PAD_NUMBER = 3, -- min digits for gps x/y
     BLANK_GPS = "1000000.1000000.1",
     DATA_VIEWER_INDENT = 4,
     FAVORITES_ON = "favorites_on",
@@ -34,15 +34,5 @@ local constants = {
     }
   }
 }
-
---- Returns a blank favorite table for initialization.
----@return table
-function constants.get_blank_favorite()
-  return {
-    gps = "",
-    tag = nil,
-    locked = false
-  }
-end
 
 return constants

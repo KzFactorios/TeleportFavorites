@@ -10,17 +10,6 @@ Favorite class for representing a player's favorite teleport location.
 - Provides helpers for construction, copying, equality, blank/unused slot detection, and tooltip formatting.
 - Used throughout the mod for favorites bar, tag editor, and persistent player data.
 
-API:
------
-- Favorite.new(gps, locked, tag)         -- Constructor (supports both :new and .new).
-- Favorite:move(new_gps)                 -- Move this favorite to a new GPS location.
-- Favorite:update_gps(new_gps)           -- Update the GPS string for this favorite.
-- Favorite:toggle_locked()               -- Toggle the locked state.
-- Favorite.copy(fav)                     -- Deep copy a Favorite.
-- Favorite.equals(a, b)                  -- Equality check for two Favorites.
-- Favorite.is_blank_favorite(fav)        -- Checks if a favorite is blank (unused slot).
-- Favorite:valid()                       -- Returns true if this favorite is valid (not blank).
-- Favorite:formatted_tooltip()           -- Returns a formatted tooltip string for UI.
 
 Notes:
 ------
@@ -43,35 +32,34 @@ end
 ---@class Favorite
 ---@field gps string The GPS string identifying the location (must always be a string in the format 'xxx.yyy.s', see GPS String Format section)
 ---@field locked boolean Whether the favorite is locked (default: false)
----@field tag? table Optional tag table for tooltip formatting
+---@field tag? table 
 local Favorite = {}
 Favorite.__index = Favorite
 
 --- Constructor for Favorite
 -- @param gps string The GPS string
--- @param locked boolean|nil Optional, defaults to false
--- @param tag table|nil Optional, defaults to nil
+-- @param locked? boolean
+-- @param tag? Tag
 -- @return Favorite
-function Favorite.new(self, gps, locked, tag)
-  -- Support both Favorite.new(...) and Favorite:new(...)
-  if self ~= Favorite then
-    gps = gps
-    tag = tag
-    locked = locked
-    self = Favorite
-  end
-  local obj = setmetatable({}, self)
-  obj.gps = parse_and_normalize_gps(gps)
-  obj.locked = locked or false
-  obj.tag = tag
-  return obj
-end
+function Favorite.new(gps, locked, tag)
+  local self = setmetatable({}, Favorite)
+  self.gps = parse_and_normalize_gps(gps)
+  self.locked = locked or false
+  self.tag = tag or nil
 
-setmetatable(Favorite, {
-  __call = function(cls, ...)
-    return cls:new(...)
-  end
-})
+  self.new = Favorite.new
+  self.update_gps = Favorite.update_gps
+  self.toggle_locked = Favorite.toggle_locked
+  self.move = Favorite.move
+  self.formatted_tooltip = Favorite.formatted_tooltip
+  self.valid = Favorite.valid
+  self.equals = Favorite.equals
+  self.copy = Favorite.copy
+  self.is_blank_favorite = Favorite.is_blank_favorite
+  self.get_blank_favorite = Favorite.get_blank_favorite
+  self.__index = Favorite
+  return self
+end
 
 --- Update the GPS string for this favorite
 -- @param new_gps string The new GPS string
@@ -86,7 +74,7 @@ end
 
 function Favorite.copy(fav)
   if type(fav) ~= "table" then return nil end
-  local copy = Favorite:new(fav.gps, fav.locked, fav.tag and deep_copy(fav.tag) or nil)
+  local copy = Favorite.new(fav.gps, fav.locked, fav.tag and deep_copy(fav.tag) or nil)
   for k, v in pairs(fav) do
     if copy[k] == nil then copy[k] = v end
   end
@@ -99,8 +87,9 @@ function Favorite.equals(a, b)
 end
 
 --- Returns a blank favorite (sentinel for unused slot)
+--- @return Favorite
 function Favorite.get_blank_favorite()
-  return Favorite:new(gps_helpers.BLANK_GPS, false, nil)
+  return Favorite.new(gps_helpers.BLANK_GPS, false, nil)
 end
 
 --- Checks if a favorite is blank (unused slot)

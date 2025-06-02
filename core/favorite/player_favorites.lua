@@ -8,16 +8,6 @@ PlayerFavorites class: manages a collection of favorites for a specific player.
 - All persistent data is managed via the Cache module and is surface-aware.
 - Used for favorites bar, tag editor, and all player favorite operations.
 
-API:
------
-- PlayerFavorites.new(player)                -- Constructor for a player's favorites collection.
-- PlayerFavorites:get_favorites()            -- 
-- PlayerFavorites:get_favorite_by_gps(gps)   --
-- PlayerFavorites:add_favorite(gps|Favorite) -- Add a favorite to the first available slot.
-- PlayerFavorites:remove_favorite(gps)       -- Remove a favorite by GPS, blanking the slot.
-- PlayerFavorites:set_favorites(new_faves)   -- Batch update all favorites at once.
-- PlayerFavorites.validate_gps(gps)          -- Centralized GPS string validation.
-
 Notes:
 ------
 - All slot management is 1-based and respects MAX_FAVORITE_SLOTS from Constants.
@@ -30,15 +20,15 @@ Notes:
 -- Handles slot management, persistence, and favorite manipulation.
 -- All persistent data is managed via the Cache module and is surface-aware.
 --
--- @module core.favorite.player_favorites
 
 local Constants = require("constants")
 local Favorite = require("core.favorite.favorite")
-local helpers = require("core.utils.helpers_suite")
+local Helpers = require("core.utils.helpers_suite")
+local basic_helpers = require("core.utils.basic_helpers")
+local gps_helpers = require("core.utils.gps_helpers")
 local Cache = require("core.cache.cache")
-local favorites_helpers = require("core.utils.favorites_helpers")
 
----
+
 --- PlayerFavorites class with encapsulated access, O(1) lookup, and strict typing
 --- @class PlayerFavorites
 --- @field player LuaPlayer
@@ -48,18 +38,79 @@ local favorites_helpers = require("core.utils.favorites_helpers")
 local PlayerFavorites = {}
 PlayerFavorites.__index = PlayerFavorites
 
---- Internal: Normalize a player index to integer
----@param player LuaPlayer
----@return uint
-local function normalize_player_index(player)
-  return player.index
+
+--- Get a favorite by GPS (O(1) lookup)
+---@param gps string
+---@return Favorite|nil
+function PlayerFavorites:get_favorite_by_gps(gps)
+  return Helpers.find_by_predicate(self.favorites, function(v) return v.gps == gps end) or nil
 end
 
---- Internal: Normalize a surface index to integer
----@param surface LuaSurface
----@return uint
-local function normalize_surface_index(surface)
-  return surface.index
+--- Add a favorite GPS to the first available slot. Update matched Tag and storage
+---@param gps string
+---@return Favorite|nil
+function PlayerFavorites:add_favorite(gps)
+  if not gps or type(gps) ~= "string" or gps == "" then return nil end
+
+  local existing_fave = self:get_favorite_by_gps(gps)
+  if existing_fave then return existing_fave end
+
+  local slot_idx = 0
+  local existing_tag = Cache.get_tag_by_gps(gps)
+
+  -- find the first available index
+  for _i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
+    if Favorite.is_blank_favorite(self.favorites[_i]) then
+      slot_idx = _i
+      break
+    end
+  end
+
+  -- if no blank slot found, return nil
+  -- this means the favorites are full and we cannot add a new one
+  if slot_idx == 0 then return nil end
+
+  local new_favorite = Favorite.new(gps, false, existing_tag)
+  if not new_favorite then return nil end
+
+  -- find the matching tag from the cache and update faved_by_players list by ensuring the
+  -- player's index is in the list. Add it to the list if it does not already exist.
+  if existing_tag then
+    if not basic_helpers.Helpers.index_is_in_table(existing_tag.faved_by_players, self.player_index) then
+      table.insert(existing_tag.faved_by_players, self.player_index)
+    end
+  end
+
+  -- update the player's storage to include the new addition
+  storage.players[self.player_index].surfaces[self.surface_index].favorites[slot_idx] = new_favorite
+
+  -- it is now a favorite in the player's favorites
+  return new_favorite
+end
+
+--- Remove a favorite by GPS, set slot to blank if not found. Update matched Tag and storage
+---@param gps string
+function PlayerFavorites:remove_favorite(gps)
+  if not gps or type(gps) ~= "string" or gps == "" then return end
+
+  local existing_fave = self:get_favorite_by_gps(gps)
+  if not existing_fave then return end
+
+  -- find the index of the favorite to remove
+  local remove_idx = Helpers.find_by_predicate(self.favorites, function(v) return v.gps == gps end)
+  if not remove_idx then return end
+
+  local existing_tag = Cache.get_tag_by_gps(gps)
+  if not existing_tag then return end
+
+  if basic_helpers.Helpers.index_is_in_table(existing_tag.faved_by_players, self.player_index) then
+    table.remove(existing_tag.faved_by_players, self.player_index)
+  end
+
+  -- update the slot to a blank favorite
+  self.favorites[remove_idx] = Favorite.get_blank_favorite()
+
+  storage.players[self.player_index].surfaces[self.surface_index].favorites = self.favorites
 end
 
 --- Constructor for PlayerFavorites
@@ -70,90 +121,14 @@ function PlayerFavorites.new(player)
   obj.player = player
   obj.player_index = player.index
   obj.surface_index = player.surface.index
-  -- Use favorites_helpers to get persistent favorites, always filled and normalized
-  obj.favorites = favorites_helpers.init_player_favorites({}) or {}
+  --- build a new favorites array filled with blank favorites - dont call cache as it could get circular
+  local faves = {}
+  for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
+    faves[i] = Favorite.get_blank_favorite()
+  end
+  obj.favorites = faves
+
   return obj
-end
-
---- Get a favorite by GPS (O(1) lookup)
----@param gps string
----@return Favorite|nil
-function PlayerFavorites:get_favorite_by_gps(gps)
-  return helpers.find_by_predicate(self.favorites, function(v) return v.gps == gps end) or nil
-end
-
---- Add a favorite GPS to the first available slot, allowing duplicates if intended, and preventing blank
----@param gps string|Favorite
----@return boolean success
-function PlayerFavorites:add_favorite(gps)
-  local fav_obj = type(gps) == "table" and gps or Favorite:new(gps)
-  if Favorite.is_blank_favorite(fav_obj) then return false end
-  for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
-    if Favorite.is_blank_favorite(self.favorites[i]) then
-      self.favorites[i] = setmetatable({ gps = fav_obj.gps, locked = fav_obj.locked or false, tag = fav_obj.tag },
-        Favorite)
-      self.favorites_by_gps[fav_obj.gps] = self.favorites[i]
-      return true
-    end
-  end
-  return false
-end
-
---- Remove a favorite by GPS, set slot to blank if not found
----@param gps string
-function PlayerFavorites:remove_favorite(gps)
-  local found = false
-  for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
-    local fav = self.favorites[i]
-    if fav and fav.gps == gps then
-      self.favorites[i] = setmetatable({ gps = Constants.get_blank_favorite().gps, locked = false, tag = nil }, Favorite)
-      self.favorites_by_gps[gps] = nil
-      found = true
-    end
-  end
-  -- If not found, ensure all blank slots are explicitly set to blank favorite
-  if not found then
-    for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
-      self.favorites[i] = setmetatable({ gps = Constants.get_blank_favorite().gps, locked = false, tag = nil }, Favorite)
-    end
-  end
-end
-
----@return Favorite[]
-
-function PlayerFavorites:get_favorites()
-  return self.favorites
-end
-
---- Batch update favorites (replace all at once, 1-based only)
----@param new_faves Favorite[]
-function PlayerFavorites:set_favorites(new_faves)
-  local max = Constants.settings.MAX_FAVORITE_SLOTS
-  local filtered = {}
-  for i = 1, max do
-    local f = new_faves and new_faves[i]
-    if type(f) == "table" and not Favorite.is_blank_favorite(f) then
-      filtered[i] = Favorite:new(f.gps, f.locked, f.tag)
-    else
-      filtered[i] = Constants.get_blank_favorite()
-    end
-  end
-  self.favorites = filtered
-  self.favorites_by_gps = {}
-  for i, fav in ipairs(filtered) do
-    if not Favorite.is_blank_favorite(fav) then
-      self.favorites_by_gps[fav.gps] = fav
-    end
-  end
-end
-
---- Validate a GPS string (centralized)
----@param gps string
----@return boolean, string?
-function PlayerFavorites.validate_gps(gps)
-  if type(gps) ~= "string" or gps == "" then return false, "GPS string required" end
-  -- Add more validation as needed
-  return true
 end
 
 return PlayerFavorites

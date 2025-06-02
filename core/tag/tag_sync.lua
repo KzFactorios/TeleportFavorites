@@ -7,12 +7,13 @@ This module provides static functions for synchronizing, updating, and removing 
 local Tag = require("core.tag.tag")
 local TagSync = require("core.tag.tag_sync")
 local GPS = require("core.gps.gps")
-local Lookups = require("core.cache.lookups")
 local PlayerFavorites = require("core.favorite.player_favorites")
-local Favorite = require("core.favorite.favorite")
+local Helpers = require("core.utils.basic_helpers")
 local Cache = require("core.cache.cache")
+local Lookups = Cache.lookups
 
----Update all players' favorites, replacing old_gps with new_gps.
+---Update every players' favorites, replacing old_gps with new_gps, because it is possible for
+--- multiple players to have the same GPS in their favorites.
 ---@param old_gps string
 ---@param new_gps string
 local function update_player_favorites_gps(old_gps, new_gps)
@@ -42,22 +43,88 @@ end
 ---@return LuaCustomChartTag?
 function TagSync.guarantee_chart_tag(player, tag)
   if not player then return nil end
+
   local chart_tag = tag.chart_tag
   if chart_tag and chart_tag.valid then return chart_tag end
+
   local icon, text = chart_tag and chart_tag.icon or {}, chart_tag and chart_tag.text or ""
   local map_pos, surface_index = GPS.map_position_from_gps(tag.gps), GPS.get_surface_index(tag.gps)
   local surface = game.surfaces[surface_index]
+
   if not map_pos or not surface_index then error("Invalid GPS string: " .. tostring(tag.gps)) end
   if not surface then error("Surface not found for tag.gps: " .. tag.gps) end
+
   local normal_pos = GPS.normalize_landing_position(player, map_pos, surface)
   if not normal_pos then error("Sorry, we couldn't find a valid landing area. Try another location") end
+
   local new_chart_tag = TagSync.add_new_chart_tag(player, normal_pos, text, icon)
   if not new_chart_tag then error("Sorry, we couldn't find a valid landing area. Try another location") end
+
   local new_gps = GPS.gps_from_map_position(new_chart_tag.position, surface_index)
-  update_player_favorites_gps(tag.gps, new_gps)
+  if new_gps ~= tag.gps then
+    -- If the GPS has changed, update all player favorites
+    update_player_favorites_gps(tag.gps, new_gps)
+    tag.gps = new_gps
+  end
+
   if chart_tag and chart_tag.valid then chart_tag.destroy() end
-  tag.chart_tag, tag.gps = new_chart_tag, new_gps
-  return new_chart_tag
+  tag.chart_tag = new_chart_tag
+  Cache.lookups.clear_chart_tag_cache(surface.index)
+
+  return tag.chart_tag
+end
+
+---Update a tag's GPS and associated chart_tag, destroying the old chart_tag.
+---@param player LuaPlayer
+---@param tag Tag
+---@param new_gps string
+---@return Tag|nil
+function TagSync.update_tag_gps_and_associated(player, tag, new_gps)
+  if not tag or tag.gps == new_gps then return end
+
+  local old_gps = tag.gps
+  local old_chart_tag = tag.chart_tag
+  local surface_index = GPS.get_surface_index(new_gps) or player.surface.index or 1
+  local map_pos = GPS.map_position_from_gps(new_gps)
+  local surface = game.surfaces[surface_index]
+
+  if not map_pos or not surface then error("Invalid GPS or surface for update.") end
+
+  local normal_pos = GPS.normalize_landing_position(player, map_pos, surface)
+  if not normal_pos then error("Sorry, we couldn't find a valid landing area. Try another location") end
+
+  local new_chart_tag = TagSync.add_new_chart_tag(player, normal_pos, old_chart_tag.text, old_chart_tag.icon)
+  if not new_chart_tag then error("Sorry, we couldn't find a valid landing area. Try another location") end
+
+  new_gps = GPS.gps_from_map_position(new_chart_tag.position, surface_index)
+  -- If the GPS has changed, update all player favorites
+  update_player_favorites_gps(tag.gps, new_gps)
+  tag.gps = new_gps
+  tag.chart_tag = new_chart_tag
+
+  if old_chart_tag.valid then old_chart_tag.destroy() end
+
+  Lookups.clear_chart_tag_cache(surface_index)
+
+  return tag
+end
+
+---Delete a tag for a player, updating all relevant collections and state.
+---Removes the player from the tag's faved_by_players, resets any matching favorite slot for the player,
+---clears last_user if the player was the last user, and deletes the tag and chart_tag if no faved_by_players remain.
+---If other players still favorite the tag, returns the tag; otherwise, returns nil after deletion.
+---@param player LuaPlayer
+---@param tag Tag
+---@return Tag|nil
+function TagSync.delete_tag_by_player(player, tag)
+  if not player or not tag then return end
+  PlayerFavorites:remove_favorite(tag.gps)
+  if Helpers.table_count(tag.faved_by_players) > 0 then
+    tag.chart_tag.last_user = nil
+    return tag
+  end
+  if Tag:is_owner(player) then Cache.remove_stored_tag(tag.gps) end
+  return tag or nil
 end
 
 ---Remove all player favorites that match the tag's GPS.
@@ -87,45 +154,6 @@ end
 ---@param tag Tag
 function TagSync.remove_tag_and_associated(tag)
   Tag.unlink_and_destroy(tag)
-end
-
----Update a tag's GPS and associated chart_tag, destroying the old chart_tag.
----@param player LuaPlayer
----@param tag Tag
----@param new_gps string
-function TagSync.update_tag_gps_and_associated(player, tag, new_gps)
-  if not tag or tag.gps == new_gps then return end
-  local old_chart_tag = tag.chart_tag
-  local surface_index = GPS.get_surface_index(new_gps) or player.surface.index or 1
-  local map_pos = GPS.map_position_from_gps(new_gps)
-  local surface = game.surfaces[surface_index]
-  if not map_pos or not surface then error("Invalid GPS or surface for update.") end
-  local normal_pos = GPS.normalize_landing_position(player, map_pos, surface)
-  if not normal_pos then error("Sorry, we couldn't find a valid landing area. Try another location") end
-  local new_chart_tag = TagSync.add_new_chart_tag(player, normal_pos, tag.chart_tag.text, tag.chart_tag.icon)
-  if not new_chart_tag then error("Sorry, we couldn't find a valid landing area. Try another location") end
-  update_player_favorites_gps(tag.gps, GPS.gps_from_map_position(normal_pos, surface_index))
-  tag.chart_tag = new_chart_tag
-  if old_chart_tag and old_chart_tag.valid then old_chart_tag:destroy() end
-  Lookups.clear_chart_tag_cache(surface_index)
-end
-
----Delete a tag for a player, updating all relevant collections and state.
----Removes the player from the tag's faved_by_players, resets any matching favorite slot for the player,
----clears last_user if the player was the last user, and deletes the tag and chart_tag if no faved_by_players remain.
----If other players still favorite the tag, returns the tag; otherwise, returns nil after deletion.
----@param player LuaPlayer
----@param tag Tag
----@return Tag|nil
-function TagSync.delete_tag_by_player(player, tag)
-  if not player or not tag then return end
-  PlayerFavorites:remove_favorite(tag.gps)
-  if helpers.table_count(tag.faved_by_players) > 0 then
-    tag.chart_tag.last_user = nil
-    return tag
-  end
-  if Tag:is_owner(player) then Cache.remove_stored_tag(tag.gps) end
-  return tag or nil
 end
 
 return TagSync

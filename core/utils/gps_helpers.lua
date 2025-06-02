@@ -19,8 +19,17 @@ local padlen, BLANK_GPS = Constants.settings.GPS_PAD_NUMBER, Constants.settings.
 ---@return table|nil
 local function parse_gps_string(gps)
   if type(gps) ~= "string" then return nil end
-  local x, y, s = gps:match("^([%d%.-]+)%.([%d%.-]+)%.([%d%.-]+)$")
-  return (x and y and s) and { x = tonumber(x), y = tonumber(y), surface_index = tonumber(s) } or nil
+  if gps == BLANK_GPS then return { x = 0, y = 0, s = -1 } end
+  
+  local x, y, s = gps:match("^(%-?%d+)%.(%-?%d+)%.(%d+)$")
+  if not x or not y or not s then return nil end
+  local parsed_x, parsed_y, parsed_s = tonumber(x), tonumber(y), tonumber(s)
+  if not parsed_x or not parsed_y or not parsed_s then return nil end
+  return {
+    x = basic_helpers.normalize_index(parsed_x),
+    y = basic_helpers.normalize_index(parsed_y),
+    s = basic_helpers.normalize_index(parsed_s)
+  }
 end
 
 --- Return canonical GPS string 'xxx.yyy.s' from map position and surface index
@@ -28,28 +37,32 @@ end
 ---@param surface_index uint
 ---@return string
 local function gps_from_map_position(map_position, surface_index)
-  return basic_helpers.pad(map_position.x, padlen).."."..basic_helpers.pad(map_position.y, padlen).."."..tostring(surface_index)
+  return basic_helpers.pad(map_position.x, padlen) ..
+      "." .. basic_helpers.pad(map_position.y, padlen) ..
+      "." .. tostring(surface_index)
 end
 
 --- Convert GPS string to MapPosition {x, y} (surface not included)
 ---@param gps string
----@return MapPosition|nil
+---@return MapPosition?
 local function map_position_from_gps(gps)
-  if gps == BLANK_GPS then return { x = 0, y = 0 } end
+  if gps == BLANK_GPS then return nil end
   local parsed = parse_gps_string(gps)
   return parsed and { x = parsed.x, y = parsed.y } or nil
 end
 
---- Get surface index from GPS string (returns 1 if invalid)
+--- Get surface index from GPS string (returns nil if invalid)
 ---@param gps string
----@return uint
-local function get_surface_index(gps)
+---@return uint?
+local function get_surface_index_from_gps(gps)
+  if gps == BLANK_GPS then return nil end
   local parsed = parse_gps_string(gps)
-  return parsed and parsed.surface_index or 1
+  return parsed and parsed.s or nil
 end
 
+---TODO REVIEW
 --- Normalize a landing position; surface may be LuaSurface, string, or index
----@param player table
+---@param player LuaPlayer
 ---@param pos MapPosition
 ---@param surface LuaSurface|string|number
 ---@return MapPosition|nil
@@ -57,12 +70,13 @@ local function normalize_landing_position(player, pos, surface)
   if not pos then return nil end
   local game_surfaces = (type(_G.game) == "table" and _G.game.surfaces) or {}
   local surface_index = type(surface) == "number" and math.floor(surface)
-    or (type(surface) == "table" and surface.index)
-    or (type(surface) == "string" and game_surfaces[surface] and game_surfaces[surface].index)
-    or 1
+      or (type(surface) == "table" and surface.index)
+      or (type(surface) == "string" and game_surfaces[surface] and game_surfaces[surface].index)
+      or 1
   return { x = pos.x, y = pos.y, surface = surface_index }
 end
 
+---TODO REVIEW
 --- Parse and normalize a GPS string; accepts vanilla [gps=x,y,s] or canonical format
 ---@param gps string
 ---@return string
@@ -72,7 +86,7 @@ local function parse_and_normalize_gps(gps)
     if x and y and s then
       local nx, ny, ns = tonumber(x), tonumber(y), tonumber(s)
       if nx and ny and ns then
-        return gps_from_map_position({x=nx, y=ny}, math.floor(ns))
+        return gps_from_map_position({ x = nx, y = ny }, math.floor(ns))
       end
     end
     return BLANK_GPS
@@ -85,7 +99,7 @@ return {
   parse_gps_string = parse_gps_string,
   gps_from_map_position = gps_from_map_position,
   map_position_from_gps = map_position_from_gps,
-  get_surface_index = get_surface_index,
+  get_surface_index_from_gps = get_surface_index_from_gps,
   normalize_landing_position = normalize_landing_position,
   parse_and_normalize_gps = parse_and_normalize_gps,
 }

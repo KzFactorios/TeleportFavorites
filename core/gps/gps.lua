@@ -8,15 +8,6 @@ GPS utility module for converting between canonical GPS strings, Factorio rich t
 - Handles surface-aware GPS string formatting and parsing.
 - Used throughout the mod for tag, favorite, and teleportation logic.
 
-API:
------
-- GPS.gps_from_map_position(map_position, surface_index) -- Canonical GPS string from map position and surface.
-- GPS.map_position_from_gps(gps)                        -- Map position from canonical GPS string.
-- GPS.get_surface_index(gps)                            -- Surface index from canonical GPS string.
-- GPS.normalize_landing_position(player, pos, surface)  -- Normalize landing position for teleportation.
-- GPS.coords_string_from_gps(gps)                       -- 'xxx.yyy' string from GPS (ignores surface).
-- GPS.gps_to_gps_tag(gps)                               -- Factorio [gps=x,y,s] tag from canonical GPS string.
-- GPS.gps_from_gps_tag(gps_tag)                         -- Canonical GPS string from Factorio [gps=x,y,s] tag.
 
 Notes:
 ------
@@ -25,7 +16,6 @@ Notes:
 ]]
 
 local Constants = require("constants")
-local Settings = require("settings")
 local basic_helpers = require("core.utils.basic_helpers")
 local gps_helpers = require("core.utils.gps_helpers")
 

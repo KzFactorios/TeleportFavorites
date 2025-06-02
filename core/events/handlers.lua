@@ -69,40 +69,24 @@ function handlers.on_player_changed_surface(event)
   end
 end
 
-function handlers.on_open_tag_editor(_event)
-  --TagEditorGUI.on_open_tag_editor(event)
-  local stub = ""
-end
-
+--- handles right-click on the chart view
 function handlers.on_open_tag_editor_custom_input(event)
   local player = game.get_player(event.player_index)
   if not player then return end
   if player.render_mode ~= defines.render_mode.chart and player.render_mode ~= defines.render_mode.chart_zoomed_in then return end
   local surface = player.surface
-  if not surface then
+  local surface_id = surface.index
+
+  -- create a method to grab the cursor_position from the event, if it exists
+  local cursor_position = event.cursor_position
+  if not cursor_position or not (cursor_position.x and cursor_position.y) then
     return
   end
-  if not surface.valid or surface.valid ~= true then
-    return
-  end
-  local pos = player.position
-  local surface_id
-  if surface and surface.valid then
-    surface_id = surface
-  else
-    surface_id = 1
-  end
-  -- Use dot accessor and pass surface_id and area as arguments (no implicit self)
-  local tags = player.force.find_chart_tags(surface_id) or {}
-  local parent = player.gui.screen
-  if tags and #tags > 0 then
-    local tag = tags[1]
-    if tag then
-      tag_editor.build(player, tag)
-    end
-  else
-    tag_editor.build(player)
-  end
+  local chart_tag = Lookups.get_chart_tag_by_gps("")
+
+
+  tag_editor.build(player, tag, event.cursor_position)
+  
 end
 
 function handlers.on_teleport_to_favorite(event, i)
