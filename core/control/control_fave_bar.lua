@@ -174,21 +174,17 @@ local function handle_favorite_slot_click(event, player, favorites)
 end
 
 local function handle_visible_fave_btns_toggle_click(player)
-  local pdata = Cache.get_player_data(player)
   local main_flow = fave_bar.get_or_create_main_flow(player.gui.top)
-
-  -- Remove any old bar before toggling/building
-  if main_flow.fave_bar_frame then
-    main_flow.fave_bar_frame.destroy()
+  if not main_flow or not main_flow.valid then return end
+  local slots_row = Helpers.find_child_by_name(main_flow, "fave_bar_slots_flow")
+  if not slots_row or not slots_row.valid then
+    print("[TF DEBUG] fave_bar_slots_flow not found, cannot toggle visibility.")
+    return
   end
 
-  -- Compute new state and update storage FIRST
-  local prev = pdata.toggle_fav_bar_buttons ~= false
-  local show = not prev
-  pdata.toggle_fav_bar_buttons = show
-
-  -- Always rebuild the bar after updating state
-  fave_bar.build(player, main_flow)
+  local currently_visible = slots_row.visible
+  slots_row.visible = not currently_visible
+  print("[TF DEBUG] fave_bar_slots_flow visibility toggled to:", slots_row.visible)
 end
 
 --- Handle favorites bar GUI click events
@@ -207,11 +203,14 @@ local function on_fave_bar_gui_click(event)
     return
   end
   if element.name == "fave_bar_visible_btns_toggle" then
-    print("[HANDLER DEBUG] handle_visible_fave_btns_toggle_click pointer:",
-      tostring(handle_visible_fave_btns_toggle_click))
-    print("[HANDLER DEBUG] calling handle_visible_fave_btns_toggle_click")
+    print("[TF DEBUG] fave_bar_visible_btns_toggle clicked by player:", player and player.name)
+    print("[TF DEBUG] handle_visible_fave_btns_toggle_click pointer:", tostring(handle_visible_fave_btns_toggle_click))
+    print("[TF DEBUG] calling handle_visible_fave_btns_toggle_click")
     local ok, err = pcall(handle_visible_fave_btns_toggle_click, player)
-    print("[HANDLER DEBUG] after handle_visible_fave_btns_toggle_click, ok=", tostring(ok), "err=", tostring(err))
+    print("[TF DEBUG] after handle_visible_fave_btns_toggle_click, ok=", tostring(ok), "err=", tostring(err))
+    if not ok then
+      print("[TF ERROR] handle_visible_fave_btns_toggle_click failed:", err)
+    end
   end
 end
 

@@ -21,7 +21,7 @@ Functions:
 --]]
 
 local GuiBase = require("gui.gui_base")
-local Constants = require("constants")
+local _Constants = require("constants")
 local Cache = require("core.cache.cache")
 local Lookups = require("core.cache.lookups")
 local Helpers = require("core.utils.helpers_suite")
@@ -77,17 +77,17 @@ local function render_table_tree(parent, data, indent, visited, font_size, row_i
   visited[data] = nil
   return row_index
 end
-local function get_player_data(player)
+local function _get_player_data(player)
   return (player and Cache.get_player_data(player)) or {}
 end
-local function get_surface_data(player)
+local function _get_surface_data(player)
   local sidx = (player and player.surface and player.surface.index) or nil
   if sidx then
     return Cache.get_surface_data(sidx)
   end
   return {}
 end
-local function get_lookup_data()
+local function _get_lookup_data()
   local ldata = Lookups.get and Lookups.get("chart_tag_cache")
   if not ldata or next(ldata) == nil then
     ldata = { no_objects = true }
@@ -96,9 +96,10 @@ local function get_lookup_data()
   return { chart_tag_cache = ldata }
 end
 
-local function build_titlebar(parent)
+local function _build_titlebar(parent)
   local flow = GuiBase.create_hflow(parent, "data_viewer_titlebar_flow")
   GuiBase.create_label(flow, "data_viewer_title_label", {"tf-gui.data_viewer_title"}, "frame_title")
+  ---@diagnostic disable-next-line
   local filler = flow.add{type="empty-widget", name="data_viewer_titlebar_filler", style="draggable_space_header"}
   filler.style.horizontally_stretchable = true
   local close_btn = Helpers.create_slot_button(flow, "data_viewer_close_btn", SpriteEnum.CLOSE, {"tf-gui.close"})
@@ -116,40 +117,27 @@ local function build_tabs_row(parent, active_tab)
   }
   for i, def in ipairs(tab_defs) do
     local is_active = (active_tab == def[3])
-    local btn = tabs_flow.add{
+    local btn_style = (i > 1) and "tf_data_viewer_tab_button_margin" or "tf_data_viewer_tab_button"
+    if is_active then btn_style = "frame_action_button" end
+    
+---@diagnostic disable-next-line
+    tabs_flow.add{
       type = "sprite-button",
       name = def[1],
-      sprite = nil,
       caption = {def[2]},
-      style = is_active and "frame_action_button" or "button",
-      tags = { tab_key = def[3] },
-      selected = is_active
+      style = btn_style,
+      tags = { tab_key = def[3] }
     }
-    btn.style.horizontally_stretchable = false
-    btn.style.vertically_stretchable = false
-    btn.style.width = 140
-    btn.style.height = 32
-    btn.style.top_padding = 0
-    btn.style.bottom_padding = 0
-    btn.style.left_padding = 8
-    btn.style.right_padding = 8
-    btn.style.margin = 0
-    if i > 1 then btn.style.left_margin = 4 end
   end
-  -- Tab actions flow (right-aligned)
-  local filler = tabs_flow:add{type="empty-widget", name="data_viewer_tabs_filler"}
-  filler.style.horizontally_stretchable = true
-  local actions_flow = GuiBase.create_hflow(tabs_flow, "data_viewer_tab_actions_flow")
-  actions_flow.style.vertical_align = "center"
-  actions_flow.style.horizontal_spacing = 12
-  -- Font size controls
-  local font_size_flow = GuiBase.create_hflow(actions_flow, "data_viewer_actions_font_size_flow")
-  font_size_flow.style.vertical_align = "center"
-  font_size_flow.style.horizontal_spacing = 2
-  Helpers.create_slot_button(font_size_flow, "data_viewer_actions_font_down_btn", SpriteEnum.ARROW_DOWN, {"tf-gui.font_minus_tooltip"}).style.margin = 0
-  Helpers.create_slot_button(font_size_flow, "data_viewer_actions_font_up_btn", SpriteEnum.ARROW_UP, {"tf-gui.font_plus_tooltip"}).style.margin = 0
-  -- Refresh button
-  Helpers.create_slot_button(actions_flow, "data_viewer_tab_actions_refresh_data_btn", SpriteEnum.REFRESH, {"tf-gui.refresh_tooltip"}).style.margin = 0
+  ---@diagnostic disable-next-line
+  tabs_flow.add{type="empty-widget", name="data_viewer_tabs_filler"}
+  ---@diagnostic disable-next-line
+  local actions_flow = tabs_flow.add{type="flow", name="data_viewer_tab_actions_flow", direction="horizontal", style="tf_data_viewer_actions_flow"}
+  ---@diagnostic disable-next-line
+  local font_size_flow = actions_flow.add{type="flow", name="data_viewer_actions_font_size_flow", direction="horizontal", style="tf_data_viewer_font_size_flow"}
+  Helpers.create_slot_button(font_size_flow, "data_viewer_actions_font_down_btn", SpriteEnum.ARROW_DOWN, {"tf-gui.font_minus_tooltip"})
+  Helpers.create_slot_button(font_size_flow, "data_viewer_actions_font_up_btn", SpriteEnum.ARROW_UP, {"tf-gui.font_plus_tooltip"})
+  Helpers.create_slot_button(actions_flow, "data_viewer_tab_actions_refresh_data_btn", SpriteEnum.REFRESH, {"tf-gui.refresh_tooltip"})
   return  tabs_flow    
 end
 
@@ -284,10 +272,8 @@ function data_viewer.build(player, parent, state)
 
   local font_size = (state and state.font_size) or 10
   -- Main dialog frame (resizable)
-  local frame = parent.add{type="frame", name="data_viewer_frame", style="data_viewer_frame", direction="vertical"}
+  local frame = parent.add{type="frame", name="data_viewer_frame", style="tf_data_viewer_frame", direction="vertical"}
   frame.caption = ""
-  frame.style.minimal_width = 480
-  frame.style.minimal_height = 320
   -- Remove debug label at the very top
   -- frame.add{type="label", caption="[TF DEBUG] Data Viewer GUI visible for player: "..(player and player.name or "nil"), style="data_viewer_row_odd_label"}
   -- Titlebar
@@ -306,17 +292,7 @@ function data_viewer.build(player, parent, state)
   content_flow.style.vertically_stretchable = true
 
   -- Table for data rows (single column for compactness)
-  local data_table = content_flow.add{type="table", name="data_viewer_table", column_count=1, style="data_viewer_table"}
-  data_table.style.horizontally_stretchable = true
-  data_table.style.vertically_stretchable = true -- Fix: allow table to stretch vertically
-  data_table.style.minimal_width = 400
-  data_table.style.minimal_height = 400
-  data_table.style.top_padding = 8
-  data_table.style.bottom_padding = 16
-  data_table.style.left_padding = 8
-  data_table.style.right_padding = 12
-  data_table.style.width = 1000 -- Fix: force table width to match viewer
-  data_table.style.maximal_width = 1000
+  local data_table = content_flow.add{type="table", name="data_viewer_table", column_count=1, style="tf_data_viewer_table"}
 
   -- REMOVE DEBUG LABEL: Remove debug_data_str label
   -- data_table.add{type="label", caption=debug_data_str, style="data_viewer_row_even_label"}

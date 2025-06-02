@@ -6,13 +6,14 @@ Module: gui/favorites_bar/fave_bar.lua
 
 Builds the favorites bar UI for the TeleportFavorites mod, providing quick-access favorite teleport slots.
 
+
 Element Hierarchy Diagram:
 
 fave_bar_frame (frame)
 └─ fave_bar_flow (flow, horizontal)
    ├─ fave_bar_toggle_container (frame, vertical)
    │  └─ fave_bar_visible_btns_toggle (sprite-button)
-   └─ fave_bar_slots_flow (frame, horizontal)
+   └─ fave_bar_slots_flow (frame, horizontal, visible toggled at runtime)
       ├─ fave_bar_slot_1 (sprite-button)
       ├─ fave_bar_slot_2 (sprite-button)
       ├─ ...
@@ -57,7 +58,12 @@ local fave_bar = {}
 local function get_or_create_main_flow(parent)
   local flow = parent.tf_main_gui_flow
   if not (flow and flow.valid) then
-    flow = parent.add { type = "flow", name = "tf_main_gui_flow", direction = "vertical", margin = { 8, 0, 0, 8 } }
+    flow = parent.add {
+      type = "flow",
+      name = "tf_main_gui_flow",
+      direction = "vertical",
+      style = "tf_main_gui_flow"
+    }
   end
   return flow
 end
@@ -72,13 +78,9 @@ function fave_bar.build_quickbar_style(player, parent)
   local bar_frame = main_flow.add {
     type = "frame",
     name = "fave_bar_frame",
-    style = "slot_window_frame",
+    style = "tf_fave_bar_frame",
     direction = "horizontal"
   }
-  bar_frame.style.padding = 4
-  bar_frame.style.margin = {4, 0, 0, 4} -- top=8, right=0, bottom=0, left=8
-  bar_frame.style.vertically_stretchable = false
-  bar_frame.style.horizontally_stretchable = false -- Prevents bar from expanding with parent
 
   -- Add a horizontal flow to contain the toggle and slots row
   local bar_flow = bar_frame.add {
@@ -100,7 +102,6 @@ function fave_bar.build_quickbar_style(player, parent)
     style = "tf_fave_toggle_button",     -- no slot background
     sprite = "logo_36"
   }
-  toggle_btn.style.margin = 2
 
   -- Add slots frame and return it for visibility toggling
   local slots_frame = bar_frame.add {
@@ -125,10 +126,11 @@ local _fave_bar_building_guard = _G._fave_bar_building_guard or {}
 _G._fave_bar_building_guard = _fave_bar_building_guard
 
 local function set_slot_row_visibility(slots_frame, visibility)
+  print("[TF DEBUG] set_slot_row_visibility called with:", visibility)
   slots_frame.visible = visibility
 end
 
-function fave_bar.build(player, parent)
+function fave_bar.build(player, parent, force_show)
   local pid = player.index
   if _fave_bar_building_guard[pid] then return end
   _fave_bar_building_guard[pid] = true
@@ -151,19 +153,14 @@ function fave_bar.build(player, parent)
     local slots_row = Helpers.find_child_by_name(bar_flow, "fave_bar_slots_flow") or slots_frame
 
     -- Only one toggle button: the one created in build_quickbar_style
-    local pfaves = PlayerFavorites.new(player):get_favorites()
-    local pdata = Cache.get_player_data(player)
-    -- Always use the current value (do not update here!)
-    local show = pdata.toggle_fav_bar_buttons ~= false -- default to true if nil
-    local drag_index = pdata.drag_favorite_index
+    local pfaves = Cache.get_player_favorites(player)
+    local drag_index = Cache.get_player_data(player).drag_favorite_index
 
-    -- Always set visibility based on the current value
-    set_slot_row_visibility(slots_row, show)
+    -- By default, show the slots row when building the bar
+    set_slot_row_visibility(slots_row, true)
 
-    -- Build slot buttons if visible
-    if show then
-      fave_bar.build_favorite_buttons_row(slots_row, player, pfaves, drag_index)
-    end
+    -- Build slot buttons
+    fave_bar.build_favorite_buttons_row(slots_row, player, pfaves, drag_index)
 
     -- Do NOT update toggle state in pdata here! Only the event handler should do that.
 
@@ -222,11 +219,10 @@ function fave_bar.update_slot_row(player, bar_flow)
     style = "tf_fave_slots_row",
     direction = "horizontal"
   }
-  local pfaves = PlayerFavorites.new(player):get_favorites()
-  local pdata = Cache.get_player_data(player)
-  local drag_index = pdata.drag_favorite_index or -1
+  local pfaves = Cache.get_player_favorites(player)
+  local drag_index = Cache.get_player_data(player).drag_favorite_index or -1
   local fav_btns = build_favorite_buttons_row(slots_frame, player, pfaves, drag_index)
-  set_slot_row_visibility(slots_frame, pdata.toggle_fav_bar_buttons)
+  set_slot_row_visibility(slots_frame, true)
   _G.print("[TF DEBUG] Built new fave_bar_slots_flow row.")
   return fav_btns
 end

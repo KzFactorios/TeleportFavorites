@@ -1,3 +1,27 @@
+-- Data Viewer tab button style with left margin (for i > 1)
+gui_style.tf_data_viewer_tab_button_margin = {
+  type = "button_style",
+  parent = "tf_data_viewer_tab_button",
+  left_margin = 4
+}
+
+-- Data Viewer actions flow style (vertical_align = center, horizontal_spacing = 12)
+gui_style.tf_data_viewer_actions_flow = {
+  type = "horizontal_flow_style",
+  parent = "horizontal_flow",
+  vertical_align = "center",
+  horizontal_spacing = 12
+}
+
+-- Data Viewer font size flow style (vertical_align = center, horizontal_spacing = 2)
+gui_style.tf_data_viewer_font_size_flow = {
+  type = "horizontal_flow_style",
+  parent = "horizontal_flow",
+  vertical_align = "center",
+  horizontal_spacing = 2
+}
+-- Data Viewer tab button style with left margin (for i > 1)
+
 --[[
 Centralized GUI style prototypes for TeleportFavorites
 =====================================================
@@ -107,6 +131,93 @@ if not gui_style.tf_slot_button_drag_target then
 end
 
 -- Titlebar flow style for tag editor dialogs (matches vanilla titlebar row)
+-- Main GUI flow for TeleportFavorites (margin: {8, 0, 0, 8})
+gui_style.tf_main_gui_flow = {
+  type = "vertical_flow_style",
+  parent = "vertical_flow",
+  top_margin = 8,
+  right_margin = 0,
+  bottom_margin = 0,
+  left_margin = 8
+}
+
+-- Favorites bar frame (padding: 4, margin: {4, 0, 0, 4})
+gui_style.tf_fave_bar_frame = {
+  type = "frame_style",
+  parent = "slot_window_frame",
+  padding = 4,
+  top_margin = 4,
+  right_margin = 0,
+  bottom_margin = 0,
+  left_margin = 4,
+  vertically_stretchable = "off",
+  horizontally_stretchable = "off"
+}
+
+-- Toggle button style (margin: 2)
+gui_style.tf_fave_toggle_button = {
+  type = "button_style",
+  parent = "button",
+  margin = 2
+}
+
+-- Data Viewer tab button style (width: 140, height: 32, padding: 0/8, margin: 0, left_margin: 4 for i>1)
+gui_style.tf_data_viewer_tab_button = {
+  type = "button_style",
+  parent = "button",
+  width = 140,
+  height = 32,
+  top_padding = 0,
+  bottom_padding = 0,
+  left_padding = 8,
+  right_padding = 8,
+  margin = 0
+  -- left_margin for i>1 must be set by using a separate style or handled in code
+}
+
+-- Data Viewer table style
+gui_style.tf_data_viewer_table = {
+  type = "table_style",
+  parent = "table",
+  minimal_width = 400,
+  minimal_height = 400,
+  top_padding = 8,
+  bottom_padding = 16,
+  left_padding = 8,
+  right_padding = 12,
+  width = 1000,
+  maximal_width = 1000
+}
+
+-- Data Viewer frame style
+gui_style.tf_data_viewer_frame = {
+  type = "frame_style",
+  parent = "frame",
+  minimal_width = 480,
+  minimal_height = 320
+}
+-- Data Viewer tab button style with left margin (for i > 1)
+gui_style.tf_data_viewer_tab_button_margin = {
+  type = "button_style",
+  parent = "tf_data_viewer_tab_button",
+  left_margin = 4
+}
+
+-- Data Viewer actions flow style (vertical_align = center, horizontal_spacing = 12)
+gui_style.tf_data_viewer_actions_flow = {
+  type = "horizontal_flow_style",
+  parent = "horizontal_flow",
+  vertical_align = "center",
+  horizontal_spacing = 12
+}
+
+-- Data Viewer font size flow style (vertical_align = center, horizontal_spacing = 2)
+gui_style.tf_data_viewer_font_size_flow = {
+  type = "horizontal_flow_style",
+  parent = "horizontal_flow",
+  vertical_align = "center",
+  horizontal_spacing = 2
+}
 gui_style.frame_titlebar_flow = {
   type = "horizontal_flow_style",
   parent = "horizontal_flow",

@@ -22,7 +22,6 @@ storage = {
     [player_index] = {
       player_name = "FactorioPlayerName", -- ADDED: stores the player's name for easier debugging
       tag_editor_data = { ... },
-      toggle_fav_bar_buttons = boolean, -- ADDED: toggle for favorite bar buttons
       render_mode = string, -- ADDED: render mode for the player
       surfaces = {
         [surface_index] = {
@@ -47,6 +46,8 @@ local mod_version = require("core.utils.version")
 local Lookups = require("core.cache.lookups")
 local basic_helpers = require("core.utils.basic_helpers")
 local GPS = require("core.gps.gps")
+local Favorite = require("core.favorite.favorite")
+local Constants = require("constants")
 
 
 --- Persistent and runtime cache management for TeleportFavorites mod.
@@ -129,7 +130,7 @@ local function init_player_data(player)
 
     for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
       if not pfaves[i] or type(pfaves[i]) ~= "table" then
-        pfaves[i] = Constants.get_blank_favorite()
+        pfaves[i] = Favorite.get_blank_favorite()
       end
       pfaves[i].gps = pfaves[i].gps or ""
       pfaves[i].locked = pfaves[i].locked or false
@@ -142,7 +143,6 @@ local function init_player_data(player)
   player_data.surfaces[player.surface.index].favorites = init_player_favorites(player)
 
   player_data.player_name = player.name or "Unknown"
-  player_data.toggle_fav_bar_buttons = player_data.toggle_fav_bar_buttons or true
   player_data.render_mode = player_data.render_mode or player.render_mode
   player_data.tag_editor_data = player_data.tag_edor_data or {}
 
