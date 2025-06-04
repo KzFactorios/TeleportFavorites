@@ -1,0 +1,8 @@
+<svg width="240" height="72" viewBox="0 0 240 72" xmlns="http://www.w3.org/2000/svg">
+  <!-- Rounded rectangle background -->
+  <rect x="0" y="0" width="220" height="72" rx="16" fill="#FFA500" stroke="#b36b00" stroke-width="4"/>
+  <!-- Right-pointing triangle -->
+  <polygon points="220,0 240,36 220,72" fill="#FFA500" stroke="#b36b00" stroke-width="4"/>
+  <!-- Optional: subtle highlight for a more Factorio look -->
+  <rect x="4" y="4" width="212" height="64" rx="12" fill="none" stroke="#ffd580" stroke-width="2"/>
+</svg>

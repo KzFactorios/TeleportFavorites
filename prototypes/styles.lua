@@ -40,20 +40,21 @@ local gui_style = data.raw["gui-style"].default
 
 -- (No GUI-specific styles should be defined here. See prototypes/styles_fave_bar.lua, styles_tag_editor.lua, styles_data_viewer.lua)
 
-
-gui_style.frame_titlebar_flow = {
-  type = "horizontal_flow_style",
-  parent = "horizontal_flow",
-  horizontally_stretchable = "on",
-  vertically_stretchable = "off",
-  top_padding = 0,
-  bottom_padding = 0,
-  left_padding = 8,
-  right_padding = 4,
-  height = 32,
-  vertical_align = "center",
-  use_header_filler = true
-}
+if not gui_style.frame_titlebar_flow then
+  gui_style.frame_titlebar_flow = {
+    type = "horizontal_flow_style",
+    parent = "horizontal_flow",
+    horizontally_stretchable = "on",
+    vertically_stretchable = "off",
+    top_padding = 0,
+    bottom_padding = 0,
+    left_padding = 8,
+    right_padding = 4,
+    height = 32,
+    vertical_align = "center",
+    use_header_filler = true
+  }
+end
 
 -- Dark background frame for tag editor content (mimics vanilla tag dialog)
 if not gui_style.dark_frame then
@@ -74,20 +75,22 @@ if not gui_style.dark_frame then
   }
 end
 
-gui_style.tf_main_gui_flow = {
-  type = "vertical_flow_style",
-  parent = "vertical_flow",
-  top_margin = 4,
-  right_margin = 0,
-  bottom_margin = 0,
-  left_margin = 4
-}
+if not gui_style.tf_main_gui_flow then
+  gui_style.tf_main_gui_flow = {
+    type = "vertical_flow_style",
+    parent = "vertical_flow",
+    top_margin = 4,
+    right_margin = 0,
+    bottom_margin = 0,
+    left_margin = 4
+  }
+end
 
 -- Custom slot button style for all TeleportFavorites GUIs
 if not gui_style.tf_slot_button then
-    local base = {}
-    for k, v in pairs(gui_style.slot_button) do base[k] = v end
-    base.width = 30
-    base.height = 30
-    gui_style.tf_slot_button = base
+  local base = {}
+  for k, v in pairs(gui_style.slot_button) do base[k] = v end
+  base.width = 30
+  base.height = 30
+  gui_style.tf_slot_button = base
 end

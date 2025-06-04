@@ -1,0 +1,18 @@
+<svg width="480" height="36" viewBox="0 0 480 36" xmlns="http://www.w3.org/2000/svg">
+  <!-- Idle (leftmost) -->
+  <rect x="0" y="0" width="104" height="36" rx="6" fill="#FFA500" stroke="#b36b00" stroke-width="2"/>
+  <polygon points="104,0 120,18 104,36" fill="#FFA500" stroke="#b36b00" stroke-width="2"/>
+  <rect x="3" y="3" width="98" height="30" rx="4" fill="none" stroke="#ffd580" stroke-width="1"/>
+  <!-- Hovered -->
+  <rect x="120" y="0" width="104" height="36" rx="6" fill="#FFB733" stroke="#b36b00" stroke-width="2"/>
+  <polygon points="224,0 240,18 224,36" fill="#FFB733" stroke="#b36b00" stroke-width="2"/>
+  <rect x="123" y="3" width="98" height="30" rx="4" fill="none" stroke="#ffe099" stroke-width="1"/>
+  <!-- Clicked -->
+  <rect x="240" y="0" width="104" height="36" rx="6" fill="#CC8400" stroke="#b36b00" stroke-width="2"/>
+  <polygon points="344,0 360,18 344,36" fill="#CC8400" stroke="#b36b00" stroke-width="2"/>
+  <rect x="243" y="3" width="98" height="30" rx="4" fill="none" stroke="#ffd580" stroke-width="1"/>
+  <!-- Disabled -->
+  <rect x="360" y="0" width="104" height="36" rx="6" fill="#FFD580" stroke="#b36b00" stroke-width="2"/>
+  <polygon points="464,0 480,18 464,36" fill="#FFD580" stroke="#b36b00" stroke-width="2"/>
+  <rect x="363" y="3" width="98" height="30" rx="4" fill="none" stroke="#fff2cc" stroke-width="1"/>
+</svg>

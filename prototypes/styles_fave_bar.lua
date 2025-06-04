@@ -16,7 +16,7 @@ gui_style.tf_fave_bar_frame = {
     bottom_margin = 0,
     left_margin = 4,
     vertically_stretchable = "on",
-    horizontally_stretchable = "on"
+    horizontally_stretchable = "off"
 }
 
 gui_style.tf_fave_toggle_container = {

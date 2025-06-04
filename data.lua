@@ -1,8 +1,13 @@
+
+
 ---@diagnostic disable: undefined-global
 local Constants = require("constants")
 require("prototypes.styles")
 local Style = require("gui.styles")
-if data then
+
+
+
+
   -- Ensure the custom virtual signal subgroup exists
   if not data.raw["item-subgroup"]["virtual-signal-special"] then
     data:extend({
@@ -14,7 +19,6 @@ if data then
       }
     })
   end
-end
 
 ---@diagnostic disable-next-line: undefined-global
 data:extend {
@@ -141,6 +145,7 @@ data:extend {
     height = 36,
     flags = { "gui-icon" }
   },
+
   {
     type = "sprite",
     name = "slot_green",
@@ -278,5 +283,26 @@ data:extend {
     width = 16,
     height = 16,
     flags = { "gui-icon" }
-  }
+  },
+  --- Orange arrow buttons
+  {
+    type = "sprite",
+    name = "orange_button_right",
+    filename = "__TeleportFavorites__/graphics/orange_button_right.png",
+    width = 18,
+    height = 64,
+    position = {194, 0},
+    scale = 0.5,
+    flags = {"gui-icon"}
+  },
+
+
+
+
+
+
+
+
+
+
 }

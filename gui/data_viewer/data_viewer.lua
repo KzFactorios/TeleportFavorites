@@ -104,7 +104,7 @@ local function build_tabs_row(parent, active_tab)
   for i, def in ipairs(tab_defs) do
     local is_active = (active_tab == def[3])
     local btn_style = (i > 1) and "tf_data_viewer_tab_button_margin" or "tf_data_viewer_tab_button"
-    if is_active then btn_style = "frame_action_button" end
+    if is_active then btn_style = "tf_data_viewer_tab_button_active" end
 
     ---@diagnostic disable-next-line
     tabs_flow.add {

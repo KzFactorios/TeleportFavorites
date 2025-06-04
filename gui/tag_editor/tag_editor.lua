@@ -26,7 +26,6 @@ Main Functions:
     Sets state, tooltips, and styles for all controls after construction.
 --]]
 local GuiBase = require("gui.gui_base")
-local Constants = require("constants")
 local Helpers = require("core.utils.helpers_suite")
 local SpriteEnum = require("gui.sprite_enum")
 local GPS = require("core.gps.gps")
@@ -107,7 +106,8 @@ function tag_editor.build(player, tag_data)
     if parent["tag_editor_outer_frame"] then
         parent["tag_editor_outer_frame"].destroy()
     end
-    local tag_editor_outer_frame = GuiBase.create_frame(parent, "tag_editor_outer_frame", "vertical", "tf_tag_editor_outer_frame")
+    local tag_editor_outer_frame = GuiBase.create_frame(parent, "tag_editor_outer_frame", "vertical",
+        "tf_tag_editor_outer_frame")
     tag_editor_outer_frame.auto_center = true
 
 
@@ -123,19 +123,23 @@ function tag_editor.build(player, tag_data)
 
 
     -- inner frame
-    local tag_editor_inner_frame = GuiBase.create_frame(tag_editor_outer_frame, "tag_editor_inner_frame", "vertical", "tf_tag_editor_inner_frame")
+    local tag_editor_inner_frame = GuiBase.create_frame(tag_editor_outer_frame, "tag_editor_inner_frame", "vertical",
+        "tf_tag_editor_inner_frame")
 
 
     -- Content background
-    local tag_editor_content_frame = GuiBase.create_frame(tag_editor_inner_frame, "tag_editor_content_frame", "vertical", "tf_tag_editor_content_frame")
+    local tag_editor_content_frame = GuiBase.create_frame(tag_editor_inner_frame, "tag_editor_content_frame", "vertical",
+        "tf_tag_editor_content_frame")
 
 
     -- Last user row (horizontal flow)
     local tag_editor_last_user_row
     do
-        tag_editor_last_user_row = GuiBase.create_frame(tag_editor_content_frame, "tag_editor_last_user_row", "horizontal", "tf_last_user_row")
+        tag_editor_last_user_row = GuiBase.create_frame(tag_editor_content_frame, "tag_editor_last_user_row",
+            "horizontal", "tf_last_user_row")
         local label_text = { "tf-gui.last_user_label", tag_data.last_user or "" }
-        local label = GuiBase.create_label(tag_editor_last_user_row, "tag_editor_last_user_label", label_text, "tf_tag_editor_label")
+        local label = GuiBase.create_label(tag_editor_last_user_row, "tag_editor_last_user_label", label_text,
+            "tf_tag_editor_label")
         label.style.font_color = factorio_label_color
     end
 
@@ -151,12 +155,13 @@ function tag_editor.build(player, tag_data)
         local favorite_tooltip = { "tf-gui.favorite_tooltip" }
         tag_editor_teleport_favorite_row = GuiBase.create_hflow(tag_editor_content_inner_frame,
             "tag_editor_teleport_favorite_row", "tf_tag_editor_teleport_favorite_row")
-        tag_editor_teleport_favorite_row.style.height = line_height
+
+        tag_editor_is_favorite_button = GuiBase.create_icon_button(tag_editor_teleport_favorite_row,
+            "tag_editor_is_favorite_button", SpriteEnum.STAR, { "tf-gui.favorite_tooltip" }, "tf_slot_button")
+
         tag_editor_teleport_button = GuiBase.create_icon_button(tag_editor_teleport_favorite_row,
             "tag_editor_teleport_button", "", { "tf-gui.teleport_tooltip" }, "tf_teleport_button")
         tag_editor_teleport_button.caption = editor_coords_string
-        tag_editor_is_favorite_button = GuiBase.create_icon_button(tag_editor_teleport_favorite_row,
-            "tag_editor_is_favorite_button", "utility/check_mark", { "tf-gui.favorite_tooltip" }, "tf_slot_button")
     end
 
     -- Rich Text row
@@ -165,6 +170,7 @@ function tag_editor.build(player, tag_data)
         local icon_tooltip = { "tf-gui.icon_tooltip" }
         local insert_icon_tooltip = { "tf-gui.insert_icon_tooltip" }
         tag_editor_rich_text_row = GuiBase.create_hflow(tag_editor_content_inner_frame, "tag_editor_rich_text_row")
+        tag_editor_rich_text_row.style = "tf_tag_editor_rich_text_row"
 
         tag_editor_icon_button = GuiBase.create_icon_button(tag_editor_rich_text_row, "tag_editor_icon_button",
             tag_data.icon or "", icon_tooltip, "tf_slot_button")
@@ -189,14 +195,32 @@ function tag_editor.build(player, tag_data)
 
     -- Last row (confirm/cancel) - move to outer frame (after inner frame)
     local tag_editor_last_row = GuiBase.create_hflow(tag_editor_outer_frame, "tag_editor_last_row")
-    local cancel_tooltip = { "tf-gui.cancel_tooltip" }
+    tag_editor_last_row.style = "tf_tag_editor_last_row"
     local confirm_tooltip = { "tf-gui.confirm_tooltip" }
-    local last_row_cancel_button = GuiBase.create_icon_button(tag_editor_last_row, "last_row_cancel_button",
-        "utility/close", { "tf-gui.cancel_tooltip" }, "tf_slot_button")
-    local last_row_confirm_button = GuiBase.create_icon_button(tag_editor_last_row, "last_row_confirm_button",
-        "utility/check_mark", { "tf-gui.confirm_tooltip" }, "tf_confirm_button")
+    local last_row_confirm_button = GuiBase.create_element('button', tag_editor_last_row, {
+        name = "last_row_confirm_button",
+        caption = { "tf-gui.confirm" },
+        tooltip = { "tf-gui.confirm_tooltip" },
+        style = "tf_confirm_button",
+        sprite = nil
+    })
 
 
+    -- TEST ROW: Place representations of all "orange" images for visual inspection
+    local test_row
+    do
+        test_row = GuiBase.create_hflow(tag_editor_content_inner_frame, "tag_editor_test_row")
+        -- Add sprite-buttons for each orange image
+        local orange_sprites = {
+            "orange_arrow_button_left", "orange_arrow_button_right", "orange_button", "orange_button_disabled", "orange_button_hovered",  "orange_button_clicked"
+        }
+        for _, sprite in ipairs(orange_sprites) do
+            GuiBase.create_icon_button(test_row, "test_sprite_btn_"..sprite, sprite, nil, "tf_slot_button")
+        end
+    end
+
+
+    
     -- Build refs table for event handlers and logic
     local refs = {
         last_user_row = tag_editor_last_user_row,
