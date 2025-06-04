@@ -14,6 +14,8 @@ Comprehensive utility module for math, table, string, and general helpers used t
 All helpers are static and namespaced under Helpers. Used pervasively for DRY, robust, and maintainable code.
 ]]
 
+local SpriteEnum = require("gui.sprite_enum")
+
 ---@class Helpers
 local Helpers = {}
 
@@ -341,7 +343,7 @@ function Helpers.create_slot_button(parent, name, icon, tooltip, opts)
   btn.style.font = opts.font or "default-small"
   if opts.enabled ~= nil then btn.enabled = opts.enabled end
   if opts.locked then
-    local lock_icon = btn.add { type = "sprite", sprite = "utility/lock", name = "lock_overlay" }
+    local lock_icon = btn.add { type = "sprite", sprite = SpriteEnum.LOCK, name = "lock_overlay" }
     lock_icon.style.width, lock_icon.style.height = 16, 16
     lock_icon.style.left_margin, lock_icon.style.top_margin = 0, 0
     lock_icon.ignored_by_interaction = true

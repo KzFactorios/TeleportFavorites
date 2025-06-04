@@ -86,15 +86,6 @@ gui_style.tf_tag_editor_content_inner_frame = {
   horizontally_stretchable = "on",
 }
 
--- Tag Editor teleport+favorite row style (vertical_align: center, horizontally_stretchable: on)
-gui_style.tf_tag_editor_teleport_favorite_row = {
-  type = "horizontal_flow_style",
-  parent = "horizontal_flow",
-  vertical_align = "center",
-  horizontally_stretchable = "on",
-  height = line_height
-}
-
 gui_style.tf_tag_editor_rich_text_row = {
   type = "horizontal_flow_style",
   parent = "horizontal_flow",
@@ -164,20 +155,46 @@ if not gui_style.tf_confirm_button then
   }
 end
 
+-- Tag Editor teleport+favorite row style (vertical_align: center, horizontally_stretchable: on)
+gui_style.tf_tag_editor_teleport_favorite_row = {
+  type = "horizontal_flow_style",
+  parent = "horizontal_flow",
+  vertical_align = "center",
+  horizontally_stretchable = "on",
+  height = 78, -- Match the button's scaled height
+  minimal_width = 200
+}
+
 if not gui_style.tf_teleport_button then
-  gui_style.tf_teleport_button = {
-    type = "button_style",
-    parent = "slot_button",
-    scale = .5,
-    minimal_width = 44,
-    height = 36,
-    default_graphical_set = {
-      base = {  filename = "__TeleportFavorites__/graphics/button_grey_orange.png", position={160,80}, width = 78, height = 78 },
-      right= {  filename = "__TeleportFavorites__/graphics/orange_arrow_button_right.png", position={220, 0}, width = 18, height = 64 }
+  local base_graphical_set = {
+    base = {
+      filename = "__TeleportFavorites__/graphics/button_orange_right.png",
+      position = {0, 0},
+      size = {38, 32}, -- exact PNG size
+      --corner_size = 0, -- no 9-slice, just use the full image
+      draw_type = "outer",
     }
   }
-  --right = { sprite = "orange_arrow_button_right", width = 9, height = 36 }
-  --}
+  gui_style.tf_teleport_button = {
+    type = "button_style",
+    parent = "dialog_button",
+    minimal_width = 38,   -- exact width
+    maximal_width = 38,   -- prevent stretching
+    width = 38,           -- force width
+    height = 32,          -- exact height
+    minimal_height = 32,  -- prevent stretching
+    maximal_height = 32,  -- prevent stretching
+    horizontally_stretchable = "off", -- do not stretch
+    vertically_stretchable = "off",   -- do not stretch
+    top_margin = 0,
+    bottom_margin = 0,
+    left_margin = 0,
+    right_margin = 0,
+    default_graphical_set = base_graphical_set,
+    hovered_graphical_set = base_graphical_set,
+    clicked_graphical_set = base_graphical_set,
+    disabled_graphical_set = base_graphical_set
+  }
 end
 
 

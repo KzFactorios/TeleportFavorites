@@ -1,3 +1,4 @@
+---@diagnostic disable: undefined-global
 --[[
 Shared GUI builder and utility functions for TeleportFavorites
 ============================================================
@@ -23,13 +24,14 @@ Each function is annotated with argument and return value details.
 --]]
 local GuiBase = {}
 local Constants = require("constants")
+local SpriteEnum = require("gui.sprite_enum")
 
 --- NOTE: All requires MUST be at the top of the file. Do NOT move requires inside functions to avoid circular dependencies.
 --- This is a strict project policy. See notes/architecture.md and coding_standards.md for rationale.
 --- gui_base.lua MUST NOT require any control/event modules (e.g., control_fave_bar, control_tag_editor). It is a pure GUI helper module.
 
 --- Factory for creating GUI elements with type and options
---- @param type string: The type of GUI element (e.g., 'frame', 'label', 'sprite-button', etc.)
+--- @param element_type string: The type of GUI element (e.g., 'frame', 'label', 'sprite-button', etc.)
 --- @param parent LuaGuiElement: The parent element
 --- @param opts table: Table of options (name, caption, direction, style, etc.)
 --- @return LuaGuiElement: The created element
@@ -40,6 +42,12 @@ function GuiBase.create_element(element_type, parent, opts)
     if opts.type then opts.type = nil end --- Prevent accidental overwrite
     local params = { type = element_type }
     for k, v in pairs(opts) do params[k] = v end
+    -- Defensive: ensure name is a string
+    if params.name == nil or type(params.name) ~= "string" or params.name == "" then
+        params.name = element_type .. "_unnamed_" .. tostring(math.random(100000, 999999))
+        log("[TF DEBUG] unnamed element for " .. element_type)
+    end
+    ---@diagnostic disable-next-line
     local elem = parent.add(params)
     if opts.style then elem.style = opts.style end
     return elem
@@ -113,35 +121,44 @@ end
 
 --- Create a draggable space
 --- @param parent LuaGuiElement: Parent element
---- @param name string: Name of the flow
+--- @param name? string|nil: Name of the flow
 --- @param style? string|nil
-function GuiBase.create_draggable(parent, name, style)
-    local dragger = parent.add{type = "empty-widget", name = name, style = style or "draggable_space" }
-    dragger.style.horizontally_stretchable = true
-    dragger.style.height = 24 --- vanilla rib lines are only visible at height 24
-    dragger.style.margin = { 0, 8, 0, 8 }
+--- @param drag_target? LuaGuiElement|nil
+function GuiBase.create_draggable(parent, name, drag_target)
+    if type(name) ~= "string" or name == "" then
+        name = "draggable_space"
+    end
+    ---@diagnostic disable-next-line
+    local dragger = parent.add { type = "empty-widget", name = name , style = "tf_draggable_space_header" }
+    if not dragger or not dragger.valid then
+        error("GuiBase.create_draggable: failed to create draggable space")
+    end
+    dragger.drag_target = drag_target
+
+    return dragger
 end
 
 --- Create a draggable titlebar with optional close button.
 --- @param parent LuaGuiElement: Parent element
 --- @param name string: name of the titlebar element
---- @param title LocalisedString|string: Title text
 --- @param close_button_name? string|nil
---- @param debug boolean: Optional, default false. If true, use debug style for draggable space.
---- @return LuaGuiElement: The created titlebar flow
-function GuiBase.create_titlebar(parent, name, title, close_button_name)
+--- @param drag_target? LuaGuiElement|nil: Optional, target for dragging (default: titlebar itself)
+--- @return LuaGuiElement, LuaGuiElement, LuaGuiElement: The created titlebar flow
+function GuiBase.create_titlebar(parent, name, close_button_name, drag_target)
     local titlebar = GuiBase.create_hflow(parent, name or "titlebar")
     titlebar.style.vertical_align = "center"
     titlebar.style.bottom_margin = 2
 
-    local title_label = GuiBase.create_label(titlebar, "gui_base_title_label", title, "frame_title")
+    local title_label = GuiBase.create_label(titlebar, "gui_base_title_label", "", "frame_title")
 
-    GuiBase.create_draggable(titlebar, "title_bar_draggable")
+    local draggable = GuiBase.create_draggable(titlebar, "titlebar_draggable", drag_target)
+    
 
-    GuiBase.create_icon_button(titlebar, close_button_name or "titlebar_close_button", "utility/close", { "tf-gui.close" },
+    local close_button = GuiBase.create_icon_button(titlebar, close_button_name or "titlebar_close_button",
+        SpriteEnum.CLOSE, { "tf-gui.close" },
         "frame_action_button")
 
-    return titlebar
+    return titlebar, title_label, close_button
 end
 
 return GuiBase

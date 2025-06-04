@@ -284,18 +284,19 @@ data:extend {
     height = 16,
     flags = { "gui-icon" }
   },
-  --- Orange arrow buttons
+  --- Orange buttons
+  --[[
   {
     type = "sprite",
     name = "orange_button_right",
-    filename = "__TeleportFavorites__/graphics/orange_button_right.png",
-    width = 18,
-    height = 64,
-    position = {194, 0},
+    filename = "__TeleportFavorites__/graphics/button_orange_right.png",
+    width = 47,
+    height = 39,
+    position = {0, 0},
     scale = 0.5,
     flags = {"gui-icon"}
   },
-
+]]
 
 
 

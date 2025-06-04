@@ -94,3 +94,17 @@ if not gui_style.tf_slot_button then
   base.height = 30
   gui_style.tf_slot_button = base
 end
+
+if not gui_style.tf_draggable_space_header then
+  gui_style.tf_draggable_space_header = {
+    type = "empty_widget_style",
+    parent = "draggable_space_header",
+    minimal_width = 8,
+    height = 24,
+    horizontally_stretchable = "on",
+    top_margin = 0,
+    right_margin = 8,
+    bottom_margin = 0,
+    left_margin  = 8
+  }
+end

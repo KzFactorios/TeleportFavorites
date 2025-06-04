@@ -81,15 +81,10 @@ end
 
 -- Builds the titlebar for the data viewer window
 -- Builds the titlebar for the data viewer window using shared helpers
-local function build_titlebar(parent)
-  local titlebar = GuiBase.create_hflow(parent, "data_viewer_titlebar_flow")
-
-  local viewer_title = { "tf-gui.data_viewer_title" }
-  GuiBase.create_label(titlebar, "data_viewer_title_label", viewer_title, "frame_title")
-  GuiBase.create_draggable(titlebar, "data_viewer_titlebar_filler", "draggable_space_header")
-  local close_btn = GuiBase.create_icon_button(titlebar, "data_viewer_close_btn", SpriteEnum.CLOSE, { "tf-gui.close" },
-    "frame_action_button")
-  return titlebar, close_btn
+local function build_titlebar(parent) --(parent, name, title, close_button_name, drag_handle_target)
+  local _tb, title_label, _cb = GuiBase.create_titlebar(parent, "data_viewer_titlebar", "data_viewer_close_btn")
+    if title_label ~= nil then title_label.caption = {"tf-gui.data_viewer_title"} end
+  return
 end
 
 -- Helper to build the tab row and tab actions as per new hierarchy
@@ -238,17 +233,19 @@ local function render_compact_data_rows(parent, data, indent, font_size, row_ind
   return row_index
 end
 
--- Show flying text when data is refreshed
+--- Show flying text when data is refreshed - I turned it off for now - it is showing up behind the viewer panel
+--- this is a limitation of flying text and guis
 function data_viewer.show_refresh_flying_text(player)
-  if not (player and player.valid) then return end
-  local pos = player.position or { 0, 0 }
+  return
+  --if not (player and player.valid) then return end
+  --[[local pos = player.position or { 0, 0 }
   -- Offset flying text upward so it appears above the Data Viewer panel
   pos = { x = pos.x, y = pos.y - 4 }
   player.create_local_flying_text {
     text = { "tf-gui.data_refreshed_flying_text" },
     position = pos,
     color = { r = 0.8, g = 0.95, b = 1, a = 1 }
-  }
+  }]]
 end
 
 function data_viewer.build(player, parent, state)
@@ -268,7 +265,7 @@ function data_viewer.build(player, parent, state)
   -- Remove debug label at the very top
   -- frame.add{type="label", caption="[TF DEBUG] Data Viewer GUI visible for player: "..(player and player.name or "nil"), style="data_viewer_row_odd_label"}
   -- Titlebar
-  local titlebar, close_btn = build_titlebar(frame)
+  build_titlebar(frame)
   -- Inner flow (vertical, invisible_frame)
   local inner_flow = frame.add { type = "frame", name = "data_viewer_inner_flow", style = "invisible_frame", direction = "vertical" }
   -- Tabs row (with tab actions)
