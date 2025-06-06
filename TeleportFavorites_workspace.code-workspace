@@ -1,0 +1,25 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"chat.agent.enabled": true,
+		"factorio.versions": [
+			{
+				"name": "2_Gemini",
+				"factorioPath": "v:\\Fac2orios\\2_Gemini\\bin\\x64\\factorio.exe",
+				"active": true
+			}
+		],
+		"Lua.workspace.userThirdParty": [
+			"c:\\Users\\Dev\\AppData\\Roaming\\Code\\User\\workspaceStorage\\b03d161501190800e95d644c18e337cf\\justarandomgeek.factoriomod-debug\\sumneko-3rd"
+		],
+		"Lua.workspace.checkThirdParty": "ApplyInMemory",
+		"Lua.workspace.library": [
+			"${workspaceFolder}/core/types",
+			"v:\\Fac2orios\\2_Gemini\\data"
+		]
+	}
+}

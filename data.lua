@@ -1,12 +1,26 @@
-
-
 ---@diagnostic disable: undefined-global
 local Constants = require("constants")
 require("prototypes.styles")
+require("prototypes.styles_debugger") 
 local Style = require("gui.styles")
 
 
-
+local gui_color =
+{
+  white = { 1, 1, 1 },
+  white_with_alpha = { 1, 1, 1, 0.5 },
+  grey = { 0.5, 0.5, 0.5 },
+  green = { 0, 1, 0 },
+  red = { 255, 142, 142 },
+  orange = { 0.98, 0.66, 0.22 },
+  light_orange = { 1, 0.74, 0.40 },
+  caption = { 255, 230, 192 },
+  achievement_green = { 210, 253, 145 },
+  achievement_tan = { 255, 230, 192 },
+  achievement_failed = { 176, 171, 171 },
+  achievement_failed_body = { 255, 136, 136 },
+  blue = { 128, 206, 240 }
+}
 
   -- Ensure the custom virtual signal subgroup exists
   if not data.raw["item-subgroup"]["virtual-signal-special"] then
@@ -21,7 +35,7 @@ local Style = require("gui.styles")
   end
 
 ---@diagnostic disable-next-line: undefined-global
-data:extend {
+data:extend {  
   {
     type = "font",
     name = "custom-tiny-font",
@@ -172,6 +186,26 @@ data:extend {
     scale = 1,
     flags = { "gui-icon" }
   },
+    {
+    type = "sprite",
+    name = "slot_orange_24",
+    filename = "__TeleportFavorites__/graphics/slot_orange_24.png",
+    priority = "extra-high-no-scale",
+    width = 24,
+    height = 24,
+    scale = 1,
+    flags = { "gui-icon" }
+  },
+    {
+    type = "sprite",
+    name = "slot_orange_20",
+    filename = "__TeleportFavorites__/graphics/slot_orange_20.png",
+    priority = "extra-high-no-scale",
+    width = 20,
+    height = 20,
+    scale = 1,
+    flags = { "gui-icon" }
+  },
   {
     type = "sprite",
     name = "slot_red",
@@ -275,35 +309,12 @@ data:extend {
     name = "tf-data-viewer-tab-prev",
     key_sequence = "SHIFT + TAB",
     consuming = "none"
-  },
-  {
+  },  {
     type = "sprite",
-    name = "insert_rich_text_icon",
+    name = "tf_insert_rich_text_icon",
     filename = "__TeleportFavorites__/graphics/insert_rich_text_icon.png",
     width = 16,
     height = 16,
     flags = { "gui-icon" }
-  },
-  --- Orange buttons
-  --[[
-  {
-    type = "sprite",
-    name = "orange_button_right",
-    filename = "__TeleportFavorites__/graphics/button_orange_right.png",
-    width = 47,
-    height = 39,
-    position = {0, 0},
-    scale = 0.5,
-    flags = {"gui-icon"}
-  },
-]]
-
-
-
-
-
-
-
-
-
+  }
 }

@@ -11,10 +11,10 @@ gui_style.tf_fave_bar_frame = {
     type = "frame_style",
     parent = "slot_window_frame",
     padding = 4,
-    top_margin = 4,
+    top_margin = 0,
     right_margin = 0,
     bottom_margin = 0,
-    left_margin = 4,
+    left_margin = 0,
     vertically_stretchable = "on",
     horizontally_stretchable = "off"
 }

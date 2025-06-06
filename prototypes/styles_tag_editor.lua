@@ -1,6 +1,8 @@
 ---@diagnostic disable: undefined-global
 local gui_style = data.raw["gui-style"].default
 
+local SpriteEnum = require("gui.sprite_enum")
+
 local default_glow_color = { 225, 177, 106, 255 }
 local default_shadow_color = { 0, 0, 0, 0.35 }
 local hard_shadow_color = { 0, 0, 0, 1 }
@@ -63,12 +65,12 @@ gui_style.tf_tag_editor_content_frame = {
 -- Tag Editor label style (padding: 8,12,4,16; bold font)
 gui_style.tf_tag_editor_label = {
   type = "label_style",
-  parent = "label",
-  top_padding = 8,
-  right_padding = 12,
-  bottom_padding = 4,
-  left_padding = 16,
-  font = "default-bold"
+  parent = "subheader_caption_label",
+  --top_padding = 8,
+  --right_padding = 12,
+  --bottom_padding = 4,
+  --left_padding = 16,
+  --font = "default-bold"
 }
 
 -- Tag Editor content inner frame style (margin: 8,0,0,0; padding: 0,12,0,12)
@@ -94,26 +96,27 @@ gui_style.tf_tag_editor_rich_text_row = {
   height = line_height
 }
 
--- Custom style for last user label with blue background
+
 if not gui_style.tf_last_user_row then
   gui_style.tf_last_user_row = {
     type = "frame_style",
-    parent = "frame",
-    horizontally_stretchable = "on",
-    vertically_stretchable = "on",
-    --height = 28,
+    parent = "invisible_frame",
     graphical_set = {
       base = {
-        position = { 136, 0 },
+        position = {0, 0},
         corner_size = 8,
         draw_type = "outer",
-        tint = { r = 0.5, g = 0.5, b = 0.5, a = 1 }
+        tint = { r = 0.13, g = 0.13, b = 0.13, a = .5 },
       }
     },
-    top_padding = 0,
+    height = 28,
+    horizontally_stretchable = "on",
+    vertically_stretchable = "on",
+    top_padding = 2,
     bottom_padding = 0,
     left_padding = 0,
     right_padding = 0,
+    margin = 0
   }
 end
 
@@ -124,21 +127,24 @@ gui_style.tf_tag_editor_last_row = {
   vertical_align = "center",
   horizontal_align = "right",
   horizontally_stretchable = "on",
-  height = line_height
+  height = line_height,
+
+  top_padding = 8
 }
 
 -- Custom style for the insert rich text icon button (no background)
 if not gui_style.tf_insert_rich_text_button then
   local base = {}
-  for k, v in pairs(gui_style.slot_button) do base[k] = v end
-  base.default_graphical_set = { base = { type = "none" } }
-  base.hovered_graphical_set = { base = { type = "none" } }
-  base.clicked_graphical_set = { base = { type = "none" } }
-  base.disabled_graphical_set = { base = { type = "none" } }
+  for k, v in pairs(gui_style.button) do base[k] = v end
+
+  --base.icon_scale = .5
   base.width = 16
   base.height = 16
-  base.padding = 2
-  base.margin = 0
+  base.padding = 0
+  base.top_margin = 0
+  base.right_margin = 0
+  base.bottom_margin = 0
+  base.left_margin = 0
   gui_style.tf_insert_rich_text_button = base
 end
 
@@ -149,54 +155,39 @@ if not gui_style.tf_confirm_button then
     type = "button_style",
     parent = "confirm_button",
     horizontal_align = "center",
-    top_margin = 0,
+    --top_margin = 8,
     right_margin = 4,
     minimal_width = 150
   }
 end
 
--- Tag Editor teleport+favorite row style (vertical_align: center, horizontally_stretchable: on)
+-- Tag Editor teleport+favorite row style(vertical_align: center, horizontally_stretchable: on)
 gui_style.tf_tag_editor_teleport_favorite_row = {
   type = "horizontal_flow_style",
   parent = "horizontal_flow",
   vertical_align = "center",
   horizontally_stretchable = "on",
-  height = 78, -- Match the button's scaled height
+  --height = 78, -- Match the button's scaled height
   minimal_width = 200
 }
 
 if not gui_style.tf_teleport_button then
-  local base_graphical_set = {
-    base = {
-      filename = "__TeleportFavorites__/graphics/button_orange_right.png",
-      position = {0, 0},
-      size = {38, 32}, -- exact PNG size
-      --corner_size = 0, -- no 9-slice, just use the full image
-      draw_type = "outer",
-    }
-  }
   gui_style.tf_teleport_button = {
     type = "button_style",
-    parent = "dialog_button",
-    minimal_width = 38,   -- exact width
-    maximal_width = 38,   -- prevent stretching
-    width = 38,           -- force width
-    height = 32,          -- exact height
-    minimal_height = 32,  -- prevent stretching
-    maximal_height = 32,  -- prevent stretching
-    horizontally_stretchable = "off", -- do not stretch
-    vertically_stretchable = "off",   -- do not stretch
-    top_margin = 0,
+    parent = "tool_button",
+    horizontally_stretchable = "on",
+    vertical_align = "center",
+    horizontal_align = "center",
+    top_margin = 5,
     bottom_margin = 0,
-    left_margin = 0,
+    left_margin = 1,
     right_margin = 0,
-    default_graphical_set = base_graphical_set,
-    hovered_graphical_set = base_graphical_set,
-    clicked_graphical_set = base_graphical_set,
-    disabled_graphical_set = base_graphical_set
+    minimal_width = 100,
+    maximal_width = 500,
+    height = 32
   }
 end
 
-
+-- Removed text arrow button
 
 return true

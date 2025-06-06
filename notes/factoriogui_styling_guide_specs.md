@@ -1,3 +1,50 @@
+## Sprite Registration and Usage – Best Practices
+
+### Sprite Registration
+- Register all custom sprites in the data stage (e.g., in `data.lua` or `data-final-fixes.lua`) using `data:extend{ ... }`.
+- Do not use the `scale` property in the sprite prototype unless you have a specific need to scale the image at runtime. If your PNG is already the correct size (e.g., 16x16), omit `scale`.
+- Always specify the correct `width` and `height` matching the actual pixel size of your PNG.
+- Use the `flags = { "gui-icon" }` property for GUI icons.
+- Example:
+  ```lua
+  data:extend{
+    {
+      type = "sprite",
+      name = "tf_insert_rich_text_icon",
+      filename = "__TeleportFavorites__/graphics/insert_rich_text_icon.png",
+      width = 16,
+      height = 16,
+      flags = { "gui-icon" }
+    }
+  }
+  ```
+
+### Sprite Usage in GUI
+- Assign the sprite to GUI elements (e.g., `sprite-button`) at runtime, not in the style definition.
+- Use enums (e.g., `SpriteEnum`) to reference sprite names for maintainability.
+- Example:
+  ```lua
+  parent.add{
+    type = "sprite-button",
+    style = "tf_insert_rich_text_button",
+    sprite = SpriteEnum.INSERT_RICH_TEXT_ICON
+  }
+  ```
+
+### Button Style Best Practices
+- Set `width` and `height` in the style to match the sprite size.
+- Avoid setting `icon_scale` unless you need to scale the icon independently of the button size.
+- Do not override all graphical sets to `type = "none"` unless you want a fully transparent button.
+
+### Troubleshooting
+- If the icon does not appear, verify:
+  - The PNG exists at the specified path and is the correct size.
+  - The sprite is registered in the data stage.
+  - The sprite name matches in both registration and usage.
+  - The button style does not hide the icon (e.g., by setting all graphical sets to `none`).
+  - Test with a vanilla sprite (e.g., `"utility/add"`) to isolate the issue.
+
+For more, see: `notes/coding_standards.md`, `notes/GUI-general.md`, and the official [Factorio modding documentation](https://lua-api.factorio.com/latest/prototypes/Sprite.html).
 Tables containing only primitive values (such as `{x=1, y=2}`) **are allowed** in Factorio's persisted storage (the `storage` table, formerly `global`). The Factorio serialization system supports storing tables of arbitrary nesting depth, as long as **all values within those tables are themselves serializable primitives**: `nil`, strings, numbers, or booleans[1].
 
 You **do not** need to flatten your data into a single-level table of primitives. Nested tables (e.g., a table of tables, or a table where each entry is `{x=number, y=number}`) are fully supported, provided you do not store non-primitive types (such as functions, userdata, or Factorio's custom runtime objects like `LuaPlayer` or `LuaCustomTable`)[1][2].
@@ -233,7 +280,10 @@ Citations:
 The maximum length for LuaCustomChartTag.text is very likely 200 characters. - not verified
 
 
+## Key Point
+If you're making art for Factorio, you usually need to create your images at double the intended in-game size for the HR version, and set the scale to 0.5 in your mod or data definitions. This is likely what you are remembering about having to make everything "twice as big" as you would think.
 
+If you only provide SR, the game will use that, but for best quality and future-proofing, provide both and follow the scaling conventions. DPI is not relevant; only pixel dimensions matter.
 
 
 

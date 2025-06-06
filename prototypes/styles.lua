@@ -16,22 +16,46 @@ Features:
 Usage:
 - Reference shared styles by name in runtime GUI code.
 - Ensures maintainability and a native Factorio look for all custom GUIs.
+
+
+
+tool_button: Light grey, black icon
+tool_button_red: Light red, black icon
+tool_button_green: Dark green, white icon
+tool_button_blue: Dark blue, white icon
+
+subheader_caption_label: If your label is the leftmost element in the subheader frame, use this style
+caption_label: Use this style for any other labels in the subheader
+
 --]]
 
 local Constants = require("constants")
+local util = require("util")
 
 -- Load GUI styles for each major GUI
 require("prototypes.styles_fave_bar")
 require("prototypes.styles_tag_editor")
 require("prototypes.styles_data_viewer")
 
-local black = { r = 0.0, g = 0.0, b = 0.0, a = 1 }
-local factorio_label_color = { r = 1, b = 0.79, g = .93, a = 1 }
-local grey_medium = { r = 0.5, g = 0.5, b = 0.5, a = 1 }
-local blue = { r = 0.502, g = 0.808, b = 0.941, a = 1 }
-local green = { r = 0, g = 1.0, b = 0, a = 1 }
-local orange = { r = 1, g = 0.647, b = 0, a = 1 }
-local red = { r = 0.502, g = 0.808, b = 0.941, a = 1 }
+local gui_color =
+{
+  white = { 1, 1, 1 },
+  white_with_alpha = { 1, 1, 1, 0.5 },
+  grey = { 0.5, 0.5, 0.5 },
+  green = { 0, 1, 0 },
+  red = { 255, 142, 142 },
+  orange = { 0.98, 0.66, 0.22 },
+  light_orange = { 1, 0.74, 0.40 },
+  caption = { 255, 230, 192 },
+  achievement_green = { 210, 253, 145 },
+  achievement_tan = { 255, 230, 192 },
+  achievement_failed = { 176, 171, 171 },
+  achievement_failed_body = { 255, 136, 136 },
+  default_dirt_color = { 15, 7, 3, 100 },
+  blue = { 128, 206, 240 },
+  black_icon = {29,29,29},
+  white_icon = {227,227,227}
+}
 
 ---@diagnostic disable-next-line: undefined-global
 local gui_style = data.raw["gui-style"].default
@@ -79,10 +103,10 @@ if not gui_style.tf_main_gui_flow then
   gui_style.tf_main_gui_flow = {
     type = "vertical_flow_style",
     parent = "vertical_flow",
-    top_margin = 4,
+    top_margin = 2,
     right_margin = 0,
     bottom_margin = 0,
-    left_margin = 4
+    left_margin = 2
   }
 end
 
@@ -97,14 +121,15 @@ end
 
 if not gui_style.tf_draggable_space_header then
   gui_style.tf_draggable_space_header = {
-    type = "empty_widget_style",
-    parent = "draggable_space_header",
-    minimal_width = 8,
-    height = 24,
+    type                     = "empty_widget_style",
+    parent                   = "draggable_space_header",
+    minimal_width            = 8,
+    height                   = 24,
     horizontally_stretchable = "on",
-    top_margin = 0,
-    right_margin = 8,
-    bottom_margin = 0,
-    left_margin  = 8
+    top_margin               = 0,
+    right_margin             = 8,
+    bottom_margin            = 0,
+    left_margin              = 8
   }
 end
+

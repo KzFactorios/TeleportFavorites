@@ -23,6 +23,9 @@ local control_tag_editor = require("core.control.control_tag_editor")
 local control_data_viewer = require("core.control.control_data_viewer")
 local gui_event_dispatcher = require("core.events.gui_event_dispatcher")
 local custom_input_dispatcher = require("core.events.custom_input_dispatcher")
+local on_gui_closed_handler = require("core.events.on_gui_closed_handler")
+local GuiBase = require("gui.gui_base")
+local SpriteDebugger = require("core.utils.sprite_debugger")
 
 -- Custom on_init to allow easy toggling of intro cutscene skip
 local function custom_on_init()
@@ -69,5 +72,4 @@ gui_event_dispatcher.register_gui_handlers(script)
 custom_input_dispatcher.register_custom_inputs(script)
 
 -- Register on_gui_closed handler for ESC key/modal close support
-local on_gui_closed_handler = require("core.events.on_gui_closed_handler")
 script.on_event(defines.events.on_gui_closed, on_gui_closed_handler.on_gui_closed)

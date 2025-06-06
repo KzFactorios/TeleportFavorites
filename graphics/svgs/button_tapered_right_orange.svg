@@ -1,0 +1,18 @@
+<svg width="160" height="32" viewBox="0 0 160 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="orangeGrad" x1="0" y1="0" x2="0" y2="32" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FBA93A"/>
+      <stop offset="1" stop-color="#FBA93A" stop-opacity="0.95"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="160" height="32">
+      <feDropShadow dx="0" dy="1" stdDeviation="1" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <!-- Main body -->
+  <rect x="0" y="4" width="130" height="24" rx="8" fill="url(#orangeGrad)" filter="url(#shadow)" />
+  <!-- Arrow/taper -->
+  <polygon points="130,4 158,16 130,28" fill="url(#orangeGrad)" />
+  <!-- Optional border for vanilla look -->
+  <rect x="0.5" y="4.5" width="129" height="23" rx="8" fill="none" stroke="#C97A1B" stroke-width="1"/>
+  <polygon points="130,4 158,16 130,28" fill="none" stroke="#C97A1B" stroke-width="1"/>
+</svg>

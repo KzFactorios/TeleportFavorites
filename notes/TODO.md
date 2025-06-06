@@ -1,6 +1,7 @@
 -- This is a work in progress
 
 # TODOs for TeleportFavorites
+- [TeleportFavorites GUI Experiments (Copilot Space)](https://github.com/copilot/spaces/kurtzilla/1)  
 
 <!--
   This file tracks outstanding tasks, design notes, and technical debt for the TeleportFavorites mod.

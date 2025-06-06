@@ -1,0 +1,8 @@
+<svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+  <!-- Main orange rectangle with 8px rounded corners, left 28px wide -->
+  <rect x="0" y="0" width="28" height="36" rx="8" fill="#FFA600"/>
+  
+  <!-- Tapered right side: triangle from (28,0) to (36,18) to (28,36) -->
+  <polygon points="28,0 36,18 28,36" fill="#FFA600"/>
+  
+</svg>

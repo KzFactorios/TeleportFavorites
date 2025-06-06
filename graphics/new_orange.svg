@@ -1,0 +1,24 @@
+<svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+  <!-- Orange background with right-hand taper -->
+  <defs>
+    <linearGradient id="orange-gradient" x1="0" y1="0" x2="0" y2="36" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffb347"/>
+      <stop offset="1" stop-color="#ff9900"/>
+    </linearGradient>
+  </defs>
+  <!-- Main button body -->
+  <path
+    d="M8,0 H28 Q36,18 28,36 H8 Q0,18 8,0 Z"
+    fill="url(#orange-gradient)"
+    stroke="#b36b00"
+    stroke-width="2"
+  />
+  <!-- Optional: subtle highlight at top -->
+  <path
+    d="M10,2 H26 Q33,18 26,34 H10 Q3,18 10,2 Z"
+    fill="none"
+    stroke="#fff6e0"
+    stroke-width="1"
+    opacity="0.2"
+  />
+</svg>

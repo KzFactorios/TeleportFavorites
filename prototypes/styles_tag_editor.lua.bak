@@ -1,0 +1,536 @@
+---@diagnostic disable: undefined-global
+local gui_style = data.raw["gui-style"].default
+
+local SpriteEnum = require("gui.sprite_enum")
+
+local default_glow_color = { 225, 177, 106, 255 }
+local default_shadow_color = { 0, 0, 0, 0.35 }
+local hard_shadow_color = { 0, 0, 0, 1 }
+
+local default_dirt_color = { 15, 7, 3, 100 }
+
+local line_height = 44
+local gui_color =
+{
+  white = { 1, 1, 1 },
+  white_with_alpha = { 1, 1, 1, 0.5 },
+  grey = { 0.5, 0.5, 0.5 },
+  green = { 0, 1, 0 },
+  red = { 255, 142, 142 },
+  orange = { 0.98, 0.66, 0.22 },
+  light_orange = { 1, 0.74, 0.40 },
+  caption = { 255, 230, 192 },
+  achievement_green = { 210, 253, 145 },
+  achievement_tan = { 255, 230, 192 },
+  achievement_failed = { 176, 171, 171 },
+  achievement_failed_body = { 255, 136, 136 },
+  blue = { 128, 206, 240 }
+}
+
+local arrow_idle_index = 0
+local arrow_disabled_index = 1
+local arrow_hovered_index = 2
+local arrow_clicked_index = 3
+
+--- put all new content below this line
+
+
+
+-- Tag Editor outer frame style (padding: 2,8,8,8)
+gui_style.tf_tag_editor_outer_frame = {
+  type = "frame_style",
+  parent = "slot_window_frame",
+  top_padding = 2,
+  right_padding = 8,
+  bottom_padding = 8,
+  left_padding = 8
+}
+
+-- Tag Editor inner frame style (padding: 0,0,0,0; margin: 0,0,0,0)
+gui_style.tf_tag_editor_inner_frame = {
+  type = "frame_style",
+  parent = "invisible_frame",
+  padding = 0,
+  margin = 0
+}
+
+-- Tag Editor content frame style (padding: 0, margin: 0)
+gui_style.tf_tag_editor_content_frame = {
+  type = "frame_style",
+  parent = "frame",
+  padding = 0,
+  margin = 0
+}
+
+-- Tag Editor label style (padding: 8,12,4,16; bold font)
+gui_style.tf_tag_editor_label = {
+  type = "label_style",
+  parent = "label",
+  top_padding = 8,
+  right_padding = 12,
+  bottom_padding = 4,
+  left_padding = 16,
+  font = "default-bold"
+}
+
+-- Tag Editor content inner frame style (margin: 8,0,0,0; padding: 0,12,0,12)
+gui_style.tf_tag_editor_content_inner_frame = {
+  type = "frame_style",
+  parent = "invisible_frame",
+  top_margin = 8,
+  right_margin = 0,
+  bottom_margin = 0,
+  left_margin = 0,
+  top_padding = 0,
+  right_padding = 12,
+  bottom_padding = 0,
+  left_padding = 12,
+  horizontally_stretchable = "on",
+}
+
+gui_style.tf_tag_editor_rich_text_row = {
+  type = "horizontal_flow_style",
+  parent = "horizontal_flow",
+  vertical_align = "center",
+  horizontally_stretchable = "on",
+  height = line_height
+}
+
+-- Custom style for last user label with blue background
+if not gui_style.tf_last_user_row then
+  gui_style.tf_last_user_row = {
+    type = "frame_style",
+    parent = "frame",
+    horizontally_stretchable = "on",
+    vertically_stretchable = "on",
+    --height = 28,
+    graphical_set = {
+      base = {
+        position = { 136, 0 },
+        corner_size = 8,
+        draw_type = "outer",
+        tint = { r = 0.5, g = 0.5, b = 0.5, a = 1 }
+      }
+    },
+    top_padding = 0,
+    bottom_padding = 0,
+    left_padding = 0,
+    right_padding = 0,
+  }
+end
+
+
+gui_style.tf_tag_editor_last_row = {
+  type = "horizontal_flow_style",
+  parent = "horizontal_flow",
+  vertical_align = "center",
+  horizontal_align = "right",
+  horizontally_stretchable = "on",
+  height = line_height
+}
+
+-- Custom style for the insert rich text icon button (no background)
+if not gui_style.tf_insert_rich_text_button then
+  local base = {}
+  for k, v in pairs(gui_style.button) do base[k] = v end
+
+  --base.icon_scale = .5
+  base.width = 16
+  base.height = 16
+  base.padding = 0
+  base.margin = 0
+  gui_style.tf_insert_rich_text_button = base
+end
+
+
+-- Confirm button style (large, green, right-aligned)
+if not gui_style.tf_confirm_button then
+  gui_style.tf_confirm_button = {
+    type = "button_style",
+    parent = "confirm_button",
+    horizontal_align = "center",
+    top_margin = 0,
+    right_margin = 4,
+    minimal_width = 150
+  }
+end
+
+-- Orange Confirm Button Style - uses medium orange button from sprite sheet
+if not gui_style.confirm_button_orange then
+  gui_style.confirm_button_orange = {
+    type = "button_style",
+    parent = "slot_button",
+    width = 80,
+    height = 80,
+    default_graphical_set = {
+      base = {
+        type = "composition",
+        filename = "__TeleportFavorites__/graphics/factorio-gui-new.png",
+        position = {80, 738},
+        size = {80, 80}
+      }
+    },
+    hovered_graphical_set = {
+      base = {
+        type = "composition",
+        filename = "__TeleportFavorites__/graphics/factorio-gui-new.png",
+        position = {160, 738},
+        size = {80, 80}
+      }
+    },
+    clicked_graphical_set = {
+      base = {
+        type = "composition",
+        filename = "__TeleportFavorites__/graphics/factorio-gui-new.png",
+        position = {80, 738},
+        size = {80, 80}
+      }
+    }
+  }
+end
+
+-- Test Orange Button Style (arrow/tapered, stretchable, matches green/red/blue)
+if gui_style.test_orange_button then gui_style.test_orange_button = nil end
+if not gui_style.test_orange_button then
+  gui_style.test_orange_button = {
+    type = "button_style",
+    parent = "slot_button",
+    horizontally_stretchable = "on",
+    vertical_align = "center",
+    horizontal_align = "center",
+    top_margin = 2,
+    bottom_margin = 0,
+    left_margin = 1,
+    right_margin = 0,
+    height = 32,
+    default_graphical_set = {
+      base = {
+        type = "composition",
+        filename = "__TeleportFavorites__/graphics/factorio-gui-new.png",
+        position = {80, 738}, -- button_orange_medium (body)
+        size = {80, 80},
+        scale = 0.4,
+        corner_size = 8,
+        draw_type = "outer"
+      },
+      right = {
+        type = "composition",
+        filename = "__TeleportFavorites__/graphics/factorio-gui-new.png",
+        position = {216, 230}, -- arrow_orange_right
+        size = {24, 64},
+        scale = 0.5,
+        draw_type = "outer"
+      }
+    },
+    hovered_graphical_set = {
+      base = {
+        type = "composition",
+        filename = "__TeleportFavorites__/graphics/factorio-gui-new.png",
+        position = {160, 738}, -- button_orange_light_medium (body hover)
+        size = {80, 80},
+        scale = 0.4,
+        corner_size = 8,
+        draw_type = "outer"
+      },
+      right = {
+        type = "composition",
+        filename = "__TeleportFavorites__/graphics/factorio-gui-new.png",
+        position = {216, 230}, -- arrow_orange_right
+        size = {24, 64},
+        scale = 0.5,
+        draw_type = "outer"
+      }
+    },
+    clicked_graphical_set = {
+      base = {
+        type = "composition",
+        filename = "__TeleportFavorites__/graphics/factorio-gui-new.png",
+        position = {80, 738},
+        size = {80, 80},
+        scale = 0.4,
+        corner_size = 8,
+        draw_type = "outer"
+      },
+      right = {
+        type = "composition",
+        filename = "__TeleportFavorites__/graphics/factorio-gui-new.png",
+        position = {216, 230},
+        size = {24, 64},
+        scale = 0.5,
+        draw_type = "outer"
+      }
+    }
+  }
+end
+
+-- Tapered Orange Button Style - matches vanilla colored confirm buttons
+if gui_style.tapered_orange_button then gui_style.tapered_orange_button = nil end
+if not gui_style.tapered_orange_button then
+  gui_style.tapered_orange_button = {
+    type = "button_style",
+    parent = "button",
+    height = 36, -- Same height as colored_confirm buttons
+    horizontally_stretchable = "on",
+    vertical_align = "center", 
+    horizontal_align = "center",
+    default_font_color = {1, 1, 1},
+    padding = 0,
+    top_margin = 0,
+    right_margin = 0,
+    bottom_margin = 0,
+    left_margin = 0,    default_graphical_set = {
+      base = {
+        filename = "__core__/graphics/gui-new.png",
+        position = {0, 192}, -- Regular button background
+        corner_size = 8,
+        tint = {r = 0.98, g = 0.66, b = 0.22, a = 1.0} -- Orange tint
+      },
+      shadow = {
+        filename = "__core__/graphics/gui-new.png",
+        position = {18, 264},
+        corner_size = 8,
+        draw_type = "outer"
+      },
+      right = {
+        filename = "__core__/graphics/gui-new.png",
+        position = {297, 345}, -- This is the arrow tip section from colored buttons
+        width = 14,
+        height = 36,
+        tint = {r = 0.98, g = 0.66, b = 0.22, a = 1.0} -- Orange tint
+        tint = {r = 0.98, g = 0.66, b = 0.22, a = 1.0}
+      }
+    },
+    hovered_graphical_set = {
+      type = "composition",
+      filename = "__core__/graphics/gui.png",
+      corner_size = 8,
+      position = {0, 0},
+      center = {
+        position = {8, 8},
+        size = {1, 1},
+        tint = {r = 1.0, g = 0.74, b = 0.40, a = 1.0}
+      },
+      right = {
+        filename = "__TeleportFavorites__/graphics/button_tapered_right_orange.png",
+        position = {140, 0},
+        size = {20, 32},
+        scale = 1.0,
+        tint = {r = 1.1, g = 1.1, b = 1.1, a = 1.0}
+      },
+      left = {
+        filename = "__core__/graphics/gui-new.png",
+        position = {401, 537},
+        size = {8, 32},
+        tint = {r = 1.0, g = 0.74, b = 0.40, a = 1.0}
+      },
+      top = {
+        filename = "__core__/graphics/gui-new.png", 
+        position = {409, 537},
+        size = {1, 8},
+        tint = {r = 1.0, g = 0.74, b = 0.40, a = 1.0}
+      },
+      bottom = {
+        filename = "__core__/graphics/gui-new.png",
+        position = {409, 561},
+        size = {1, 8},
+        tint = {r = 1.0, g = 0.74, b = 0.40, a = 1.0}
+      },
+      top_left = {
+        filename = "__core__/graphics/gui-new.png",
+        position = {401, 537},
+        size = {8, 8},
+        tint = {r = 1.0, g = 0.74, b = 0.40, a = 1.0}
+      },
+      bottom_left = {
+        filename = "__core__/graphics/gui-new.png",
+        position = {401, 561},
+        size = {8, 8},
+        tint = {r = 1.0, g = 0.74, b = 0.40, a = 1.0}
+      }
+    },
+    clicked_graphical_set = {
+      type = "composition",
+      filename = "__core__/graphics/gui.png",
+      corner_size = 8,
+      position = {0, 0},
+      center = {
+        position = {8, 8},
+        size = {1, 1},
+        tint = {r = 0.9, g = 0.61, b = 0.2, a = 1.0}
+      },
+      right = {
+        filename = "__TeleportFavorites__/graphics/button_tapered_right_orange.png",
+        position = {140, 0},
+        size = {20, 32},
+        scale = 1.0,
+        tint = {r = 0.9, g = 0.9, b = 0.9, a = 1.0}
+      },
+      left = {
+        filename = "__core__/graphics/gui-new.png",
+        position = {401, 537},
+        size = {8, 32},
+        tint = {r = 0.9, g = 0.61, b = 0.2, a = 1.0}
+      },
+      top = {
+        filename = "__core__/graphics/gui-new.png", 
+        position = {409, 537},
+        size = {1, 8},
+        tint = {r = 0.9, g = 0.61, b = 0.2, a = 1.0}
+      },
+      bottom = {
+        filename = "__core__/graphics/gui-new.png",
+        position = {409, 561},
+        size = {1, 8},
+        tint = {r = 0.9, g = 0.61, b = 0.2, a = 1.0}
+      },
+      top_left = {
+        filename = "__core__/graphics/gui-new.png",
+        position = {401, 537},
+        size = {8, 8},
+        tint = {r = 0.9, g = 0.61, b = 0.2, a = 1.0}
+      },
+      bottom_left = {
+        filename = "__core__/graphics/gui-new.png",
+        position = {401, 561},
+        size = {8, 8},
+        tint = {r = 0.9, g = 0.61, b = 0.2, a = 1.0}
+      }
+    }
+  }
+end
+
+-- Tag Editor teleport+favorite row style(vertical_align: center, horizontally_stretchable: on)
+gui_style.tf_tag_editor_teleport_favorite_row = {
+  type = "horizontal_flow_style",
+  parent = "horizontal_flow",
+  vertical_align = "center",
+  horizontally_stretchable = "on",
+  --height = 78, -- Match the button's scaled height
+  minimal_width = 200
+}
+
+-- New tapered orange button style that matches the vanilla colored buttons
+if gui_style.tapered_orange_button_new then gui_style.tapered_orange_button_new = nil end
+if not gui_style.tapered_orange_button_new then
+  gui_style.tapered_orange_button_new = {
+    type = "button_style",
+    parent = "button",
+    height = 36, -- Same height as colored_confirm buttons
+    horizontally_stretchable = "on",
+    vertical_align = "center", 
+    horizontal_align = "center",
+    default_font_color = {1, 1, 1},
+    padding = 0,
+    top_margin = 0,
+    right_margin = 0,
+    bottom_margin = 0,
+    left_margin = 0,
+    default_graphical_set = {
+      base = {
+        filename = "__core__/graphics/gui-new.png",
+        position = {0, 192}, -- Regular button background
+        corner_size = 8,
+        tint = {r = 0.98, g = 0.66, b = 0.22, a = 1.0} -- Orange tint
+      },
+      shadow = {
+        filename = "__core__/graphics/gui-new.png",
+        position = {18, 264},
+        corner_size = 8,
+        draw_type = "outer"
+      },
+      right = {
+        filename = "__core__/graphics/gui-new.png",
+        position = {297, 345}, -- This is the arrow tip section from colored buttons
+        width = 14,
+        height = 36,
+        tint = {r = 0.98, g = 0.66, b = 0.22, a = 1.0} -- Orange tint
+      }
+    },
+    hovered_graphical_set = {
+      base = {
+        filename = "__core__/graphics/gui-new.png",
+        position = {0, 228}, -- Hovered button background
+        corner_size = 8,
+        tint = {r = 1.0, g = 0.74, b = 0.40, a = 1.0} -- Light orange tint
+      },
+      shadow = {
+        filename = "__core__/graphics/gui-new.png",
+        position = {18, 264},
+        corner_size = 8,
+        draw_type = "outer"
+      },
+      right = {
+        filename = "__core__/graphics/gui-new.png",
+        position = {297, 345}, -- Arrow tip
+        width = 14,
+        height = 36,
+        tint = {r = 1.0, g = 0.74, b = 0.40, a = 1.0} -- Light orange tint
+      }
+    },
+    clicked_graphical_set = {
+      base = {
+        filename = "__core__/graphics/gui-new.png",
+        position = {0, 192}, -- Regular button background 
+        corner_size = 8,
+        tint = {r = 0.75, g = 0.5, b = 0.17, a = 1.0} -- Darker orange for clicked
+      },
+      shadow = {
+        filename = "__core__/graphics/gui-new.png",
+        position = {18, 264},
+        corner_size = 8,
+        draw_type = "outer"
+      },
+      right = {
+        filename = "__core__/graphics/gui-new.png",
+        position = {297, 345}, -- Arrow tip
+        width = 14,
+        height = 36,
+        tint = {r = 0.75, g = 0.5, b = 0.17, a = 1.0} -- Darker orange for clicked
+      }
+    }
+  }
+end
+
+if not gui_style.tf_teleport_button then
+  gui_style.tf_teleport_button = {
+    type = "button_style",
+    parent = "slot_button",
+    horizontally_stretchable = "on",
+    vertical_align = "center",
+    horizontal_align = "center",
+    top_margin = 2,
+    bottom_margin = 0,
+    left_margin = 1,
+    right_margin = 0,
+    width = 80,
+    height = 32,
+    default_graphical_set = {
+      base = {
+        type = "composition",
+        filename = "__TeleportFavorites__/graphics/factorio-gui-new.png",
+        position = {80, 738},
+        size = {80, 80}
+      }
+    },
+    hovered_graphical_set = {
+      base = {
+        type = "composition",
+        filename = "__TeleportFavorites__/graphics/factorio-gui-new.png",
+        position = {160, 738},
+        size = {80, 80}
+      }
+    },
+    clicked_graphical_set = {
+      base = {
+        type = "composition",
+        filename = "__TeleportFavorites__/graphics/factorio-gui-new.png",
+        position = {80, 738},
+        size = {80, 80}
+      }
+    }
+  }
+end
+
+-- Removed text arrow button
+
+return true

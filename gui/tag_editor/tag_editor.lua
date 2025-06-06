@@ -90,7 +90,7 @@ end
 -- Modular builder functions for each section of the tag editor
 local function build_titlebar(parent, drag_handle_target)
     local titlebar, title_label, _cb = GuiBase.create_titlebar(parent, "tag_editor_titlebar", "tag_editor_title_row_close", drag_handle_target)
-    if title_label ~= nil then title_label.caption = { "tf-gui.data_viewer_title" } end
+    if title_label ~= nil then title_label.caption = { "tf-gui.tag_editor_title" } end
     return titlebar
 end
 
@@ -106,9 +106,16 @@ local function build_teleport_favorite_row(parent, editor_coords_string)
     local row = GuiBase.create_hflow(parent, "tag_editor_teleport_favorite_row")
     local favorite_btn = GuiBase.create_icon_button(row, "tag_editor_is_favorite_button", SpriteEnum.STAR,
         { "tf-gui.favorite_tooltip" }, "tf_slot_button")
+
+
+
     local teleport_btn = GuiBase.create_icon_button(row, "tag_editor_teleport_button", "", { "tf-gui.teleport_tooltip" },
         "tf_teleport_button")
     teleport_btn.caption = editor_coords_string
+
+
+
+
     return row, favorite_btn, teleport_btn
 end
 
@@ -117,8 +124,10 @@ local function build_rich_text_row(parent, tag_data)
     local icon_btn = GuiBase.create_icon_button(row, "tag_editor_icon_button", tag_data.icon or "",
         { "tf-gui.icon_tooltip" }, "tf_slot_button")
     local text_input = GuiBase.create_textfield(row, "tag_editor_rich_text_input", tag_data.rich_text or "", nil)
+
     local icon_insert_btn = GuiBase.create_icon_button(row, "tag_editor_rich_text_icon_button",
-        SpriteEnum.INSERT_RICH_TEXT_ICON, { "tf-gui.insert_icon_tooltip" }, "tf_insert_rich_text_button")
+        SpriteEnum.INSERT_RICH_TEXT_ICON, { "tf-gui.insert_icon_tooltip" }, "tf_insert_rich_text_button")    
+    
     return row, icon_btn, text_input, icon_insert_btn
 end
 

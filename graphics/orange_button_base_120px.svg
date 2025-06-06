@@ -1,0 +1,24 @@
+<svg
+   width="120"
+   height="36"
+   viewBox="0 0 120 36"
+   version="1.1"
+   xmlns="http://www.w3.org/2000/svg">
+  <!-- Left end: original shape, 0-20px -->
+  <path
+     d="M 8 0 C 3.568 0 0 3.568 0 8 L 0 28 C 0 32.432 3.568 36 8 36 L 20 36 L 20 0 L 8 0 z"
+     fill="#FAC93A"/>
+  <path
+     d="M 8 0 C 3.568 0 0 3.568 0 8 L 0 28 C 0 32.432 3.568 36 8 36 L 20 36 L 20 0 L 8 0 z"
+     fill="none" stroke="#C98A1A" stroke-width="1.5"/>
+  <!-- Center: stretchable rectangle, 20-100px -->
+  <rect x="20" y="0" width="80" height="36" fill="#FAC93A"/>
+  <rect x="20" y="0" width="80" height="36" fill="none" stroke="#C98A1A" stroke-width="1.5"/>
+  <!-- Right end: original taper, 100-120px, matches vanilla confirm taper -->
+  <path
+     d="M 100 0 L 112 0 L 120 18 L 112 36 L 100 36 L 100 0 z"
+     fill="#FAC93A"/>
+  <path
+     d="M 100 0 L 112 0 L 120 18 L 112 36 L 100 36 L 100 0 z"
+     fill="none" stroke="#C98A1A" stroke-width="1.5"/>
+</svg>
