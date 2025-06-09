@@ -135,3 +135,6 @@ tag_editor_outer_frame (frame, vertical, slot_window_frame)
 - The favorite button is now at the head of the teleport row (tag_editor_teleport_favorite_row).
 - The favorite row and both labels have been removed.
 - All element names and hierarchy now match the refactored code as of 2025-05-31.
+
+## Icon Picker Limitation
+- The built-in Factorio signal/icon picker (used for icon selection) always requires the user to confirm their selection with a checkmark button. There is no property or style that allows auto-accepting the selection on click; this is a limitation of the Factorio engine as of 1.1.x.

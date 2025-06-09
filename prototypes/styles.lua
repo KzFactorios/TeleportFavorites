@@ -24,6 +24,7 @@ local Constants = require("constants")
 require("prototypes.styles_fave_bar")
 require("prototypes.styles_tag_editor")
 require("prototypes.styles_data_viewer")
+local Enum = require("prototypes.enum")
 
 local black = { r = 0.0, g = 0.0, b = 0.0, a = 1 }
 local factorio_label_color = { r = 1, b = 0.79, g = .93, a = 1 }
@@ -35,6 +36,30 @@ local red = { r = 0.502, g = 0.808, b = 0.941, a = 1 }
 
 ---@diagnostic disable-next-line: undefined-global
 local gui_style = data.raw["gui-style"].default
+
+local Styles = {}
+
+function Styles.default_inner_glow(tint_value, scale_value)
+  return
+  {
+    position = { 183, 128 },
+    corner_size = 8,
+    tint = tint_value,
+    scale = scale_value,
+    draw_type = "inner"
+  }
+end
+
+function Styles.default_glow(tint_value, scale_value)
+  return
+  {
+    position = { 200, 128 },
+    corner_size = 8,
+    tint = tint_value,
+    scale = scale_value,
+    draw_type = "outer"
+  }
+end
 
 --- Place all shared/global style definitions below this line ---
 
@@ -97,14 +122,75 @@ end
 
 if not gui_style.tf_draggable_space_header then
   gui_style.tf_draggable_space_header = {
+    type                     = "empty_widget_style",
+    parent                   = "draggable_space_header",
+    minimal_width            = 8,
+    height                   = 24,
+    horizontally_stretchable = "on",
+    top_margin               = 0,
+    right_margin             = 8,
+    bottom_margin            = 0,
+    left_margin              = 8
+  }
+end
+
+if not gui_style.tf_tag_editor_last_row_drag then
+  gui_style.tf_tag_editor_last_row_drag = {
     type = "empty_widget_style",
     parent = "draggable_space_header",
     minimal_width = 8,
-    height = 24,
-    horizontally_stretchable = "on",
-    top_margin = 0,
-    right_margin = 8,
-    bottom_margin = 0,
-    left_margin  = 8
+    height = 40
+  }
+end
+
+if not gui_style.tf_orange_button then
+  gui_style.tf_orange_button = {
+
+    type = "button_style",
+    parent = "tool_button",
+    default_graphical_set =
+    {
+      base = { position = { 34, 17 }, corner_size = 8 },
+      shadow = Enum.ColorEnum.DEFAULT_DIRT
+    },
+    hovered_graphical_set =
+    {
+      base = { position = { 202, 199 }, corner_size = 8 },
+      shadow = Enum.ColorEnum.DEFAULT_DIRT,
+      glow = Styles.default_glow(Enum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
+    },
+    clicked_graphical_set =
+    {
+      base = { position = { 352, 17 }, corner_size = 8 },
+      shadow = Enum.ColorEnum.DEFAULT_DIRT
+    },
+    disabled_graphical_set =
+    {
+      base = { position = { 368, 17 }, corner_size = 8 },
+      shadow = Enum.ColorEnum.DEFAULT_DIRT
+    },
+    left_click_sound = "__core__/sound/gui-green-confirm.ogg",
+  }
+end
+
+if not gui_style.tf_frame_title then
+  gui_style.tf_frame_title = {
+    type = "label_style",
+    parent = "frame_title",
+    top_margin = -2
+  }
+end
+
+if not gui_style.tf_titlebar_draggable then
+  gui_style.tf_titlebar_draggable = {
+    type = "empty_widget_style",
+    parent = "draggable_space_header"
+  }
+end
+
+if not gui_style.tf_frame_action_button then
+  gui_style.tf_frame_action_button = {
+    type = "button_style",
+    parent = "frame_action_button",
   }
 end

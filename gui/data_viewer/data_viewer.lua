@@ -25,7 +25,7 @@ local _Constants = require("constants")
 local Cache = require("core.cache.cache")
 local Lookups = require("core.cache.lookups")
 local Helpers = require("core.utils.helpers_suite")
-local SpriteEnum = require("gui.sprite_enum")
+local Enum = require("prototypes.enum")
 
 local data_viewer = {}
 
@@ -116,11 +116,11 @@ local function build_tabs_row(parent, active_tab)
   local actions_flow = tabs_flow.add { type = "flow", name = "data_viewer_tab_actions_flow", direction = "horizontal", style = "tf_data_viewer_actions_flow" }
   ---@diagnostic disable-next-line
   local font_size_flow = actions_flow.add { type = "flow", name = "data_viewer_actions_font_size_flow", direction = "horizontal", style = "tf_data_viewer_font_size_flow" }
-  Helpers.create_slot_button(font_size_flow, "data_viewer_actions_font_down_btn", SpriteEnum.ARROW_DOWN,
+  Helpers.create_slot_button(font_size_flow, "data_viewer_actions_font_down_btn", Enum.SpriteEnum.ARROW_DOWN,
     { "tf-gui.font_minus_tooltip" })
-  Helpers.create_slot_button(font_size_flow, "data_viewer_actions_font_up_btn", SpriteEnum.ARROW_UP,
+  Helpers.create_slot_button(font_size_flow, "data_viewer_actions_font_up_btn", Enum.SpriteEnum.ARROW_UP,
     { "tf-gui.font_plus_tooltip" })
-  Helpers.create_slot_button(actions_flow, "data_viewer_tab_actions_refresh_data_btn", SpriteEnum.REFRESH,
+  Helpers.create_slot_button(actions_flow, "data_viewer_tab_actions_refresh_data_btn", Enum.SpriteEnum.REFRESH,
     { "tf-gui.refresh_tooltip" })
   return tabs_flow
 end
@@ -233,21 +233,6 @@ local function render_compact_data_rows(parent, data, indent, font_size, row_ind
   return row_index
 end
 
---- Show flying text when data is refreshed - I turned it off for now - it is showing up behind the viewer panel
---- this is a limitation of flying text and guis
-function data_viewer.show_refresh_flying_text(player)
-  return
-  --if not (player and player.valid) then return end
-  --[[local pos = player.position or { 0, 0 }
-  -- Offset flying text upward so it appears above the Data Viewer panel
-  pos = { x = pos.x, y = pos.y - 4 }
-  player.create_local_flying_text {
-    text = { "tf-gui.data_refreshed_flying_text" },
-    position = pos,
-    color = { r = 0.8, g = 0.95, b = 1, a = 1 }
-  }]]
-end
-
 function data_viewer.build(player, parent, state)
   if not (state and state.data and type(state.data) == "table") then
     return
@@ -260,7 +245,7 @@ function data_viewer.build(player, parent, state)
 
   local font_size = (state and state.font_size) or 10
   -- Main dialog frame (resizable)
-  local frame = parent.add { type = "frame", name = "data_viewer_frame", style = "tf_data_viewer_frame", direction = "vertical" }
+  local frame = parent.add { type = "frame", name = Enum.GuiEnum.GUI_FRAMES.DATA_VIEWER, style = "tf_data_viewer_frame", direction = "vertical" }
   frame.caption = ""
   -- Remove debug label at the very top
   -- frame.add{type="label", caption="[TF DEBUG] Data Viewer GUI visible for player: "..(player and player.name or "nil"), style="data_viewer_row_odd_label"}

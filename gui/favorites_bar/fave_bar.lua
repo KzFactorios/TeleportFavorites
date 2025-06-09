@@ -46,7 +46,7 @@ local GPS = require("core.gps.gps")
 local Helpers = require("core.utils.helpers_suite")
 local Settings = require("settings")
 local Cache = require("core.cache.cache")
-local SpriteEnum = require("gui.sprite_enum")
+local Enum = require("prototypes.enum")
 
 local fave_bar = {}
 
@@ -89,7 +89,7 @@ function fave_bar.build_quickbar_style(player, parent)
   -- Outer frame for the bar (matches quickbar background)
   local bar_frame = main_flow.add {
     type = "frame",
-    name = "fave_bar_frame",
+    name = Enum.GuiEnum.GUI_FRAMES.FAVE_BAR,
     style = "tf_fave_bar_frame",
     direction = "horizontal"
   }
@@ -199,8 +199,8 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
     if fav and not FavoriteUtils.is_blank_favorite(fav) then
       if fav.icon and fav.icon ~= "" then
         icon = fav.icon
-      elseif SpriteEnum.PIN then
-        icon = SpriteEnum.PIN
+      elseif Enum.SpriteEnum.PIN then
+        icon = Enum.SpriteEnum.PIN
       end
       tooltip = Helpers.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }
       if fav.locked then style = "tf_slot_button_locked" end

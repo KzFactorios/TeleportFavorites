@@ -1,24 +1,19 @@
-
-
 ---@diagnostic disable: undefined-global
-local Constants = require("constants")
 require("prototypes.styles")
-local Style = require("gui.styles")
+local Constants = require("constants")
 
 
-
-
-  -- Ensure the custom virtual signal subgroup exists
-  if not data.raw["item-subgroup"]["virtual-signal-special"] then
-    data:extend({
-      {
-        type = "item-subgroup",
-        name = "virtual-signal-special",
-        group = "signals",
-        order = "z"
-      }
-    })
-  end
+-- Ensure the custom virtual signal subgroup exists
+if not data.raw["item-subgroup"]["virtual-signal-special"] then
+  data:extend({
+    {
+      type = "item-subgroup",
+      name = "virtual-signal-special",
+      group = "signals",
+      order = "z"
+    }
+  })
+end
 
 ---@diagnostic disable-next-line: undefined-global
 data:extend {
@@ -40,8 +35,8 @@ data:extend {
     type = "sprite",
     name = "move_tag_icon",
     filename = "__core__/graphics/icons/mip/move-tag.png",
-    width = 24,
-    height = 24,
+    width = 32,
+    height = 32,
     x = 0,
     y = 0,
     flags = { "icon" }
@@ -276,34 +271,4 @@ data:extend {
     key_sequence = "SHIFT + TAB",
     consuming = "none"
   },
-  {
-    type = "sprite",
-    name = "insert_rich_text_icon",
-    filename = "__TeleportFavorites__/graphics/insert_rich_text_icon.png",
-    width = 16,
-    height = 16,
-    flags = { "gui-icon" }
-  },
-  --- Orange buttons
-  --[[
-  {
-    type = "sprite",
-    name = "orange_button_right",
-    filename = "__TeleportFavorites__/graphics/button_orange_right.png",
-    width = 47,
-    height = 39,
-    position = {0, 0},
-    scale = 0.5,
-    flags = {"gui-icon"}
-  },
-]]
-
-
-
-
-
-
-
-
-
 }

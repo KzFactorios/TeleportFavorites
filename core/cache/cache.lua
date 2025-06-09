@@ -144,7 +144,7 @@ local function init_player_data(player)
 
   player_data.player_name = player.name or "Unknown"
   player_data.render_mode = player_data.render_mode or player.render_mode
-  player_data.tag_editor_data = player_data.tag_edor_data or {}
+  player_data.tag_editor_data = player_data.tag_editor_data or { owner = "Unknown" }
 
   return player_data
 end

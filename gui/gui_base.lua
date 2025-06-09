@@ -23,8 +23,8 @@ API:
 Each function is annotated with argument and return value details.
 --]]
 local GuiBase = {}
-local Constants = require("constants")
-local SpriteEnum = require("gui.sprite_enum")
+local Helpers = require("core.utils.helpers_suite")
+local Enum = require("prototypes.enum")
 
 --- NOTE: All requires MUST be at the top of the file. Do NOT move requires inside functions to avoid circular dependencies.
 --- This is a strict project policy. See notes/architecture.md and coding_standards.md for rationale.
@@ -124,7 +124,7 @@ end
 --- @param name? string|nil: Name of the flow
 --- @param style? string|nil
 --- @param drag_target? LuaGuiElement|nil
-function GuiBase.create_draggable(parent, name, drag_target)
+function GuiBase.create_draggable(parent, name)
     if type(name) ~= "string" or name == "" then
         name = "draggable_space"
     end
@@ -133,32 +133,53 @@ function GuiBase.create_draggable(parent, name, drag_target)
     if not dragger or not dragger.valid then
         error("GuiBase.create_draggable: failed to create draggable space")
     end
-    dragger.drag_target = drag_target
+    local drag_target = Helpers.get_gui_frame(parent)
+    dragger.drag_target = drag_target or nil
 
     return dragger
 end
 
 --- Create a draggable titlebar with optional close button.
 --- @param parent LuaGuiElement: Parent element
---- @param name string: name of the titlebar element
+--- @param name? string|nil: name of the titlebar element
 --- @param close_button_name? string|nil
---- @param drag_target? LuaGuiElement|nil: Optional, target for dragging (default: titlebar itself)
 --- @return LuaGuiElement, LuaGuiElement, LuaGuiElement: The created titlebar flow
-function GuiBase.create_titlebar(parent, name, close_button_name, drag_target)
-    local titlebar = GuiBase.create_hflow(parent, name or "titlebar")
+function GuiBase.create_titlebar(parent, name, close_button_name)
+    local titlebar = GuiBase.create_hflow(parent, name or "tf_titlebar")
     titlebar.style.vertical_align = "center"
     titlebar.style.bottom_margin = 2
 
-    local title_label = GuiBase.create_label(titlebar, "gui_base_title_label", "", "frame_title")
+    local title_label = GuiBase.create_label(titlebar, "gui_base_title_label", "", "tf_frame_title")
 
-    local draggable = GuiBase.create_draggable(titlebar, "titlebar_draggable", drag_target)
+    local draggable = GuiBase.create_draggable(titlebar, "tf_titlebar_draggable")
     
 
     local close_button = GuiBase.create_icon_button(titlebar, close_button_name or "titlebar_close_button",
-        SpriteEnum.CLOSE, { "tf-gui.close" },
-        "frame_action_button")
+        Enum.SpriteEnum.CLOSE, { "tf-gui.close" },
+        "tf_frame_action_button")
 
     return titlebar, title_label, close_button
+end
+
+--- Create a text-box with optional icon selector (Factorio 1.1.77+).
+--- @param parent LuaGuiElement: Parent element
+--- @param name string: Name of the text-box
+--- @param text? string: Initial text
+--- @param style? string: Optional style name
+--- @param icon_selector? boolean: Whether to add the rich text icon selector (default: false)
+--- @return LuaGuiElement: The created text-box
+function GuiBase.create_textbox(parent, name, text, style, icon_selector)
+    local opts = {
+        name = name,
+        text = text or "",
+        style = style,
+        icon_selector = icon_selector or false
+    }
+    -- Remove nil values
+    for k, v in pairs(opts) do
+        if v == nil then opts[k] = nil end
+    end
+    return GuiBase.create_element('text-box', parent, opts)
 end
 
 return GuiBase

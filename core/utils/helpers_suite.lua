@@ -14,7 +14,7 @@ Comprehensive utility module for math, table, string, and general helpers used t
 All helpers are static and namespaced under Helpers. Used pervasively for DRY, robust, and maintainable code.
 ]]
 
-local SpriteEnum = require("gui.sprite_enum")
+local Enum = require("prototypes.enum")
 
 ---@class Helpers
 local Helpers = {}
@@ -343,7 +343,7 @@ function Helpers.create_slot_button(parent, name, icon, tooltip, opts)
   btn.style.font = opts.font or "default-small"
   if opts.enabled ~= nil then btn.enabled = opts.enabled end
   if opts.locked then
-    local lock_icon = btn.add { type = "sprite", sprite = SpriteEnum.LOCK, name = "lock_overlay" }
+    local lock_icon = btn.add { type = "sprite", sprite = Enum.SpriteEnum.LOCK, name = "lock_overlay" }
     lock_icon.style.width, lock_icon.style.height = 16, 16
     lock_icon.style.left_margin, lock_icon.style.top_margin = 0, 0
     lock_icon.ignored_by_interaction = true
@@ -397,5 +397,25 @@ local function find_child_by_name(parent_element, target_name)
 end
 
 Helpers.find_child_by_name = find_child_by_name
+
+--- Returns the name of the top-level GUI frame for a given LuaGuiElement, or nil if not found.
+--- Traverses up the parent chain until it finds the matching element
+--- @param element LuaGuiElement
+--- @return LuaGuiElement|nil: The top-level GUI frame, or nil if not found
+function Helpers.get_gui_frame(element) 
+  local current = element
+  local last_frame_name = nil
+  while current and current.valid do
+    if current.name == Enum.GuiEnum.GUI_FRAMES.DATA_VIEWER or 
+      current.name == Enum.GuiEnum.GUI_FRAMES.FAVE_BAR or 
+      current.name == Enum.GuiEnum.GUI_FRAMES.TAG_EDITOR then
+      last_frame_name = current.name
+    end
+    if not current.parent then break end
+    current = current.parent
+  end
+  return nil
+end
+
 
 return Helpers

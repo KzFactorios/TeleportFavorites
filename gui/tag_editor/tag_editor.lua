@@ -27,7 +27,8 @@ Main Functions:
 --]]
 local GuiBase = require("gui.gui_base")
 local Helpers = require("core.utils.helpers_suite")
-local SpriteEnum = require("gui.sprite_enum")
+local BasicHelpers = require("core.utils.basic_helpers")
+local Enum = require("prototypes.enum")
 local GPS = require("core.gps.gps")
 
 local tag_editor = {}
@@ -42,7 +43,6 @@ local function setup_tag_editor_ui(refs, tag_data, player)
     if refs.teleport_btn then Helpers.set_button_state(refs.teleport_btn, true) end
     if refs.favorite_btn then Helpers.set_button_state(refs.favorite_btn, true) end
     if refs.rich_text_input then Helpers.set_button_state(refs.rich_text_input, true) end
-    if refs.rich_text_icon_btn then Helpers.set_button_state(refs.rich_text_icon_btn, true) end
     -- Add more as needed for your current refs structure
 
     -- Button style/tooltips
@@ -79,34 +79,49 @@ function tag_editor.build_confirmation_dialog(player, opts)
         "bold_label")
     local tag_editor_tf_confirm_dialog_btn_row = GuiBase.create_hflow(frame, "tag_editor_tf_confirm_dialog_btn_row")
     local confirm_btn = Helpers.create_slot_button(tag_editor_tf_confirm_dialog_btn_row, "tf_confirm_dialog_confirm_btn",
-        SpriteEnum.CHECK_MARK, { "tf-gui.confirm_delete_confirm" })
+        Enum.SpriteEnum.CHECK_MARK, { "tf-gui.confirm_delete_confirm" })
     local cancel_btn = Helpers.create_slot_button(tag_editor_tf_confirm_dialog_btn_row, "tf_confirm_dialog_cancel_btn",
-        SpriteEnum.CLOSE, { "tf-gui.confirm_delete_cancel" })
+        Enum.SpriteEnum.CLOSE, { "tf-gui.confirm_delete_cancel" })
     -- Set modal/ESC behavior
     player.opened = frame
     return frame, confirm_btn, cancel_btn
 end
 
 -- Modular builder functions for each section of the tag editor
-local function build_titlebar(parent, drag_handle_target)
-    local titlebar, title_label, _cb = GuiBase.create_titlebar(parent, "tag_editor_titlebar", "tag_editor_title_row_close", drag_handle_target)
-    if title_label ~= nil then title_label.caption = { "tf-gui.data_viewer_title" } end
+local function build_titlebar(parent)
+    local titlebar, title_label, _cb = GuiBase.create_titlebar(parent, "tag_editor_titlebar",
+        "tag_editor_title_row_close")
+    if title_label ~= nil then title_label.caption = { "tf-gui.tag_editor_title" } end
     return titlebar
 end
 
-local function build_last_user_row(parent, tag_data)
-    local row = GuiBase.create_frame(parent, "tag_editor_last_user_row", "horizontal", "tf_last_user_row")
-    local label_text = { "tf-gui.last_user_label", tag_data.last_user or "" }
-    local label = GuiBase.create_label(row, "tag_editor_last_user_label", label_text, "tf_tag_editor_label")
-    return row
+local function build_owner_row(parent, tag_data)
+    local row = GuiBase.create_frame(parent, "tag_editor_owner_row", "horizontal", "tf_owner_row")
+    -- Left flow for label
+    local left_flow = GuiBase.create_hflow(row, "tag_editor_owner_left_flow")
+    left_flow.style = "tf_owner_left_flow"
+    local label = GuiBase.create_label(left_flow, "tag_editor_owner_label", "", "tf_tag_editor_owner_label")
+    -- Revert to original LocalisedString assignment
+    label.caption = { "tf-gui.owner_label", tag_data.last_user or "" }
+    -- Right flow for buttons
+    local right_flow = GuiBase.create_hflow(row, "tag_editor_owner_right_flow")
+    right_flow.style = "tf_owner_right_flow"
+    right_flow.style.horizontally_stretchable = true
+    right_flow.style.horizontal_align = "right"
+    local move_button = GuiBase.create_icon_button(right_flow, "tag_editor_move_button", Enum.SpriteEnum.MOVE,
+        { "tf-gui.move_tooltip" }, "tf_move_button")
+    local delete_button = GuiBase.create_icon_button(right_flow, "tag_editor_delete_button", Enum.SpriteEnum.TRASH,
+        { "tf-gui.delete_tooltip" }, "tf_delete_button")
+    return row, label, move_button, delete_button
 end
 
 local function build_teleport_favorite_row(parent, editor_coords_string)
     -- Style must be set at creation time for Factorio GUIs
     local row = GuiBase.create_hflow(parent, "tag_editor_teleport_favorite_row")
-    local favorite_btn = GuiBase.create_icon_button(row, "tag_editor_is_favorite_button", SpriteEnum.STAR,
+    local favorite_btn = GuiBase.create_icon_button(row, "tag_editor_is_favorite_button", Enum.SpriteEnum.STAR,
         { "tf-gui.favorite_tooltip" }, "tf_slot_button")
-    local teleport_btn = GuiBase.create_icon_button(row, "tag_editor_teleport_button", "", { "tf-gui.teleport_tooltip" },
+    local teleport_btn = GuiBase.create_icon_button(row, "tag_editor_teleport_button", "",
+        { "", "tf-gui.teleport_tooltip" },
         "tf_teleport_button")
     teleport_btn.caption = editor_coords_string
     return row, favorite_btn, teleport_btn
@@ -116,21 +131,25 @@ local function build_rich_text_row(parent, tag_data)
     local row = GuiBase.create_hflow(parent, "tag_editor_rich_text_row")
     local icon_btn = GuiBase.create_icon_button(row, "tag_editor_icon_button", tag_data.icon or "",
         { "tf-gui.icon_tooltip" }, "tf_slot_button")
-    local text_input = GuiBase.create_textfield(row, "tag_editor_rich_text_input", tag_data.rich_text or "", nil)
-    local icon_insert_btn = GuiBase.create_icon_button(row, "tag_editor_rich_text_icon_button",
-        SpriteEnum.INSERT_RICH_TEXT_ICON, { "tf-gui.insert_icon_tooltip" }, "tf_insert_rich_text_button")
-    return row, icon_btn, text_input, icon_insert_btn
+    -- Use the new textbox with icon_selector = true
+    local text_input = GuiBase.create_textbox(row, "tag_editor_rich_text_input",
+        tag_data.rich_text or "", nil, true)
+    return row, icon_btn, text_input
 end
 
 local function build_error_row(parent, tag_data)
-    local error_row_frame = GuiBase.create_frame(parent, "tag_editor_error_row_frame", "vertical")
-    local error_row_inner = GuiBase.create_frame(error_row_frame, "error_row_inner_frame", "vertical", "invisible_frame")
-    local error_label = GuiBase.create_label(error_row_inner, "error_row_error_message", tag_data.error_message or "")
+    local error_row_frame, error_label = nil, nil
+    if tag_data and tag_data.error_message and tag_data.error_message ~= nil and BasicHelpers.trim(tag_data.error_message) ~= "" then
+        error_row_frame = GuiBase.create_frame(parent, "tag_editor_error_row_frame", "vertical")
+        error_label = GuiBase.create_label(error_row_frame, "error_row_error_message", tag_data.error_message or "")
+    end
     return error_row_frame, error_label
 end
 
 local function build_last_row(parent)
     local row = GuiBase.create_hflow(parent, "tag_editor_last_row")
+    local draggable = GuiBase.create_draggable(row, "tag_editor_last_row_draggable", Helpers.get_gui_frame(row))
+    draggable.style = "tf_tag_editor_last_row_drag"
     local confirm_btn = GuiBase.create_element('button', row, {
         name = "last_row_confirm_button",
         caption = { "tf-gui.confirm" },
@@ -155,42 +174,43 @@ function tag_editor.build(player, tag_data)
     local parent = player.gui.screen
     local outer = nil
     for _, child in pairs(parent.children) do
-        if child.name == "tag_editor_outer_frame" then
+        if child.name == Enum.GuiEnum.GUI_FRAMES.TAG_EDITOR then
             outer = child
             break
         end
     end
     if outer ~= nil then outer.destroy() end
-    local tag_editor_outer_frame = GuiBase.create_frame(parent, "tag_editor_outer_frame", "vertical",
+    local tag_editor_outer_frame = GuiBase.create_frame(parent, Enum.GuiEnum.GUI_FRAMES.TAG_EDITOR, "vertical",
         "tf_tag_editor_outer_frame")
     tag_editor_outer_frame.auto_center = true
 
-    build_titlebar(tag_editor_outer_frame, tag_editor_outer_frame)
+    local titlebar = build_titlebar(tag_editor_outer_frame)
 
-    local tag_editor_inner_frame = GuiBase.create_frame(tag_editor_outer_frame, "tag_editor_inner_frame", "vertical",
-        "tf_tag_editor_inner_frame")
-    local tag_editor_content_frame = GuiBase.create_frame(tag_editor_inner_frame, "tag_editor_content_frame", "vertical",
+    local tag_editor_content_frame = GuiBase.create_frame(tag_editor_outer_frame, "tag_editor_content_frame", "vertical",
         "tf_tag_editor_content_frame")
 
-    local tag_editor_last_user_row = build_last_user_row(tag_editor_content_frame, tag_data)
+    local tag_editor_owner_row = build_owner_row(tag_editor_content_frame, tag_data)
+
     local tag_editor_content_inner_frame = GuiBase.create_frame(tag_editor_content_frame,
         "tag_editor_content_inner_frame", "vertical", "tf_tag_editor_content_inner_frame")
+
     local tag_editor_teleport_favorite_row, tag_editor_is_favorite_button, tag_editor_teleport_button =
         build_teleport_favorite_row(tag_editor_content_inner_frame, editor_coords_string)
-    local tag_editor_rich_text_row, tag_editor_icon_button, tag_editor_rich_text_input, tag_editor_rich_text_icon_button =
+    local tag_editor_rich_text_row, tag_editor_icon_button, tag_editor_rich_text_input =
         build_rich_text_row(tag_editor_content_inner_frame, tag_data)
+
     local tag_editor_error_row_frame, error_row_error_message = build_error_row(tag_editor_outer_frame, tag_data)
     local tag_editor_last_row, last_row_confirm_button = build_last_row(tag_editor_outer_frame)
 
     local refs = {
-        last_user_row = tag_editor_last_user_row,
+        titlebar = titlebar,
+        owner_row = tag_editor_owner_row,
         teleport_favorite_row = tag_editor_teleport_favorite_row,
         teleport_btn = tag_editor_teleport_button,
         favorite_btn = tag_editor_is_favorite_button,
         rich_text_row = tag_editor_rich_text_row,
         icon_btn = tag_editor_icon_button,
         rich_text_input = tag_editor_rich_text_input,
-        rich_text_icon_btn = tag_editor_rich_text_icon_button,
         error_label = error_row_error_message,
         confirm_btn = last_row_confirm_button,
         editor_position = editor_target_position,
@@ -209,5 +229,7 @@ end
 local function find_child_by_name(element, name)
     return Helpers.find_child_by_name(element, name)
 end
+
+-- NOTE: The built-in Factorio signal/icon picker (used for icon selection) always requires the user to confirm their selection with a checkmark button. There is no property or style that allows auto-accepting the selection on click; this is a limitation of the Factorio engine as of 1.1.x.
 
 return tag_editor

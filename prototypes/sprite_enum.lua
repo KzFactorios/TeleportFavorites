@@ -1,4 +1,4 @@
--- gui/sprite_enum.lua
+
 -- Centralized enum/table for valid vanilla Factorio utility sprite names.
 -- Only add sprite names that are verified to exist in vanilla Factorio.
 -- Use is_valid_sprite_path to check validity before adding new entries.
@@ -22,10 +22,6 @@ local function format_sprite_path(type_or_icon, name, is_signal)
   end
 end
 
---- You can now use:
---- local SpriteEnum = require("gui.sprite_enum")
---- local icon = SpriteEnum.CLOSE
---- local path = SpriteEnum.format_sprite_path("utility/close")
 local SPRITE_ENUM = {
   ARROW_DOWN = "utility/hint_arrow_down",
   ARROW_LEFT = "utility/hint_arrow_left",
@@ -42,9 +38,9 @@ local SPRITE_ENUM = {
   HEART = "virtual-signal/signal-heart",
   IMPORT = "utility/import_slot",
   INFO = "utility/info",
-  INSERT_RICH_TEXT_ICON = "insert_rich_text_icon",
   LIST_VIEW = "utility/list_view",
   LOCK = "utility/lock",
+  MOVE = "move_tag_icon",
   PIN = "utility/pin",
   PLAY = "utility/play",
   REFRESH = "utility/refresh",
@@ -57,7 +53,7 @@ local SPRITE_ENUM = {
   SLOT_ORANGE = "slot_orange",
   SLOT_RED = "slot_red",
   SLOT_WHITE = "slot_white",
-  STAR = "virtual-signal/signal-star", -- not working nor was star
+  STAR = "virtual-signal/signal-star", -- not working nor was star, there is a star - it might require a search
   TRASH = "utility/trash",
   WARNING = "utility/warning_icon"
 }
