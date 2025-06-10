@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="120"
+   height="36"
+   viewBox="0 0 120 36"
+   version="1.1"
+   id="svg5"
+   sodipodi:docname="orange_button_base_120px_clean.svg"
+   inkscape:version="1.3 (0e150ed6c4, 2023-07-21)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs5" />
+  <sodipodi:namedview
+     id="namedview5"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="18.23157"
+     inkscape:cx="51.723467"
+     inkscape:cy="16.317849"
+     inkscape:window-width="3840"
+     inkscape:window-height="2054"
+     inkscape:window-x="3829"
+     inkscape:window-y="-11"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg5" />
+  <!-- Left end: original shape, 0-20px -->
+  <path
+     d="m 8.603349,0 c -4.432,0 -7.99999997,3.568 -7.99999997,8 v 20 c 0,4.432 3.56799997,8 7.99999997,8 h 12 V 0 Z"
+     fill="#fac93a"
+     id="path1" />
+  <!-- Center: stretchable rectangle, 20-100px (no vertical lines, just fill) -->
+  <path
+     id="rect2"
+     style="fill:#fac93a"
+     d="m 20,0 h 80 V 36 H 20 Z" />
+  <!-- Right end: original taper, 100-120px, matches vanilla confirm taper -->
+  <path
+     d="m 99.72575,0 h 12 l 8,18 -8,18 h -12 z"
+     fill="#fac93a"
+     id="path3" />
+  <!-- Outer border for the whole button, following the shape -->
+  <path
+     d="m 8.6670506,0.77637126 c -4.3752434,0 -7.89755105,3.42575084 -7.89755105,7.68105644 V 27.660067 c 0,4.255305 3.52230765,7.681056 7.89755105,7.681056 H 99.488881 111.33521 L 119.23276,18.058748 111.33521,0.77637126 H 99.488881 Z"
+     fill="none"
+     stroke="#c98a1a"
+     stroke-width="1.36926"
+     id="path5" />
+</svg>

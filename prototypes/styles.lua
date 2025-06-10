@@ -15,6 +15,17 @@ Features:
 Usage:
 - Reference shared styles by name in runtime GUI code.
 - Ensures maintainability and a native Factorio look for all custom GUIs.
+
+
+
+tool_button: Light grey, black icon
+tool_button_red: Light red, black icon
+tool_button_green: Dark green, white icon
+tool_button_blue: Dark blue, white icon
+
+subheader_caption_label: If your label is the leftmost element in the subheader frame, use this style
+caption_label: Use this style for any other labels in the subheader
+
 --]]
 
 -- Load GUI styles for each major GUI
@@ -160,3 +171,4 @@ if not gui_style.tf_frame_action_button then
     parent = "frame_action_button",
   }
 end
+

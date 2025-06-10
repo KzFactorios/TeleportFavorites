@@ -2,6 +2,8 @@
 
 This document summarizes and organizes the key points from all files in the `notes/` folder as of May 23, 2025. Use this as a quick reference and onboarding guide. For full details, see the individual files.
 
+- [TeleportFavorites GUI Experiments (Copilot Space)](https://github.com/copilot/spaces/kurtzilla/1)  
+
 ---
 
 ## 1. **Design Specs** (`design_specs.md`)
