@@ -46,10 +46,10 @@ function GuiBase.create_element(element_type, parent, opts)
     if params.name == nil or type(params.name) ~= "string" or params.name == "" then
         params.name = element_type .. "_unnamed_" .. tostring(math.random(100000, 999999))
         log("[TF DEBUG] unnamed element for " .. element_type)
-    end
-    ---@diagnostic disable-next-line
+    end    ---@diagnostic disable-next-line
     local elem = parent.add(params)
-    if opts.style then elem.style = opts.style end
+    -- Handle style assignment: if it's a string, we can't assign it directly to elem.style
+    -- The style should be set during creation in the params table
     return elem
 end
 
@@ -86,10 +86,11 @@ end
 --- @param style? string|nil: Optional style name
 --- @return LuaGuiElement: The created label
 function GuiBase.create_label(parent, name, caption, style)
-    local elem = GuiBase.create_element('label', parent, { name = name, caption = caption })
+    local opts = { name = name, caption = caption }
     if style and not (string.find(style, "button")) then
-        elem.style = style
+        opts.style = style
     end
+    local elem = GuiBase.create_element('label', parent, opts)
     return elem
 end
 
@@ -112,8 +113,6 @@ end
 --- Create a draggable space
 --- @param parent LuaGuiElement: Parent element
 --- @param name? string|nil: Name of the flow
---- @param style? string|nil
---- @param drag_target? LuaGuiElement|nil
 function GuiBase.create_draggable(parent, name)
     if type(name) ~= "string" or name == "" then
         name = "draggable_space"
@@ -122,11 +121,10 @@ function GuiBase.create_draggable(parent, name)
     local dragger = parent.add { type = "empty-widget", name = name, style = "tf_draggable_space_header" }
     if not dragger or not dragger.valid then
         error("GuiBase.create_draggable: failed to create draggable space")
-    end
-    local drag_target = Helpers.get_gui_frame_by_element(parent) or nil
+    end    local drag_target = Helpers.get_gui_frame_by_element(parent) or nil
 
     -- only if the drag_target is a child of player.gui.screen
-    if drag_target.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
+    if drag_target and drag_target.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
         dragger.drag_target = drag_target
     end
 
@@ -140,16 +138,16 @@ end
 --- @return LuaGuiElement, LuaGuiElement, LuaGuiElement: The created titlebar flow
 function GuiBase.create_titlebar(parent, name, close_button_name)
     local titlebar = GuiBase.create_hflow(parent, name or "tf_titlebar")
+    ---@diagnostic disable-next-line: inject-field
     titlebar.style.vertical_align = "center"
+    ---@diagnostic disable-next-line: inject-field
     titlebar.style.bottom_margin = 2
 
     local title_label = GuiBase.create_label(titlebar, "gui_base_title_label", "", "tf_frame_title")
 
     local draggable = GuiBase.create_draggable(titlebar, "tf_titlebar_draggable")
-
-
     local close_button = GuiBase.create_icon_button(titlebar, close_button_name or "titlebar_close_button",
-        Enum.SpriteEnum.CLOSE, { "tf-gui.close" },
+        Enum.SpriteEnum.CLOSE, nil,
         "tf_frame_action_button")
 
     return titlebar, title_label, close_button

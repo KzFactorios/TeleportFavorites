@@ -83,6 +83,7 @@ end
 -- Builds the titlebar for the data viewer window using shared helpers
 local function build_titlebar(parent) --(parent, name, title, close_button_name, drag_handle_target)
   local _tb, title_label, _cb = GuiBase.create_titlebar(parent, "data_viewer_titlebar", "data_viewer_close_btn")
+    ---@diagnostic disable-next-line: assign-type-mismatch
     if title_label ~= nil then title_label.caption = {"tf-gui.data_viewer_title"} end
   return
 end

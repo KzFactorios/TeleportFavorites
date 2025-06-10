@@ -78,8 +78,7 @@ function tag_editor.build_confirmation_dialog(player, opts)
     frame.auto_center = true
     GuiBase.create_label(frame, "tag_editor_tf_confirm_dialog_label", opts.message or { "tf-gui.confirm_delete_message" },
         "bold_label")
-    local tag_editor_tf_confirm_dialog_btn_row = GuiBase.create_hflow(frame, "tag_editor_tf_confirm_dialog_btn_row")
-    local confirm_btn = Helpers.create_slot_button(tag_editor_tf_confirm_dialog_btn_row, "tf_confirm_dialog_confirm_btn",
+    local tag_editor_tf_confirm_dialog_btn_row = GuiBase.create_hflow(frame, "tag_editor_tf_confirm_dialog_btn_row")    local confirm_btn = Helpers.create_slot_button(tag_editor_tf_confirm_dialog_btn_row, "tf_confirm_dialog_confirm_btn",
         Enum.SpriteEnum.CHECK_MARK, { "tf-gui.confirm_delete_confirm" })
     local cancel_btn = Helpers.create_slot_button(tag_editor_tf_confirm_dialog_btn_row, "tf_confirm_dialog_cancel_btn",
         Enum.SpriteEnum.CLOSE, { "tf-gui.confirm_delete_cancel" })
@@ -92,31 +91,23 @@ end
 local function build_titlebar(parent)
     local titlebar, title_label, _cb = GuiBase.create_titlebar(parent, "tag_editor_titlebar",
         "tag_editor_title_row_close")
-    if title_label ~= nil then title_label.caption = { "tf-gui.tag_editor_title" } end
+    -- title_label.caption will be set later in setup_tag_editor_ui
     return titlebar
 end
 
 local function build_owner_row(parent, tag_data)
     -- Create a frame with a fixed height for the owner row
-    local row_frame = GuiBase.create_frame(parent, "tag_editor_owner_row_frame", "horizontal", "tf_owner_row_frame")
-
-    -- Create a horizontal flow for the label - this will take up all available space
-    local label_flow = row_frame.add({ type = "flow", direction = "horizontal" })
-    label_flow.style.horizontally_stretchable = true
+    local row_frame = GuiBase.create_frame(parent, "tag_editor_owner_row_frame", "horizontal", "tf_owner_row_frame")    -- Create a horizontal flow for the label - this will take up all available space
+    local label_flow = GuiBase.create_hflow(row_frame, "tag_editor_label_flow")
 
     -- Create the label within the flow - it will stretch with its container
     local label = GuiBase.create_label(label_flow, "tag_editor_owner_label",
-        { "tf-gui.owner_label", tag_data.last_user or "" }, "tf_tag_editor_owner_label")
-
-    -- Create a flow for the buttons
-    local button_flow = row_frame.add({ type = "flow", direction = "horizontal" })
-    button_flow.style.horizontally_stretchable = false
-
-    -- Add buttons to the button flow
+        "tf-gui.owner_label", "tf_tag_editor_owner_label")    -- Create a flow for the buttons
+    local button_flow = GuiBase.create_hflow(row_frame, "tag_editor_button_flow")    -- Add buttons to the button flow
     local move_button = GuiBase.create_icon_button(button_flow, "tag_editor_move_button", Enum.SpriteEnum.MOVE,
-        { "tf-gui.move_tooltip" }, "tf_move_button")
+        nil, "tf_move_button")
     local delete_button = GuiBase.create_icon_button(button_flow, "tag_editor_delete_button", Enum.SpriteEnum.TRASH,
-        { "tf-gui.delete_tooltip" }, "tf_delete_button")
+        nil, "tf_delete_button")
 
     return row_frame, label, move_button, delete_button
 end
@@ -124,13 +115,11 @@ end
 local function build_teleport_favorite_row(parent, tag_data)
     -- Style must be set at creation time for Factorio GUIs
     local row = GuiBase.create_frame(parent, "tag_editor_teleport_favorite_row", "horizontal",
-        "tf_tag_editor_teleport_favorite_row")
-    local star_state = (tag_data and tag_data.is_favorite and tag_data.is_favorite ~= nil and tag_data.is_favorite and Enum.SpriteEnum.STAR) or
+        "tf_tag_editor_teleport_favorite_row")    local star_state = (tag_data and tag_data.is_favorite and tag_data.is_favorite ~= nil and tag_data.is_favorite and Enum.SpriteEnum.STAR) or
     Enum.SpriteEnum.STAR_DISABLED
     local favorite_btn = GuiBase.create_icon_button(row, "tag_editor_is_favorite_button", star_state,
-        { "tf-gui.favorite_tooltip" }, "tf_slot_button")
-    local teleport_btn = GuiBase.create_icon_button(row, "tag_editor_teleport_button", "",
-        { "tf-gui.teleport_tooltip" },
+        nil, "tf_slot_button")local teleport_btn = GuiBase.create_icon_button(row, "tag_editor_teleport_button", "",
+        nil,
         "tf_teleport_button")
     teleport_btn.caption = tag_data.gps or "no destination"
     return row, favorite_btn, teleport_btn
@@ -139,8 +128,13 @@ end
 local function build_rich_text_row(parent, tag_data)
     local row = GuiBase.create_hflow(parent, "tag_editor_rich_text_row")
     local icon_btn = GuiBase.create_element("choose-elem-button", row, 
-    {name = "tag_editor_icon_button", tooltip = { "tf-gui.icon_tooltip" }, style="tf_slot_button", icon = tag_data.icon or ""})
-    --GuiBase.create_icon_button(row, "tag_editor_icon_button", tag_data.icon or "", { "tf-gui.icon_tooltip" }, "tf_slot_button")
+    {
+        name = "tag_editor_icon_button", 
+        tooltip = { "tf-gui.icon_tooltip" }, 
+        style = "tf_slot_button", 
+        elem_type = "signal",
+        signal = tag_data.icon or ""
+    })
     -- Use the new textbox with icon_selector = true
     local text_input = GuiBase.create_textbox(row, "tag_editor_rich_text_input",
         tag_data.rich_text or "", "tf_tag_editor_text_input", true)
@@ -158,9 +152,7 @@ end
 
 local function build_last_row(parent)
     local row = GuiBase.create_frame(parent, "tag_editor_last_row", "horizontal", "tf_tag_editor_last_row")
-    local draggable = GuiBase.create_draggable(row, "tag_editor_last_row_draggable",
-        Helpers.get_gui_frame_by_element(row))
-    draggable.style = "tf_tag_editor_last_row_draggable"
+    local draggable = GuiBase.create_draggable(row, "tag_editor_last_row_draggable")
     local confirm_btn = GuiBase.create_element('button', row, {
         name = "last_row_confirm_button",
         caption = { "tf-gui.confirm" },

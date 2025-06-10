@@ -17,8 +17,8 @@ Notes:
 - See README and gps_helpers.lua for details and valid examples.
 ]]
 
-local gps_helpers = require("core.utils.gps_helpers")
-local parse_and_normalize_gps = gps_helpers.parse_and_normalize_gps
+local Constants = require("constants")
+local basic_helpers = require("core.utils.basic_helpers")
 
 local function deep_copy(orig)
   if type(orig) ~= 'table' then return orig end
@@ -29,12 +29,20 @@ local function deep_copy(orig)
   return copy
 end
 
+local function coords_string_from_gps(gps)
+  if not gps or gps == "" or gps == Constants.settings.BLANK_GPS then return nil end
+  local x, y, s = gps:match("^([^%.]+)%.([^%.]+)%.(.+)$")
+  if not (x and y and s) then return nil end
+  local padlen = Constants.settings.GPS_PAD_NUMBER
+  return basic_helpers.pad(tonumber(x), padlen) .. "." .. basic_helpers.pad(tonumber(y), padlen)
+end
+
 
 local FavoriteUtils = {}
 
 function FavoriteUtils.new(gps, locked, tag)
   return {
-    gps = parse_and_normalize_gps(gps),
+    gps = gps or Constants.settings.BLANK_GPS,
     locked = locked or false,
     tag = tag or nil
   }
@@ -64,45 +72,35 @@ function FavoriteUtils.equals(a, b)
 end
 
 function FavoriteUtils.get_blank_favorite()
-  return FavoriteUtils.new(gps_helpers.BLANK_GPS, false, nil)
+  return FavoriteUtils.new(Constants.settings.BLANK_GPS, false, nil)
 end
 
 function FavoriteUtils.is_blank_favorite(fav)
   if type(fav) ~= "table" then return false end
   if next(fav) == nil then return true end
-  return (fav.gps == "" or fav.gps == nil or fav.gps == gps_helpers.BLANK_GPS) and (fav.locked == false or fav.locked == nil)
+  return (fav.gps == "" or fav.gps == nil or fav.gps == Constants.settings.BLANK_GPS) and (fav.locked == false or fav.locked == nil)
 end
 
 function FavoriteUtils.valid(fav)
-  return type(fav) == "table" and type(fav.gps) == "string" and fav.gps ~= "" and fav.gps ~= gps_helpers.BLANK_GPS
+  return type(fav) == "table" and type(fav.gps) == "string" and fav.gps ~= "" and fav.gps ~= Constants.settings.BLANK_GPS
 end
 
---- Format a tooltip string for this Favorite
--- @return string Tooltip text
 function FavoriteUtils.formatted_tooltip(fav)
-  if not fav.gps or fav.gps == "" or fav.gps == gps_helpers.BLANK_GPS then
+  if not fav.gps or fav.gps == "" or fav.gps == Constants.settings.BLANK_GPS then
     return {"tf-gui.favorite_slot_empty"}
   end
-  local GPS = require("core.gps.gps")
-  local tooltip = GPS.coords_string_from_gps(fav.gps) or fav.gps
+  local tooltip = coords_string_from_gps(fav.gps) or fav.gps
   if fav.tag ~= nil and type(fav.tag) == "table" and fav.tag.text ~= nil and fav.tag.text ~= "" then
     tooltip = tooltip .. "\n" .. fav.tag.text
   end
   return tooltip
 end
 
---- Move this favorite to a new GPS location
--- @param new_gps string The new GPS string (must be validated before calling)
 function FavoriteUtils.move(fav, new_gps)
-  if type(new_gps) ~= "string" or new_gps == "" or new_gps == gps_helpers.BLANK_GPS then return false, "Invalid GPS string" end
+  if type(new_gps) ~= "string" or new_gps == "" or new_gps == Constants.settings.BLANK_GPS then return false, "Invalid GPS string" end
   fav.gps = new_gps
+  -- Note: Tag position updates are handled by caller if needed
   if type(fav.tag) == "table" then
-    if fav.tag.position then
-      local parsed = gps_helpers.parse_gps_string(new_gps)
-      if parsed then
-        fav.tag.position = {x = parsed.x, y = parsed.y}; fav.tag.surface = parsed.surface_index
-      end
-    end
     if fav.tag.gps then fav.tag.gps = new_gps end
   end
   return true

@@ -26,6 +26,7 @@ global["Lookups"] = {
 
 local basic_helpers = require("core.utils.basic_helpers")
 local Helpers = require("core.utils.helpers_suite")
+local gps_helpers = require("core.utils.gps_helpers")
 
 
 ---@diagnostic disable: undefined-global
@@ -49,7 +50,6 @@ end
 
 
 local function ensure_surface_cache(surface_index)
-  local gps_helpers = require("core.utils.gps_helpers")
   local surface_idx = basic_helpers.normalize_index(surface_index)
   if not surface_idx then
     error("Invalid surface index: " .. tostring(surface_index))
@@ -117,9 +117,7 @@ end
 --- uses the
 ---@param gps string
 ---@return LuaCustomChartTag|nil
-local function get_chart_tag_by_gps(gps)
-  if not gps or gps == "" then return nil end
-  local gps_helpers = require("core.utils.gps_helpers")
+local function get_chart_tag_by_gps(gps)  if not gps or gps == "" then return nil end
   local surface_cache = ensure_surface_cache(gps_helpers.get_surface_index_from_gps(gps))
   if not surface_cache then return nil end
 
@@ -134,10 +132,8 @@ local function remove_chart_tag_from_cache_by_gps(gps)
   if not gps or gps == "" then return end
   local chart_tag = get_chart_tag_by_gps(gps)
   if not chart_tag then return end
-  -- destroy the matching chart_tag object
-  chart_tag.destroy()
+  -- destroy the matching chart_tag object  chart_tag.destroy()
   --reset the surface_cache_chart_tags
-  local gps_helpers = require("core.utils.gps_helpers")
   local surface_index = gps_helpers.get_surface_index_from_gps(gps)
   clear_surface_cache_chart_tags(surface_index)
 end

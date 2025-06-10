@@ -1,4 +1,8 @@
 -- Centralized enum access point for TeleportFavorites
+---@class Enum
+---@field SpriteEnum SpriteEnum
+---@field ColorEnum table
+---@field GuiEnum table
 local Enum = {}
 
 Enum.SpriteEnum = require("prototypes.enums.sprite_enum")

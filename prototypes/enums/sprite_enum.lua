@@ -6,7 +6,34 @@
 
 --- **VERY HELPFUL ** https://github.com/wube/factorio-data/blob/master/core/prototypes/utility-sprites.lua
 
----@class SpriteEnum: table<string, string>
+---@class SpriteEnum
+---@field ARROW_DOWN string
+---@field ARROW_LEFT string
+---@field ARROW_RIGHT string
+---@field ARROW_UP string
+---@field CHECK_MARK string
+---@field CLOSE string
+---@field CONFIRM string
+---@field COPY string
+---@field DANGER string
+---@field EDIT string
+---@field ENTER string
+---@field EXPORT string
+---@field HEART string
+---@field IMPORT string
+---@field INFO string
+---@field LIST_VIEW string
+---@field LOCK string
+---@field MOVE string
+---@field PIN string
+---@field PLAY string
+---@field REFRESH string
+---@field SEARCH string
+---@field SETTINGS string
+---@field STAR string
+---@field STAR_DISABLED string
+---@field TRASH string
+---@field WARNING string
 local SpriteEnum = {}
 
 --- @class SPRITE_ENUM
@@ -34,17 +61,8 @@ local SPRITE_ENUM = {
   REFRESH = "utility/refresh",
   SEARCH = "utility/search_icon",
   SETTINGS = "utility/settings",
-  SLOT_BLACK = "slot_black",
-  SLOT_BLUE = "slot_blue",
-  SLOT_GREEN = "slot_green",
-  SLOT_GREY = "slot_grey",
-  SLOT_ORANGE = "slot_orange",
-  SLOT_ORANGE_20 = "slot_orange_20",
-  SLOT_ORANGE_24 = "slot_orange_24",
-  SLOT_RED = "slot_red",
-  SLOT_WHITE = "slot_white",
-  STAR = "virtual-signal/signal-star", -- not working nor was star, there is a star - it might require a search
-  STAR_DISABLED = "tf_star_disabled",
+  STAR = "virtual-signal/signal-star",
+  STAR_DISABLED = "tf_star_disabled", 
   TRASH = "utility/trash",
   WARNING = "utility/warning_icon"
 }

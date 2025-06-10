@@ -49,6 +49,7 @@ local Lookups = require("core.cache.lookups")
 local basic_helpers = require("core.utils.basic_helpers")
 local FavoriteUtils = require("core.favorite.favorite")
 local Constants = require("constants")
+local gps_helpers = require("core.utils.gps_helpers")
 
 
 --- Persistent and runtime cache management for TeleportFavorites mod.
@@ -169,7 +170,7 @@ function Cache.get_player_data(player)
 end
 
 ---@param player LuaPlayer
----@return Favorite[] -- Returns the player's favorites array, or an empty table if not found.
+---@return table[] -- Returns the player's favorites array, or an empty table if not found.
 function Cache.get_player_favorites(player)
   local player_data = Cache.get_player_data(player)
   local favorites = player_data.surfaces[player.surface.index].favorites or {}
@@ -221,8 +222,7 @@ function Cache.remove_stored_tag(gps)
 end
 
 local function get_surface_index_from_gps(gps)
-  local GPS = require("core.gps.gps")
-  return GPS.get_surface_index(gps)
+  return gps_helpers.get_surface_index_from_gps(gps)
 end
 
 --- @param gps string

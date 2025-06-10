@@ -10,6 +10,7 @@ local Constants = require("constants")
 local Helpers = require("core.utils.helpers_suite")
 local Enum = require("prototypes.enums.enum")
 local control_data_viewer = require("core.control.control_data_viewer")
+local Cache = require("core.cache.cache")
 
 local M = {}
 
@@ -31,7 +32,6 @@ end
 --- Register shared GUI event handler for all GUIs
 -- Call this from control.lua, passing script and defines
 function M.register_gui_handlers(script)
-  local Cache = require("core.cache.cache")
   local function shared_on_gui_click(event)
     Cache.init()
     if _tf_gui_click_guard then return end

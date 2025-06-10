@@ -194,12 +194,11 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
     local fav = pfaves[i]
     local icon = pfaves[i].icon or nil
     local tooltip = { "tf-gui.fave_slot_tooltip", i }
-    local style = "tf_slot_button_smallfont"
-    if fav and not FavoriteUtils.is_blank_favorite(fav) then
+    local style = "tf_slot_button_smallfont"    if fav and not FavoriteUtils.is_blank_favorite(fav) then
       if fav.icon and fav.icon ~= "" then
         icon = fav.icon
-      elseif Enum.SpriteEnum.PIN then
-        icon = Enum.SpriteEnum.PIN
+      else
+        icon = Enum.SpriteEnum.PIN  -- Use PIN as default icon for non-blank favorites
       end
       tooltip = Helpers.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }
       if fav.locked then style = "tf_slot_button_locked" end
