@@ -59,7 +59,7 @@ function handlers.on_player_created(event)
     local parent = player.gui.top
     fave_bar.build(player, parent)
   end
-  end
+end
 
 function handlers.on_player_changed_surface(event)
   local player = game.get_player(event.player_index)
@@ -74,41 +74,59 @@ function handlers.on_open_tag_editor_custom_input(event)
   local player = game.get_player(event.player_index)
   if not player then return end
   if player.render_mode ~= defines.render_mode.chart and player.render_mode ~= defines.render_mode.chart_zoomed_in then return end
+
   local surface = player.surface
   local surface_id = surface.index
 
-  -- create a method to grab the cursor_position from the event, if it exists
+
+  -- get the position we right-clicked upon
   local cursor_position = event.cursor_position
   if not cursor_position or not (cursor_position.x and cursor_position.y) then
     return
   end
+
+  local tag_data = {
+    gps = "",
+    locked = false,
+    is_favorite = false,
+    icon = "",
+    text = "",
+    tag = nil,
+    chart_tag = nil,
+    error_message = ""
+  }
+
+
+  -- look for a matching tag collision
+  -- get the matching chart_tag
+
+  -- if still no tag or chart_tag
+  -- normalize the position
+  -- ensure we can land there
+  -- update/build tag_data
+
+
+
   local chart_tag = Lookups.get_chart_tag_by_gps("")
 
 
-  tag_editor.build(player, tag, event.cursor_position)
-  
+  tag_editor.build(player, tag_data)
 end
 
 function handlers.on_teleport_to_favorite(event, i)
   ---@diagnostic disable-next-line: undefined-global
   local player = game.get_player(event.player_index)
   if not player then return end
+
   local favorites = Cache.get_player_favorites(player)
   if type(favorites) ~= "table" or not i or not favorites[i] then
     player:print({ "tf-handler.teleport-favorite-no-location" })
     return
   end
+  
   local favorite = favorites[i]
   if type(favorite) == "table" and favorite.gps ~= nil then
-    local gps = favorite.gps
-    local pos = GPS.map_position_from_gps(gps)
-    if not pos then
-      error({'tf-handler.teleport-favorite-no-matching-position'})
-    end
-    local surface_index = GPS.get_surface_index(gps)
-    ---@diagnostic disable-next-line: undefined-global
-    local surface = game.surfaces[surface_index]
-    local result = Tag.teleport_player_with_messaging(player, pos, surface)
+    local result = Tag.teleport_player_with_messaging(player, favorite.gps)
     if result ~= Constants.enums.return_state.SUCCESS then
       player:print(result)
     end

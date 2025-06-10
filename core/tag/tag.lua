@@ -78,28 +78,32 @@ end
 
 --- Teleport a player to a position on a surface, with robust checks and error messaging.
 ---@param player LuaPlayer
----@param position MapPosition
----@param surface LuaSurface|nil
----@param raise_teleported boolean|nil
+---@param gps string
 ---@return string|integer
-function Tag.teleport_player_with_messaging(player, position, surface, raise_teleported)
-  if not player or not player.valid or type(player.teleport) ~= "function" then return "Unable to teleport. Player is missing" end
-  surface = surface or player.surface
-  if not surface or type(surface.find_non_colliding_position) ~= "function" then return "Unable to teleport. Surface is missing" end
+function Tag.teleport_player_with_messaging(player, gps)
+  if not player or not player.valid then return "Unable to teleport. Player is missing" end
   if rawget(player, "character") == nil then return "Unable to teleport. Player character is missing" end
-  local aligned_position = GPS.normalize_landing_position(player, position, surface or player.surface or 1)
-  if not aligned_position then return "Unable to normalize landing position" end
+
+  --local teleport_map_position = GPS.map_position_from_gps(gps)
+
+  local aligned_position = GPS.normalize_landing_position(player, gps)
+  if not aligned_position then player:print("Unable to normalize landing position") return end
+
   local teleport_AOK = false
+  local raise_teleported = true
+
   if player.driving and player.vehicle then
     if _G.defines and player.riding_state and player.riding_state ~= _G.defines.riding.acceleration.nothing then
-      return "Are you crazy? Trying to teleport while driving is strictly prohibited."
+      return player:print("Are you crazy? Trying to teleport while driving is strictly prohibited.")
     end
-    player.vehicle:teleport(aligned_position, surface, raise_teleported and raise_teleported == true or false)
-    teleport_AOK = player:teleport(aligned_position, surface, raise_teleported and raise_teleported == true or false)
+    player.vehicle:teleport(aligned_position, player.surface, not raise_teleported)
+    teleport_AOK = player:teleport(aligned_position, player.surface, raise_teleported)
   else
-    teleport_AOK = player:teleport(aligned_position, surface, raise_teleported and raise_teleported == true or false)
+    teleport_AOK = player:teleport(aligned_position, player.surface, raise_teleported)
   end
+
   if teleport_AOK then return Constants.enums.return_state.SUCCESS end
+    
   return "We were unable to perform the teleport due to unforeseen circumstances"
 end
 
@@ -112,12 +116,14 @@ function Tag:rehome_chart_tag(player, destination_gps)
   local current_gps = self.gps
   local destination_pos = GPS.map_position_from_gps(destination_gps)
   if not destination_pos then return "[TeleportFavorites] Could not parse destination GPS string" end
-  local aligned_position = GPS.normalize_landing_position(player, destination_pos, player.surface)
+  local aligned_position = GPS.normalize_landing_position(player, destination_pos)
   if not aligned_position then return "[TeleportFavorites] Could not find a valid location within range" end
+
   local surface_index = player.surface and player.surface.index or 1
   local aligned_gps = GPS.gps_from_map_position(aligned_position, surface_index)
   local old_chart_tag = self:get_chart_tag()
   if current_gps == aligned_gps and old_chart_tag and old_chart_tag.valid == true then return nil, old_chart_tag end
+
   local all_fave_tags = {}
   local game_players = (_G.game and _G.game.players) or {}
   for _, other_player in pairs(game_players) do

@@ -7,8 +7,8 @@
 local control_fave_bar = require("core.control.control_fave_bar")
 local control_tag_editor = require("core.control.control_tag_editor")
 local Constants = require("constants")
-local get_or_create_main_flow = require("gui.data_viewer.data_viewer").get_or_create_main_flow
-local helpers = require("core.utils.helpers_suite")
+local Helpers = require("core.utils.helpers_suite")
+local Enum = require("prototypes.enums.enum")
 local control_data_viewer = require("core.control.control_data_viewer")
 
 local M = {}
@@ -33,7 +33,6 @@ end
 function M.register_gui_handlers(script)
   local Cache = require("core.cache.cache")
   local function shared_on_gui_click(event)
-    -- Defensive: ensure persistent storage subfields are initialized (Factorio 2.0+)
     Cache.init()
     if _tf_gui_click_guard then return end
     _tf_gui_click_guard = true
@@ -41,79 +40,54 @@ function M.register_gui_handlers(script)
     local ok, err = xpcall(function()
       local element = event.element
       if not element or not element.valid then return end
+
+      -- Global/utility buttons (not tied to a specific GUI)
       -- Ignore clicks on blank/empty favorite slots
       if is_blank_fave_bar_slot_button(element) then return end
       if element.name == "fave_bar_visible_btns_toggle" or is_fave_bar_slot_button(element) then
-        ---@diagnostic disable-next-line: undefined-global
         control_fave_bar.on_fave_bar_gui_click(event)
-      elseif (element.parent and element.parent.name == "tag_editor_frame")
-          or element.name == "titlebar_close_button"
-          or element.name == "tag_editor_title_row_close"
-          or element.name == "tag_editor_cancel_btn"
-          or element.name == "last_row_cancel_button"
-          or element.name == "tag_editor_confirm_btn"
-          or element.name == "tag_editor_move_btn"
-          or element.name == "tag_editor_delete_btn"
-          or element.name == "tag_editor_teleport_btn"
-          or element.name == "tag_editor_favorite_btn"
-          or element.name == "icon_row_icon_button"
-          or element.name == "tag_editor_icon_elem_btn"
-          or element.name == "tag_editor_textfield"
-          or element.name == "tf_confirm_dialog_confirm_btn"
-          or element.name == "tf_confirm_dialog_cancel_btn"
-      then
+        return true
+      end
+
+      local parent_gui = Helpers.get_gui_frame_by_element(element)
+      if not parent_gui then
+        error("Element: " .. element.name .. ", parent GUI not found")
+      end
+
+      -- Dispatch based on parent_gui
+      if parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
         control_tag_editor.on_tag_editor_gui_click(event, script)
-        return
-      elseif element.name == "data_viewer_close_btn" then
-        -- Data viewer close button logic (robust to parent)
-        local player = game.get_player(event.player_index)
-        if player then
-          -- Try both player.gui.top and player.gui as parent
-          for _, parent in ipairs({player.gui.top, player.gui}) do
-            local main_flow = helpers.find_child_by_name(parent, "tf_main_gui_flow")
-            if main_flow then
-              helpers.safe_destroy_frame(main_flow, "data_viewer_frame")
-            end
-          end
-        end
-      elseif element.tags and element.tags.tab_key then
-        -- Data Viewer tab button clicked
-        control_data_viewer.on_data_viewer_tab_click(event)
-        return
-      elseif element.name == "data_viewer_actions_font_up_btn"
-          or element.name == "data_viewer_actions_font_down_btn"
-          or element.name == "data_viewer_tab_actions_refresh_data_btn" then
-        -- Data Viewer font size and refresh buttons
+        return true
+      elseif parent_gui.name == Enum.GuiEnum.GUI_FRAME.FAVE_BAR then
+        control_fave_bar.on_fave_bar_gui_click(event)
+        return true
+      elseif parent_gui.name == Enum.GuiEnum.GUI_FRAME.DATA_VIEWER then
         control_data_viewer.on_data_viewer_gui_click(event)
-        return
+        return true
       end
     end, function(e)
       _tf_gui_click_guard = false
       local err_str = "[TeleportFavorites] GUI event error: " .. tostring(e)
       if log then log(err_str) end
       print(err_str)
-      -- Log traceback
       local tb = debug and debug.traceback and debug.traceback() or "<no traceback>"
       if log then log("[TeleportFavorites] Traceback:\n" .. tb) end
-      -- Extra debug info
       if log then
         local el = event and event.element
         local ename = el and el.name or "<no element>"
         local etype = el and el.type or "<no type>"
         log("[TeleportFavorites] Event element: name=" .. tostring(ename) .. ", type=" .. tostring(etype))
         log("[TeleportFavorites] Event.player_index: " .. tostring(event and event.player_index))
-        -- Log the event table (shallow)
         for k, v in pairs(event or {}) do
           if type(v) ~= "table" and type(v) ~= "userdata" then
             log("[TeleportFavorites] event[" .. tostring(k) .. "] = " .. tostring(v))
           end
         end
       end
-      -- Do not return a value from the error handler
     end)
     _tf_gui_click_guard = false
     if not ok then
-      -- Always show the real error, do not mask with a generic mes      error(err)
+      error(err)
     end
   end
   script.on_event(defines.events.on_gui_click, shared_on_gui_click)

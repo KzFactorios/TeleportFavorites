@@ -11,11 +11,11 @@ local Lookups = require("core.cache.lookups")
 
 local M = {}
 
-local function get_or_create_main_flow(player)
+local function get_or_create_gui_flow_from_gui_top(player)
   local top = player.gui.top
   local flow = top and top.tf_main_gui_flow
   if not (flow and flow.valid) then
-    flow = top.add{
+    flow = top.add {
       type = "flow",
       name = "tf_main_gui_flow",
       direction = "vertical",
@@ -25,12 +25,12 @@ local function get_or_create_main_flow(player)
   end
   return flow
 end
-M.get_or_create_main_flow = get_or_create_main_flow
+M.get_or_create_gui_flow_from_gui_top = get_or_create_gui_flow_from_gui_top
 
 function M.on_toggle_data_viewer(event)
   local player = game.get_player(event.player_index)
   if not player then return end
-  local main_flow = get_or_create_main_flow(player)
+  local main_flow = get_or_create_gui_flow_from_gui_top(player)
   local frame = helpers.find_child_by_name(main_flow, "data_viewer_frame")
   local pdata = Cache.get_player_data(player)
   pdata.data_viewer_settings = pdata.data_viewer_settings or {}
@@ -65,7 +65,7 @@ function M.on_data_viewer_tab_click(event)
   if not element or not element.valid then return end
   local player = game.get_player(event.player_index)
   if not player then return end
-  local main_flow = get_or_create_main_flow(player)
+  local main_flow = get_or_create_gui_flow_from_gui_top(player)
   local pdata = Cache.get_player_data(player)
   pdata.data_viewer_settings = pdata.data_viewer_settings or {}
   local tab_key = element.tags and element.tags.tab_key
@@ -99,8 +99,9 @@ function M.on_data_viewer_tab_click(event)
   else
     dkeys = tostring(state.data)
   end
-  log("[TF DataViewer] Data type for tab '"..tab_key.."': "..dtype..", keys: "..dkeys)
-  log("[TF DataViewer] State passed to data_viewer.build: active_tab="..tostring(state.active_tab)..", font_size="..tostring(font_size))
+  log("[TF DataViewer] Data type for tab '" .. tab_key .. "': " .. dtype .. ", keys: " .. dkeys)
+  log("[TF DataViewer] State passed to data_viewer.build: active_tab=" ..
+    tostring(state.active_tab) .. ", font_size=" .. tostring(font_size))
   safe_destroy_frame(main_flow, "data_viewer_frame")
   data_viewer.build(player, main_flow, state)
 end
@@ -108,9 +109,18 @@ end
 function M.on_data_viewer_gui_click(event)
   local element = event.element
   if not element or not element.valid then return end
+
   local player = game.get_player(event.player_index)
   if not player then return end
-  local main_flow = get_or_create_main_flow(player)
+
+  local main_flow = get_or_create_gui_flow_from_gui_top(player)
+
+  -- Close button
+  if element.name == "data_viewer_close_btn" then
+    helpers.safe_destroy_frame(main_flow, "data_viewer_frame")
+    return
+  end
+
   local pdata = Cache.get_player_data(player)
   pdata.data_viewer_settings = pdata.data_viewer_settings or {}
   -- Robust tab switching (explicit name match)
@@ -196,11 +206,6 @@ function M.on_data_viewer_gui_click(event)
     data_viewer.show_refresh_flying_text(player)
     return
   end
-  -- Close button
-  if element.name == "titlebar_close_btn" then
-    helpers.safe_destroy_frame(main_flow, "data_viewer_frame")
-    return
-  end
 end
 
 --- Register data viewer event handlers
@@ -214,7 +219,7 @@ function M.register(script)
     if not element or not element.valid then return end
     local player = game.get_player(event.player_index)
     if not player then return end
-    local main_flow = get_or_create_main_flow(player)
+    local main_flow = get_or_create_gui_flow_from_gui_top(player)
     local pdata = Cache.get_player_data(player)
     pdata.data_viewer_settings = pdata.data_viewer_settings or {}
     -- Font size up/down buttons for Data Viewer
@@ -358,13 +363,17 @@ function M.register(script)
   script.on_event("tf-data-viewer-tab-next", function(event)
     local player = game.get_player(event.player_index)
     if not player then return end
-    local main_flow = get_or_create_main_flow(player)
-    local tabs_flow = main_flow.data_viewer_frame and main_flow.data_viewer_frame.data_viewer_inner_flow and main_flow.data_viewer_frame.data_viewer_inner_flow.data_viewer_tabs_flow
+    local main_flow = get_or_create_gui_flow_from_gui_top(player)
+    local tabs_flow = main_flow.data_viewer_frame and main_flow.data_viewer_frame.data_viewer_inner_flow and
+        main_flow.data_viewer_frame.data_viewer_inner_flow.data_viewer_tabs_flow
     if not tabs_flow then return end
     local children = tabs_flow.children
     local focused_idx = 1
     for i, child in ipairs(children) do
-      if child.focused then focused_idx = i break end
+      if child.focused then
+        focused_idx = i
+        break
+      end
     end
     local next_idx = focused_idx + 1
     if next_idx > #children then next_idx = 1 end
@@ -375,13 +384,17 @@ function M.register(script)
   script.on_event("tf-data-viewer-tab-prev", function(event)
     local player = game.get_player(event.player_index)
     if not player then return end
-    local main_flow = get_or_create_main_flow(player)
-    local tabs_flow = main_flow.data_viewer_frame and main_flow.data_viewer_frame.data_viewer_inner_flow and main_flow.data_viewer_frame.data_viewer_inner_flow.data_viewer_tabs_flow
+    local main_flow = get_or_create_gui_flow_from_gui_top(player)
+    local tabs_flow = main_flow.data_viewer_frame and main_flow.data_viewer_frame.data_viewer_inner_flow and
+        main_flow.data_viewer_frame.data_viewer_inner_flow.data_viewer_tabs_flow
     if not tabs_flow then return end
     local children = tabs_flow.children
     local focused_idx = 1
     for i, child in ipairs(children) do
-      if child.focused then focused_idx = i break end
+      if child.focused then
+        focused_idx = i
+        break
+      end
     end
     local prev_idx = focused_idx - 1
     if prev_idx < 1 then prev_idx = #children end
@@ -393,7 +406,7 @@ end
 
 -- Helper to ensure a valid active tab
 function M.get_valid_active_tab(state)
-  local valid_tabs = {"player_data", "surface_data", "lookup", "all_data"}
+  local valid_tabs = { "player_data", "surface_data", "lookup", "all_data" }
   for _, tab in ipairs(valid_tabs) do
     if state and state.active_tab == tab then return tab end
   end

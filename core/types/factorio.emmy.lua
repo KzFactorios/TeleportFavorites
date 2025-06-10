@@ -416,7 +416,7 @@
 ---@field request_translation fun(self: LuaPlayer, localised_string: LocalisedString)
 ---@field set_controller fun(self: LuaPlayer, type: defines.controllers, character?: LuaEntity)
 ---@field set_shortcut_toggled fun(self: LuaPlayer, prototype_name: string, toggled: boolean)
----@field teleport fun(self: LuaPlayer, position: MapPosition, surface?: LuaSurface, force?: boolean, show_effects?: boolean, raise_teleported?: boolean): boolean
+---@field teleport fun(self: LuaPlayer, position: MapPosition, surface?: LuaSurface, raise_teleported?: boolean): boolean
 ---@field unlock_achievement fun(self: LuaPlayer, name: string)
 ---@field update_selected_entity fun(self: LuaPlayer)
 -- (Add more methods as needed from the API)

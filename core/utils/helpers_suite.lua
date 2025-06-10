@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 --[[
 helpers_suite.lua
 TeleportFavorites Factorio Mod
@@ -14,7 +16,7 @@ Comprehensive utility module for math, table, string, and general helpers used t
 All helpers are static and namespaced under Helpers. Used pervasively for DRY, robust, and maintainable code.
 ]]
 
-local Enum = require("prototypes.enum")
+local Enum = require("prototypes.enums.enum")
 
 ---@class Helpers
 local Helpers = {}
@@ -128,9 +130,6 @@ function Helpers.table_remove_value(tbl, value)
   return false
 end
 
-
-
-
 function Helpers.is_on_space_platform(player)
   if not player or not player.surface or not player.surface.name then return false end
   local name = player.surface.name:lower()
@@ -204,10 +203,10 @@ function Helpers.handle_error(player, message, level, log_to_console)
   end
 end
 
-function Helpers.safe_teleport(player, pos, surface)
-  if player and player.valid and type(player.teleport) == "function" and pos and surface then
-    if pos.x and pos.y then return player.teleport({ x = pos.x, y = pos.y }, surface) end
-    if pos[1] and pos[2] then return player.teleport({ x = pos[1], y = pos[2] }, surface) end
+function Helpers.safe_teleport(player, pos)
+  if player and player.valid then
+    if pos.x and pos.y then return player.teleport({ x = pos.x, y = pos.y }, player.surface) end
+    if pos[1] and pos[2] then return player.teleport({ x = pos[1], y = pos[2] }, player.surface) end
   end
   return false
 end
@@ -325,7 +324,7 @@ function Helpers.create_slot_button(parent, name, icon, tooltip, opts)
     local is_valid = Helpers.is_valid_sprite_path(sprite)
     if not is_valid then
       print("[TeleportFavorites] WARNING: Invalid sprite '" ..
-      tostring(sprite) .. "' for button '" .. tostring(name) .. "'. Using fallback icon.")
+        tostring(sprite) .. "' for button '" .. tostring(name) .. "'. Using fallback icon.")
       sprite = opts.fallback_icon or nil -- fallback to nil (blank) or allow override
     end
   else
@@ -368,48 +367,57 @@ function Helpers.safe_pretty_table(tbl, indent)
   return tbl and Helpers.pretty_table(tbl, indent) or "<nil>"
 end
 
+function Helpers.format_sprite_path(type_or_icon, name)
+  local icon = name and tostring(name) or tostring(type_or_icon)
+  if icon:find("/") then
+    return icon
+  elseif icon:match("^utility%.") then
+    return icon:gsub("^utility%.", "utility/")
+  elseif icon:match("^item%.") then
+    local item_name = icon:match("^item%.(.+)$")
+    return item_name or icon
+  elseif icon:match("^virtual%-signal%.") then
+    return icon:gsub("^virtual%-signal%.", "virtual-signal/")
+  else
+    return icon
+  end
+end
+
 -- Sprite path validation helper (robust for runtime and test)
-Helpers.is_valid_sprite_path = function(sprite)
-  if type(sprite) ~= "string" or sprite == "" then return false end
+function Helpers.is_valid_sprite_path(sprite_path)
+  if type(sprite_path) ~= "string" or sprite_path == "" then return false end
   -- Use pcall to avoid deprecation warning and runtime errors
   local ok, result = pcall(function()
-    ---@diagnostic disable-next-line: undefined-global
     if helpers.is_valid_sprite_path then
-      ---@diagnostic disable-next-line: undefined-global
-      return helpers.is_valid_sprite_path(sprite)
+      return helpers.is_valid_sprite_path(sprite_path)
     end
     return true -- fallback for test/mocks
   end)
-    return ok and result or false
+  return ok and result or false
 end
 
 --- Recursively search for a child element by name in a GUI element tree
 local function find_child_by_name(parent_element, target_name)
-    if not (parent_element and parent_element.valid and parent_element.children) then return nil end
-    for _, child in pairs(parent_element.children) do
-        if child.name == target_name then
-            return child
-        end
-        local found = find_child_by_name(child, target_name)
-        if found then return found end
+  if not (parent_element and parent_element.valid and parent_element.children) then return nil end
+  for _, child in pairs(parent_element.children) do
+    if child.name == target_name then
+      return child
     end
-    return nil
+    local found = find_child_by_name(child, target_name)
+    if found then return found end
+  end
+  return nil
 end
-
-Helpers.find_child_by_name = find_child_by_name
 
 --- Returns the name of the top-level GUI frame for a given LuaGuiElement, or nil if not found.
 --- Traverses up the parent chain until it finds the matching element
 --- @param element LuaGuiElement
 --- @return LuaGuiElement|nil: The top-level GUI frame, or nil if not found
-function Helpers.get_gui_frame(element) 
+function Helpers.get_gui_frame_by_element(element)
   local current = element
-  local last_frame_name = nil
   while current and current.valid do
-    if current.name == Enum.GuiEnum.GUI_FRAMES.DATA_VIEWER or 
-      current.name == Enum.GuiEnum.GUI_FRAMES.FAVE_BAR or 
-      current.name == Enum.GuiEnum.GUI_FRAMES.TAG_EDITOR then
-      last_frame_name = current.name
+    if (Enum.is_value_member_enum(current.name, Enum.GuiEnum.GUI_FRAME)) then
+      return current
     end
     if not current.parent then break end
     current = current.parent
@@ -417,5 +425,25 @@ function Helpers.get_gui_frame(element)
   return nil
 end
 
+--- Returns the name of the top-level GUI frame for a given LuaGuiElement, or nil if not found.
+--- Traverses up the parent chain until it finds the matching element
+--- @param element_name string
+--- @return LuaGuiElement|nil: The top-level GUI frame, or nil if not found
+function Helpers.get_gui_frame_by_child_element_name(element_name)
+  local frame = nil
+  -- locate the element
+  -- check the screen gui first
+local element = mod_gui.get_button_flow()
+  -- check the top gui
+
+  -- if no match then return nil
+  if not element then return nil end
+
+  return Helpers.get_gui_frame_by_element(element)
+end
+
+
+
+Helpers.find_child_by_name = find_child_by_name
 
 return Helpers

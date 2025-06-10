@@ -39,7 +39,18 @@ data:extend {
     height = 32,
     x = 0,
     y = 0,
-    flags = { "icon" }
+    flags = { "gui-icon" }
+  },
+  {
+    type = "sprite",
+    name = "tf_star_disabled",
+    filename = "__TeleportFavorites__/graphics/dark-star.png",
+    width = 64,
+    height = 64,
+    x = 0,
+    y = 0,
+    scale = .5,
+    flags = { "gui-icon" }
   },
   {
     type = "custom-input",
@@ -123,65 +134,6 @@ data:extend {
     name = "tf-open-tag-editor",
     key_sequence = "mouse-button-2",
     consuming = "none"
-  },
-  {
-    type = "sprite",
-    name = "slot_black",
-    filename = "__TeleportFavorites__/graphics/slot_black.png",
-    width = 36,
-    height = 36,
-    flags = { "gui-icon" }
-  },
-  {
-    type = "sprite",
-    name = "slot_blue",
-    filename = "__TeleportFavorites__/graphics/slot_blue.png",
-    width = 36,
-    height = 36,
-    flags = { "gui-icon" }
-  },
-
-  {
-    type = "sprite",
-    name = "slot_green",
-    filename = "__TeleportFavorites__/graphics/slot_green.png",
-    width = 36,
-    height = 36,
-    flags = { "gui-icon" }
-  },
-  {
-    type = "sprite",
-    name = "slot_grey",
-    filename = "__TeleportFavorites__/graphics/slot_grey.png",
-    width = 36,
-    height = 36,
-    flags = { "gui-icon" }
-  },
-  {
-    type = "sprite",
-    name = "slot_orange",
-    filename = "__TeleportFavorites__/graphics/slot_orange.png",
-    priority = "extra-high-no-scale",
-    width = 36,
-    height = 36,
-    scale = 1,
-    flags = { "gui-icon" }
-  },
-  {
-    type = "sprite",
-    name = "slot_red",
-    filename = "__TeleportFavorites__/graphics/slot_red.png",
-    width = 36,
-    height = 36,
-    flags = { "gui-icon" }
-  },
-  {
-    type = "sprite",
-    name = "slot_white",
-    filename = "__TeleportFavorites__/graphics/slot_white.png",
-    width = 36,
-    height = 36,
-    flags = { "gui-icon" }
   },
   {
     type = "sprite",

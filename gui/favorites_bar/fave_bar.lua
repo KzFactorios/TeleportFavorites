@@ -46,7 +46,7 @@ local GPS = require("core.gps.gps")
 local Helpers = require("core.utils.helpers_suite")
 local Settings = require("settings")
 local Cache = require("core.cache.cache")
-local Enum = require("prototypes.enum")
+local Enum = require("prototypes.enums.enum")
 
 local fave_bar = {}
 
@@ -66,8 +66,7 @@ fave_bar_frame (frame)
 ]]
 
 
-
-local function get_or_create_main_flow(parent)
+local function get_or_create_gui_flow_from_gui_top(parent)
   local flow = parent.tf_main_gui_flow
   if not (flow and flow.valid) then
     flow = parent.add {
@@ -82,24 +81,16 @@ end
 
 -- Build the favorites bar to visually match the quickbar top row
 function fave_bar.build_quickbar_style(player, parent)
-  local main_flow = parent
-  -- Remove old bar if present
-  if main_flow.fave_bar_frame then main_flow.fave_bar_frame.destroy() end
-
-  -- Outer frame for the bar (matches quickbar background)
-  local bar_frame = main_flow.add {
-    type = "frame",
-    name = Enum.GuiEnum.GUI_FRAMES.FAVE_BAR,
-    style = "tf_fave_bar_frame",
-    direction = "horizontal"
-  }
-
   -- Add a horizontal flow to contain the toggle and slots row
-  local bar_flow = bar_frame.add {
+  local bar_flow = parent.add {
     type = "flow",
     name = "fave_bar_flow",
     direction = "horizontal"
   }
+
+  --[[local fave_drag = GuiBase.create_draggable(bar_flow, "fave_bar_draggable")
+  fave_drag.style = "tf_fave_bar_draggable"
+  fave_drag.drag_target = parent]]
 
   -- Add a thin dark background frame for the toggle button
   local toggle_container = bar_flow.add {
@@ -111,19 +102,19 @@ function fave_bar.build_quickbar_style(player, parent)
   local toggle_btn = toggle_container.add {
     type = "sprite-button",
     name = "fave_bar_visible_btns_toggle",
-    style = "tf_fave_toggle_button",     -- no slot background
+    style = "tf_fave_toggle_button", -- no slot background
     sprite = "logo_36"
   }
 
   -- Add slots frame and return it for visibility toggling
-  local slots_frame = bar_frame.add {
+  local slots_frame = parent.add {
     type = "frame",
-    name = "fave_bar_slots_flow",     -- unified name for slot row
+    name = "fave_bar_slots_flow", -- unified name for slot row
     style = "tf_fave_slots_row",
     direction = "horizontal",
   }
 
-  return bar_frame, slots_frame
+  return bar_flow, slots_frame, toggle_btn
 end
 
 local function handle_overflow_error(frame, fav_btns, pfaves)
@@ -142,7 +133,7 @@ local function set_slot_row_visibility(slots_frame, visibility)
   slots_frame.visible = visibility
 end
 
-function fave_bar.build(player, parent, force_show)
+function fave_bar.build(player, force_show)
   local pid = player.index
   if _fave_bar_building_guard[pid] then return end
   _fave_bar_building_guard[pid] = true
@@ -156,28 +147,36 @@ function fave_bar.build(player, parent, force_show)
     end
 
     -- Use shared vertical flow
-    local main_flow = get_or_create_main_flow(parent)
-    if main_flow.fave_bar_frame then main_flow.fave_bar_frame.destroy() end
+    local main_flow = get_or_create_gui_flow_from_gui_top(player.gui.top)
+
+    Helpers.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
+
+    -- add the fave bar frame
+    -- Outer frame for the bar (matches quickbar background)
+    local fave_bar_frame = main_flow.add {
+      type = "frame",
+      name = Enum.GuiEnum.GUI_FRAME.FAVE_BAR,
+      style = "tf_fave_bar_frame",
+      direction = "horizontal"
+    }
 
     -- Use the new quickbar-style builder for the favorites bar
-    local fave_bar_frame, slots_frame = fave_bar.build_quickbar_style(player, main_flow)
-    local bar_flow = Helpers.find_child_by_name(fave_bar_frame, "fave_bar_flow")
-    local slots_row = Helpers.find_child_by_name(bar_flow, "fave_bar_slots_flow") or slots_frame
-
+    local bar_flow, slots_frame, toggle_button = fave_bar.build_quickbar_style(player, fave_bar_frame)
+    
     -- Only one toggle button: the one created in build_quickbar_style
     local pfaves = Cache.get_player_favorites(player)
     local drag_index = Cache.get_player_data(player).drag_favorite_index
 
     -- By default, show the slots row when building the bar
-    set_slot_row_visibility(slots_row, true)
+    set_slot_row_visibility(slots_frame, true)
 
     -- Build slot buttons
-    fave_bar.build_favorite_buttons_row(slots_row, player, pfaves, drag_index)
+    fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves, drag_index)
 
     -- Do NOT update toggle state in pdata here! Only the event handler should do that.
 
     -- Do NOT set toggle_container.visible here; toggle button always visible unless a future setting overrides it
-    handle_overflow_error(fave_bar_frame, slots_row, pfaves)
+    handle_overflow_error(fave_bar_frame, slots_frame, pfaves)
 
     return fave_bar_frame
   end)
@@ -240,5 +239,5 @@ function fave_bar.update_slot_row(player, bar_flow)
 end
 
 fave_bar.update_slot_row = update_slot_row
-fave_bar.get_or_create_main_flow = get_or_create_main_flow
+fave_bar.get_or_create_gui_flow_from_gui_top = get_or_create_gui_flow_from_gui_top
 return fave_bar

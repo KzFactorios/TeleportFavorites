@@ -139,13 +139,22 @@ local function init_player_data(player)
     storage.players[player.index].surfaces[player.surface.index].favorites = pfaves or {}
     return storage.players[player.index].surfaces[player.surface.index].favorites
   end
-  
+
   player_data.surfaces[player.surface.index].favorites = init_player_favorites(player)
 
   player_data.player_name = player.name or "Unknown"
   player_data.render_mode = player_data.render_mode or player.render_mode
-  player_data.tag_editor_data = player_data.tag_editor_data or { owner = "Unknown" }
-
+  player_data.tag_editor_data = player_data.tag_editor_data or
+      {
+        gps = "",
+        locked = false,
+        is_favorite = false,
+        icon = "",
+        text = "",
+        tag = nil,
+        chart_tag = nil,
+        error_message = ""
+      }
   return player_data
 end
 
@@ -223,18 +232,23 @@ end
 
 --- Get the tag editor data for a player (persistent, per-player)
 ---@param player LuaPlayer
----@return table|nil
+---@return table
 function Cache.get_tag_editor_data(player)
-  local pdata = Cache.get_player_data(player)
-  return pdata and pdata.tag_editor_data or nil
+  return Cache.get_player_data(player).tag_editor_data
 end
 
 --- Set the tag editor data for a player (persistent, per-player)
 ---@param player LuaPlayer
 ---@param data table|nil
+---@return table
 function Cache.set_tag_editor_data(player, data)
+  if not data then data = {} end
   local pdata = Cache.get_player_data(player)
-  pdata.tag_editor_data = data
+  for k, v in pairs(data) do
+    pdata.tag_editor_data[k] = v
+  end
+
+  return pdata.tag_editor_data
 end
 
 return Cache

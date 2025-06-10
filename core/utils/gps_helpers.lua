@@ -11,7 +11,13 @@ Helpers for parsing, normalizing, and converting GPS strings and map positions.
 ]]
 
 local basic_helpers = require("core.utils.basic_helpers")
+local Helpers = require("core.utils.helpers_suite")
+local PositionHelpers = require("core.utils.postion_helpers")
 local Constants = require("constants")
+local GPS = require("core.gps.gps")
+local Cache = require("core.cache.cache")
+local Lookups = require("core.cache.lookups")
+local Settings = require("settings")
 local padlen, BLANK_GPS = Constants.settings.GPS_PAD_NUMBER, Constants.settings.BLANK_GPS
 
 --- Parse a GPS string 'x.y.s' into {x, y, surface_index} or nil if invalid
@@ -20,7 +26,7 @@ local padlen, BLANK_GPS = Constants.settings.GPS_PAD_NUMBER, Constants.settings.
 local function parse_gps_string(gps)
   if type(gps) ~= "string" then return nil end
   if gps == BLANK_GPS then return { x = 0, y = 0, s = -1 } end
-  
+
   local x, y, s = gps:match("^(%-?%d+)%.(%-?%d+)%.(%d+)$")
   if not x or not y or not s then return nil end
   local parsed_x, parsed_y, parsed_s = tonumber(x), tonumber(y), tonumber(s)
@@ -63,17 +69,67 @@ end
 ---TODO REVIEW
 --- Normalize a landing position; surface may be LuaSurface, string, or index
 ---@param player LuaPlayer
----@param pos MapPosition
----@param surface LuaSurface|string|number
+---@param intended_gps string
 ---@return MapPosition|nil
-local function normalize_landing_position(player, pos, surface)
-  if not pos then return nil end
-  local game_surfaces = (type(_G.game) == "table" and _G.game.surfaces) or {}
-  local surface_index = type(surface) == "number" and math.floor(surface)
-      or (type(surface) == "table" and surface.index)
-      or (type(surface) == "string" and game_surfaces[surface] and game_surfaces[surface].index)
-      or 1
-  return { x = pos.x, y = pos.y, surface = surface_index }
+local function normalize_landing_position(player, intended_gps)
+  if not player or not intended_gps or intended_gps == "" then return nil end
+
+  local landing_position = GPS.map_position_from_gps(intended_gps)
+  local adjusted_gps = nil
+  local chart_tag = nil
+  local tag = Cache.get_tag_by_gps(intended_gps)
+
+  -- if we don't have a tag
+  if not tag then
+    -- has to be visible and can't be a water tile or a space tile
+    -- if the function call errors - it player.prints any messages
+    if not PositionHelpers.position_can_be_tagged(player, landing_position) then return end
+
+    local player_settings = Settings:getPlayerSettings(player)
+
+    -- find any chart_tags in our radius
+    chart_tag = Helpers.position_has_colliding_tag(player, landing_position, player_settings.teleport_radius)
+
+    if not chart_tag then
+      -- entity name - use car so that we allow the bigger footprint
+      -- radius - double Max distance from center to search in. A radius of 0 means an infinitely-large search area.
+      -- precision - double The step length from the given position as it searches, in tiles. Minimum value is 0.01.
+      --  Lower precision (e.g., 0.5) means the search checks more points and is more likely to find a spot in tight spaces, but it is slower.
+      --  Higher precision (e.g., 2 or 5) is faster but may miss valid positions in dense areas
+      local non_collide_position = player.surface:find_non_colliding_position("car", landing_position,
+        player_settings.teleport_radius, Constants.settings.TELEPORT_PRECISION)
+      if not non_collide_position then
+        player:print(
+          "There is no available teleport landing position within your radius. Choose another location or adjust your teleport radius.")
+        return
+      end
+
+      local x, y, s = GPS.parse_gps_string(GPS.gps_from_map_position(non_collide_position))
+      local check_normalized_position = player.surface:find_non_colliding_position("car", { x = x, y = y },
+        player_settings.teleport_radius, Constants.settings.TELEPORT_PRECISION)
+
+      if not check_normalized_position then
+        player:print(
+          "The area you are trying to land is too dense. Choose another location or adjust your teleport radius.")
+        return
+      end
+
+      adjusted_gps = GPS.gps_from_map_position(check_normalized_position, player.surface.index)
+    else
+      adjusted_gps = GPS.gps_from_map_position(chart_tag.position, player.surface.index)
+    end
+  else
+    adjusted_gps = tag.gps
+  end
+
+  -- We should have an adjusted_gps
+  if not adjusted_gps then
+    player:print("Could not compute the teleport coordinates")
+  end
+
+  local final_position = GPS.parse_gps_string(adjusted_gps)
+
+  return { x = final_position.x, y = final_position.y }
 end
 
 ---TODO REVIEW
@@ -84,7 +140,7 @@ local function parse_and_normalize_gps(gps)
   if type(gps) == "string" and gps:match("^%[gps=") then
     local x, y, s = gps:match("%[gps=(%-?%d+),(%-?%d+),(%-?%d+)%]")
     if x and y and s then
-      local nx, ny, ns = tonumber(x), tonumber(y), tonumber(s)
+      local nx, ny, ns = Helpers.normalize_index(x), Helpers.normalize_index(y), tonumber(s)
       if nx and ny and ns then
         return gps_from_map_position({ x = nx, y = ny }, math.floor(ns))
       end

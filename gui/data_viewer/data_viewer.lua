@@ -25,7 +25,7 @@ local _Constants = require("constants")
 local Cache = require("core.cache.cache")
 local Lookups = require("core.cache.lookups")
 local Helpers = require("core.utils.helpers_suite")
-local Enum = require("prototypes.enum")
+local Enum = require("prototypes.enums.enum")
 
 local data_viewer = {}
 
@@ -245,7 +245,7 @@ function data_viewer.build(player, parent, state)
 
   local font_size = (state and state.font_size) or 10
   -- Main dialog frame (resizable)
-  local frame = parent.add { type = "frame", name = Enum.GuiEnum.GUI_FRAMES.DATA_VIEWER, style = "tf_data_viewer_frame", direction = "vertical" }
+  local frame = parent.add { type = "frame", name = Enum.GuiEnum.GUI_FRAME.DATA_VIEWER, style = "tf_data_viewer_frame", direction = "vertical" }
   frame.caption = ""
   -- Remove debug label at the very top
   -- frame.add{type="label", caption="[TF DEBUG] Data Viewer GUI visible for player: "..(player and player.name or "nil"), style="data_viewer_row_odd_label"}

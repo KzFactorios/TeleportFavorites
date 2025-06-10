@@ -1,3 +1,6 @@
+local ColorEnum = {}
+
+--- @class COLOR_ENUM
 local COLOR_ENUM = {
   BLACK = { r = 0, g = 0, b = 0, a = 1 },
   BLUE = { r = .5, g = .81, b = .94, a = 1 },
@@ -17,10 +20,5 @@ local COLOR_ENUM = {
   ORANGE_BUTTON_GLOW_COLOR = { r = .8, g = .56, b = .12, a = .5 },
   RED_BUTTON_GLOW_COLOR = { r = .99, g = .35, b = .35, a = .5 },
 }
-
-local ColorEnum = {}
-for k, v in pairs(COLOR_ENUM) do
-  COLOR_ENUM[k] = v
-end
 
 return ColorEnum

@@ -1,3 +1,4 @@
+---@diagnostic disable: undefined-global
 
 -- Centralized enum/table for valid vanilla Factorio utility sprite names.
 -- Only add sprite names that are verified to exist in vanilla Factorio.
@@ -5,23 +6,10 @@
 
 --- **VERY HELPFUL ** https://github.com/wube/factorio-data/blob/master/core/prototypes/utility-sprites.lua
 
--- Sprite path formatter (moved from helpers_suite)
-local function format_sprite_path(type_or_icon, name, is_signal)
-  local icon = name and tostring(name) or tostring(type_or_icon)
-  if icon:find("/") then
-    return icon
-  elseif icon:match("^utility%.") then
-    return icon:gsub("^utility%.", "utility/")
-  elseif icon:match("^item%.") then
-    local item_name = icon:match("^item%.(.+)$")
-    return item_name or icon
-  elseif icon:match("^virtual%-signal%.") then
-    return icon:gsub("^virtual%-signal%.", "virtual-signal/")
-  else
-    return icon
-  end
-end
+---@class SpriteEnum: table<string, string>
+local SpriteEnum = {}
 
+--- @class SPRITE_ENUM
 local SPRITE_ENUM = {
   ARROW_DOWN = "utility/hint_arrow_down",
   ARROW_LEFT = "utility/hint_arrow_left",
@@ -54,19 +42,14 @@ local SPRITE_ENUM = {
   SLOT_RED = "slot_red",
   SLOT_WHITE = "slot_white",
   STAR = "virtual-signal/signal-star", -- not working nor was star, there is a star - it might require a search
+  STAR_DISABLED = "tf_star_disabled",
   TRASH = "utility/trash",
   WARNING = "utility/warning_icon"
 }
 
-local is_valid_sprite = rawget(_G, "is_valid_sprite_path") or function() return true end
-
-local SpriteEnum = {}
+-- Only add valid sprites to SpriteEnum
 for k, v in pairs(SPRITE_ENUM) do
-  if is_valid_sprite(v) then
-    SpriteEnum[k] = v
-  end
+  SpriteEnum[k] = v
 end
-
-SpriteEnum.format_sprite_path = format_sprite_path
 
 return SpriteEnum

@@ -14,12 +14,12 @@ Features:
 - Sets player.opened for modal/ESC support; titlebar is draggable and visually matches vanilla Factorio dialogs.
 
 Main Functions:
-- tag_editor.build(player, tag_data, editor_target_position):
+- tag_editor.build
     Constructs and returns the tag editor modal frame for the given player and tag data.
     Handles all UI element creation, state logic, tooltips, error display, and move mode visuals.
     The tag_editor is always presented in the player.gui.screen.
 
-- tag_editor.build_confirmation_dialog(player, opts):
+- tag_editor.build_confirmation_dialog
     Shows a modal confirmation dialog for destructive actions (e.g., tag deletion).
 
 - setup_tag_editor_ui(refs, tag_data, player):
@@ -28,8 +28,9 @@ Main Functions:
 local GuiBase = require("gui.gui_base")
 local Helpers = require("core.utils.helpers_suite")
 local BasicHelpers = require("core.utils.basic_helpers")
-local Enum = require("prototypes.enum")
+local Enum = require("prototypes.enums.enum")
 local GPS = require("core.gps.gps")
+local Cache = require("core.cache.cache")
 
 local tag_editor = {}
 
@@ -96,44 +97,53 @@ local function build_titlebar(parent)
 end
 
 local function build_owner_row(parent, tag_data)
-    local row = GuiBase.create_frame(parent, "tag_editor_owner_row", "horizontal", "tf_owner_row")
-    -- Left flow for label
-    local left_flow = GuiBase.create_hflow(row, "tag_editor_owner_left_flow")
-    left_flow.style = "tf_owner_left_flow"
-    local label = GuiBase.create_label(left_flow, "tag_editor_owner_label", "", "tf_tag_editor_owner_label")
-    -- Revert to original LocalisedString assignment
-    label.caption = { "tf-gui.owner_label", tag_data.last_user or "" }
-    -- Right flow for buttons
-    local right_flow = GuiBase.create_hflow(row, "tag_editor_owner_right_flow")
-    right_flow.style = "tf_owner_right_flow"
-    right_flow.style.horizontally_stretchable = true
-    right_flow.style.horizontal_align = "right"
-    local move_button = GuiBase.create_icon_button(right_flow, "tag_editor_move_button", Enum.SpriteEnum.MOVE,
+    -- Create a frame with a fixed height for the owner row
+    local row_frame = GuiBase.create_frame(parent, "tag_editor_owner_row_frame", "horizontal", "tf_owner_row_frame")
+
+    -- Create a horizontal flow for the label - this will take up all available space
+    local label_flow = row_frame.add({ type = "flow", direction = "horizontal" })
+    label_flow.style.horizontally_stretchable = true
+
+    -- Create the label within the flow - it will stretch with its container
+    local label = GuiBase.create_label(label_flow, "tag_editor_owner_label",
+        { "tf-gui.owner_label", tag_data.last_user or "" }, "tf_tag_editor_owner_label")
+
+    -- Create a flow for the buttons
+    local button_flow = row_frame.add({ type = "flow", direction = "horizontal" })
+    button_flow.style.horizontally_stretchable = false
+
+    -- Add buttons to the button flow
+    local move_button = GuiBase.create_icon_button(button_flow, "tag_editor_move_button", Enum.SpriteEnum.MOVE,
         { "tf-gui.move_tooltip" }, "tf_move_button")
-    local delete_button = GuiBase.create_icon_button(right_flow, "tag_editor_delete_button", Enum.SpriteEnum.TRASH,
+    local delete_button = GuiBase.create_icon_button(button_flow, "tag_editor_delete_button", Enum.SpriteEnum.TRASH,
         { "tf-gui.delete_tooltip" }, "tf_delete_button")
-    return row, label, move_button, delete_button
+
+    return row_frame, label, move_button, delete_button
 end
 
-local function build_teleport_favorite_row(parent, editor_coords_string)
+local function build_teleport_favorite_row(parent, tag_data)
     -- Style must be set at creation time for Factorio GUIs
-    local row = GuiBase.create_hflow(parent, "tag_editor_teleport_favorite_row")
-    local favorite_btn = GuiBase.create_icon_button(row, "tag_editor_is_favorite_button", Enum.SpriteEnum.STAR,
+    local row = GuiBase.create_frame(parent, "tag_editor_teleport_favorite_row", "horizontal",
+        "tf_tag_editor_teleport_favorite_row")
+    local star_state = (tag_data and tag_data.is_favorite and tag_data.is_favorite ~= nil and tag_data.is_favorite and Enum.SpriteEnum.STAR) or
+    Enum.SpriteEnum.STAR_DISABLED
+    local favorite_btn = GuiBase.create_icon_button(row, "tag_editor_is_favorite_button", star_state,
         { "tf-gui.favorite_tooltip" }, "tf_slot_button")
     local teleport_btn = GuiBase.create_icon_button(row, "tag_editor_teleport_button", "",
-        { "", "tf-gui.teleport_tooltip" },
+        { "tf-gui.teleport_tooltip" },
         "tf_teleport_button")
-    teleport_btn.caption = editor_coords_string
+    teleport_btn.caption = tag_data.gps or "no destination"
     return row, favorite_btn, teleport_btn
 end
 
 local function build_rich_text_row(parent, tag_data)
     local row = GuiBase.create_hflow(parent, "tag_editor_rich_text_row")
-    local icon_btn = GuiBase.create_icon_button(row, "tag_editor_icon_button", tag_data.icon or "",
-        { "tf-gui.icon_tooltip" }, "tf_slot_button")
+    local icon_btn = GuiBase.create_element("choose-elem-button", row, 
+    {name = "tag_editor_icon_button", tooltip = { "tf-gui.icon_tooltip" }, style="tf_slot_button", icon = tag_data.icon or ""})
+    --GuiBase.create_icon_button(row, "tag_editor_icon_button", tag_data.icon or "", { "tf-gui.icon_tooltip" }, "tf_slot_button")
     -- Use the new textbox with icon_selector = true
     local text_input = GuiBase.create_textbox(row, "tag_editor_rich_text_input",
-        tag_data.rich_text or "", nil, true)
+        tag_data.rich_text or "", "tf_tag_editor_text_input", true)
     return row, icon_btn, text_input
 end
 
@@ -147,9 +157,10 @@ local function build_error_row(parent, tag_data)
 end
 
 local function build_last_row(parent)
-    local row = GuiBase.create_hflow(parent, "tag_editor_last_row")
-    local draggable = GuiBase.create_draggable(row, "tag_editor_last_row_draggable", Helpers.get_gui_frame(row))
-    draggable.style = "tf_tag_editor_last_row_drag"
+    local row = GuiBase.create_frame(parent, "tag_editor_last_row", "horizontal", "tf_tag_editor_last_row")
+    local draggable = GuiBase.create_draggable(row, "tag_editor_last_row_draggable",
+        Helpers.get_gui_frame_by_element(row))
+    draggable.style = "tf_tag_editor_last_row_draggable"
     local confirm_btn = GuiBase.create_element('button', row, {
         name = "last_row_confirm_button",
         caption = { "tf-gui.confirm" },
@@ -163,10 +174,12 @@ end
 -- Main builder for the tag editor, matching the full semantic/nested structure from notes/tag_editor.md
 ---
 --- @param player LuaPlayer
---- @param tag_data Tag|nil
+--- @param tag_data table|nil
 function tag_editor.build(player, tag_data)
     if not player then error("tag_editor.build: player is required") end
-    if not tag_data then tag_data = { gps = nil, chart_tag = nil, faved_by_players = {}, is_owner = false, is_player_favorite = false, teleport_player_with_messaging = function() end, remove_faved_by_player = function() end, get_chart_tag = function() end, unlink_and_destroy = function() end, __index = {}, add_faved_by_player = function() end, rehome_chart_tag = function() end, new = function() end } end
+    -- if we were given data then fine, otherwise get from storage
+    if not tag_data then tag_data = Cache.get_player_data(player).tag_editor_data end
+
     local editor_gps = tag_data.gps
     local editor_target_position = GPS.map_position_from_gps(editor_gps)
     local editor_coords_string = GPS.coords_string_from_gps(editor_gps)
@@ -174,13 +187,14 @@ function tag_editor.build(player, tag_data)
     local parent = player.gui.screen
     local outer = nil
     for _, child in pairs(parent.children) do
-        if child.name == Enum.GuiEnum.GUI_FRAMES.TAG_EDITOR then
+        if child.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
             outer = child
             break
         end
     end
     if outer ~= nil then outer.destroy() end
-    local tag_editor_outer_frame = GuiBase.create_frame(parent, Enum.GuiEnum.GUI_FRAMES.TAG_EDITOR, "vertical",
+
+    local tag_editor_outer_frame = GuiBase.create_frame(parent, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR, "vertical",
         "tf_tag_editor_outer_frame")
     tag_editor_outer_frame.auto_center = true
 
@@ -188,14 +202,13 @@ function tag_editor.build(player, tag_data)
 
     local tag_editor_content_frame = GuiBase.create_frame(tag_editor_outer_frame, "tag_editor_content_frame", "vertical",
         "tf_tag_editor_content_frame")
-
     local tag_editor_owner_row = build_owner_row(tag_editor_content_frame, tag_data)
 
     local tag_editor_content_inner_frame = GuiBase.create_frame(tag_editor_content_frame,
         "tag_editor_content_inner_frame", "vertical", "tf_tag_editor_content_inner_frame")
 
     local tag_editor_teleport_favorite_row, tag_editor_is_favorite_button, tag_editor_teleport_button =
-        build_teleport_favorite_row(tag_editor_content_inner_frame, editor_coords_string)
+        build_teleport_favorite_row(tag_editor_content_inner_frame, tag_data)
     local tag_editor_rich_text_row, tag_editor_icon_button, tag_editor_rich_text_input =
         build_rich_text_row(tag_editor_content_inner_frame, tag_data)
 
@@ -220,9 +233,9 @@ function tag_editor.build(player, tag_data)
     }
 
     setup_tag_editor_ui(refs, tag_data, player)
-    if tag_editor_outer_frame and player and player.valid then
-        player.opened = tag_editor_outer_frame
-    end
+
+    player.opened = tag_editor_outer_frame or nil
+
     return refs
 end
 

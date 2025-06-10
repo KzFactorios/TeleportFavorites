@@ -24,7 +24,7 @@ Each function is annotated with argument and return value details.
 --]]
 local GuiBase = {}
 local Helpers = require("core.utils.helpers_suite")
-local Enum = require("prototypes.enum")
+local Enum = require("prototypes.enums.enum")
 
 --- NOTE: All requires MUST be at the top of the file. Do NOT move requires inside functions to avoid circular dependencies.
 --- This is a strict project policy. See notes/architecture.md and coding_standards.md for rationale.
@@ -93,16 +93,6 @@ function GuiBase.create_label(parent, name, caption, style)
     return elem
 end
 
---- Create a textfield with optional style.
---- @param parent LuaGuiElement: Parent element
---- @param name string: Name of the textfield
---- @param text? string: Initial text
---- @param style? string: Optional style name
---- @return LuaGuiElement: The created textfield
-function GuiBase.create_textfield(parent, name, text, style)
-    return GuiBase.create_element('textfield', parent, { name = name, text = text, style = style })
-end
-
 --- Create a horizontal flow container.
 --- @param parent LuaGuiElement: Parent element
 --- @param name string: Name of the flow
@@ -129,12 +119,16 @@ function GuiBase.create_draggable(parent, name)
         name = "draggable_space"
     end
     ---@diagnostic disable-next-line
-    local dragger = parent.add { type = "empty-widget", name = name , style = "tf_draggable_space_header" }
+    local dragger = parent.add { type = "empty-widget", name = name, style = "tf_draggable_space_header" }
     if not dragger or not dragger.valid then
         error("GuiBase.create_draggable: failed to create draggable space")
     end
-    local drag_target = Helpers.get_gui_frame(parent)
-    dragger.drag_target = drag_target or nil
+    local drag_target = Helpers.get_gui_frame_by_element(parent) or nil
+
+    -- only if the drag_target is a child of player.gui.screen
+    if drag_target.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
+        dragger.drag_target = drag_target
+    end
 
     return dragger
 end
@@ -152,7 +146,7 @@ function GuiBase.create_titlebar(parent, name, close_button_name)
     local title_label = GuiBase.create_label(titlebar, "gui_base_title_label", "", "tf_frame_title")
 
     local draggable = GuiBase.create_draggable(titlebar, "tf_titlebar_draggable")
-    
+
 
     local close_button = GuiBase.create_icon_button(titlebar, close_button_name or "titlebar_close_button",
         Enum.SpriteEnum.CLOSE, { "tf-gui.close" },
