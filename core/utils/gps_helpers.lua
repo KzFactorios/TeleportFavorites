@@ -10,11 +10,13 @@ Helpers for parsing, normalizing, and converting GPS strings and map positions.
 - Used throughout the mod for tag, favorite, and teleportation logic
 ]]
 
+-- DO NOT require core.gps.gps here to avoid circular dependency
+-- local GPS = require("core.gps.gps")
+
 local basic_helpers = require("core.utils.basic_helpers")
 local Helpers = require("core.utils.helpers_suite")
-local PositionHelpers = require("core.utils.postion_helpers")
+local PositionHelpers = require("core.utils.position_helpers")
 local Constants = require("constants")
-local GPS = require("core.gps.gps")
 local Cache = require("core.cache.cache")
 local Lookups = require("core.cache.lookups")
 local Settings = require("settings")
@@ -74,28 +76,19 @@ end
 local function normalize_landing_position(player, intended_gps)
   if not player or not intended_gps or intended_gps == "" then return nil end
 
+  local GPS = require("core.gps.gps")
+
   local landing_position = GPS.map_position_from_gps(intended_gps)
+  if not landing_position then return nil end
   local adjusted_gps = nil
   local chart_tag = nil
   local tag = Cache.get_tag_by_gps(intended_gps)
 
-  -- if we don't have a tag
   if not tag then
-    -- has to be visible and can't be a water tile or a space tile
-    -- if the function call errors - it player.prints any messages
     if not PositionHelpers.position_can_be_tagged(player, landing_position) then return end
-
     local player_settings = Settings:getPlayerSettings(player)
-
-    -- find any chart_tags in our radius
     chart_tag = Helpers.position_has_colliding_tag(player, landing_position, player_settings.teleport_radius)
-
     if not chart_tag then
-      -- entity name - use car so that we allow the bigger footprint
-      -- radius - double Max distance from center to search in. A radius of 0 means an infinitely-large search area.
-      -- precision - double The step length from the given position as it searches, in tiles. Minimum value is 0.01.
-      --  Lower precision (e.g., 0.5) means the search checks more points and is more likely to find a spot in tight spaces, but it is slower.
-      --  Higher precision (e.g., 2 or 5) is faster but may miss valid positions in dense areas
       local non_collide_position = player.surface:find_non_colliding_position("car", landing_position,
         player_settings.teleport_radius, Constants.settings.TELEPORT_PRECISION)
       if not non_collide_position then
@@ -103,17 +96,15 @@ local function normalize_landing_position(player, intended_gps)
           "There is no available teleport landing position within your radius. Choose another location or adjust your teleport radius.")
         return
       end
-
-      local x, y, s = GPS.parse_gps_string(GPS.gps_from_map_position(non_collide_position))
-      local check_normalized_position = player.surface:find_non_colliding_position("car", { x = x, y = y },
+      local gps_str = GPS.gps_from_map_position(non_collide_position, player.surface.index)
+      local parsed = GPS.parse_gps_string(gps_str)
+      local check_normalized_position = player.surface:find_non_colliding_position("car", { x = parsed.x, y = parsed.y },
         player_settings.teleport_radius, Constants.settings.TELEPORT_PRECISION)
-
       if not check_normalized_position then
         player:print(
           "The area you are trying to land is too dense. Choose another location or adjust your teleport radius.")
         return
       end
-
       adjusted_gps = GPS.gps_from_map_position(check_normalized_position, player.surface.index)
     else
       adjusted_gps = GPS.gps_from_map_position(chart_tag.position, player.surface.index)
@@ -121,14 +112,11 @@ local function normalize_landing_position(player, intended_gps)
   else
     adjusted_gps = tag.gps
   end
-
-  -- We should have an adjusted_gps
   if not adjusted_gps then
     player:print("Could not compute the teleport coordinates")
+    return nil
   end
-
   local final_position = GPS.parse_gps_string(adjusted_gps)
-
   return { x = final_position.x, y = final_position.y }
 end
 

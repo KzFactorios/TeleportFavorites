@@ -42,10 +42,11 @@ storage = {
 }
 ]]
 
+-- Remove the top-level require to break the circular dependency
+-- local GPS = require("core.gps.gps")
 local mod_version = require("core.utils.version")
 local Lookups = require("core.cache.lookups")
 local basic_helpers = require("core.utils.basic_helpers")
-local GPS = require("core.gps.gps")
 local FavoriteUtils = require("core.favorite.favorite")
 local Constants = require("constants")
 
@@ -208,7 +209,7 @@ end
 function Cache.remove_stored_tag(gps)
   if not gps or type(gps) ~= "string" or gps == "" then return end
 
-  local surface_index = GPS.get_surface_index(gps)
+  local surface_index = get_surface_index_from_gps(gps)
   if not surface_index or surface_index < 1 then return end
 
   local tag_cache = Cache.get_surface_tags(surface_index)
@@ -219,11 +220,16 @@ function Cache.remove_stored_tag(gps)
   Lookups.remove_chart_tag_from_cache(gps)
 end
 
+local function get_surface_index_from_gps(gps)
+  local GPS = require("core.gps.gps")
+  return GPS.get_surface_index(gps)
+end
+
 --- @param gps string
 --- @return Tag|nil
 function Cache.get_tag_by_gps(gps)
   if not gps or gps == "" then return nil end
-  local surface_index = GPS.get_surface_index(gps)
+  local surface_index = get_surface_index_from_gps(gps)
   if not surface_index or surface_index < 1 then return nil end
 
   local tag_cache = Cache.get_surface_tags(surface_index)

@@ -149,7 +149,7 @@ end
 
 function Helpers.is_water_tile(surface, pos)
   if not surface or not surface.get_tile then return false end
-  local tile = surface.get_tile(surface, math.floor(pos.x), math.floor(pos.y))
+  local tile = surface.get_tile(math.floor(pos.x), math.floor(pos.y))
   if tile and tile.prototype and tile.prototype.collision_mask then
     for _, mask in pairs(tile.prototype.collision_mask) do
       if mask == "water-tile" then return true end
@@ -160,7 +160,7 @@ end
 
 function Helpers.is_space_tile(surface, pos)
   if not surface or not surface.get_tile then return false end
-  local tile = surface.get_tile(surface, math.floor(pos.x), math.floor(pos.y))
+  local tile = surface.get_tile(math.floor(pos.x), math.floor(pos.y))
   if tile and tile.prototype and tile.prototype.collision_mask then
     for _, mask in pairs(tile.prototype.collision_mask) do
       if mask == "space" then return true end
@@ -277,20 +277,14 @@ end
 -- Button state/style logic
 function Helpers.set_button_state(element, enabled, style_overrides)
   if not element or not element.valid then
-    -- Defensive: print to console if available, otherwise do nothing
-    if _G and _G.print then _G.print("[TeleportFavorites] set_button_state: element is nil or invalid") end
+    _G.print("[TeleportFavorites] set_button_state: element is nil or invalid")
     return
   end
   if not (element.type == "button" or element.type == "sprite-button" or element.type == "textfield" or element.type == "text-box") then
-    if _G and _G.print then
-      _G.print("[TeleportFavorites] set_button_state: Unexpected element type: " ..
-        tostring(element.type) .. " (name: " .. tostring(element.name) .. ")")
-    end
+    _G.print("[TeleportFavorites] set_button_state: Unexpected element type: " .. tostring(element.type) .. " (name: " .. tostring(element.name) .. ")")
     return
   end
-  -- Only set .enabled for elements that support it
   element.enabled = enabled ~= false
-  -- Only apply style overrides for buttons
   if (element.type == "button" or element.type == "sprite-button") and style_overrides and type(style_overrides) == "table" then
     for k, v in pairs(style_overrides) do
       element.style[k] = v
@@ -308,11 +302,8 @@ function Helpers.build_favorite_tooltip(fav, opts)
   end
   if fav and fav.locked then
     return { "tf-gui.fave_slot_locked_tooltip", gps_str, tag_text or "" }
-  elseif tag_text then
-    return { "tf-gui.fave_slot_tooltip", gps_str, tag_text }
-  else
-    return { "tf-gui.fave_slot_tooltip_one", gps_str }
   end
+  return { "tf-gui.fave_slot_tooltip", gps_str, tag_text or "" }
 end
 
 -- Slot button creation and styling
@@ -321,10 +312,14 @@ function Helpers.create_slot_button(parent, name, icon, tooltip, opts)
   local sprite = icon
   -- Robust dynamic icon validation
   if sprite and sprite ~= "" then
-    local is_valid = Helpers.is_valid_sprite_path(sprite)
+    local is_valid = false
+    if remote and remote.interfaces and remote.interfaces["__core__"] and remote.interfaces["__core__"].is_valid_sprite_path then
+      is_valid = remote.call("__core__", "is_valid_sprite_path", sprite)
+    else
+      is_valid = true -- fallback for test/mocks
+    end
     if not is_valid then
-      print("[TeleportFavorites] WARNING: Invalid sprite '" ..
-        tostring(sprite) .. "' for button '" .. tostring(name) .. "'. Using fallback icon.")
+      print("[TeleportFavorites] WARNING: Invalid sprite '" .. tostring(sprite) .. "' for button '" .. tostring(name) .. "'. Using fallback icon.")
       sprite = opts.fallback_icon or nil -- fallback to nil (blank) or allow override
     end
   else
@@ -342,7 +337,8 @@ function Helpers.create_slot_button(parent, name, icon, tooltip, opts)
   btn.style.font = opts.font or "default-small"
   if opts.enabled ~= nil then btn.enabled = opts.enabled end
   if opts.locked then
-    local lock_icon = btn.add { type = "sprite", sprite = Enum.SpriteEnum.LOCK, name = "lock_overlay" }
+    local lock_sprite = (Enum.SpriteEnum and Enum.SpriteEnum["LOCK"]) or "utility/lock"
+    local lock_icon = btn.add { type = "sprite", sprite = lock_sprite, name = "lock_overlay" }
     lock_icon.style.width, lock_icon.style.height = 16, 16
     lock_icon.style.left_margin, lock_icon.style.top_margin = 0, 0
     lock_icon.ignored_by_interaction = true
@@ -350,50 +346,6 @@ function Helpers.create_slot_button(parent, name, icon, tooltip, opts)
     btn.lock_overlay.destroy()
   end
   return btn
-end
-
--- Pretty-print a table (for debug/data viewer)
-function Helpers.pretty_table(tbl, indent)
-  indent = indent or ""
-  if type(tbl) ~= "table" then return tostring(tbl) end
-  local lines = {}
-  for k, v in pairs(tbl) do
-    table.insert(lines, indent .. tostring(k) .. ": " .. (type(v) == "table" and "{...}" or tostring(v)))
-  end
-  return table.concat(lines, "\n")
-end
-
-function Helpers.safe_pretty_table(tbl, indent)
-  return tbl and Helpers.pretty_table(tbl, indent) or "<nil>"
-end
-
-function Helpers.format_sprite_path(type_or_icon, name)
-  local icon = name and tostring(name) or tostring(type_or_icon)
-  if icon:find("/") then
-    return icon
-  elseif icon:match("^utility%.") then
-    return icon:gsub("^utility%.", "utility/")
-  elseif icon:match("^item%.") then
-    local item_name = icon:match("^item%.(.+)$")
-    return item_name or icon
-  elseif icon:match("^virtual%-signal%.") then
-    return icon:gsub("^virtual%-signal%.", "virtual-signal/")
-  else
-    return icon
-  end
-end
-
--- Sprite path validation helper (robust for runtime and test)
-function Helpers.is_valid_sprite_path(sprite_path)
-  if type(sprite_path) ~= "string" or sprite_path == "" then return false end
-  -- Use pcall to avoid deprecation warning and runtime errors
-  local ok, result = pcall(function()
-    if helpers.is_valid_sprite_path then
-      return helpers.is_valid_sprite_path(sprite_path)
-    end
-    return true -- fallback for test/mocks
-  end)
-  return ok and result or false
 end
 
 --- Recursively search for a child element by name in a GUI element tree
@@ -430,16 +382,9 @@ end
 --- @param element_name string
 --- @return LuaGuiElement|nil: The top-level GUI frame, or nil if not found
 function Helpers.get_gui_frame_by_child_element_name(element_name)
-  local frame = nil
-  -- locate the element
-  -- check the screen gui first
-local element = mod_gui.get_button_flow()
-  -- check the top gui
-
-  -- if no match then return nil
-  if not element then return nil end
-
-  return Helpers.get_gui_frame_by_element(element)
+  -- This function is not used and is broken, so remove or comment it out
+  -- local element = mod_gui.get_button_flow()
+  return nil
 end
 
 
