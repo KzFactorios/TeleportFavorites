@@ -137,11 +137,11 @@ end
 --- @param close_button_name? string|nil
 --- @return LuaGuiElement, LuaGuiElement, LuaGuiElement: The created titlebar flow
 function GuiBase.create_titlebar(parent, name, close_button_name)
-    local titlebar = GuiBase.create_hflow(parent, name or "tf_titlebar")
-    ---@diagnostic disable-next-line: inject-field
-    titlebar.style.vertical_align = "center"
-    ---@diagnostic disable-next-line: inject-field
-    titlebar.style.bottom_margin = 2
+    local titlebar = GuiBase.create_element('flow', parent, {
+        name = name or "tf_titlebar",
+        direction = "horizontal",
+        style = "tf_titlebar_flow"
+    })
 
     local title_label = GuiBase.create_label(titlebar, "gui_base_title_label", "", "tf_frame_title")
 

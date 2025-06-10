@@ -29,5 +29,6 @@
 - [ ] allow a creator of a tag to be able to allow(or not) the favoriting of the tag by other players
 - [x] Clarify and document that GPS must always be a string in the format 'xxx.yyy.s', never a table. Update README, gps_helpers.lua, and favorite.lua with explicit rules and examples.
 - [ ] Ensure that the tag editor's close button doesn't close the data viewer and vice versa. The titlebar close buttons are named the same. 
-- [ ] Check for conflicts with other mods. Especially with all those buttons in the top gui
-- [ ] Destination messages setting in game?
+- [ ] Check for conflicts with other mods. Especially with all those buttons in the top gui. Find alternative display locations?
+- [ ] Destination messages setting in game? switch to fly aways?
+- [ ] 

@@ -65,6 +65,25 @@ end
 
 -- (No GUI-specific styles should be defined here. See prototypes/styles_fave_bar.lua, styles_tag_editor.lua, styles_data_viewer.lua)
 
+if not gui_style.tf_titlebar_flow then
+  gui_style.tf_titlebar_flow = {
+    type = "horizontal_flow_style",
+    parent = "horizontal_flow",
+    horizontally_stretchable = "on",
+    vertically_stretchable = "off",
+    vertical_align = "center",
+    top_padding = 0,
+    bottom_padding = 0,
+    left_padding = 8,    -- Internal padding for content
+    right_padding = 8,   -- Internal padding for content  
+    left_margin = -8,    -- Extend into parent's left padding (base: 8px)
+    right_margin = -8,   -- Extend into parent's right padding (base: 8px)
+    height = 32,
+    use_header_filler = true,
+    horizontal_spacing = 0  -- No spacing between elements to maximize fill
+  }
+end
+
 if not gui_style.frame_titlebar_flow then
   gui_style.frame_titlebar_flow = {
     type = "horizontal_flow_style",
@@ -128,24 +147,21 @@ if not gui_style.tf_orange_button then
     {
       base = { position = { 34, 17 }, corner_size = 8 },
       shadow = Enum.ColorEnum.DEFAULT_DIRT
-    },
-    hovered_graphical_set =
+    },    hovered_graphical_set =
     {
       base = { position = { 202, 199 }, corner_size = 8 },
       shadow = Enum.ColorEnum.DEFAULT_DIRT,
-      glow = Styles.default_glow(Enum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
+      glow = Styles.default_glow(Enum.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
     },
     clicked_graphical_set =
     {
       base = { position = { 352, 17 }, corner_size = 8 },
       shadow = Enum.ColorEnum.DEFAULT_DIRT
-    },
-    disabled_graphical_set =
+    },    disabled_graphical_set =
     {
       base = { position = { 368, 17 }, corner_size = 8 },
       shadow = Enum.ColorEnum.DEFAULT_DIRT
-    },
-    left_click_sound = "__core__/sound/gui-green-confirm.ogg",
+    }
   }
 end
 
@@ -153,7 +169,14 @@ if not gui_style.tf_frame_title then
   gui_style.tf_frame_title = {
     type = "label_style",
     parent = "frame_title",
-    top_margin = -2
+    top_margin = -2,
+    horizontally_stretchable = "off",  -- Don't stretch, let draggable fill space
+    width = 0,  -- Natural width based on text content
+    minimal_width = 60,  -- Minimum space for title text
+    natural_width = 0,   -- Let it size naturally to content
+    single_line = true,  -- Ensure single line for title
+    horizontal_align = "left",  -- Left-align the title text
+    font_color = Enum.ColorEnum.CAPTION
   }
 end
 
@@ -161,7 +184,10 @@ if not gui_style.tf_titlebar_draggable then
   gui_style.tf_titlebar_draggable = {
     type = "empty_widget_style",
     parent = "draggable_space_header",
-    horizontally_stretchable = "on"
+    horizontally_stretchable = "on",
+    minimal_width = 8,   -- Reduced minimum to allow more expansion
+    width = 0,           -- Let it expand naturally
+    maximal_width = 9999 -- Allow maximum expansion to fill space
   }
 end
 
@@ -169,6 +195,7 @@ if not gui_style.tf_frame_action_button then
   gui_style.tf_frame_action_button = {
     type = "button_style",
     parent = "frame_action_button",
+    right_margin = 0,  -- Ensure it aligns properly with frame edge
   }
 end
 

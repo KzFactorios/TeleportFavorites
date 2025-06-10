@@ -14,5 +14,8 @@
   "Lua.workspace.library": [
     "${workspaceFolder}/core/types",
     "v:\\Fac2orios\\2_Gemini\\data"
-  ]
+  ],
+  "github.copilot.advanced": {
+        "debug.useNodeFetcher": true
+    }
 }

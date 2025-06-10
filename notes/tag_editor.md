@@ -110,31 +110,36 @@ Yes, allow whatever signals are available in the current game. If a mod change r
 # Tag Editor GUI Hierarchy (Updated)
 
 ```
-tag_editor_outer_frame (frame, vertical, slot_window_frame)
+tag_editor_outer_frame (frame, vertical, tf_tag_editor_outer_frame)
 ├─ tag_editor_titlebar (flow, horizontal)
-├─ tag_editor_inner_frame (frame, vertical, invisible_frame)
-│  └─ tag_editor_content_frame (frame, vertical)
-│     ├─ tag_editor_last_user_row (frame, horizontal, tf_last_user_row)
-│     └─ tag_editor_content_inner_frame (frame, vertical)
-│         ├─ tag_editor_teleport_favorite_row (flow, horizontal)
-│         │   ├─ tag_editor_is_favorite_button (sprite-button)
-│         │   └─ tag_editor_teleport_button (sprite-button)
-│         ├─ tag_editor_rich_text_row (flow, horizontal)
-│         │   ├─ tag_editor_icon_button (sprite-button)
-│         │   ├─ tag_editor_rich_text_input (textfield)
-│         │   └─ tag_editor_rich_text_icon_button (sprite-button)
-│         └─ ... (other content rows as needed)
-├─ tag_editor_error_row_frame (frame, vertical)
-│  └─ error_row_inner_frame (frame, vertical, invisible_frame)
-│      └─ error_row_error_message (label)
-└─ tag_editor_last_row (flow, horizontal)
-    ├─ last_row_cancel_button (sprite-button)
-    └─ last_row_confirm_button (sprite-button)
+│  ├─ (title label)
+│  └─ tag_editor_title_row_close (button)
+├─ tag_editor_content_frame (frame, vertical, tf_tag_editor_content_frame)
+│  ├─ tag_editor_owner_row_frame (frame, horizontal, tf_owner_row_frame)
+│  │  ├─ tag_editor_label_flow (flow, horizontal)
+│  │  │  └─ tag_editor_owner_label (label, tf_tag_editor_owner_label)
+│  │  └─ tag_editor_button_flow (flow, horizontal)
+│  │     ├─ tag_editor_move_button (icon-button, tf_move_button)
+│  │     └─ tag_editor_delete_button (icon-button, tf_delete_button)
+│  └─ tag_editor_content_inner_frame (frame, vertical, tf_tag_editor_content_inner_frame)
+│     ├─ tag_editor_teleport_favorite_row (frame, horizontal, tf_tag_editor_teleport_favorite_row)
+│     │  ├─ tag_editor_is_favorite_button (icon-button, tf_slot_button)
+│     │  └─ tag_editor_teleport_button (icon-button, tf_teleport_button)
+│     ├─ tag_editor_rich_text_row (flow, horizontal)
+│     │  ├─ tag_editor_icon_button (choose-elem-button, tf_slot_button)
+│     │  └─ tag_editor_rich_text_input (textbox, tf_tag_editor_text_input)
+├─ tag_editor_error_row_frame (frame, vertical, tf_tag_editor_error_row_frame) [conditional]
+│  └─ error_row_error_message (label, tf_tag_editor_error_label)
+└─ tag_editor_last_row (frame, horizontal, tf_tag_editor_last_row)
+   ├─ tag_editor_last_row_draggable (empty-widget, tf_tag_editor_last_row_draggable)
+   └─ last_row_confirm_button (button, tf_confirm_button)
 ```
 
+**Notes:**
 - The favorite button is now at the head of the teleport row (tag_editor_teleport_favorite_row).
 - The favorite row and both labels have been removed.
 - All element names and hierarchy now match the refactored code as of 2025-05-31.
+- Error row only appears when `tag_data.error_message` exists and is non-empty.
 
 ## Icon Picker Limitation
 - The built-in Factorio signal/icon picker (used for icon selection) always requires the user to confirm their selection with a checkmark button. There is no property or style that allows auto-accepting the selection on click; this is a limitation of the Factorio engine as of 1.1.x.

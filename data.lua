@@ -16,7 +16,7 @@ if not data.raw["item-subgroup"]["virtual-signal-special"] then
 end
 
 ---@diagnostic disable-next-line: undefined-global
-data:extend {  
+data:extend {
   {
     type = "font",
     name = "custom-tiny-font",
@@ -50,6 +50,7 @@ data:extend {
     x = 0,
     y = 0,
     scale = .5,
+    tint = { r = 1, g = .64, b = 0, 1.0 },
     flags = { "gui-icon" }
   },
   {

@@ -6,21 +6,31 @@ This document defines the coding standards and best practices for the TeleportFa
 ---
 
 ## Require Statements Policy
+**⚠️ CRITICAL RULE - STRICTLY ENFORCED ⚠️**
+
 All require statements MUST be placed at the very top of each Lua file, before any function or logic.
 
-Do NOT place require statements inside functions, event handlers, or conditional blocks.
-This rule is enforced to prevent circular dependencies, recursion errors, and stack overflows (e.g., "too many C levels" errors).
-If a circular dependency is encountered, refactor the code to break the cycle, but never move require inside a function as a workaround.
-This is a strict project policy. All agents and contributors must follow it.
-See also:
+**ABSOLUTELY NEVER** place require statements inside functions, event handlers, or conditional blocks.
 
-gui_base.lua for an example and rationale.
-This policy applies to all Lua modules in the codebase.
+**ABSOLUTELY NEVER** place require statements at the end of files as a "workaround" for circular dependencies.
+
+This rule is **STRICTLY ENFORCED** to prevent circular dependencies, recursion errors, and stack overflows (e.g., "too many C levels" errors).
+
+If a circular dependency is encountered, refactor the code to break the cycle, but **NEVER EVER** move require inside a function or to the end of a file as a workaround.
+
+**This is a NON-NEGOTIABLE project policy. ALL agents and contributors MUST follow it without exception.**
+
+chatGPT said "Tip: You can also use local requires inside functions to break cycles:" - **THIS TIP IS COMPLETELY WRONG FOR FACTORIO MODDING AND IS FORBIDDEN!**
+
+See also:
+- gui_base.lua for an example and rationale.
+- This policy applies to **ALL** Lua modules in the codebase without exception.
 
 ---
 
 ## General Guidelines
 - I have a condition called essential tremor which attributes to my attrocious typing skills. Do your best to follow along with my instructions. If there is any ambiguity then be sure to ask! And thank you for your patience!
+- **CRITICAL: PowerShell Command Formatting** - This environment uses PowerShell, NOT bash. PowerShell does not recognize `&&` for command chaining. Use semicolons `;` to chain commands, or use separate command calls. Example: `cd "path"; git reset --hard HEAD` instead of `cd "path" && git reset --hard HEAD`.
 - Prefer per-line suppression comments (e.g., `---@diagnostic disable-next-line: ...`) over per-file suppressions. Prefer per-file suppressions over global suppressions. This ensures that static analysis is as precise and non-intrusive as possible, and that code remains readable and maintainable for all contributors.
 - Use idiomatic Lua and Factorio modding conventions, including strict EmmyLua annotations for all classes, fields, and methods. All public and private fields, as well as all function parameters and return values, must be annotated for IDE support and static analysis.
 - Prefer modular, single-responsibility modules. Each file should encapsulate a single concern or domain concept. Avoid monolithic files and always refactor when a file grows too large or complex.
@@ -39,13 +49,16 @@ This policy applies to all Lua modules in the codebase.
 ---
 
 ## Require Statement Best Practices
-- Always place all require statements at the very top of each file, before any logic or function definitions.
-- Never place require statements inside functions, methods, or event handlers. This is critical for Factorio modding and avoids runtime errors and performance issues.
+**⚠️ ABSOLUTE REQUIREMENTS - NO EXCEPTIONS ⚠️**
 
-- Always use absolute paths in require statements, starting from the mod root.
+- **ALWAYS** place ALL require statements at the very top of each file, before any logic or function definitions.
+- **NEVER EVER** place require statements inside functions, methods, or event handlers. This is **CRITICAL** for Factorio modding and avoids runtime errors and performance issues.
+- **NEVER EVER** place require statements at the end of files. This does NOT solve circular dependencies and can cause unpredictable behavior.
+- **ALWAYS** use absolute paths in require statements, starting from the mod root.
 - Order require statements alphabetically for consistency and auditability.
 - If a module is used in multiple places, require it once at the top and reuse the local variable throughout the file.
-- This pattern must be followed in all files, including GUI, control, and core logic modules.
+- **This pattern MUST be followed in ALL files, including GUI, control, and core logic modules.**
+- **ANY violation of these rules will be treated as a critical bug and must be fixed immediately.**
 
 ---
 
