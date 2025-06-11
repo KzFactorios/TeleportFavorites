@@ -28,8 +28,9 @@ GPS.get_surface_index = gps_helpers.get_surface_index
 --- Returns the x,y as a string xxx.yyy, ignores the surface component
 function GPS.coords_string_from_gps(gps)
   if not gps or basic_helpers.trim(gps) == "" then return "" end
-  local x, y, _s = gps_helpers.parse_gps_string(gps)
-  return (basic_helpers.pad(x, padlen) .. "." .. basic_helpers.pad(y, padlen)) or ""
+  local parsed = gps_helpers.parse_gps_string(gps)
+  if not parsed or not parsed.x or not parsed.y then return "" end
+  return (basic_helpers.pad(parsed.x, padlen) .. "." .. basic_helpers.pad(parsed.y, padlen)) or ""
 end
 
 --- Converts our gps string (xxx.yyy.s) to Factorio's [gps=x,y,s] rich text tag

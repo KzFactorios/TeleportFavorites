@@ -144,12 +144,13 @@ if not gui_style.tf_teleport_button then
     parent = "tf_orange_button",
     width = 0,
     maximal_width = 400,
-    height = 28,                     -- exact height
-    horizontally_stretchable = "on", -- do not stretch
-    vertically_stretchable = "off",  -- do not stretch
-    top_margin = 7,
+    height = 36,                     -- exact height
+    horizontally_stretchable = "on", 
+    vertically_stretchable = "off",  
+    top_margin = 3,
     right_margin = 3,
     left_margin = 9,
+    font = "default-large-bold"
   }
 end
 
@@ -170,9 +171,12 @@ if not gui_style.tf_tag_editor_text_input then
     type = "textbox_style",
     horizontally_stretchable = "on",
     width = 0,
-    top_margin = 6,
+    height = 30,
+    top_margin = 5,
     right_margin = 4,
     left_margin = 4,
+    --top_padding = 0,
+    --bottom_padding = 0
     --right_padding = 2
   }
 end
@@ -186,8 +190,8 @@ if not gui_style.tf_tag_editor_last_row then
     top_margin = 4,
     -- Allow vertical stretching for child elements    top_padding = 0,     -- Remove padding to let draggable fill completely
     bottom_padding = 0,  -- Remove padding to let draggable fill completely
-    left_padding = 4,    -- Keep horizontal padding for button spacing
-    right_padding = 4,   -- Keep horizontal padding for button spacing
+    left_padding = 0,    -- Keep horizontal padding for button spacing
+    right_padding = 0,   -- Keep horizontal padding for button spacing
     horizontal_spacing = 4,  -- Base scale spacing (displays as 8px at 200%)
     --height = 40,  -- Fixed height to match vanilla
     vertical_align = "center"  -- Back to center
@@ -203,9 +207,10 @@ if not gui_style.tf_tag_editor_last_row_draggable then
     --height = 40, -- Explicitly match the parent row height
     --min_height = 20, -- Ensure it fills the vertical space
     -- No custom width, margins, or padding
-    left_margin = -4,
+    left_margin = 0,
+    right_margin = 8,
     left_padding = 0,
-    right_padding = 8,
+    --right_padding = 8,
   }
 end
 

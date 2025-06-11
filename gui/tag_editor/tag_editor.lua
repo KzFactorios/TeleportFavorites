@@ -145,8 +145,7 @@ local function build_rich_text_row(parent, tag_data)
             style = "tf_slot_button",
             elem_type = "signal",
             signal = tag_data.icon or ""
-        })
-    -- Create textbox and set value from storage (tag_data)
+        })    -- Create textbox and set value from storage (tag_data)
     local text_input = GuiBase.create_textbox(row, "tag_editor_rich_text_input",
         tag_data.text or "", "tf_tag_editor_text_input", true)
     return row, icon_btn, text_input
