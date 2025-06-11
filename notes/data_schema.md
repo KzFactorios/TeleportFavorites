@@ -25,10 +25,11 @@ Defines the persistent data structures for the mod, including player favorites, 
             },
           },
         },
-      },
-      -- Tag editor dialog state (cleared on close/disconnect)
+      },      -- Tag editor dialog state (cleared on close/disconnect)
       tag_editor_data = {
         tag = table,           -- Tag object being edited (may be partial)
+        gps = string,          -- GPS coordinates where tag editor was opened (canonical field)
+        move_gps = string,     -- GPS coordinates during move operations (temporary)
         icon = string|nil,     -- Icon signal name (optional)
         text = string|nil,     -- Tag text (optional)
         is_favorite = bool,   -- Whether the tag is a favorite (pending)

@@ -34,6 +34,7 @@ local GPS = require("core.gps.gps")
 local Constants = require("constants")
 local Lookups = require("core.cache.lookups")
 local _Favorite = require("core.favorite.favorite")
+local Enum = require("prototypes.enums.enum")
 local Cache = require("core.cache.cache")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local tag_editor = require("gui.tag_editor.tag_editor")
@@ -75,6 +76,11 @@ function handlers.on_open_tag_editor_custom_input(event)
   local player = game.get_player(event.player_index)
   if not player then return end
   if player.render_mode ~= defines.render_mode.chart and player.render_mode ~= defines.render_mode.chart_zoomed_in then return end
+  -- Check if tag editor is already open - if so, ignore right-click events
+  local tag_editor_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TAG_EDITOR]
+  if tag_editor_frame and tag_editor_frame.valid then
+    return -- Tag editor is open, ignore right-click
+  end
 
   local surface = player.surface
   local surface_id = surface.index
@@ -83,14 +89,13 @@ function handlers.on_open_tag_editor_custom_input(event)
   local cursor_position = event.cursor_position
   if not cursor_position or not (cursor_position.x and cursor_position.y) then
     return
-  end
-  -- Normalize the clicked position and convert to GPS string
+  end-- Normalize the clicked position and convert to GPS string
   local normalized_pos = { x = cursor_position.x, y = cursor_position.y }
-  local editor_gps = GpsHelpers.gps_from_map_position(normalized_pos, surface_id)
+  local gps = GpsHelpers.gps_from_map_position(normalized_pos, surface_id)
 
   local tag_data = {
-    gps = editor_gps, -- for legacy compatibility, but editor_gps is the canonical field
-    editor_gps = editor_gps,
+    gps = gps, -- canonical field for tag editor position
+    move_gps = "", -- GPS coordinates during move operations
     locked = false,
     is_favorite = false,
     icon = "",
@@ -99,13 +104,12 @@ function handlers.on_open_tag_editor_custom_input(event)
     chart_tag = nil,
     error_message = ""
   }
-
   -- Optionally: look for a matching tag collision, get the matching chart_tag, etc.
   -- ...existing code...
 
   local chart_tag = Lookups.get_chart_tag_by_gps("")
 
-  -- Persist editor_gps in tag_editor_data
+  -- Persist gps in tag_editor_data
   Cache.set_tag_editor_data(player, tag_data)
 
   tag_editor.build(player, tag_data)

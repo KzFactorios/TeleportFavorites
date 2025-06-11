@@ -74,7 +74,6 @@ local function handle_move_btn(player, tag_data, script)
   tag_data.move_mode = true
   show_tag_editor_error(player, tag_data,
     "The aether shimmers... Select a new destination for this tag, or right-click to cancel.")
-
   local function on_move(event)
     if event.player_index ~= player.index then return end
     local pos = event.area and event.area.left_top or nil
@@ -82,9 +81,19 @@ local function handle_move_btn(player, tag_data, script)
       return show_tag_editor_error(player, tag_data,
         "The aether rejects this location. Please select a valid destination.")
     end
+    
+    -- Store the new position in move_gps first
+    local new_gps = GPS.gps_from_map_position(pos, player.surface.index)
+    tag_data.move_gps = new_gps
+    
     local tag = tag_data.tag or {}
-    update_tag_position(tag, pos, GPS.gps_from_map_position(pos, player.surface.index))
+    update_tag_position(tag, pos, new_gps)
     tag_data.tag = tag
+    
+    -- Update the main gps field to the new location
+    tag_data.gps = new_gps
+    tag_data.move_gps = "" -- Clear move_gps since move is complete
+    
     local tags = Cache.get_surface_tags(player.surface.index)
     tags[tag.gps] = tag
     tag_data.move_mode = false
@@ -94,10 +103,10 @@ local function handle_move_btn(player, tag_data, script)
     refresh_tag_editor(player, tag_data)
     unregister_move_handlers(script)
   end
-
   local function on_cancel(event)
     if event.player_index ~= player.index then return end
     tag_data.move_mode = false
+    tag_data.move_gps = "" -- Clear move_gps on cancel
     show_tag_editor_error(player, tag_data, "The spirits sigh. Move mode cancelled.")
     unregister_move_handlers(script)
   end

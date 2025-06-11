@@ -52,16 +52,17 @@ function basic_helpers.has_decimal_point(s)
   return s:find("%.") ~= nil
 end
 
---- Ensures that an index is a valid positive integer. uint
+--- Ensures that an index is a valid integer (can be negative for coordinates)
+--- Rounds floating point numbers to the nearest integer
 --- @param index any
---- @return uint?
+--- @return number?
 function basic_helpers.normalize_index(index)
-  if type(index) == "number" and index >= 1 and index % 1 == 0 then
-    return math.floor(index)
+  if type(index) == "number" then
+    return math.floor(index + 0.5) -- Round to nearest integer
   elseif type(index) == "string" then
     local num = tonumber(index)
-    if num and num >= 1 and num % 1 == 0 then
-      return math.floor(num)
+    if num then
+      return math.floor(num + 0.5) -- Round to nearest integer
     end
   end
   return nil -- Default to nil if invalid

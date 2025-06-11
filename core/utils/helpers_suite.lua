@@ -169,14 +169,6 @@ function Helpers.is_space_tile(surface, pos)
   return false
 end
 
---- Normalize an index to a valid integer
---- @param index number|string: The index to normalize
---- @return number?: The normalized index, or nil if invalid
-function Helpers.normalize_index(index)
-  local idx = math.floor(tonumber(index) or -1)
-  return (idx >= 0) and idx or nil
-end
-
 ---
 -- Centralized error handling and user feedback
 -- @param player LuaPlayer|nil: The player to notify (optional)

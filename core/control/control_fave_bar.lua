@@ -89,10 +89,9 @@ end
 
 local function open_tag_editor(player, favorite)
   local tag_data = {}
-  if favorite then
-    tag_data = {
-      gps = favorite.gps,
-      editor_gps = favorite.gps, -- set editor_gps for teleport button
+  if favorite then    tag_data = {
+      gps = favorite.gps, -- set gps for teleport button
+      move_gps = "", -- GPS coordinates during move operations
       locked = favorite.locked,
       is_favorite = favorite.tag.is_player_favorite(player),
       text = favorite.chart_tag.text,
@@ -101,7 +100,7 @@ local function open_tag_editor(player, favorite)
       error_message = ""
     }
   end
-  -- Persist editor_gps in tag_editor_data
+  -- Persist gps in tag_editor_data
   Cache.set_tag_editor_data(player, tag_data)
   tag_editor.build(player, tag_data)
   return

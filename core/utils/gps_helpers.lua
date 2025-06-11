@@ -30,11 +30,12 @@ local function parse_gps_string(gps)
   if not x or not y or not s then return nil end
   local parsed_x, parsed_y, parsed_s = tonumber(x), tonumber(y), tonumber(s)
   if not parsed_x or not parsed_y or not parsed_s then return nil end
-  return {
+  local ret = {
     x = basic_helpers.normalize_index(parsed_x),
     y = basic_helpers.normalize_index(parsed_y),
     s = basic_helpers.normalize_index(parsed_s)
   }
+  return ret
 end
 
 --- Return canonical GPS string 'xxx.yyy.s' from map position and surface index
@@ -141,11 +142,10 @@ end
 --- Parse and normalize a GPS string; accepts vanilla [gps=x,y,s] or canonical format
 ---@param gps string
 ---@return string
-local function parse_and_normalize_gps(gps)
-  if type(gps) == "string" and gps:match("^%[gps=") then
+local function parse_and_normalize_gps(gps)  if type(gps) == "string" and gps:match("^%[gps=") then
     local x, y, s = gps:match("%[gps=(%-?%d+),(%-?%d+),(%-?%d+)%]")
     if x and y and s then
-      local nx, ny, ns = Helpers.normalize_index(x), Helpers.normalize_index(y), tonumber(s)
+      local nx, ny, ns = basic_helpers.normalize_index(x), basic_helpers.normalize_index(y), tonumber(s)
       if nx and ny and ns then
         return gps_from_map_position({ x = nx, y = ny }, math.floor(ns))
       end

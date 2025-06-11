@@ -74,8 +74,19 @@ function M.register_gui_handlers(script)
       if log then log("[TeleportFavorites] Traceback:\n" .. tb) end
       if log then
         local el = event and event.element
-        local ename = el and el.name or "<no element>"
-        local etype = el and el.type or "<no type>"
+        local ename, etype = "<no element>", "<no type>"
+        -- Safely check if element is valid before accessing properties
+        if el and type(el) == "userdata" then
+          pcall(function()
+            if el.valid then
+              ename = el.name or "<no name>"
+              etype = el.type or "<no type>"
+            else
+              ename = "<invalid element>"
+              etype = "<invalid element>"
+            end
+          end)
+        end
         log("[TeleportFavorites] Event element: name=" .. tostring(ename) .. ", type=" .. tostring(etype))
         log("[TeleportFavorites] Event.player_index: " .. tostring(event and event.player_index))
         for k, v in pairs(event or {}) do

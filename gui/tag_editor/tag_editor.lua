@@ -115,47 +115,26 @@ local function build_owner_row(parent, tag_data)
     return row_frame, label, move_button, delete_button
 end
 
-
-
-
 local function build_teleport_favorite_row(parent, tag_data)
     -- Style must be set at creation time for Factorio GUIs
     local row = GuiBase.create_frame(parent, "tag_editor_teleport_favorite_row", "horizontal",
         "tf_tag_editor_teleport_favorite_row")
-
-
 
     local star_state = (tag_data and tag_data.is_favorite and tag_data.is_favorite ~= nil and tag_data.is_favorite and Enum.SpriteEnum.STAR) or
         Enum.SpriteEnum.STAR_DISABLED
 
     local fave_style = tag_data.is_favorite and "slot_orange_favorite_on" or "slot_orange_favorite_off"
 
-
     local favorite_btn = GuiBase.create_icon_button(row, "tag_editor_is_favorite_button", star_state,
         nil, fave_style)
 
-
-
-
-
-
-
     local teleport_btn = GuiBase.create_icon_button(row, "tag_editor_teleport_button", "",
         nil,
-        "tf_teleport_button")
-    -- Use editor_gps for caption if present, else gps, else fallback
-    teleport_btn.caption = tag_data.editor_gps or tag_data.gps or "no destination"
+        "tf_teleport_button")    -- Use gps for caption, fallback to move_gps if in move mode, else fallback
+    local coords = GPS.coords_string_from_gps(tag_data.gps) or "no destination"
+    teleport_btn.caption = { "tf-gui.teleport_to", coords }
     return row, favorite_btn, teleport_btn
 end
-
-
-
-
-
-
-
-
-
 
 local function build_rich_text_row(parent, tag_data)
     local row = GuiBase.create_hflow(parent, "tag_editor_rich_text_row")
@@ -218,16 +197,14 @@ end
 function tag_editor.build(player, tag_data)
     if not player then error("tag_editor.build: player is required") end
     -- if we were given data then fine, otherwise get from storage
-    if not tag_data then tag_data = Cache.get_player_data(player).tag_editor_data end
-
-    -- Ensure editor_gps is set (fallback to gps if missing)
-    if not tag_data.editor_gps or tag_data.editor_gps == "" then
-        tag_data.editor_gps = tag_data.gps or ""
+    if not tag_data then tag_data = Cache.get_player_data(player).tag_editor_data end    -- Ensure gps is set (fallback to move_gps if missing, for edge cases)
+    if not tag_data.gps or tag_data.gps == "" then
+        tag_data.gps = tag_data.move_gps or ""
     end
 
-    local editor_gps = tag_data.editor_gps
-    local editor_target_position = GPS.map_position_from_gps(editor_gps)
-    local editor_coords_string = GPS.coords_string_from_gps(editor_gps)
+    local gps = tag_data.gps
+    local editor_target_position = GPS.map_position_from_gps(gps)
+    local editor_coords_string = GPS.coords_string_from_gps(gps)
 
     local parent = player.gui.screen
     local outer = nil
@@ -249,7 +226,7 @@ function tag_editor.build(player, tag_data)
         "tf_tag_editor_content_frame")
     local tag_editor_owner_row, owner_label, _move_button, _delete_button = build_owner_row(tag_editor_content_frame,
         tag_data)
-    owner_label.caption = {"tf-gui.owner_label", player.name}
+    owner_label.caption = { "tf-gui.owner_label", player.name }
 
     local tag_editor_content_inner_frame = GuiBase.create_frame(tag_editor_content_frame,
         "tag_editor_content_inner_frame", "vertical", "tf_tag_editor_content_inner_frame")
@@ -269,13 +246,12 @@ function tag_editor.build(player, tag_data)
         favorite_btn = tag_editor_is_favorite_button,
         rich_text_row = tag_editor_rich_text_row,
         icon_btn = tag_editor_icon_button,
-        rich_text_input = tag_editor_rich_text_input,
-        error_label = error_row_error_message,
+        rich_text_input = tag_editor_rich_text_input,        error_label = error_row_error_message,
         confirm_btn = last_row_confirm_button,
         editor_position = editor_target_position,
         tag_editor_error_row_frame = tag_editor_error_row_frame,
         tag_editor_last_row = tag_editor_last_row,
-        editor_gps = editor_gps
+        gps = gps
     }
 
     setup_tag_editor_ui(refs, tag_data, player)
