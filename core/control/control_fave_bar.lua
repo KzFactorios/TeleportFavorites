@@ -12,7 +12,7 @@ local fave_bar = require("gui.favorites_bar.fave_bar")
 local Cache = require("core.cache.cache")
 local Helpers = require("core.utils.helpers_suite")
 local tag_editor = require("gui.tag_editor.tag_editor")
-local GpsHelpers = require("core.utils.gps_helpers")
+local gps_helpers = require("core.utils.gps_helpers")
 
 local M = {}
 local script = script
@@ -78,22 +78,24 @@ end
 
 local function teleport_to_favorite(player, fav)
   -- normalize position
-  local norm_position = GpsHelpers.normalize_landing_position(player, fav.gps)
+  local norm_position = gps_helpers.normalize_landing_position(player, fav.gps)
   if norm_position then
     Helpers.safe_teleport(player, norm_position)
-    Helpers.player_print(player, lstr("tf-gui.teleported_to", player.name, slot.gps))
+    Helpers.player_print(player, lstr("tf-gui.teleported_to", player.name, fav.gps))
   else
     Helpers.player_print(player, lstr("tf-gui.teleport_failed"))
   end
 end
 
-local function open_tag_editor(player, favorite)
+local function open_tag_editor_from_favorite(player, favorite)
   local tag_data = {}
-  if favorite then    tag_data = {
+  if favorite then    
+    tag_data = {
       gps = favorite.gps, -- set gps for teleport button
       move_gps = "", -- GPS coordinates during move operations
       locked = favorite.locked,
       is_favorite = favorite.tag.is_player_favorite(player),
+      icon = favorite.tag.chart_tag.icon or "",
       text = favorite.chart_tag.text,
       tag = favorite.tag,
       chart_tag = favorite.chart_tag,
@@ -101,6 +103,7 @@ local function open_tag_editor(player, favorite)
     }
   end
   -- Persist gps in tag_editor_data
+  Cache.set_tag_editor_data(player, {})
   Cache.set_tag_editor_data(player, tag_data)
   tag_editor.build(player, tag_data)
   return
@@ -141,7 +144,7 @@ end
 local function handle_tag_editor(event, player, fav, slot)
   if event.button == defines.mouse_button_type.right then
     if fav and not FavoriteUtils.is_blank_favorite(fav) then
-      open_tag_editor(player, fav) -- removed extra gps argument
+      open_tag_editor_from_favorite(player, fav) -- removed extra gps argument
       return true
     end
   end

@@ -7,6 +7,7 @@ This module provides static functions for synchronizing, updating, and removing 
 local Tag = require("core.tag.tag")
 local TagSync = require("core.tag.tag_sync")
 local GPS = require("core.gps.gps")
+local gps_helpers = require("core.utils.gps_helpers")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local Helpers = require("core.utils.basic_helpers")
 local Cache = require("core.cache.cache")
@@ -54,7 +55,7 @@ function TagSync.guarantee_chart_tag(player, tag)
   if not map_pos or not surface_index then error("Invalid GPS string: " .. tostring(tag.gps)) end
   if not surface then error("Surface not found for tag.gps: " .. tag.gps) end
 
-  local normal_pos = GPS.normalize_landing_position(player, map_pos)
+  local normal_pos = gps_helpers.normalize_landing_position(player, GPS.gps_from_map_position(map_pos, player.surface.index))
   if not normal_pos then error("Sorry, we couldn't find a valid landing area. Try another location") end
 
   local new_chart_tag = TagSync.add_new_chart_tag(player, normal_pos, text, icon)
@@ -67,6 +68,7 @@ function TagSync.guarantee_chart_tag(player, tag)
     tag.gps = new_gps
   end
 
+  -- dispose of the working chart_tag
   if chart_tag and chart_tag.valid then chart_tag.destroy() end
   tag.chart_tag = new_chart_tag
   Cache.lookups.clear_chart_tag_cache(surface.index)
@@ -90,7 +92,7 @@ function TagSync.update_tag_gps_and_associated(player, tag, new_gps)
 
   if not map_pos or not surface then error("Invalid GPS or surface for update.") end
 
-  local normal_pos = GPS.normalize_landing_position(player, map_pos)
+  local normal_pos = gps_helpers.normalize_landing_position(player, GPS.gps_from_map_position(map_pos, player.surface.index))
   if not normal_pos then error("Sorry, we couldn't find a valid landing area. Try another location") end
 
   local new_chart_tag = TagSync.add_new_chart_tag(player, normal_pos, old_chart_tag.text, old_chart_tag.icon)

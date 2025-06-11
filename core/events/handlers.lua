@@ -40,7 +40,7 @@ local fave_bar = require("gui.favorites_bar.fave_bar")
 local tag_editor = require("gui.tag_editor.tag_editor")
 local _Settings = require("settings")
 local Helpers = require("core.utils.helpers_suite")
-local GpsHelpers = require("core.utils.gps_helpers")
+local gps_helpers = require("core.utils.gps_helpers")
 
 local handlers = {}
 
@@ -57,7 +57,7 @@ end
 
 function handlers.on_player_created(event)
   local player = game.get_player(event.player_index)
-  if player then
+  if player and player.valid then
     local parent = player.gui.top
     fave_bar.build(player, parent)
   end
@@ -65,7 +65,7 @@ end
 
 function handlers.on_player_changed_surface(event)
   local player = game.get_player(event.player_index)
-  if player then
+  if player and player.valid then
     local parent = player.gui.top
     fave_bar.build(player, parent)
   end
@@ -73,9 +73,10 @@ end
 
 --- handles right-click on the chart view
 function handlers.on_open_tag_editor_custom_input(event)
+  ---@type LuaPlayer
   local player = game.get_player(event.player_index)
-  if not player then return end
-  if player.render_mode ~= defines.render_mode.chart and player.render_mode ~= defines.render_mode.chart_zoomed_in then return end
+  if not player or (player.render_mode ~= defines.render_mode.chart and player.render_mode ~= defines.render_mode.chart_zoomed_in) then return end
+
   -- Check if tag editor is already open - if so, ignore right-click events
   local tag_editor_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TAG_EDITOR]
   if tag_editor_frame and tag_editor_frame.valid then
@@ -89,50 +90,59 @@ function handlers.on_open_tag_editor_custom_input(event)
   local cursor_position = event.cursor_position
   if not cursor_position or not (cursor_position.x and cursor_position.y) then
     return
-  end-- Normalize the clicked position and convert to GPS string
-  local normalized_pos = { x = cursor_position.x, y = cursor_position.y }
-  local gps = GpsHelpers.gps_from_map_position(normalized_pos, surface_id)
+  end
+  -- Normalize the clicked position and convert to GPS string
+  local normalized_gps = GPS.gps_from_map_position(cursor_position, player.surface.index)
+  local nrm_pos, nrm_tag, nrm_chart_tag, nrm_favorite = gps_helpers.normalize_landing_position(player,
+    normalized_gps)
+  if not nrm_pos then
+    -- TODO play a sound
+    return
+  end
+
+  local gps = gps_helpers.gps_from_map_position(nrm_pos, surface_id)
 
   local tag_data = {
-    gps = gps, -- canonical field for tag editor position
+    gps = gps,
     move_gps = "", -- GPS coordinates during move operations
-    locked = false,
-    is_favorite = false,
-    icon = "",
-    text = "",
-    tag = nil,
-    chart_tag = nil,
+    locked = nrm_favorite and nrm_favorite.locked or false,
+    is_favorite = nrm_favorite ~= nil,
+    icon = nrm_chart_tag and nrm_chart_tag.icon or "",
+    text = nrm_chart_tag and nrm_chart_tag.text or "",
+    tag = nrm_tag or nil,
+    chart_tag = nrm_chart_tag or nil,
     error_message = ""
   }
-  -- Optionally: look for a matching tag collision, get the matching chart_tag, etc.
-  -- ...existing code...
-
-  local chart_tag = Lookups.get_chart_tag_by_gps("")
 
   -- Persist gps in tag_editor_data
+  Cache.set_tag_editor_data(player, {})
   Cache.set_tag_editor_data(player, tag_data)
-
-  tag_editor.build(player, tag_data)
+  tag_editor.build(player)
 end
 
 function handlers.on_teleport_to_favorite(event, i)
-  ---@diagnostic disable-next-line: undefined-global
+  ---@diagnostic disable-next-line: param-type-mismatch
   local player = game.get_player(event.player_index)
   if not player then return end
 
+  ---@diagnostic disable-next-line: param-type-mismatch
   local favorites = Cache.get_player_favorites(player)
   if type(favorites) ~= "table" or not i or not favorites[i] then
+    ---@diagnostic disable-next-line: param-type-mismatch
     player:print({ "tf-handler.teleport-favorite-no-location" })
     return
   end
-  
+
   local favorite = favorites[i]
   if type(favorite) == "table" and favorite.gps ~= nil then
+    ---@diagnostic disable-next-line: param-type-mismatch
     local result = Tag.teleport_player_with_messaging(player, favorite.gps)
     if result ~= Constants.enums.return_state.SUCCESS then
+      ---@diagnostic disable-next-line: param-type-mismatch
       player:print(result)
     end
   else
+    ---@diagnostic disable-next-line: param-type-mismatch
     player:print({ "tf-handler.teleport-favorite-no-location" })
   end
 end

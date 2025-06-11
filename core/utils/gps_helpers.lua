@@ -15,6 +15,7 @@ Helpers for parsing, normalizing, and converting GPS strings and map positions.
 
 local basic_helpers = require("core.utils.basic_helpers")
 local Helpers = require("core.utils.helpers_suite")
+local Cache = require("core.cache.cache")
 local Constants = require("constants")
 local Settings = require("settings")
 local padlen, BLANK_GPS = Constants.settings.GPS_PAD_NUMBER, Constants.settings.BLANK_GPS
@@ -87,16 +88,15 @@ end
 --- Normalize a landing position; surface may be LuaSurface, string, or index
 ---@param player LuaPlayer
 ---@param intended_gps string
----@return MapPosition|nil
+---@return MapPosition|nil, Tag|nil, LuaCustomChartTag|nil, Favorite|nil
 local function normalize_landing_position(player, intended_gps)
   if not player or not intended_gps or intended_gps == "" then return nil end
 
   local landing_position = map_position_from_gps(intended_gps)
   if not landing_position then return nil end  local adjusted_gps = nil
   local chart_tag = nil
-  -- TODO: Re-enable tag cache lookup once circular dependency is fully resolved
-  local tag = nil -- Lookups.get_chart_tag_by_gps(intended_gps)
-
+  local tag = Cache.get_tag_by_gps(intended_gps)
+  
   if not tag then
     if not position_can_be_tagged(player, landing_position) then return end
     local player_settings = Settings:getPlayerSettings(player)
@@ -108,7 +108,8 @@ local function normalize_landing_position(player, intended_gps)
         player:print(
           "There is no available teleport landing position within your radius. Choose another location or adjust your teleport radius.")
         return
-      end      local gps_str = gps_from_map_position(non_collide_position, player.surface.index)
+      end      
+      local gps_str = gps_from_map_position(non_collide_position, player.surface.index)
       local parsed = parse_gps_string(gps_str)
       if not parsed then
         player:print("Could not parse GPS coordinates for landing position")
@@ -120,22 +121,30 @@ local function normalize_landing_position(player, intended_gps)
         player:print(
           "The area you are trying to land is too dense. Choose another location or adjust your teleport radius.")
         return
-      end      adjusted_gps = gps_from_map_position(check_normalized_position, player.surface.index)
+      end      
+      adjusted_gps = gps_from_map_position(check_normalized_position, player.surface.index)
     else
       adjusted_gps = gps_from_map_position(chart_tag.position, player.surface.index)
     end
   else
     adjusted_gps = tag.gps
   end
+
   if not adjusted_gps then
     player:print("Could not compute the teleport coordinates")
     return nil
-  end  local final_position = parse_gps_string(adjusted_gps)
+  end  
+  
+  local final_position = parse_gps_string(adjusted_gps)
   if not final_position then
     player:print("Could not parse the teleport coordinates")
     return nil
   end
-  return { x = final_position.x, y = final_position.y }
+
+  local favorites = Cache.get_player_favorites(player)
+  local player_favorite = favorites:get_favorite_by_gps(adjusted_gps) or nil
+
+  return { x = final_position.x, y = final_position.y }, tag or nil, tag and tag.chart_tag or nil, player_favorite
 end
 
 ---TODO REVIEW

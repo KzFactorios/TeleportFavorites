@@ -141,6 +141,57 @@ local function handle_delete_btn(player, tag_data, element)
   })
 end
 
+local function handle_delete_confirm(player, tag_data)
+  -- User confirmed deletion - execute deletion logic
+  local tag = tag_data.tag
+  if not tag then
+    -- Close both confirmation dialog and tag editor
+    Helpers.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
+    close_tag_editor(player)
+    return
+  end
+
+  -- Validate deletion is still allowed (ownership + no other favorites)
+  local can_delete = false
+  if tag.chart_tag then
+    local is_owner = (not tag.chart_tag.last_user or tag.chart_tag.last_user == "" or tag.chart_tag.last_user == player.name)
+    can_delete = is_owner
+    if can_delete and tag.faved_by_players then
+      for _, player_index in ipairs(tag.faved_by_players) do
+        if player_index ~= player.index then
+          can_delete = false
+          break
+        end
+      end
+    end
+  end
+
+  if not can_delete then
+    -- Show error and keep tag editor open, close confirmation dialog
+    Helpers.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
+    tag_data.error_message = "You no longer have permission to delete this tag."
+    refresh_tag_editor(player, tag_data)
+    return
+  end
+
+  -- Execute deletion using existing infrastructure
+  local tag_destroy_helper = require("core.tag.tag_destroy_helper")
+  tag_destroy_helper.destroy_tag_and_chart_tag(tag, tag.chart_tag)
+  
+  -- Clear tag_editor_data and close both dialogs
+  Cache.set_tag_editor_data(player, nil)
+  Helpers.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
+  close_tag_editor(player)
+  
+  Helpers.player_print(player, { "tf-gui.tag_deleted_successfully" })
+end
+
+local function handle_delete_cancel(player, tag_data)
+  -- User cancelled deletion - close confirmation dialog and return to tag editor
+  Helpers.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
+  player.opened = Helpers.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+end
+
 local function handle_teleport_btn(player, tag_data)
   -- TODO test teleport
   -- TODO this is broken - was broken, not so sure anymore
@@ -192,8 +243,7 @@ local function on_tag_editor_gui_click(event, script)
   if not player then return end
 
   local tag_data = Cache.get_tag_editor_data(player) or {}
-  
-  -- Robust close for all close/cancel buttons
+    -- Robust close for all close/cancel buttons
   if element.name == "tag_editor_title_row_close" then
     close_tag_editor(player)
     return
@@ -213,6 +263,11 @@ local function on_tag_editor_gui_click(event, script)
     tag_data.icon = new_icon
     Cache.set_tag_editor_data(player, tag_data)
     return
+  -- Confirmation dialog event handlers
+  elseif element.name == "tf_confirm_dialog_confirm_btn" then
+    return handle_delete_confirm(player, tag_data)
+  elseif element.name == "tf_confirm_dialog_cancel_btn" then
+    return handle_delete_cancel(player, tag_data)
   end
 end
 

@@ -16,8 +16,8 @@ API:
 - GuiBase.create_icon_button(parent, name, sprite, tooltip, style, enabled): Create a sprite button with icon and tooltip.
 - GuiBase.create_label(parent, name, caption, style): Create a label with optional style.
 - GuiBase.create_textfield(parent, name, text, style): Create a textfield with optional style.
-- GuiBase.create_hflow(parent, name): Create a horizontal flow container.
-- GuiBase.create_vflow(parent, name): Create a vertical flow container.
+- GuiBase.create_hflow(parent, name, style): Create a horizontal flow container.
+- GuiBase.create_vflow(parent, name, style): Create a vertical flow container.
 - GuiBase.create_titlebar(parent, title, close_callback): Create a draggable titlebar with optional close button.
 
 Each function is annotated with argument and return value details.
@@ -97,17 +97,19 @@ end
 --- Create a horizontal flow container.
 --- @param parent LuaGuiElement: Parent element
 --- @param name string: Name of the flow
+--- @param style? string|nil: Optional style name
 --- @return LuaGuiElement: The created flow
-function GuiBase.create_hflow(parent, name)
-    return GuiBase.create_element('flow', parent, { name = name, direction = 'horizontal' })
+function GuiBase.create_hflow(parent, name, style)
+    return GuiBase.create_element('flow', parent, { name = name, direction = 'horizontal', style = style })
 end
 
 --- Create a vertical flow container.
 --- @param parent LuaGuiElement: Parent element
 --- @param name string: Name of the flow
+--- @param style? string|nil: Optional style name
 --- @return LuaGuiElement: The created flow
-function GuiBase.create_vflow(parent, name)
-    return GuiBase.create_element('flow', parent, { name = name, direction = 'vertical' })
+function GuiBase.create_vflow(parent, name, style)
+    return GuiBase.create_element('flow', parent, { name = name, direction = 'vertical', style = style })
 end
 
 --- Create a draggable space
