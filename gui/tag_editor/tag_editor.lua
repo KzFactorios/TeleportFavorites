@@ -260,8 +260,10 @@ function tag_editor.build(player)
 
     local tag_editor_owner_row, owner_label, move_button, delete_button = build_owner_row(tag_editor_content_frame,
         tag_data)
+
+    local owner_value = tag_data.chart_tag and tag_data.chart_tag.last_user ~= nil and tag_data.last_user.name or ""
     ---@diagnostic disable-next-line: assign-type-mismatch
-    owner_label.caption = { "tf-gui.owner_label", player.name }
+    owner_label.caption = { "tf-gui.owner_label", owner_value }
 
     local tag_editor_content_inner_frame = GuiBase.create_frame(tag_editor_content_frame,
         "tag_editor_content_inner_frame", "vertical", "tf_tag_editor_content_inner_frame")
@@ -305,7 +307,7 @@ local function find_child_by_name(element, name)
 end
 
 -- NOTE: The built-in Factorio signal/icon picker (used for icon selection) always requires the user to confirm their selection
--- with a checkmark button. There is no property or style that allows auto-accepting the selection on click; this is a limitation 
+-- with a checkmark button. There is no property or style that allows auto-accepting the selection on click; this is a limitation
 -- of the Factorio engine as of 1.1.x.
 
 return tag_editor
