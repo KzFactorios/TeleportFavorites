@@ -21,7 +21,7 @@ local clear_and_close_tag_editor, update_tag_data_and_refresh
 local function refresh_tag_editor(player, tag_data)
   Cache.set_tag_editor_data(player, tag_data)
   Helpers.safe_destroy_frame(player.gui.screen, "tag_editor_frame")
-  tag_editor.build(player)
+  tag_editor.build(player, tag_data)
 end
 
 local function show_tag_editor_error(player, tag_data, message)
@@ -42,7 +42,8 @@ local function update_tag_position(tag, pos, gps)
 end
 
 local function handle_confirm_btn(player, element, tag_data)
-  local text = (element.parent.text_box and element.parent.text_box.text or ""):gsub("%s+$", "")
+  -- Get values directly from storage (tag_data), not from UI elements
+  local text = (tag_data.text or ""):gsub("%s+$", "")
   local icon = tag_data.icon or ""
   local is_favorite = tag_data.is_favorite
   local max_len = Constants.settings.TAG_TEXT_MAX_LENGTH
@@ -106,9 +107,22 @@ local function handle_move_btn(player, tag_data, script)
 end
 
 local function handle_favorite_btn(player, tag_data)
+  if log then log("[TeleportFavorites] handle_favorite_btn called for player: " .. tostring(player and player.name)) end
+  if not tag_data then
+    if log then log("[TeleportFavorites] tag_data is nil, initializing empty") end
+    tag_data = {}
+  end
+  -- Ensure is_favorite is a boolean
+  if type(tag_data.is_favorite) ~= "boolean" then
+    if log then log("[TeleportFavorites] is_favorite not boolean, setting to false") end
+    tag_data.is_favorite = false
+  end
+  local old_state = tag_data.is_favorite
   tag_data.is_favorite = not tag_data.is_favorite
-  -- Only update the UI state, do not persist to PlayerFavorites here
-  update_tag_data_and_refresh(player, tag_data, {})
+  if log then log("[TeleportFavorites] Toggled is_favorite from " .. tostring(old_state) .. " to " .. tostring(tag_data.is_favorite)) end
+  -- Update the tag_data and refresh the UI
+  Cache.set_tag_editor_data(player, tag_data)
+  refresh_tag_editor(player, tag_data)
 end
 
 local function handle_delete_btn(player, tag_data, element)
@@ -167,7 +181,9 @@ local function on_tag_editor_gui_click(event, script)
   end
   local player = game.get_player(event.player_index)
   if not player then return end
+
   local tag_data = Cache.get_tag_editor_data(player) or {}
+  
   -- Robust close for all close/cancel buttons
   if element.name == "tag_editor_title_row_close" then
     close_tag_editor(player)
@@ -179,21 +195,37 @@ local function on_tag_editor_gui_click(event, script)
   elseif element.name == "tag_editor_delete_button" then
     return handle_delete_btn(player, tag_data, element)
   elseif element.name == "tag_editor_is_favorite_button" then
-    -- Save current icon selection before toggling favorite
-    local outer = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TAG_EDITOR]
-    if outer then
-      local icon_btn = Helpers.find_child_by_name(outer, "tag_editor_icon_button")
-      if icon_btn and icon_btn.valid then
-        tag_data.icon = icon_btn.elem_value or icon_btn.signal or ""
-      end
-    end
     return handle_favorite_btn(player, tag_data)
   elseif element.name == "tag_editor_teleport_button" then
     return handle_teleport_btn(player, tag_data)
+  elseif element.name == "tag_editor_icon_button" then
+    -- Icon selection changed - immediately save to storage
+    local new_icon = element.elem_value or element.signal or ""
+    tag_data.icon = new_icon
+    Cache.set_tag_editor_data(player, tag_data)
+    return
+  end
+end
+
+--- Handle text input changes - save immediately to storage
+local function on_tag_editor_gui_text_changed(event)
+  local element = event.element
+  if not element or not element.valid then return end
+  local name = element.name or ""
+  if not name:find("tag_editor") then return end
+  
+  local player = game.get_player(event.player_index)
+  if not player then return end
+  
+  if element.name == "tag_editor_rich_text_input" then
+    local tag_data = Cache.get_tag_editor_data(player) or {}
+    tag_data.text = (element.text or ""):gsub("%s+$", "")
+    Cache.set_tag_editor_data(player, tag_data)
   end
 end
 
 M.on_tag_editor_gui_click = on_tag_editor_gui_click
+M.on_tag_editor_gui_text_changed = on_tag_editor_gui_text_changed
 
 --- Register tag editor event handlers (deprecated: use shared dispatcher)
 function M.register(script)

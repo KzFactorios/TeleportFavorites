@@ -16,6 +16,63 @@ The following resources are considered the absolute source of truth for all Fact
 
 ---
 
+## TeleportFavorites Mod: Storage as Source of Truth
+
+### Core Principle
+
+**Storage is the single source of truth for all GUI state.** GUI elements are never read from - they only display data from storage and immediately save changes back to storage.
+
+### Implementation Pattern
+
+1. **User Input** → **Immediate Storage Save** → **UI Refresh from Storage**
+2. **Never read from GUI elements** - always read from stored data
+3. **UI elements are write-only displays** of stored state
+4. **All validation and logic** operates on stored data, not GUI state
+
+### Tag Editor Example
+
+```lua
+-- ❌ WRONG: Reading from GUI elements
+local text = element.text
+local icon = icon_button.elem_value
+
+-- ✅ CORRECT: Reading from storage
+local text = tag_data.text
+local icon = tag_data.icon
+
+-- ❌ WRONG: Collecting state from UI on action
+local state = collect_gui_state()
+handle_action(state)
+
+-- ✅ CORRECT: Immediate save on change, use storage on action
+-- On text change:
+tag_data.text = element.text
+Cache.set_tag_editor_data(player, tag_data)
+
+-- On action:
+local text = tag_data.text  -- Always current from storage
+```
+
+### Benefits
+
+- **Eliminates sync issues** between GUI and data
+- **Prevents nil errors** from missing GUI elements  
+- **Immediate persistence** of user changes
+- **Reliable state management** in multiplayer environments
+- **Simpler debugging** - single source of truth
+- **Event-driven updates** - storage changes drive UI updates
+
+### Event Flow
+
+1. **Text Input Change** → `on_gui_text_changed` → Save to `tag_editor_data` immediately
+2. **Icon Selection** → `on_gui_elem_changed` → Save to `tag_editor_data` immediately
+3. **Button Click** → Load current `tag_editor_data` → Execute action using stored values
+4. **UI Refresh** → Rebuild GUI from `tag_editor_data` values only
+
+This pattern ensures storage and UI never get out of sync because UI elements never hold authoritative state.
+
+---
+
 ## Policy
 
 - All technical disputes or ambiguities in modding conventions, runtime object fields, GUI element options, or vanilla styles should be resolved by consulting these sources.

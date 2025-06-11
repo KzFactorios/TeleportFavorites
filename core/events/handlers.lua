@@ -39,6 +39,7 @@ local fave_bar = require("gui.favorites_bar.fave_bar")
 local tag_editor = require("gui.tag_editor.tag_editor")
 local _Settings = require("settings")
 local Helpers = require("core.utils.helpers_suite")
+local GpsHelpers = require("core.utils.gps_helpers")
 
 local handlers = {}
 
@@ -78,15 +79,18 @@ function handlers.on_open_tag_editor_custom_input(event)
   local surface = player.surface
   local surface_id = surface.index
 
-
   -- get the position we right-clicked upon
   local cursor_position = event.cursor_position
   if not cursor_position or not (cursor_position.x and cursor_position.y) then
     return
   end
+  -- Normalize the clicked position and convert to GPS string
+  local normalized_pos = { x = cursor_position.x, y = cursor_position.y }
+  local editor_gps = GpsHelpers.gps_from_map_position(normalized_pos, surface_id)
 
   local tag_data = {
-    gps = "",
+    gps = editor_gps, -- for legacy compatibility, but editor_gps is the canonical field
+    editor_gps = editor_gps,
     locked = false,
     is_favorite = false,
     icon = "",
@@ -96,19 +100,13 @@ function handlers.on_open_tag_editor_custom_input(event)
     error_message = ""
   }
 
-
-  -- look for a matching tag collision
-  -- get the matching chart_tag
-
-  -- if still no tag or chart_tag
-  -- normalize the position
-  -- ensure we can land there
-  -- update/build tag_data
-
-
+  -- Optionally: look for a matching tag collision, get the matching chart_tag, etc.
+  -- ...existing code...
 
   local chart_tag = Lookups.get_chart_tag_by_gps("")
 
+  -- Persist editor_gps in tag_editor_data
+  Cache.set_tag_editor_data(player, tag_data)
 
   tag_editor.build(player, tag_data)
 end

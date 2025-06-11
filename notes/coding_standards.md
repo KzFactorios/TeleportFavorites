@@ -28,6 +28,60 @@ See also:
 
 ---
 
+## GUI State Management Pattern
+
+**CRITICAL RULE: Storage as Source of Truth**
+
+All GUI state management MUST follow the "storage as source of truth" pattern. This is especially critical for complex GUIs like the tag editor.
+
+### Core Principles:
+
+1. **Never read from GUI elements** - GUI elements are display-only
+2. **Immediately save user input** to persistent storage via event handlers  
+3. **Always read from storage** for business logic and state decisions
+4. **UI refreshes display storage values** - storage drives UI, never the reverse
+
+### Implementation Requirements:
+
+```lua
+-- ❌ FORBIDDEN: Reading from GUI elements
+local text = text_element.text
+local selected = button.selected
+
+-- ✅ REQUIRED: Reading from storage  
+local text = tag_data.text
+local selected = tag_data.is_favorite
+
+-- ❌ FORBIDDEN: Collecting state from GUI
+local state = {}
+for element in gui_elements do
+  state[element.name] = element.value
+end
+
+-- ✅ REQUIRED: Immediate save on input change
+-- Event handler saves immediately:
+function on_text_changed(event)
+  local tag_data = Cache.get_tag_editor_data(player)
+  tag_data.text = event.element.text
+  Cache.set_tag_editor_data(player, tag_data)
+end
+```
+
+### Event Flow Pattern:
+1. **User Input** → **Event Handler** → **Save to Storage** → **Optional UI Refresh**
+2. **User Action** → **Read from Storage** → **Execute Logic** → **Update Storage** → **Refresh UI**
+
+### Benefits:
+- Eliminates GUI/data synchronization bugs
+- Prevents nil reference errors from missing GUI elements
+- Provides immediate data persistence  
+- Simplifies multiplayer state management
+- Enables reliable state recovery and undo functionality
+
+**This pattern is MANDATORY for all complex GUI implementations.**
+
+---
+
 ## General Guidelines
 - I have a condition called essential tremor which attributes to my attrocious typing skills. Do your best to follow along with my instructions. If there is any ambiguity then be sure to ask! And thank you for your patience!
 - **CRITICAL: PowerShell Command Formatting** - This environment uses PowerShell, NOT bash. PowerShell does not recognize `&&` for command chaining. Use semicolons `;` to chain commands, or use separate command calls. Example: `cd "path"; git reset --hard HEAD` instead of `cd "path" && git reset --hard HEAD`.

@@ -52,9 +52,7 @@ function M.register_gui_handlers(script)
       local parent_gui = Helpers.get_gui_frame_by_element(element)
       if not parent_gui then
         error("Element: " .. element.name .. ", parent GUI not found")
-      end
-
-      -- Dispatch based on parent_gui
+      end      -- Dispatch based on parent_gui
       if parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
         control_tag_editor.on_tag_editor_gui_click(event, script)
         return true
@@ -64,6 +62,8 @@ function M.register_gui_handlers(script)
       elseif parent_gui.name == Enum.GuiEnum.GUI_FRAME.DATA_VIEWER then
         control_data_viewer.on_data_viewer_gui_click(event)
         return true
+      else
+        if log then log("[TeleportFavorites] Unknown parent GUI: " .. tostring(parent_gui.name)) end
       end
     end, function(e)
       _tf_gui_click_guard = false
@@ -88,9 +88,26 @@ function M.register_gui_handlers(script)
     _tf_gui_click_guard = false
     if not ok then
       error(err)
+    end  end
+  script.on_event(defines.events.on_gui_click, shared_on_gui_click)
+  
+  -- Register text change handler for immediate storage saving
+  local function shared_on_gui_text_changed(event)
+    if not event or not event.element then return end
+    control_tag_editor.on_tag_editor_gui_text_changed(event)
+  end
+  script.on_event(defines.events.on_gui_text_changed, shared_on_gui_text_changed)
+  
+  -- Register elem changed handler for immediate storage saving (for icon picker)
+  local function shared_on_gui_elem_changed(event)
+    if not event or not event.element then return end
+    -- Handle icon picker changes in tag editor
+    local element = event.element
+    if element.name and element.name:find("tag_editor") then
+      control_tag_editor.on_tag_editor_gui_click(event, script)
     end
   end
-  script.on_event(defines.events.on_gui_click, shared_on_gui_click)
+  script.on_event(defines.events.on_gui_elem_changed, shared_on_gui_elem_changed)
 end
 
 return M

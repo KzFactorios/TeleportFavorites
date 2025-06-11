@@ -143,7 +143,8 @@ local function build_teleport_favorite_row(parent, tag_data)
     local teleport_btn = GuiBase.create_icon_button(row, "tag_editor_teleport_button", "",
         nil,
         "tf_teleport_button")
-    teleport_btn.caption = tag_data.gps or "no destination"
+    -- Use editor_gps for caption if present, else gps, else fallback
+    teleport_btn.caption = tag_data.editor_gps or tag_data.gps or "no destination"
     return row, favorite_btn, teleport_btn
 end
 
@@ -166,9 +167,9 @@ local function build_rich_text_row(parent, tag_data)
             elem_type = "signal",
             signal = tag_data.icon or ""
         })
-    -- Use the new textbox with icon_selector = true
+    -- Create textbox and set value from storage (tag_data)
     local text_input = GuiBase.create_textbox(row, "tag_editor_rich_text_input",
-        tag_data.rich_text or "", "tf_tag_editor_text_input", true)
+        tag_data.text or "", "tf_tag_editor_text_input", true)
     return row, icon_btn, text_input
 end
 
@@ -219,7 +220,12 @@ function tag_editor.build(player, tag_data)
     -- if we were given data then fine, otherwise get from storage
     if not tag_data then tag_data = Cache.get_player_data(player).tag_editor_data end
 
-    local editor_gps = tag_data.gps
+    -- Ensure editor_gps is set (fallback to gps if missing)
+    if not tag_data.editor_gps or tag_data.editor_gps == "" then
+        tag_data.editor_gps = tag_data.gps or ""
+    end
+
+    local editor_gps = tag_data.editor_gps
     local editor_target_position = GPS.map_position_from_gps(editor_gps)
     local editor_coords_string = GPS.coords_string_from_gps(editor_gps)
 
@@ -243,7 +249,7 @@ function tag_editor.build(player, tag_data)
         "tf_tag_editor_content_frame")
     local tag_editor_owner_row, owner_label, _move_button, _delete_button = build_owner_row(tag_editor_content_frame,
         tag_data)
-    owner_label.caption = { "tf-gui.owner_label", player.name }
+    owner_label.caption = {"tf-gui.owner_label", player.name}
 
     local tag_editor_content_inner_frame = GuiBase.create_frame(tag_editor_content_frame,
         "tag_editor_content_inner_frame", "vertical", "tf_tag_editor_content_inner_frame")

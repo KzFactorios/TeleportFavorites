@@ -92,6 +92,7 @@ local function open_tag_editor(player, favorite)
   if favorite then
     tag_data = {
       gps = favorite.gps,
+      editor_gps = favorite.gps, -- set editor_gps for teleport button
       locked = favorite.locked,
       is_favorite = favorite.tag.is_player_favorite(player),
       text = favorite.chart_tag.text,
@@ -100,6 +101,8 @@ local function open_tag_editor(player, favorite)
       error_message = ""
     }
   end
+  -- Persist editor_gps in tag_editor_data
+  Cache.set_tag_editor_data(player, tag_data)
   tag_editor.build(player, tag_data)
   return
 end
@@ -139,7 +142,7 @@ end
 local function handle_tag_editor(event, player, fav, slot)
   if event.button == defines.mouse_button_type.right then
     if fav and not FavoriteUtils.is_blank_favorite(fav) then
-      open_tag_editor(player, fav, fav.gps or "")
+      open_tag_editor(player, fav) -- removed extra gps argument
       return true
     end
   end

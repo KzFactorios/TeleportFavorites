@@ -2,6 +2,29 @@
 
 The tag editor is a modal GUI for creating, editing, moving, and deleting map tags and their associated favorites. It is designed for multiplayer, surface-aware, and robust operation, and should closely mimic the vanilla "add tag" dialog in Factorio 2.0, with additional features for favorites and tag management. The GUI is built using the builder pattern for construction and the command pattern for user/event handling. It is auto-centered, screen-anchored, and only active in chart or chart_zoomed_in modes (except when opened from the favorites bar in game mode).
 
+## Storage as Source of Truth Pattern
+
+**CRITICAL:** The tag editor follows the "storage as source of truth" pattern. All GUI state is stored in `tag_editor_data` and immediately persisted on any user input change.
+
+### Core Rules:
+1. **Never read from GUI elements** - always read from `tag_editor_data`
+2. **Immediately save user input** to `tag_editor_data` via event handlers
+3. **UI elements display storage values** - they are write-only from user perspective
+4. **All business logic** operates on `tag_editor_data`, never GUI state
+
+### Implementation:
+- **Text changes**: `on_gui_text_changed` → immediate save to `tag_editor_data.text`
+- **Icon selection**: `on_gui_elem_changed` → immediate save to `tag_editor_data.icon`
+- **Favorite toggle**: Button click → toggle `tag_editor_data.is_favorite` → refresh UI
+- **Confirm action**: Use values from `tag_editor_data` directly, never read from GUI
+
+### Benefits:
+- Eliminates GUI/data sync issues
+- Prevents nil reference errors
+- Provides immediate data persistence
+- Simplifies multiplayer state management
+- Enables reliable undo/redo functionality
+
 ## Core Features and Interactions
 - **Builder/Command Patterns:** Use builder pattern for GUI construction and command pattern for all user/event interactions.
 - **Styling:** Mimic vanilla "add tag" dialog, omitting the snap_position editor. Use vanilla styles, spacing, and iconography where possible.

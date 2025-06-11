@@ -16,6 +16,46 @@ This document provides a high-level overview of the mod's goals, architecture, a
 
 ---
 
+## Design Patterns and Architecture
+
+### Storage as Source of Truth Pattern
+
+The mod implements a strict "storage as source of truth" pattern for all GUI state management:
+
+**Core Principle:** Persistent storage (`tag_editor_data`, `player_favorites`, etc.) is the authoritative source for all state. GUI elements are never read from - they only display stored values and immediately save changes back to storage.
+
+**Implementation:**
+- **Input Events** → **Immediate Storage Save** → **UI Refresh from Storage**
+- **Business Logic** → **Read from Storage Only** → **Never from GUI Elements**
+- **State Changes** → **Update Storage** → **Rebuild UI from Storage**
+
+**Benefits:**
+- Eliminates synchronization bugs between GUI and data
+- Prevents nil reference errors from missing GUI elements  
+- Provides immediate data persistence and recovery
+- Simplifies multiplayer state management
+- Enables reliable undo/redo functionality
+
+This pattern is implemented consistently across all complex GUIs (tag editor, favorites bar, data viewer).
+
+### Modular Event Handling
+
+All GUI events are routed through a centralized dispatcher (`gui_event_dispatcher.lua`) that:
+- Provides robust error handling and logging
+- Routes events to appropriate domain handlers
+- Implements the `{gui_context}_{purpose}_{type}` naming convention
+- Supports immediate storage persistence on input changes
+
+### Surface-Aware Data Management
+
+All data operations are surface-aware through the `Cache` module:
+- Player favorites are stored per-surface
+- Tag data is organized by surface index  
+- All helpers accept surface/player context
+- Cross-surface operations are explicitly not supported
+
+---
+
 ## Main Features
 - Favorite bar GUI for quick access to favorite locations.
 - Tag editor GUI for creating, editing, and managing map tags, including the movement of tags
