@@ -120,7 +120,7 @@ end
 
 local function handle_teleport_btn(player, tag_data)
   -- TODO test teleport
-  -- TODO this is broken
+  -- TODO this is broken - was broken, not so sure anymore
     Helpers.safe_teleport(player, tag_data.pos)
     Cache.set_tag_editor_data(player, nil)
 end
@@ -160,6 +160,11 @@ M.close_tag_editor = close_tag_editor
 local function on_tag_editor_gui_click(event, script)
   local element = event.element
   if not element or not element.valid then return end
+  -- Only handle clicks on our tag editor GUI elements (must start with or contain 'tag_editor')
+  local name = element.name or ""
+  if not name:find("tag_editor") then
+    return -- Not our GUI, ignore
+  end
   local player = game.get_player(event.player_index)
   if not player then return end
   local tag_data = Cache.get_tag_editor_data(player) or {}
@@ -174,6 +179,14 @@ local function on_tag_editor_gui_click(event, script)
   elseif element.name == "tag_editor_delete_button" then
     return handle_delete_btn(player, tag_data, element)
   elseif element.name == "tag_editor_is_favorite_button" then
+    -- Save current icon selection before toggling favorite
+    local outer = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TAG_EDITOR]
+    if outer then
+      local icon_btn = Helpers.find_child_by_name(outer, "tag_editor_icon_button")
+      if icon_btn and icon_btn.valid then
+        tag_data.icon = icon_btn.elem_value or icon_btn.signal or ""
+      end
+    end
     return handle_favorite_btn(player, tag_data)
   elseif element.name == "tag_editor_teleport_button" then
     return handle_teleport_btn(player, tag_data)

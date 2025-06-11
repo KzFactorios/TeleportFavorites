@@ -143,3 +143,56 @@ tag_editor_outer_frame (frame, vertical, tf_tag_editor_outer_frame)
 
 ## Icon Picker Limitation
 - The built-in Factorio signal/icon picker (used for icon selection) always requires the user to confirm their selection with a checkmark button. There is no property or style that allows auto-accepting the selection on click; this is a limitation of the Factorio engine as of 1.1.x.
+
+---
+
+## Naming Convention and Enforcement
+
+All tag editor GUI element names use the `{gui_context}_{purpose}_{type}` naming convention. This ensures clarity and robust event filtering. Example element names:
+- `tag_editor_outer_frame` (frame)
+- `tag_editor_move_button` (icon-button)
+- `tag_editor_rich_text_input` (textbox)
+- `tag_editor_error_label` (label)
+
+This convention is strictly enforced in both code and documentation. All event handler logic checks for these names to ensure robust domain filtering.
+
+---
+
+## Event Filtering and Handling
+
+The tag editor uses robust event filtering:
+- All event handlers check the element name prefix (`tag_editor_`) to ensure only relevant events are processed.
+- Only events for the current player's tag editor instance are handled.
+- The command pattern is used for all user/event interactions, with each command handler responsible for validating context and state before acting.
+- Event handlers are modular and surface-aware, preventing cross-GUI event leakage and multiplayer desyncs.
+
+---
+
+## Builder/Command Pattern and Modularity
+
+- The tag editor GUI is constructed using the builder pattern, ensuring modular, maintainable, and testable code.
+- All user interactions and events are handled via the command pattern, with each command encapsulating a single user action (e.g., move, delete, confirm, favorite toggle).
+- GUI logic is separated into modular files under `gui/tag_editor/` and `core/control/control_tag_editor.lua`.
+- Shared logic and helpers are placed in `core/utils/`.
+
+---
+
+## Best Practices & Design Rules (Updated)
+
+- All user-facing strings and tooltips are localizable.
+- Error messages are shown only in the error row and cleared on input change.
+- Accessibility: All controls have tooltips reflecting their value or purpose.
+- Keyboard navigation: Tab/Shift-Tab moves focus between fields; ESC closes the dialog; E confirms if no field is focused.
+- Only the owner (or if last_user is nil/empty) can edit, move, or delete a tag.
+- All persistent state is stored in `storage.players[player_index].tag_editor_data` and cleared on close.
+- The error row is conditional and only appears when `tag_data.error_message` is non-empty.
+- The GUI scales with UI scale and resolution.
+
+---
+
+## Archived/Resolved Open Questions
+
+- Undo/redo, accessibility, multiplayer race conditions, and favorite slot enforcement are now fully documented and implemented as described above.
+- For any new open questions, see the end of this file.
+
+---

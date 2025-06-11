@@ -69,7 +69,9 @@ if not gui_style.tf_tag_editor_owner_label then
     left_padding = 8,
     font = "default-bold",
     font_color = { r = 1, g = .9, b = .75, a = 1 },
-    horizontally_stretchable = "on",    minimal_width = 200,    natural_width = 264, -- Reduced proportionally for 342px dialog
+    horizontally_stretchable = "on",    
+    minimal_width = 200,    
+    natural_width = 264, -- Reduced proportionally for 342px dialog
     width = 264,         -- Reduced proportionally for 342px dialog
     single_line = true,
     horizontal_align = "left",
@@ -87,7 +89,7 @@ if not gui_style.tf_move_button then
     width = 28,
     padding = 1,
     top_margin = 4,
-    right_margin = 3,                 -- Tighter margin
+    right_margin = 0,                 -- Tighter margin
     horizontally_stretchable = "off", -- Explicitly prevent stretching
   }
 end
@@ -101,6 +103,8 @@ if not gui_style.tf_delete_button then
     padding = 2,
     top_margin = 4,
     right_margin = 4,
+    bottom_margin = 0,
+    left_margin = 0,
     horizontally_stretchable = "off", -- Explicitly prevent stretching
   }
 end
@@ -179,12 +183,13 @@ if not gui_style.tf_tag_editor_last_row then
     parent = "horizontal_flow",
     horizontally_stretchable = "on",
     vertically_stretchable = "on",
+    top_margin = 4,
     -- Allow vertical stretching for child elements    top_padding = 0,     -- Remove padding to let draggable fill completely
     bottom_padding = 0,  -- Remove padding to let draggable fill completely
     left_padding = 4,    -- Keep horizontal padding for button spacing
     right_padding = 4,   -- Keep horizontal padding for button spacing
     horizontal_spacing = 4,  -- Base scale spacing (displays as 8px at 200%)
-    height = 40,  -- Fixed height to match vanilla
+    --height = 40,  -- Fixed height to match vanilla
     vertical_align = "center"  -- Back to center
   }
 end
@@ -195,11 +200,12 @@ if not gui_style.tf_tag_editor_last_row_draggable then
     parent = "draggable_space",  -- Use exact vanilla parent
     horizontally_stretchable = "on",
     vertically_stretchable = "on",
-    height = 40, -- Explicitly match the parent row height
-    min_height = 40, -- Ensure it fills the vertical space
+    --height = 40, -- Explicitly match the parent row height
+    --min_height = 20, -- Ensure it fills the vertical space
     -- No custom width, margins, or padding
     left_margin = -4,
-    left_padding = 0
+    left_padding = 0,
+    right_padding = 8,
   }
 end
 
@@ -208,7 +214,6 @@ if not gui_style.tf_confirm_button then
   gui_style.tf_confirm_button = {
     type = "button_style",
     parent = "confirm_button",
-    top_margin = 4,
   }
 end
 

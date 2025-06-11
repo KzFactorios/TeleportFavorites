@@ -69,6 +69,16 @@ This document provides a high-level overview of the mod's goals, architecture, a
 ## Debugging tools
 - I plan to create a few debug helpers. More to come on this issue
 
+---
+
+## GUI Documentation and Best Practices (2025-06-10)
+
+- All GUI hierarchy diagrams and descriptions are up-to-date and match the current codebase.
+- The `{gui_context}_{purpose}_{type}` naming convention is enforced and documented for all GUIs.
+- Event filtering and builder/command pattern usage are described in each GUI's notes file.
+- Best practices for accessibility, error handling, and multiplayer safety are documented and implemented.
+- See `tag_editor.md`, `fave_bar.md`, and `data_viewer.md` for details.
+
 ## See Also
 - `data_schema.md` – Persistent data schema and structure.
 - `architecture.md` – Detailed architecture and module relationships.

@@ -301,3 +301,18 @@ If you only provide SR, the game will use that, but for best quality and future-
 - `architecture.md` – Detailed architecture and module relationships.
 - `coding_standards.md` – Coding conventions and best practices.
 - `design_specs.md` – Project goals and feature overview.
+
+---
+
+## GUI Naming Convention (2025-06-10)
+
+All GUI element names in the mod use the `{gui_context}_{purpose}_{type}` convention. This is strictly enforced for all new and refactored elements. Example: `tag_editor_move_button`, `fave_bar_slot_button_1`, `data_viewer_close_btn`.
+
+## Event Filtering and Builder/Command Pattern
+
+All GUI event handlers:
+- Check element name prefixes to filter events to the correct GUI context.
+- Use the command pattern for modular, maintainable event logic.
+- Are robust to multiplayer and hot-reload scenarios.
+
+See each GUI's notes file for details and examples.

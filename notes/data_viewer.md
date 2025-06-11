@@ -33,14 +33,15 @@ storage.players[player_index].data_viewer_settings = {
 - **Font size** is now accessed as `storage.players[player_index].data_viewer_settings.font_size`.
 - Add new settings to this table as needed for future features.
 
-## Best Practices
-- Use vanilla Factorio styles and idioms for all controls and layout.
-- All controls should be accessible via keyboard and mouse.
-- All user-facing strings should be localizable.
-- Avoid excessive polling or performance impact in multiplayer.
-- Use scrollbars and fixed width for predictable layout.
-- Store per-player settings (font size) in persistent storage.
-- Use the builder pattern for GUI construction and command pattern for event handling.
+## Best Practices & Design Rules (Updated)
+
+- All user-facing strings and tooltips are localizable.
+- Error handling is minimal, as the viewer is read-only and developer-focused.
+- Accessibility: All controls have tooltips reflecting their value or purpose.
+- Keyboard navigation: Tab/Shift-Tab moves focus between tabs; Ctrl+F12 opens/closes the viewer.
+- All persistent state is stored in `storage.players[player_index].data_viewer_settings`.
+- The panel is resizable and scales with UI scale and resolution.
+- The GUI is robust in multiplayer and hot-reload scenarios.
 
 ## Open Questions / Suggestions for Improvement
 
@@ -96,7 +97,6 @@ data_viewer_frame (frame)
 - The author is unsure of how scrollbars will be structured, but they will control the viewing of data within the data_viewer_content_flow or the data_viewer_table
 - All element names use (for the most part) the `{gui_context}_{purpose}_{type}` convention.
 - The number of tab buttons and table rows may vary depending on the data being viewed.
-```
 
 ---
 
@@ -149,3 +149,40 @@ keep things very simple as this only a dev utility
 If you need more icons, check the [Factorio Wiki: Prototype/Sprite](https://wiki.factorio.com/Prototype/Sprite#Sprites) or inspect the game's utility-sprites.png for available names.
 
 ---
+
+## Naming Convention and Enforcement
+
+All data viewer GUI element names use the `{gui_context}_{purpose}_{type}` naming convention. This ensures clarity and robust event filtering. Example element names:
+- `data_viewer_frame` (frame)
+- `data_viewer_titlebar_flow` (flow)
+- `data_viewer_player_data_tab` (button)
+- `data_viewer_actions_font_up_btn` (button)
+- `data_viewer_row_1_label` (label)
+
+This convention is strictly enforced in both code and documentation. All event handler logic checks for these names to ensure robust domain filtering.
+
+---
+
+## Event Filtering and Handling
+
+The data viewer uses robust event filtering:
+- All event handlers check the element name prefix (`data_viewer_`) to ensure only relevant events are processed.
+- Only events for the current player's data viewer instance are handled.
+- The command pattern is used for all user/event interactions, with each command handler responsible for validating context and state before acting.
+- Event handlers are modular and surface-aware, preventing cross-GUI event leakage and multiplayer desyncs.
+
+---
+
+## Builder/Command Pattern and Modularity
+
+- The data viewer GUI is constructed using the builder pattern, ensuring modular, maintainable, and testable code.
+- All user interactions and events are handled via the command pattern, with each command encapsulating a single user action (e.g., tab switch, font size change, refresh).
+- GUI logic is separated into modular files under `gui/data_viewer/` and `core/control/control_data_viewer.lua`.
+- Shared logic and helpers are placed in `core/utils/`.
+
+---
+
+## Archived/Resolved Open Questions
+
+- Data export, search/filter, and data editing are not supported and are documented as such above.
+- For any new open questions, see the end of this file.

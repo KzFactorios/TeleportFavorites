@@ -84,3 +84,29 @@ Document state of relevant storage, what action was performed to cause an issue
 
 ---
 This list is not exhaustive. Please add further questions or considerations as the mod evolves.
+
+---
+
+# [2025-06-10] GUI Documentation Audit Update
+
+- All major GUIs (tag editor, favorites bar, data viewer) now use the `{gui_context}_{purpose}_{type}` naming convention, strictly enforced in code and documentation.
+- Event filtering for all GUIs is robust: handlers check element name prefixes and context, and use the command pattern for modular, maintainable event logic.
+- Builder/command patterns are used for all GUI construction and event handling, with modular file structure and shared helpers.
+- Best practices for accessibility, error handling, and multiplayer safety are documented and implemented.
+- GUI hierarchy diagrams and descriptions in all notes files are up-to-date with the current codebase.
+- See each GUI's notes file for details and examples.
+
+---
+
+## Naming Convention for All GUIs (2025-06-10)
+
+All GUI element names in the mod use the `{gui_context}_{purpose}_{type}` convention. This is strictly enforced and documented in each GUI's notes file. Example: `tag_editor_move_button`, `fave_bar_slot_button_1`, `data_viewer_close_btn`.
+
+## Event Filtering and Builder/Command Pattern
+
+All GUI event handlers:
+- Check element name prefixes to filter events to the correct GUI context.
+- Use the command pattern for modular, maintainable event logic.
+- Are robust to multiplayer and hot-reload scenarios.
+
+See each GUI's notes file for details and examples.

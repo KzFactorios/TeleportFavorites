@@ -89,9 +89,10 @@ function tag_editor.build_confirmation_dialog(player, opts)
 end
 
 -- Modular builder functions for each section of the tag editor
-local function build_titlebar(parent)    local titlebar, title_label, _cb = GuiBase.create_titlebar(parent, "tag_editor_titlebar",
+local function build_titlebar(parent)
+    local titlebar, title_label, _cb = GuiBase.create_titlebar(parent, "tag_editor_titlebar",
         "tag_editor_title_row_close")
-    title_label.caption = { "tf-gui.tag_editor_title" }  -- Set caption on the label, not the titlebar flow
+    title_label.caption = { "tf-gui.tag_editor_title" } -- Set caption on the label, not the titlebar flow
     return titlebar, title_label
 end
 
@@ -114,20 +115,46 @@ local function build_owner_row(parent, tag_data)
     return row_frame, label, move_button, delete_button
 end
 
+
+
+
 local function build_teleport_favorite_row(parent, tag_data)
     -- Style must be set at creation time for Factorio GUIs
     local row = GuiBase.create_frame(parent, "tag_editor_teleport_favorite_row", "horizontal",
         "tf_tag_editor_teleport_favorite_row")
+
+
+
     local star_state = (tag_data and tag_data.is_favorite and tag_data.is_favorite ~= nil and tag_data.is_favorite and Enum.SpriteEnum.STAR) or
         Enum.SpriteEnum.STAR_DISABLED
+
+    local fave_style = tag_data.is_favorite and "slot_orange_favorite_on" or "slot_orange_favorite_off"
+
+
     local favorite_btn = GuiBase.create_icon_button(row, "tag_editor_is_favorite_button", star_state,
-        nil, "tf_slot_button")
+        nil, fave_style)
+
+
+
+
+
+
+
     local teleport_btn = GuiBase.create_icon_button(row, "tag_editor_teleport_button", "",
         nil,
         "tf_teleport_button")
     teleport_btn.caption = tag_data.gps or "no destination"
     return row, favorite_btn, teleport_btn
 end
+
+
+
+
+
+
+
+
+
 
 local function build_rich_text_row(parent, tag_data)
     local row = GuiBase.create_hflow(parent, "tag_editor_rich_text_row")
@@ -159,20 +186,20 @@ end
 local function build_last_row(parent)
     local row = GuiBase.create_hflow(parent, "tag_editor_last_row")
     row.style = "tf_tag_editor_last_row"
-    
+
     -- Create draggable space directly with correct style instead of using GuiBase.create_draggable
-    local draggable = row.add { 
-        type = "empty-widget", 
-        name = "tag_editor_last_row_draggable", 
-        style = "tf_tag_editor_last_row_draggable" 
+    local draggable = row.add {
+        type = "empty-widget",
+        name = "tag_editor_last_row_draggable",
+        style = "tf_tag_editor_last_row_draggable"
     }
-    
+
     -- Set drag target for the draggable space
     local drag_target = Helpers.get_gui_frame_by_element(parent)
     if drag_target and drag_target.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
         draggable.drag_target = drag_target
     end
-    
+
     local confirm_btn = GuiBase.create_element('button', row, {
         name = "last_row_confirm_button",
         caption = { "tf-gui.confirm" },
@@ -208,7 +235,8 @@ function tag_editor.build(player, tag_data)
 
     local tag_editor_outer_frame = GuiBase.create_frame(parent, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR, "vertical",
         "tf_tag_editor_outer_frame")
-    tag_editor_outer_frame.auto_center = true    local titlebar, title_label = build_titlebar(tag_editor_outer_frame)
+    tag_editor_outer_frame.auto_center = true
+    local titlebar, title_label = build_titlebar(tag_editor_outer_frame)
     -- Caption is already set in build_titlebar function
 
     local tag_editor_content_frame = GuiBase.create_frame(tag_editor_outer_frame, "tag_editor_content_frame", "vertical",

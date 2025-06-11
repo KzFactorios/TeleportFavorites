@@ -23,14 +23,15 @@ The favorites bar (fave_bar) is a persistent, player-specific GUI element that p
 - All GUI state and slot order is persisted per player.
 - Use shared styles and idiomatic Factorio GUI patterns wherever possible.
 
-## Best Practices & Modern Factorio v2 Considerations
-- Use the builder pattern for all GUIs.
-- Use the command pattern for all user/event interactions.
-- Use vanilla icons, spacing, and style classes where possible.
-- Provide clear visual feedback for all button states and actions.
-- Ensure all user-facing strings are localizable.
-- Avoid GUI thrashing or excessive updates; debounce where needed.
-- Support multiplayer and hot-reload scenarios robustly.
+## Best Practices & Design Rules (Updated)
+
+- All user-facing strings and tooltips are localizable.
+- Error messages and feedback are provided for invalid actions (e.g., max slots reached, locked slot).
+- Accessibility: All controls have tooltips reflecting their value or purpose.
+- Drag-and-drop, lock toggle, and click actions are robustly handled and visually indicated.
+- All persistent state is stored in `storage.players[player_index]` and updated on relevant actions.
+- The bar scales with UI scale and resolution.
+- Blank slots are visually present but do not trigger any logic or errors when clicked.
 
 ## Open Questions / Suggestions for Improvement
 
@@ -79,6 +80,17 @@ Not at this time
 
 ---
 
+## Naming Convention and Enforcement
+
+All favorites bar GUI element names use the `{gui_context}_{purpose}_{type}` naming convention. This ensures clarity and robust event filtering. Example element names:
+- `fave_bar_frame` (frame)
+- `fave_bar_toggle_flow` (flow)
+- `fave_bar_visible_btns_toggle` (sprite-button)
+- `fave_bar_slots_flow` (flow)
+- `fave_bar_slot_button_1` (sprite-button)
+
+This convention is strictly enforced in both code and documentation. All event handler logic checks for these names to ensure robust domain filtering.
+
 # Favorites Bar GUI Hierarchy
 
 ```
@@ -118,3 +130,27 @@ the fave_bar_frame should probably have an inner_frame to make styling easier
 
 use the builder pattern for this and all guis! use command pattern to handle user and event interaction
 -->
+
+## Event Filtering and Handling
+
+The favorites bar uses robust event filtering:
+- All event handlers check the element name prefix (`fave_bar_`) to ensure only relevant events are processed.
+- Only events for the current player's favorites bar instance are handled.
+- The command pattern is used for all user/event interactions, with each command handler responsible for validating context and state before acting.
+- Event handlers are modular and surface-aware, preventing cross-GUI event leakage and multiplayer desyncs.
+
+---
+
+## Builder/Command Pattern and Modularity
+
+- The favorites bar GUI is constructed using the builder pattern, ensuring modular, maintainable, and testable code.
+- All user interactions and events are handled via the command pattern, with each command encapsulating a single user action (e.g., slot click, drag, lock toggle).
+- GUI logic is separated into modular files under `gui/favorites_bar/` and `core/control/control_fave_bar.lua`.
+- Shared logic and helpers are placed in `core/utils/`.
+
+---
+
+## Archived/Resolved Open Questions
+
+- Drag-and-drop feedback, slot locking UI, and favorite slot overflow are now fully documented and implemented as described above.
+- For any new open questions, see the end of this file.

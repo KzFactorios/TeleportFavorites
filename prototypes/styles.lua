@@ -61,6 +61,21 @@ function Styles.default_glow(tint_value, scale_value)
   }
 end
 
+-- used for textbox and virtual slots (not tab, it is more rounded and uses different style)
+function Styles.rounded_button_glow(tint_value)
+  return
+  {
+    position = { 256, 191 },
+    corner_size = 16,
+    tint = tint_value,
+    top_outer_border_shift = 4,
+    bottom_outer_border_shift = -4,
+    left_outer_border_shift = 4,
+    right_outer_border_shift = -4,
+    draw_type = "outer"
+  }
+end
+
 --- Place all shared/global style definitions below this line ---
 
 -- (No GUI-specific styles should be defined here. See prototypes/styles_fave_bar.lua, styles_tag_editor.lua, styles_data_viewer.lua)
@@ -74,13 +89,13 @@ if not gui_style.tf_titlebar_flow then
     vertical_align = "center",
     top_padding = 0,
     bottom_padding = 0,
-    left_padding = 8,    -- Internal padding for content
-    right_padding = 8,   -- Internal padding for content  
-    left_margin = -8,    -- Extend into parent's left padding (base: 8px)
-    right_margin = -8,   -- Extend into parent's right padding (base: 8px)
+    left_padding = 8,  -- Internal padding for content
+    right_padding = 8, -- Internal padding for content
+    left_margin = -8,  -- Extend into parent's left padding (base: 8px)
+    right_margin = -8, -- Extend into parent's right padding (base: 8px)
     height = 32,
     use_header_filler = true,
-    horizontal_spacing = 0  -- No spacing between elements to maximize fill
+    horizontal_spacing = 0 -- No spacing between elements to maximize fill
   }
 end
 
@@ -138,6 +153,73 @@ if not gui_style.tf_draggable_space_header then
   }
 end
 
+if not gui_style.slot_orange then
+  gui_style.slot_orange = {
+    type = "button_style",
+    parent = "slot_button",
+    default_graphical_set = {
+      -- originally default_graphical_set
+      base = { position = { 236, 200 }, corner_size = 8 },
+      shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT)
+    },
+    hovered_graphical_set = {
+      -- originally hovered_graphical_set
+      base = { position = { 236, 216 }, corner_size = 8 }, -- Example hover position
+      shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT),
+      glow = Styles.default_glow(Enum.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
+    },
+    clicked_graphical_set = {
+      base = { position = { 236, 232 }, corner_size = 8 }, -- Example clicked position
+      shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT)
+    },
+  }
+end
+if not gui_style.slot_orange_favorite_off then
+  gui_style.slot_orange_favorite_off = {
+    type = "button_style",
+    parent = "slot_button",
+  }
+end
+
+-- all graphical sets are the same
+-- we always want to show the state of is favorite as obnoxious
+if not gui_style.slot_orange_favorite_on then
+  gui_style.slot_orange_favorite_on = {
+    type = "button_style",
+    --parent = "slot_orange",
+    width = 40,
+    height = 40,
+    padding = 1,
+    --icon_scale = 2, 
+    default_graphical_set = {
+      -- originally hovered_graphical_set
+      base = { position = { 202, 199 }, corner_size = 8 }, -- Example hover position-- 236, 216
+      --shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT),
+      --glow = Styles.default_glow(Enum.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
+    },
+    hovered_graphical_set = {
+      -- originally hovered_graphical_set
+      base = { position = { 202, 199 }, corner_size = 8 }, -- Example hover position
+      shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT),
+      glow = Styles.default_glow(Enum.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
+    },
+    clicked_graphical_set = {
+      -- originally hovered_graphical_set
+      base = { position = { 202, 199 }, corner_size = 8 }, -- Example hover position
+      tint = { r = 1, g = 1, b = 1, a = .2 },
+      shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT),
+      --glow = Styles.default_glow(Enum.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
+    },
+    disabled_graphical_set = {
+      -- originally hovered_graphical_set
+      base = { position = { 236, 216 }, corner_size = 8 }, -- Example hover position
+      shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT),
+      --glow = Styles.default_glow(Enum.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
+    },
+  }
+end
+
+
 if not gui_style.tf_orange_button then
   gui_style.tf_orange_button = {
 
@@ -147,7 +229,8 @@ if not gui_style.tf_orange_button then
     {
       base = { position = { 34, 17 }, corner_size = 8 },
       shadow = Enum.ColorEnum.DEFAULT_DIRT
-    },    hovered_graphical_set =
+    },
+    hovered_graphical_set =
     {
       base = { position = { 202, 199 }, corner_size = 8 },
       shadow = Enum.ColorEnum.DEFAULT_DIRT,
@@ -157,7 +240,8 @@ if not gui_style.tf_orange_button then
     {
       base = { position = { 352, 17 }, corner_size = 8 },
       shadow = Enum.ColorEnum.DEFAULT_DIRT
-    },    disabled_graphical_set =
+    },
+    disabled_graphical_set =
     {
       base = { position = { 368, 17 }, corner_size = 8 },
       shadow = Enum.ColorEnum.DEFAULT_DIRT
@@ -170,12 +254,12 @@ if not gui_style.tf_frame_title then
     type = "label_style",
     parent = "frame_title",
     top_margin = -2,
-    horizontally_stretchable = "off",  -- Don't stretch, let draggable fill space
-    width = 0,  -- Natural width based on text content
-    minimal_width = 60,  -- Minimum space for title text
-    natural_width = 0,   -- Let it size naturally to content
-    single_line = true,  -- Ensure single line for title
-    horizontal_align = "left",  -- Left-align the title text
+    horizontally_stretchable = "off", -- Don't stretch, let draggable fill space
+    width = 0,                        -- Natural width based on text content
+    minimal_width = 60,               -- Minimum space for title text
+    natural_width = 0,                -- Let it size naturally to content
+    single_line = true,               -- Ensure single line for title
+    horizontal_align = "left",        -- Left-align the title text
     font_color = Enum.ColorEnum.CAPTION
   }
 end
@@ -195,7 +279,6 @@ if not gui_style.tf_frame_action_button then
   gui_style.tf_frame_action_button = {
     type = "button_style",
     parent = "frame_action_button",
-    right_margin = 0,  -- Ensure it aligns properly with frame edge
+    right_margin = 0, -- Ensure it aligns properly with frame edge
   }
 end
-
