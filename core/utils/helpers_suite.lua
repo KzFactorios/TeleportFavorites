@@ -246,7 +246,7 @@ function Helpers.position_has_colliding_tag(player, map_position, snap_scale)
     left_top = { x = map_position.x - snap_scale + 0.1, y = map_position.y - snap_scale + 0.1 },
     right_bottom = { x = map_position.x + snap_scale - 0.1, y = map_position.y + snap_scale - 0.1 }
   }
-  local colliding_tags = player.force:find_chart_tags(player.surface, collision_area)
+  local colliding_tags = player.force.find_chart_tags(player.surface, collision_area)
   if colliding_tags and Helpers.table_count(colliding_tags) > 0 then return colliding_tags[1] end
   return nil
 end

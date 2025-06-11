@@ -103,7 +103,6 @@ local function open_tag_editor_from_favorite(player, favorite)
     }
   end
   -- Persist gps in tag_editor_data
-  Cache.set_tag_editor_data(player, {})
   Cache.set_tag_editor_data(player, tag_data)
   tag_editor.build(player, tag_data)
   return

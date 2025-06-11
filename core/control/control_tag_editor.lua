@@ -55,12 +55,16 @@ local function handle_confirm_btn(player, element, tag_data)
     return show_tag_editor_error(player, tag_data,
       "A tag must bear a symbol or inscription to be remembered by the ether.")
   end
+  
   local surface_index = player.surface.index
   local tags = Cache.get_surface_tags(surface_index)
   local tag = tag_data.tag or {}
+
   update_tag_chart_fields(tag, text, icon, player)
   update_favorite_state(player, tag, is_favorite)
+  
   tags[tag.gps] = tag
+
   clear_and_close_tag_editor(player, element)
   Helpers.player_print(player, { "tf-gui.tag_editor_confirmed" })
 end
@@ -200,7 +204,7 @@ local function handle_teleport_btn(player, tag_data)
 end
 
 clear_and_close_tag_editor = function(player, _)
-  Cache.set_tag_editor_data(player, nil)
+  Cache.set_tag_editor_data(player, {})
   Helpers.safe_destroy_frame(player.gui.screen, "tag_editor_outer_frame")
   Helpers.safe_destroy_frame(player.gui.screen, "tag_editor_inner_frame")
   Helpers.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
@@ -217,7 +221,7 @@ end
 
 local function close_tag_editor(player)
   -- Always clear tag_editor_data and close all tag editor frames
-  Cache.set_tag_editor_data(player, nil)
+  Cache.set_tag_editor_data(player, {})
   local tg_frame = Helpers.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
   if not tg_frame then 
     error("Tag editor could not be found to be closed.")

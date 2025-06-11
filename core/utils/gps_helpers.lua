@@ -52,14 +52,14 @@ end
 local function position_can_be_tagged(player, map_position)
   if not (player and player.force and player.surface and player.force.is_chunk_charted) then return false end
   local chunk = { x = math.floor(map_position.x / 32), y = math.floor(map_position.y / 32) }
-  if not player.force:is_chunk_charted(player.surface, chunk) then
+  if not player.force.is_chunk_charted(player.surface, chunk) then
     player:print("[TeleportFavorites] You are trying to create a tag in uncharted territory: " ..
-    gps_from_map_position(map_position, player.surface.index))
+      gps_from_map_position(map_position, player.surface.index))
     return false
   end
   if Helpers.is_water_tile(player.surface, map_position) or Helpers.is_space_tile(player.surface, map_position) then
     player:print("[TeleportFavorites] You cannot tag water or space in this interface: " ..
-    gps_from_map_position(map_position, player.surface.index))
+      gps_from_map_position(map_position, player.surface.index))
     return false
   end
   return true
@@ -100,32 +100,53 @@ local function normalize_landing_position(player, intended_gps, get_tag_by_gps_f
   local adjusted_gps = nil
   local chart_tag = nil
   local tag = get_tag_by_gps_func and get_tag_by_gps_func(intended_gps) or nil
-  
+
   if not tag then
     if not position_can_be_tagged(player, landing_position) then return end
     local player_settings = Settings:getPlayerSettings(player)
     chart_tag = Helpers.position_has_colliding_tag(player, landing_position, player_settings.teleport_radius)
-    if not chart_tag then
-      local non_collide_position = player.surface:find_non_colliding_position("car", landing_position,
-        player_settings.teleport_radius, Constants.settings.TELEPORT_PRECISION)
+    if not chart_tag then 
+      -- Use "character" entity with adjusted parameters for reliable collision detection
+      -- Character entity is guaranteed to be available in all Factorio configurations
+      -- Increased radius provides safety margin similar to car collision box size
+      local safety_radius = player_settings.teleport_radius + 2          -- Add safety margin for vehicle-sized clearance
+      local fine_precision = Constants.settings.TELEPORT_PRECISION * 0.5 -- Finer search precision
+
+      local non_collide_position = nil
+      local success, error_msg = pcall(function()
+        non_collide_position = player.surface:find_non_colliding_position("character", landing_position,
+          safety_radius, fine_precision)
+      end)
+
+      if not success then
+        return nil -- Silent failure to avoid print issues
+      end
+
       if not non_collide_position then
-        player:print(
-          "There is no available teleport landing position within your radius. Choose another location or adjust your teleport radius.")
-        return
-      end      
+        return nil -- No available teleport landing position
+      end
+
+      -- At this point, non_collide_position is guaranteed to be non-nil
       local gps_str = gps_from_map_position(non_collide_position, player.surface.index)
       local parsed = parse_gps_string(gps_str)
       if not parsed then
-        player:print("Could not parse GPS coordinates for landing position")
-        return
+        return nil -- Could not parse GPS coordinates
       end
-      local check_normalized_position = player.surface:find_non_colliding_position("car", { x = parsed.x, y = parsed.y },
-        player_settings.teleport_radius, Constants.settings.TELEPORT_PRECISION)
+
+      local check_normalized_position = nil
+      local success2, error_msg2 = pcall(function()
+        check_normalized_position = player.surface:find_non_colliding_position("character",
+          { x = parsed.x, y = parsed.y },
+          player_settings.teleport_radius, Constants.settings.TELEPORT_PRECISION)
+      end)
+
+      if not success2 then
+        return nil -- Silent failure to avoid print issues
+      end
+
       if not check_normalized_position then
-        player:print(
-          "The area you are trying to land is too dense. Choose another location or adjust your teleport radius.")
-        return
-      end      
+        return nil -- The area is too dense
+      end
       adjusted_gps = gps_from_map_position(check_normalized_position, player.surface.index)
     else
       adjusted_gps = gps_from_map_position(chart_tag.position, player.surface.index)
@@ -133,16 +154,12 @@ local function normalize_landing_position(player, intended_gps, get_tag_by_gps_f
   else
     adjusted_gps = tag.gps
   end
-
   if not adjusted_gps then
-    player:print("Could not compute the teleport coordinates")
-    return nil
-  end  
-  
+    return nil -- Could not compute the teleport coordinates
+  end
   local final_position = parse_gps_string(adjusted_gps)
   if not final_position then
-    player:print("Could not parse the teleport coordinates")
-    return nil
+    return nil -- Could not parse the teleport coordinates
   end
   local favorites = get_player_favorites_func and get_player_favorites_func(player) or {}
   local player_favorite = nil
@@ -153,11 +170,11 @@ local function normalize_landing_position(player, intended_gps, get_tag_by_gps_f
   return { x = final_position.x, y = final_position.y }, tag or nil, tag and tag.chart_tag or nil, player_favorite
 end
 
----TODO REVIEW
 --- Parse and normalize a GPS string; accepts vanilla [gps=x,y,s] or canonical format
 ---@param gps string
 ---@return string
-local function parse_and_normalize_gps(gps)  if type(gps) == "string" and gps:match("^%[gps=") then
+local function parse_and_normalize_gps(gps)
+  if type(gps) == "string" and gps:match("^%[gps=") then
     local x, y, s = gps:match("%[gps=(%-?%d+),(%-?%d+),(%-?%d+)%]")
     if x and y and s then
       local nx, ny, ns = basic_helpers.normalize_index(x), basic_helpers.normalize_index(y), tonumber(s)

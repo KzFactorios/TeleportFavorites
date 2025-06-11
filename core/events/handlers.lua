@@ -114,7 +114,6 @@ function handlers.on_open_tag_editor_custom_input(event)
   }
 
   -- Persist gps in tag_editor_data
-  Cache.set_tag_editor_data(player, {})
   Cache.set_tag_editor_data(player, tag_data)
   tag_editor.build(player)
 end
