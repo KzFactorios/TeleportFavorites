@@ -44,20 +44,6 @@ function Tag:get_chart_tag()
   return self.chart_tag
 end
 
---- Check if a player has favorited this tag using functional approach.
----@param player LuaPlayer
----@return boolean
-function Tag:is_player_favorite(player)
-  if not self or not self.faved_by_players or not player or not player.index then return false end
-  
-  -- Use functional approach to check if player index exists
-  local function player_index_matcher(idx)
-    return idx == player.index
-  end
-  
-  return helpers.find_first_match(self.faved_by_players, player_index_matcher) ~= nil
-end
-
 --- Check if the player is the owner (last_user) of this tag.
 ---@param player LuaPlayer
 ---@return boolean
@@ -96,7 +82,7 @@ function Tag.teleport_player_with_messaging(player, gps)
   if rawget(player, "character") == nil then return "Unable to teleport. Player character is missing" end
   --local teleport_map_position = GPS.map_position_from_gps(gps)
 
-  local aligned_position = GPS.normalize_landing_position(player, gps, Cache)
+  local aligned_position = GPS.normalize_landing_position_with_cache(player, gps, Cache)
   if not aligned_position then player:print("Unable to normalize landing position") return end
 
   local teleport_AOK = false
@@ -125,7 +111,7 @@ function Tag:rehome_chart_tag(player, destination_gps)
   if not self or not self.gps then return "Invalid tag object" end
   local current_gps = self.gps  local destination_pos = GPS.map_position_from_gps(destination_gps)
   if not destination_pos then return "[TeleportFavorites] Could not parse destination GPS string" end
-  local aligned_position = GPS.normalize_landing_position(player, destination_gps, Cache)
+  local aligned_position = GPS.normalize_landing_position_with_cache(player, destination_gps, Cache)
   if not aligned_position then return "[TeleportFavorites] Could not find a valid location within range" end
 
   local surface_index = player.surface and player.surface.index or 1

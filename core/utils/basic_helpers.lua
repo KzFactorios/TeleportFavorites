@@ -14,6 +14,16 @@ function basic_helpers.pad(n, padlen)
   return s
 end
 
+-- Math helpers
+
+--- Checks if a number is a whole number (integer)
+--- @param n any
+--- @return boolean
+function basic_helpers.is_whole_number(n)
+  if type(n) ~= "number" then return false end
+  return n == math.floor(n)
+end
+
 -- String helpers
 
 --- Trims whitespace from both ends of a string

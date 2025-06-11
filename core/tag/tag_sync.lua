@@ -54,7 +54,7 @@ function TagSync.guarantee_chart_tag(player, tag)
 
   if not map_pos or not surface_index then error("Invalid GPS string: " .. tostring(tag.gps)) end  if not surface then error("Surface not found for tag.gps: " .. tag.gps) end
 
-  local normal_pos = gps_helpers.normalize_landing_position(player, GPS.gps_from_map_position(map_pos, player.surface.index), Cache)
+  local normal_pos = gps_helpers.normalize_landing_position_with_cache(player, GPS.gps_from_map_position(map_pos, player.surface.index), Cache)
   if not normal_pos then error("Sorry, we couldn't find a valid landing area. Try another location") end
 
   local new_chart_tag = TagSync.add_new_chart_tag(player, normal_pos, text, icon)
@@ -90,7 +90,7 @@ function TagSync.update_tag_gps_and_associated(player, tag, new_gps)
   local surface = game.surfaces[surface_index]
   if not map_pos or not surface then error("Invalid GPS or surface for update.") end
 
-  local normal_pos = gps_helpers.normalize_landing_position(player, GPS.gps_from_map_position(map_pos, player.surface.index), Cache)
+  local normal_pos = gps_helpers.normalize_landing_position_with_cache(player, GPS.gps_from_map_position(map_pos, player.surface.index), Cache)
   if not normal_pos then error("Sorry, we couldn't find a valid landing area. Try another location") end
 
   local new_chart_tag = TagSync.add_new_chart_tag(player, normal_pos, old_chart_tag.text, old_chart_tag.icon)

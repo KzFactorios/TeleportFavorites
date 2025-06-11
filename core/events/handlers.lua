@@ -92,8 +92,7 @@ function handlers.on_open_tag_editor_custom_input(event)
     return
   end  -- Normalize the clicked position and convert to GPS string
   local normalized_gps = GPS.gps_from_map_position(cursor_position, player.surface.index)
-  local nrm_pos, nrm_tag, nrm_chart_tag, nrm_favorite = gps_helpers.normalize_landing_position(player,
-    normalized_gps, Cache)
+  local nrm_pos, nrm_tag, nrm_chart_tag, nrm_favorite = gps_helpers.normalize_landing_position_with_cache(player, normalized_gps, Cache)
   if not nrm_pos then
     -- TODO play a sound
     return

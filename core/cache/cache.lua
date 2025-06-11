@@ -50,6 +50,7 @@ local basic_helpers = require("core.utils.basic_helpers")
 local FavoriteUtils = require("core.favorite.favorite")
 local Constants = require("constants")
 local GPSParser = require("core.utils.gps_parser")
+local player_favorites = require("core.favorite.player_favorites")
 
 
 --- Persistent and runtime cache management for TeleportFavorites mod.
@@ -149,6 +150,7 @@ local function init_player_data(player)
   player_data.tag_editor_data = player_data.tag_editor_data or
       {
         gps = "",
+        move_gps = "",
         locked = false,
         is_favorite = false,
         icon = "",
@@ -175,6 +177,21 @@ function Cache.get_player_favorites(player)
   local player_data = Cache.get_player_data(player)
   local favorites = player_data.surfaces[player.surface.index].favorites or {}
   return favorites
+end
+
+---@param player LuaPlayer
+---@param gps string
+---@return table|nil
+function Cache.is_player_favorite(player, gps)
+  local player_faves = Cache.get_player_favorites(player)
+  local player_favorite = nil
+  for k,v in pairs(player_faves) do 
+    if v.gps == gps then
+      player_favorite = v
+      break
+    end
+  end
+  return player_favorite
 end
 
 --- Initialize and retrieve persistent surface data for a given surface index.

@@ -76,9 +76,11 @@ local function reorder_favorites(player, favorites, drag_index, slot)
   return false
 end
 
+---@param player LuaPlayer
+---@param fav table
 local function teleport_to_favorite(player, fav)
   -- normalize position
-  local norm_position = gps_helpers.normalize_landing_position(player, fav.gps, Cache)
+  local norm_position = gps_helpers.normalize_landing_position_with_cache(player, fav.gps, Cache)
   if norm_position then
     Helpers.safe_teleport(player, norm_position)
     Helpers.player_print(player, lstr("tf-gui.teleported_to", player.name, fav.gps))
@@ -94,7 +96,7 @@ local function open_tag_editor_from_favorite(player, favorite)
       gps = favorite.gps, -- set gps for teleport button
       move_gps = "", -- GPS coordinates during move operations
       locked = favorite.locked,
-      is_favorite = favorite.tag.is_player_favorite(player),
+      is_favorite = Cache.is_player_favorite(player, favorite.gps),
       icon = favorite.tag.chart_tag.icon or "",
       text = favorite.chart_tag.text,
       tag = favorite.tag,

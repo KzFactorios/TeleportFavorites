@@ -141,7 +141,7 @@ local function get_chart_tag_by_gps(gps)  if not gps or gps == "" then return ni
   local surface_cache = ensure_surface_cache(GPSParser.get_surface_index_from_gps(gps))
   if not surface_cache then return nil end
 
-  return surface_cache.chart_tags_mapped_by_gps[gps]
+  return surface_cache.chart_tags_mapped_by_gps[gps] or nil
 end
 
 
