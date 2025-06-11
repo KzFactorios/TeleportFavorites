@@ -44,13 +44,18 @@ function Tag:get_chart_tag()
   return self.chart_tag
 end
 
---- Check if a player has favorited this tag.
+--- Check if a player has favorited this tag using functional approach.
 ---@param player LuaPlayer
 ---@return boolean
 function Tag:is_player_favorite(player)
   if not self or not self.faved_by_players or not player or not player.index then return false end
-  for _, idx in ipairs(self.faved_by_players) do if idx == player.index then return true end end
-  return false
+  
+  -- Use functional approach to check if player index exists
+  local function player_index_matcher(idx)
+    return idx == player.index
+  end
+  
+  return helpers.find_first_match(self.faved_by_players, player_index_matcher) ~= nil
 end
 
 --- Check if the player is the owner (last_user) of this tag.
@@ -60,20 +65,26 @@ function Tag:is_owner(player)
   return self.chart_tag and player and player.name and self.chart_tag.last_user == player.name or false
 end
 
---- Add a player index to faved_by_players if not present.
+--- Add a player index to faved_by_players if not present using functional approach.
 ---@param player_index uint
 function Tag:add_faved_by_player(player_index)
   assert(type(player_index) == "number", "player_index must be a number")
-  for _, idx in ipairs(self.faved_by_players) do if idx == player_index then return end end
-  table.insert(self.faved_by_players, player_index)
+  
+  -- Use functional approach to check if player already exists
+  local function player_exists(idx)
+    return idx == player_index
+  end
+  
+  if not helpers.find_first_match(self.faved_by_players, player_exists) then
+    table.insert(self.faved_by_players, player_index)
+  end
 end
 
---- Remove a player index from faved_by_players.
+--- Remove a player index from faved_by_players using functional approach.
 ---@param player_index uint
 function Tag:remove_faved_by_player(player_index)
-  for i, idx in ipairs(self.faved_by_players) do
-    if idx == player_index then table.remove(self.faved_by_players, i); return end
-  end
+  -- Use functional table_remove_value helper
+  helpers.table_remove_value(self.faved_by_players, player_index)
 end
 
 --- Teleport a player to a position on a surface, with robust checks and error messaging.

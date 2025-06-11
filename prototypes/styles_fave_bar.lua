@@ -69,79 +69,70 @@ if not gui_style.tf_fave_slots_row then
     }
 end
 
+-- Functional programming approach for button style creation
+local function extend_style(base_style, overrides)
+  local result = {}
+  for k, v in pairs(base_style) do result[k] = v end
+  for k, v in pairs(overrides) do result[k] = v end
+  return result
+end
+
+local function create_tinted_graphical_sets(tint)
+  return {
+    default_graphical_set = {
+      base = { position = { 68, 0 }, corner_size = 8, draw_type = "outer", tint = tint }
+    },
+    hovered_graphical_set = {
+      base = { position = { 51, 0 }, corner_size = 8, draw_type = "outer", tint = tint }
+    },
+    clicked_graphical_set = {
+      base = { position = { 34, 0 }, corner_size = 8, draw_type = "outer", tint = tint }
+    },
+    disabled_graphical_set = {
+      base = { position = { 17, 0 }, corner_size = 8, draw_type = "outer", 
+             tint = { r = tint.r, g = tint.g, b = tint.b, a = tint.a * 0.5 } }
+    }
+  }
+end
+
+-- Small font button style
 if not gui_style.tf_slot_button_smallfont then
-    local base = {}
-    for k, v in pairs(gui_style.slot_button) do base[k] = v end
-    base.type = "button_style"
-    base.font = "default-small"
-    base.horizontal_align = "center"
-    base.vertical_align = "bottom"
-    base.selected_font_color = nil-- { r = 1, g = 0.647, b = 0, a = 1 }
-    base.hovered_font_color = nil--{ r = 1, g = 0.647, b = 0, a = 1 }
-    base.clicked_font_color = nil--{ r = 1, g = 0.647, b = 0, a = 1 }
-    base.disabled_font_color = nil--{ r = 1, g = 0.647, b = 0, a = 0.5 }
-    base.font_color = { r = 1, g = 0.647, b = 0, a = 1 } -- Factorio orange #ffa500
-    base.top_padding = 0
-    base.bottom_padding = 2
-    base.size = { 40, 40 }
-    gui_style.tf_slot_button_smallfont = base
+    gui_style.tf_slot_button_smallfont = extend_style(gui_style.slot_button, {
+        type = "button_style",
+        font = "default-small",
+        horizontal_align = "center",
+        vertical_align = "bottom",
+        selected_font_color = nil,
+        hovered_font_color = nil,
+        clicked_font_color = nil,
+        disabled_font_color = nil,
+        font_color = { r = 1, g = 0.647, b = 0, a = 1 }, -- Factorio orange #ffa500
+        top_padding = 0,
+        bottom_padding = 2,
+        size = { 40, 40 }
+    })
 end
 
--- Custom slot button style for drag highlight (blue border)
-if not gui_style.tf_slot_button_dragged then
-    local base = {}
-    for k, v in pairs(gui_style.slot_button) do base[k] = v end
-    base.default_graphical_set = {
-        base = { position = { 68, 0 }, corner_size = 8, draw_type = "outer", tint = { r = 0.2, g = 0.7, b = 1, a = 1 } }
-    }
-    base.hovered_graphical_set = {
-        base = { position = { 51, 0 }, corner_size = 8, draw_type = "outer", tint = { r = 0.2, g = 0.7, b = 1, a = 1 } }
-    }
-    base.clicked_graphical_set = {
-        base = { position = { 34, 0 }, corner_size = 8, draw_type = "outer", tint = { r = 0.2, g = 0.7, b = 1, a = 1 } }
-    }
-    base.disabled_graphical_set = {
-        base = { position = { 17, 0 }, corner_size = 8, draw_type = "outer", tint = { r = 0.2, g = 0.7, b = 1, a = 0.5 } }
-    }
-    gui_style.tf_slot_button_dragged = base
-end
+-- Create tinted button variants using functional approach
+local tinted_button_configs = {
+  {
+    name = "tf_slot_button_dragged",
+    tint = { r = 0.2, g = 0.7, b = 1, a = 1 } -- blue
+  },
+  {
+    name = "tf_slot_button_locked", 
+    tint = { r = 1, g = 0.5, b = 0, a = 1 } -- orange
+  },
+  {
+    name = "tf_slot_button_drag_target",
+    tint = { r = 1, g = 1, b = 0.2, a = 1 } -- yellow
+  }
+}
 
--- Custom slot button style for locked highlight (orange border)
-if not gui_style.tf_slot_button_locked then
-    local base = {}
-    for k, v in pairs(gui_style.slot_button) do base[k] = v end
-    base.default_graphical_set = {
-        base = { position = { 68, 0 }, corner_size = 8, draw_type = "outer", tint = { r = 1, g = 0.5, b = 0, a = 1 } }
-    }
-    base.hovered_graphical_set = {
-        base = { position = { 51, 0 }, corner_size = 8, draw_type = "outer", tint = { r = 1, g = 0.5, b = 0, a = 1 } }
-    }
-    base.clicked_graphical_set = {
-        base = { position = { 34, 0 }, corner_size = 8, draw_type = "outer", tint = { r = 1, g = 0.5, b = 0, a = 1 } }
-    }
-    base.disabled_graphical_set = {
-        base = { position = { 17, 0 }, corner_size = 8, draw_type = "outer", tint = { r = 1, g = 0.5, b = 0, a = 0.5 } }
-    }
-    gui_style.tf_slot_button_locked = base
-end
-
--- Custom slot button style for drag target (yellow border)
-if not gui_style.tf_slot_button_drag_target then
-    local base = {}
-    for k, v in pairs(gui_style.slot_button) do base[k] = v end
-    base.default_graphical_set = {
-        base = { position = { 68, 0 }, corner_size = 8, draw_type = "outer", tint = { r = 1, g = 1, b = 0.2, a = 1 } }
-    }
-    base.hovered_graphical_set = {
-        base = { position = { 51, 0 }, corner_size = 8, draw_type = "outer", tint = { r = 1, g = 1, b = 0.2, a = 1 } }
-    }
-    base.clicked_graphical_set = {
-        base = { position = { 34, 0 }, corner_size = 8, draw_type = "outer", tint = { r = 1, g = 1, b = 0.2, a = 1 } }
-    }
-    base.disabled_graphical_set = {
-        base = { position = { 17, 0 }, corner_size = 8, draw_type = "outer", tint = { r = 1, g = 1, b = 0.2, a = 0.5 } }
-    }
-    gui_style.tf_slot_button_drag_target = base
+for _, config in ipairs(tinted_button_configs) do
+  if not gui_style[config.name] then
+    gui_style[config.name] = extend_style(gui_style.slot_button, create_tinted_graphical_sets(config.tint))
+  end
 end
 
 return true

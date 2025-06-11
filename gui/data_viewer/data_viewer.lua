@@ -97,20 +97,28 @@ local function build_tabs_row(parent, active_tab)
     { "data_viewer_lookup_tab",       "tf-gui.tab_lookups",      "lookup" },
     { "data_viewer_all_data_tab",     "tf-gui.tab_all_data",     "all_data" }
   }
-  for i, def in ipairs(tab_defs) do
-    local is_active = (active_tab == def[3])
-    local btn_style = (i > 1) and "tf_data_viewer_tab_button_margin" or "tf_data_viewer_tab_button"
-    if is_active then btn_style = "tf_data_viewer_tab_button_active" end
-
-    ---@diagnostic disable-next-line
-    tabs_flow.add {
-      type = "sprite-button",
-      name = def[1],
-      caption = { def[2] },
-      style = btn_style,
-      tags = { tab_key = def[3] }
+  
+  -- Functional approach to tab creation
+  local function create_tab_button(def, index)
+    local element_name, caption_key, tab_key = def[1], def[2], def[3]
+    local is_active = (tab_key == active_tab)
+    local style = (index > 1) and "tf_data_viewer_tab_button_margin" or "tf_data_viewer_tab_button"
+    if is_active then style = "tf_data_viewer_tab_button_active" end
+    
+    local btn = tabs_flow.add { 
+      type = "button", 
+      name = element_name, 
+      caption = { caption_key }, 
+      style = style 
     }
+    btn.enabled = not is_active
+    return btn
   end
+    -- Process each tab definition with the creation function
+  for i, def in ipairs(tab_defs) do
+    create_tab_button(def, i)
+  end
+  
   ---@diagnostic disable-next-line
   tabs_flow.add { type = "empty-widget", name = "data_viewer_tabs_filler" }
   ---@diagnostic disable-next-line
@@ -151,17 +159,27 @@ local function rowline_parser(key, value, indent, max_line_len)
   local n = 0; for _ in pairs(value) do n = n + 1 end
   if n == 0 then
     return prefix .. tostring(key) .. " = {}", true
-  end
-  -- If table is shallow and all scalars, combine onto one line
+  end  -- If table is shallow and all scalars, combine onto one line
   local parts = {}
   local all_scalar = true
-  for k, v in pairs(value) do
+  
+  -- Process each table entry to build compact representation
+  local function process_table_entry(v, k)
     if type(v) == "table" or type(v) == "function" then
-      all_scalar = false; break
+      all_scalar = false
+      return false -- Stop processing
     end
     local valstr = tostring(v)
-    if type(v) ~= "string" and type(v) ~= "number" then valstr = valstr .. " [" .. type(v) .. "]" end
+    if type(v) ~= "string" and type(v) ~= "number" then 
+      valstr = valstr .. " [" .. type(v) .. "]" 
+    end
     table.insert(parts, tostring(k) .. " = " .. valstr)
+    return true -- Continue processing
+  end
+  
+  -- Process entries until we find a non-scalar or finish all
+  for k, v in pairs(value) do
+    if not process_table_entry(v, k) then break end
   end
   if all_scalar and #parts > 0 then
     local line = prefix .. tostring(key) .. " = { " .. table.concat(parts, ", ") .. " }"
@@ -210,9 +228,10 @@ local function render_compact_data_rows(parent, data, indent, font_size, row_ind
   if visited[data] then
     add_row(parent, string.rep(INDENT_STR, indent) .. "<recursion>", font_size, row_index)
     return row_index + 1
-  end
-  visited[data] = true
-  for k, v in pairs(data) do
+  end  visited[data] = true
+  
+  -- Process each data entry with a row processor function
+  local function process_data_entry(v, k)
     if not is_method(v) then
       local line, compact = rowline_parser(k, v, indent, MAX_LINE_LEN)
       if compact == true then
@@ -229,6 +248,11 @@ local function render_compact_data_rows(parent, data, indent, font_size, row_ind
         row_index = row_index + 1
       end
     end
+  end
+  
+  -- Apply processor to each data pair
+  for k, v in pairs(data) do
+    process_data_entry(v, k)
   end
   visited[data] = nil
   return row_index

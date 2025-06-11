@@ -41,22 +41,33 @@ end
 --- @return string[]
 function Enum.get_key_names(enum)
   if type(enum) ~= "table" then return {} end
-  local keys = {}
-  for k, _ in pairs(enum) do
-    table.insert(keys, k)
+  local function extract_key(_, key)
+    return key
   end
-  return keys
+  return Enum.map_enum(enum, extract_key)
 end
 
 --- Generic: Return a list of values for an enum table
 --- @return any[]
 function Enum.get_key_values(enum)
   if type(enum) ~= "table" then return {} end
-  local values = {}
-  for _, v in pairs(enum) do
-    table.insert(values, v)
+  local function extract_value(value, _)
+    return value
   end
-  return values
+  return Enum.map_enum(enum, extract_value)
+end
+
+--- Generic helper: Map over enum entries with a transform function
+--- @param enum table
+--- @param transform_func function Function that takes (value, key) and returns transformed result
+--- @return table
+function Enum.map_enum(enum, transform_func)
+  if type(enum) ~= "table" or type(transform_func) ~= "function" then return {} end
+  local result = {}
+  for k, v in pairs(enum) do
+    table.insert(result, transform_func(v, k))
+  end
+  return result
 end
 
 return Enum

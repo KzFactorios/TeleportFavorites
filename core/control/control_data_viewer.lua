@@ -88,13 +88,15 @@ function M.on_data_viewer_tab_click(event)
     -- Show the actual persistent storage table for all_data
     state.data = global.storage or _G.storage or {}
     state.top_key = "all_data"
-  end
-  -- Debug: log type and keys of data
+  end  -- Debug: log type and keys of data using functional approach
   local dtype = type(state.data)
   local dkeys = ""
   if dtype == "table" then
-    local keys = {}
-    for k, v in pairs(state.data) do table.insert(keys, tostring(k)) end
+    -- Use functional map to extract keys
+    local function extract_key(_, key)
+      return tostring(key)
+    end
+    local keys = helpers.map(state.data, extract_key)
     dkeys = table.concat(keys, ", ")
   else
     dkeys = tostring(state.data)

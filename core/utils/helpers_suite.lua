@@ -112,22 +112,126 @@ function Helpers.table_count(t)
   return n
 end
 
--- Table utilities (already present, but ensure all are here and DRY)
+-- Table utilities with functional programming patterns
 function Helpers.table_find(tbl, value)
   if type(tbl) ~= "table" then return nil end
-  for k, v in pairs(tbl) do if v == value then return k end end
-  return nil
+  local function value_matcher(v, k)
+    return v == value and k or nil
+  end
+  return Helpers.find_first_match(tbl, value_matcher)
 end
 
 function Helpers.table_remove_value(tbl, value)
   if type(tbl) ~= "table" then return false end
-  for k, v in pairs(tbl) do
+  local function remove_matching_value(v, k)
     if v == value then
-      if type(k) == "number" then table.remove(tbl, k) else tbl[k] = nil end
+      if type(k) == "number" then 
+        table.remove(tbl, k) 
+      else 
+        tbl[k] = nil 
+      end
       return true
     end
+    return false
+  end
+  return Helpers.process_until_match(tbl, remove_matching_value)
+end
+
+--- Generic helper: Find first match using a matcher function
+--- @param tbl table
+--- @param matcher_func function Function that takes (value, key) and returns result or nil
+--- @return any
+function Helpers.find_first_match(tbl, matcher_func)
+  if type(tbl) ~= "table" or type(matcher_func) ~= "function" then return nil end
+  for k, v in pairs(tbl) do 
+    local result = matcher_func(v, k)
+    if result ~= nil then return result end
+  end
+  return nil
+end
+
+--- Generic helper: Process table until a condition is met
+--- @param tbl table
+--- @param processor_func function Function that takes (value, key) and returns true to stop processing
+--- @return boolean True if condition was met
+function Helpers.process_until_match(tbl, processor_func)
+  if type(tbl) ~= "table" or type(processor_func) ~= "function" then return false end
+  for k, v in pairs(tbl) do 
+    if processor_func(v, k) then return true end
   end
   return false
+end
+
+-- Functional programming utilities for collections
+--- Map function: transform each element in a table using a mapper function
+--- @param tbl table
+--- @param mapper_func function Function that takes (value, key) and returns transformed value
+--- @return table New table with transformed values
+function Helpers.map(tbl, mapper_func)
+  if type(tbl) ~= "table" or type(mapper_func) ~= "function" then return {} end
+  local result = {}
+  for k, v in pairs(tbl) do
+    result[k] = mapper_func(v, k)
+  end
+  return result
+end
+
+--- Filter function: select elements that match a predicate
+--- @param tbl table
+--- @param predicate_func function Function that takes (value, key) and returns boolean
+--- @return table New table with filtered values
+function Helpers.filter(tbl, predicate_func)
+  if type(tbl) ~= "table" or type(predicate_func) ~= "function" then return {} end
+  local result = {}
+  for k, v in pairs(tbl) do
+    if predicate_func(v, k) then
+      result[k] = v
+    end
+  end
+  return result
+end
+
+--- Reduce function: accumulate values using a reducer function
+--- @param tbl table
+--- @param reducer_func function Function that takes (accumulator, value, key) and returns new accumulator
+--- @param initial_value any Initial value for the accumulator
+--- @return any Final accumulated value
+function Helpers.reduce(tbl, reducer_func, initial_value)
+  if type(tbl) ~= "table" or type(reducer_func) ~= "function" then return initial_value end
+  local accumulator = initial_value
+  for k, v in pairs(tbl) do
+    accumulator = reducer_func(accumulator, v, k)
+  end
+  return accumulator
+end
+
+--- ForEach function: execute a function for each element without returning anything
+--- @param tbl table
+--- @param action_func function Function that takes (value, key)
+function Helpers.for_each(tbl, action_func)
+  if type(tbl) ~= "table" or type(action_func) ~= "function" then return end
+  for k, v in pairs(tbl) do
+    action_func(v, k)
+  end
+end
+
+--- Partition function: split table into two based on predicate
+--- @param tbl table
+--- @param predicate_func function Function that takes (value, key) and returns boolean
+--- @return table, table Two tables: {matching}, {not_matching}
+function Helpers.partition(tbl, predicate_func)
+  if type(tbl) ~= "table" or type(predicate_func) ~= "function" then 
+    return {}, {} 
+  end
+  local matching, not_matching = {}, {}
+  for k, v in pairs(tbl) do
+    if predicate_func(v, k) then
+      matching[k] = v
+    else
+      not_matching[k] = v
+    end
+  end
+  return matching, not_matching
 end
 
 function Helpers.is_on_space_platform(player)
