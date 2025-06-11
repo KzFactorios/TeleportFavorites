@@ -21,7 +21,7 @@ local clear_and_close_tag_editor, update_tag_data_and_refresh
 local function refresh_tag_editor(player, tag_data)
   Cache.set_tag_editor_data(player, tag_data)
   Helpers.safe_destroy_frame(player.gui.screen, "tag_editor_frame")
-  tag_editor.build(player, tag_data)
+  tag_editor.build(player)
 end
 
 local function show_tag_editor_error(player, tag_data, message)
@@ -256,12 +256,13 @@ local function on_tag_editor_gui_click(event, script)
   elseif element.name == "tag_editor_is_favorite_button" then
     return handle_favorite_btn(player, tag_data)
   elseif element.name == "tag_editor_teleport_button" then
-    return handle_teleport_btn(player, tag_data)
-  elseif element.name == "tag_editor_icon_button" then
+    return handle_teleport_btn(player, tag_data)  elseif element.name == "tag_editor_icon_button" then
     -- Icon selection changed - immediately save to storage
     local new_icon = element.elem_value or element.signal or ""
     tag_data.icon = new_icon
     Cache.set_tag_editor_data(player, tag_data)
+    -- Update confirm button state based on new icon selection
+    tag_editor.update_confirm_button_state(player, tag_data)
     return
   -- Confirmation dialog event handlers
   elseif element.name == "tf_confirm_dialog_confirm_btn" then
@@ -280,11 +281,12 @@ local function on_tag_editor_gui_text_changed(event)
   
   local player = game.get_player(event.player_index)
   if not player then return end
-  
-  if element.name == "tag_editor_rich_text_input" then
+    if element.name == "tag_editor_rich_text_input" then
     local tag_data = Cache.get_tag_editor_data(player) or {}
     tag_data.text = (element.text or ""):gsub("%s+$", "")
     Cache.set_tag_editor_data(player, tag_data)
+    -- Update confirm button state based on new text content
+    tag_editor.update_confirm_button_state(player, tag_data)
   end
 end
 

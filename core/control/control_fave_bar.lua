@@ -78,7 +78,7 @@ end
 
 local function teleport_to_favorite(player, fav)
   -- normalize position
-  local norm_position = gps_helpers.normalize_landing_position(player, fav.gps)
+  local norm_position = gps_helpers.normalize_landing_position(player, fav.gps, Cache)
   if norm_position then
     Helpers.safe_teleport(player, norm_position)
     Helpers.player_print(player, lstr("tf-gui.teleported_to", player.name, fav.gps))

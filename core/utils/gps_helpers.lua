@@ -15,7 +15,6 @@ Helpers for parsing, normalizing, and converting GPS strings and map positions.
 
 local basic_helpers = require("core.utils.basic_helpers")
 local Helpers = require("core.utils.helpers_suite")
-local Cache = require("core.cache.cache")
 local Constants = require("constants")
 local Settings = require("settings")
 local padlen, BLANK_GPS = Constants.settings.GPS_PAD_NUMBER, Constants.settings.BLANK_GPS
@@ -86,16 +85,21 @@ end
 
 ---TODO REVIEW
 --- Normalize a landing position; surface may be LuaSurface, string, or index
+--- This function now requires Cache functions as parameters to avoid circular dependency
 ---@param player LuaPlayer
 ---@param intended_gps string
----@return MapPosition|nil, Tag|nil, LuaCustomChartTag|nil, Favorite|nil
-local function normalize_landing_position(player, intended_gps)
+---@param get_tag_by_gps_func function
+---@param get_player_favorites_func function
+---@return MapPosition|nil, table|nil, LuaCustomChartTag|nil, table|nil
+local function normalize_landing_position(player, intended_gps, get_tag_by_gps_func, get_player_favorites_func)
   if not player or not intended_gps or intended_gps == "" then return nil end
 
   local landing_position = map_position_from_gps(intended_gps)
-  if not landing_position then return nil end  local adjusted_gps = nil
+  if not landing_position then return nil end
+
+  local adjusted_gps = nil
   local chart_tag = nil
-  local tag = Cache.get_tag_by_gps(intended_gps)
+  local tag = get_tag_by_gps_func and get_tag_by_gps_func(intended_gps) or nil
   
   if not tag then
     if not position_can_be_tagged(player, landing_position) then return end
@@ -140,9 +144,11 @@ local function normalize_landing_position(player, intended_gps)
     player:print("Could not parse the teleport coordinates")
     return nil
   end
-
-  local favorites = Cache.get_player_favorites(player)
-  local player_favorite = favorites:get_favorite_by_gps(adjusted_gps) or nil
+  local favorites = get_player_favorites_func and get_player_favorites_func(player) or {}
+  local player_favorite = nil
+  if favorites and type(favorites) == "table" and favorites.get_favorite_by_gps then
+    player_favorite = favorites:get_favorite_by_gps(adjusted_gps)
+  end
 
   return { x = final_position.x, y = final_position.y }, tag or nil, tag and tag.chart_tag or nil, player_favorite
 end
@@ -164,12 +170,23 @@ local function parse_and_normalize_gps(gps)  if type(gps) == "string" and gps:ma
   return gps or BLANK_GPS
 end
 
+--- Wrapper function that maintains the old API for backwards compatibility
+--- This requires Cache to be passed in to avoid circular dependency
+---@param player LuaPlayer
+---@param intended_gps string
+---@param Cache table Cache module reference
+---@return MapPosition|nil, table|nil, LuaCustomChartTag|nil, table|nil
+local function normalize_landing_position_with_cache(player, intended_gps, Cache)
+  if not Cache then error("Cache module is required for normalize_landing_position") end
+  return normalize_landing_position(player, intended_gps, Cache.get_tag_by_gps, Cache.get_player_favorites)
+end
+
 return {
   BLANK_GPS = BLANK_GPS,
   parse_gps_string = parse_gps_string,
   gps_from_map_position = gps_from_map_position,
   map_position_from_gps = map_position_from_gps,
   get_surface_index_from_gps = get_surface_index_from_gps,
-  normalize_landing_position = normalize_landing_position,
+  normalize_landing_position = normalize_landing_position_with_cache,
   parse_and_normalize_gps = parse_and_normalize_gps,
 }

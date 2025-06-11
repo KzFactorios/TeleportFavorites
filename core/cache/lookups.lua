@@ -26,7 +26,7 @@ global["Lookups"] = {
 
 local basic_helpers = require("core.utils.basic_helpers")
 local Helpers = require("core.utils.helpers_suite")
-local gps_helpers = require("core.utils.gps_helpers")
+local GPSParser = require("core.utils.gps_parser")
 
 
 ---@diagnostic disable: undefined-global
@@ -58,21 +58,41 @@ local function ensure_surface_cache(surface_index)
   local cache = ensure_cache()
   cache.surfaces[surface_idx] = cache.surfaces[surface_idx] or {}
 
-  if not cache.surfaces[surface_idx].chart_tags or #cache.surfaces[surface_idx].chart_tags == 0 then
-    cache.surfaces[surface_idx].chart_tags = game.forces["player"].find_chart_tags(game.surfaces[surface_index]) or {}
-    -- Initialize the chart_tags_mapped_by_gps if it doesn't exist
-    -- The collection will be Initialized as an empty table and the next check will populate
+  -- Only fetch chart tags if the cache is empty
+  if not cache.surfaces[surface_idx].chart_tags then
+    local surface = game.surfaces[surface_idx]
+    if surface then
+      cache.surfaces[surface_idx].chart_tags = game.forces["player"].find_chart_tags(surface) or {}
+    else
+      cache.surfaces[surface_idx].chart_tags = {}
+    end
     cache.surfaces[surface_idx].chart_tags_mapped_by_gps = {}
   end
 
-  -- if the number of chart_tags does not equal the number of chart_tags_mapped_by_gps, we need to rebuild the map
-  if not cache.surfaces[surface_idx].chart_tags_mapped_by_gps or
-    (#cache.surfaces[surface_idx].chart_tags ~= #cache.surfaces[surface_idx].chart_tags_mapped_by_gps) then
-    -- force a fresh start
+  -- Only rebuild the GPS map if it's empty and we have chart tags
+  if not cache.surfaces[surface_idx].chart_tags_mapped_by_gps then
     cache.surfaces[surface_idx].chart_tags_mapped_by_gps = {}
-    for _, chart_tag in ipairs(cache.surfaces[surface_idx].chart_tags) do
-      local gps = gps_helpers.gps_from_map_position(chart_tag.position, surface_idx)
-      cache.surfaces[surface_idx].chart_tags_mapped_by_gps[gps] = chart_tag
+  end
+    -- Check if we need to rebuild the GPS mapping (avoid using # on tables)
+  local chart_tags = cache.surfaces[surface_idx].chart_tags
+  local gps_map = cache.surfaces[surface_idx].chart_tags_mapped_by_gps
+  local map_count = 0
+  for _ in pairs(gps_map) do map_count = map_count + 1 end
+
+  if #chart_tags > 0 and map_count == 0 then
+    -- Rebuild the GPS mapping using functional approach
+    local function build_gps_mapping(chart_tag)
+      if chart_tag and chart_tag.valid and chart_tag.position and surface_idx then
+        local gps = GPSParser.gps_from_map_position(chart_tag.position, surface_idx)
+        if gps and gps ~= "" then
+          gps_map[gps] = chart_tag
+        end
+      end
+    end
+    
+    -- Process each chart tag with the mapping function
+    for _, chart_tag in ipairs(chart_tags) do
+      build_gps_mapping(chart_tag)
     end
   end
 
@@ -118,7 +138,7 @@ end
 ---@param gps string
 ---@return LuaCustomChartTag|nil
 local function get_chart_tag_by_gps(gps)  if not gps or gps == "" then return nil end
-  local surface_cache = ensure_surface_cache(gps_helpers.get_surface_index_from_gps(gps))
+  local surface_cache = ensure_surface_cache(GPSParser.get_surface_index_from_gps(gps))
   if not surface_cache then return nil end
 
   return surface_cache.chart_tags_mapped_by_gps[gps]
@@ -134,7 +154,7 @@ local function remove_chart_tag_from_cache_by_gps(gps)
   if not chart_tag then return end
   -- destroy the matching chart_tag object  chart_tag.destroy()
   --reset the surface_cache_chart_tags
-  local surface_index = gps_helpers.get_surface_index_from_gps(gps)
+  local surface_index = GPSParser.get_surface_index_from_gps(gps)
   clear_surface_cache_chart_tags(surface_index)
 end
 

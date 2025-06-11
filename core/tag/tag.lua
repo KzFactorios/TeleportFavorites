@@ -83,10 +83,9 @@ end
 function Tag.teleport_player_with_messaging(player, gps)
   if not player or not player.valid then return "Unable to teleport. Player is missing" end
   if rawget(player, "character") == nil then return "Unable to teleport. Player character is missing" end
-
   --local teleport_map_position = GPS.map_position_from_gps(gps)
 
-  local aligned_position = GPS.normalize_landing_position(player, gps)
+  local aligned_position = GPS.normalize_landing_position(player, gps, Cache)
   if not aligned_position then player:print("Unable to normalize landing position") return end
 
   local teleport_AOK = false
@@ -113,10 +112,9 @@ end
 ---@return string|nil, LuaCustomChartTag|nil
 function Tag:rehome_chart_tag(player, destination_gps)
   if not self or not self.gps then return "Invalid tag object" end
-  local current_gps = self.gps
-  local destination_pos = GPS.map_position_from_gps(destination_gps)
+  local current_gps = self.gps  local destination_pos = GPS.map_position_from_gps(destination_gps)
   if not destination_pos then return "[TeleportFavorites] Could not parse destination GPS string" end
-  local aligned_position = GPS.normalize_landing_position(player, destination_pos)
+  local aligned_position = GPS.normalize_landing_position(player, destination_gps, Cache)
   if not aligned_position then return "[TeleportFavorites] Could not find a valid location within range" end
 
   local surface_index = player.surface and player.surface.index or 1

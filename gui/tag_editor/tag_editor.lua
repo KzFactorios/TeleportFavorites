@@ -74,8 +74,11 @@ local function setup_tag_editor_ui(refs, tag_data, player)
         local in_chart_mode = (player.render_mode == defines.render_mode.chart or player.render_mode == defines.render_mode.chart_zoomed_in)
         local can_move = is_owner and in_chart_mode
         Helpers.set_button_state(refs.move_btn, can_move)
-    end
-    if refs.delete_btn then Helpers.set_button_state(refs.delete_btn, can_delete) end
+    end    if refs.delete_btn then Helpers.set_button_state(refs.delete_btn, can_delete) end    -- Confirm button enabled only if text input has content or icon is selected
+    local has_text = tag_data.text and tag_data.text ~= ""
+    local has_icon = tag_data.icon and tag_data.icon ~= "" and (tag_data.icon.name or tag_data.icon.type)
+    local can_confirm = has_text or has_icon
+    if refs.confirm_btn then Helpers.set_button_state(refs.confirm_btn, can_confirm) end
 
     -- Button style/tooltips
     if refs.icon_btn then refs.icon_btn.tooltip = { "tf-gui.icon_tooltip" } end
@@ -253,15 +256,15 @@ function tag_editor.build(player)
         "tf_tag_editor_outer_frame")
     tag_editor_outer_frame.auto_center = true
 
-    local titlebar, title_label = build_titlebar(tag_editor_outer_frame)
-
+    local titlebar, title_label = build_titlebar(tag_editor_outer_frame)    
+    
     local tag_editor_content_frame = GuiBase.create_frame(tag_editor_outer_frame, "tag_editor_content_frame", "vertical",
         "tf_tag_editor_content_frame")
 
     local tag_editor_owner_row, owner_label, move_button, delete_button = build_owner_row(tag_editor_content_frame,
         tag_data)
 
-    local owner_value = tag_data.chart_tag and tag_data.chart_tag.last_user ~= nil and tag_data.last_user.name or ""
+    local owner_value = (tag_data.chart_tag and tag_data.chart_tag["last_user"]) or player.name
     ---@diagnostic disable-next-line: assign-type-mismatch
     owner_label.caption = { "tf-gui.owner_label", owner_value }
 
@@ -304,6 +307,19 @@ end
 
 local function find_child_by_name(element, name)
     return Helpers.find_child_by_name(element, name)
+end
+
+-- Helper function to update confirm button state based on current tag data
+function tag_editor.update_confirm_button_state(player, tag_data)
+    local confirm_btn = Helpers.find_child_by_name(player.gui.screen, "last_row_confirm_button")
+    if not confirm_btn then return end
+    
+    -- Check if text input has content or icon is selected
+    local has_text = tag_data.text and tag_data.text ~= ""
+    local has_icon = tag_data.icon and tag_data.icon ~= "" and (tag_data.icon.name or tag_data.icon.type)
+    local can_confirm = has_text or has_icon
+    
+    Helpers.set_button_state(confirm_btn, can_confirm)
 end
 
 -- NOTE: The built-in Factorio signal/icon picker (used for icon selection) always requires the user to confirm their selection

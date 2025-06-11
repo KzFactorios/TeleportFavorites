@@ -49,7 +49,7 @@ local Lookups = require("core.cache.lookups")
 local basic_helpers = require("core.utils.basic_helpers")
 local FavoriteUtils = require("core.favorite.favorite")
 local Constants = require("constants")
-local gps_helpers = require("core.utils.gps_helpers")
+local GPSParser = require("core.utils.gps_parser")
 
 
 --- Persistent and runtime cache management for TeleportFavorites mod.
@@ -222,7 +222,7 @@ function Cache.remove_stored_tag(gps)
 end
 
 local function get_surface_index_from_gps(gps)
-  return gps_helpers.get_surface_index_from_gps(gps)
+  return GPSParser.get_surface_index_from_gps(gps)
 end
 
 --- @param gps string
