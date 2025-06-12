@@ -30,7 +30,7 @@ local GuiBase = require("gui.gui_base")
 local Helpers = require("core.utils.helpers_suite")
 local BasicHelpers = require("core.utils.basic_helpers")
 local Enum = require("prototypes.enums.enum")
-local GPS = require("core.gps.gps")
+local gps_core = require("core.utils.gps_core")
 local Cache = require("core.cache.cache")
 
 local tag_editor = {}
@@ -168,7 +168,7 @@ local function build_teleport_favorite_row(parent, tag_data)
     local teleport_btn = GuiBase.create_icon_button(row, "tag_editor_teleport_button", "",
         nil,
         "tf_teleport_button") -- Use gps for caption, fallback to move_gps if in move mode, else fallback
-    local coords = GPS.coords_string_from_gps(tag_data.gps) or "no destination"
+    local coords = gps_core.coords_string_from_gps(tag_data.gps) or "no destination"
     ---@diagnostic disable-next-line: assign-type-mismatch
     teleport_btn.caption = { "tf-gui.teleport_to", coords }
     return row, favorite_btn, teleport_btn
@@ -228,22 +228,9 @@ end
 ---
 --- @param player LuaPlayer
 function tag_editor.build(player)
-    if not player then return end
-
-    --- current_structure 050610
+    if not player then return end    --- current_structure 050610
     --- if we were given data then fine, otherwise get from storage
-    local tag_data = Cache.get_player_data(player).tag_editor_data or
-        {
-            gps = "",
-            move_gps = "", -- GPS coordinates during move operations
-            locked = false,
-            is_favorite = false,
-            icon = "",
-            text = "",
-            tag = nil,
-            chart_tag = nil,
-            error_message = ""
-        }
+    local tag_data = Cache.get_player_data(player).tag_editor_data or Cache.create_tag_editor_data()
     if not tag_data.gps or tag_data.gps == "" then
         tag_data.gps = tag_data.move_gps or ""
     end

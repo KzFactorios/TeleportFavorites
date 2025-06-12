@@ -48,7 +48,6 @@ local function ensure_cache()
   return cache
 end
 
-
 local function ensure_surface_cache(surface_index)
   local surface_idx = basic_helpers.normalize_index(surface_index)
   if not surface_idx then
@@ -78,12 +77,13 @@ local function ensure_surface_cache(surface_index)
   local gps_map = cache.surfaces[surface_idx].chart_tags_mapped_by_gps
   local map_count = 0
   for _ in pairs(gps_map) do map_count = map_count + 1 end
-
   if #chart_tags > 0 and map_count == 0 then
     -- Rebuild the GPS mapping using functional approach
     local function build_gps_mapping(chart_tag)
       if chart_tag and chart_tag.valid and chart_tag.position and surface_idx then
-        local gps = GPSParser.gps_from_map_position(chart_tag.position, surface_idx)
+        -- Ensure surface_idx is properly typed as uint
+        local surface_index_uint = tonumber(surface_idx) --[[@as uint]]
+        local gps = GPSParser.gps_from_map_position(chart_tag.position, surface_index_uint)
         if gps and gps ~= "" then
           gps_map[gps] = chart_tag
         end
@@ -99,14 +99,12 @@ local function ensure_surface_cache(surface_index)
   return cache.surfaces[surface_idx]
 end
 
-
 --- Static method to be called once at the start of the game or when the mod is loaded.
 --- It ensures that the global Lookups cache is initialized and ready for use.
 --- @return table
 local function init()
   return ensure_cache()
 end
-
 
 --- Static method to clear the Lookups.surfaces[surface_index].charts tags and it's map
 --- It is useful when the chart tags for a surface have changed and need to be rebuilt.
@@ -122,7 +120,6 @@ local function clear_surface_cache_chart_tags(surface_index)
   return surface_cache
 end
 
-
 --- Ensure the surfaces cache exists and initializes it if not.
 --- @param surface_index number|string
 --- @return LuaCustomChartTag[] -- Returns an array of LuaCustomChartTag objects
@@ -131,7 +128,6 @@ local function get_chart_tag_cache(surface_index)
   local surface_cache = ensure_surface_cache(surface_idx)
   return surface_cache.chart_tags or {}
 end
-
 
 --- Static method to fetch a LuaCustomChartTag by gps (O(1) lookup)
 --- uses the
@@ -158,6 +154,13 @@ local function remove_chart_tag_from_cache_by_gps(gps)
   clear_surface_cache_chart_tags(surface_index)
 end
 
+--- Clear all lookup caches across all surfaces
+--- This is useful when doing a complete cache reset
+local function clear_all_caches()
+  _G[CACHE_KEY] = nil
+  ensure_cache()
+end
+
   
 return {
   init = init,
@@ -165,4 +168,5 @@ return {
   get_chart_tag_by_gps = get_chart_tag_by_gps,
   clear_surface_cache_chart_tags = clear_surface_cache_chart_tags,
   remove_chart_tag_from_cache_by_gps = remove_chart_tag_from_cache_by_gps,
+  clear_all_caches = clear_all_caches,
 }

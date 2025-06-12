@@ -6,11 +6,11 @@ This module provides static functions for synchronizing, updating, and removing 
 ---@diagnostic disable: undefined-global
 local Tag = require("core.tag.tag")
 local TagSync = require("core.tag.tag_sync")
-local GPS = require("core.gps.gps")
 local gps_helpers = require("core.utils.gps_helpers")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local Helpers = require("core.utils.basic_helpers")
 local Cache = require("core.cache.cache")
+local gps_parser = require("core.utils.gps_parser")
 local Lookups = Cache.lookups
 
 ---Update every players' favorites, replacing old_gps with new_gps, because it is possible for
@@ -49,18 +49,18 @@ function TagSync.guarantee_chart_tag(player, tag)
   if chart_tag and chart_tag.valid then return chart_tag end
 
   local icon, text = chart_tag and chart_tag.icon or {}, chart_tag and chart_tag.text or ""
-  local map_pos, surface_index = GPS.map_position_from_gps(tag.gps), GPS.get_surface_index(tag.gps)
+  local map_pos, surface_index = gps_parser.map_position_from_gps(tag.gps), gps_parser.get_surface_index_from_gps(tag.gps)
   local surface = game.surfaces[surface_index]
 
   if not map_pos or not surface_index then error("Invalid GPS string: " .. tostring(tag.gps)) end  if not surface then error("Surface not found for tag.gps: " .. tag.gps) end
 
-  local normal_pos = gps_helpers.normalize_landing_position_with_cache(player, GPS.gps_from_map_position(map_pos, player.surface.index), Cache)
+  local normal_pos = gps_helpers.normalize_landing_position_with_cache(player, gps_parser.gps_from_map_position(map_pos, player.surface.index), Cache)
   if not normal_pos then error("Sorry, we couldn't find a valid landing area. Try another location") end
 
   local new_chart_tag = TagSync.add_new_chart_tag(player, normal_pos, text, icon)
   if not new_chart_tag then error("Sorry, we couldn't find a valid landing area. Try another location") end
 
-  local new_gps = GPS.gps_from_map_position(new_chart_tag.position, surface_index)
+  local new_gps = gps_parser.gps_from_map_position(new_chart_tag.position, surface_index)
   if new_gps ~= tag.gps then
     -- If the GPS has changed, update all player favorites
     update_player_favorites_gps(tag.gps, new_gps)
@@ -85,18 +85,18 @@ function TagSync.update_tag_gps_and_associated(player, tag, new_gps)
 
   local old_gps = tag.gps
   local old_chart_tag = tag.chart_tag
-  local surface_index = GPS.get_surface_index(new_gps) or player.surface.index or 1
-  local map_pos = GPS.map_position_from_gps(new_gps)
+  local surface_index = gps_parser.get_surface_index_from_gps(new_gps) or player.surface.index or 1
+  local map_pos = gps_parser.map_position_from_gps(new_gps)
   local surface = game.surfaces[surface_index]
   if not map_pos or not surface then error("Invalid GPS or surface for update.") end
 
-  local normal_pos = gps_helpers.normalize_landing_position_with_cache(player, GPS.gps_from_map_position(map_pos, player.surface.index), Cache)
+  local normal_pos = gps_helpers.normalize_landing_position_with_cache(player, gps_parser.gps_from_map_position(map_pos, player.surface.index), Cache)
   if not normal_pos then error("Sorry, we couldn't find a valid landing area. Try another location") end
 
   local new_chart_tag = TagSync.add_new_chart_tag(player, normal_pos, old_chart_tag.text, old_chart_tag.icon)
   if not new_chart_tag then error("Sorry, we couldn't find a valid landing area. Try another location") end
 
-  new_gps = GPS.gps_from_map_position(new_chart_tag.position, surface_index)
+  new_gps = gps_parser.gps_from_map_position(new_chart_tag.position, surface_index)
   -- If the GPS has changed, update all player favorites
   update_player_favorites_gps(tag.gps, new_gps)
   tag.gps = new_gps
@@ -144,7 +144,7 @@ end
 ---Remove a tag from storage by GPS.
 ---@param gps string
 local function remove_tag_from_storage(gps)
-  local surface_index = GPS.get_surface_index(gps) or 1
+  local surface_index = gps_parser.get_surface_index_from_gps(gps) or 1
   local surface_data = Cache.get_surface_data(surface_index)
   surface_data.tags = surface_data.tags or {}
   surface_data.tags[gps] = nil

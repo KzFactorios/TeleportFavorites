@@ -10,7 +10,7 @@ local safe_destroy_frame = Helpers.safe_destroy_frame
 local player_print = Helpers.player_print
 local Tag = require("core.tag.tag")
 local PlayerFavorites = require("core.favorite.player_favorites")
-local GPS = require("core.gps.gps")
+local gps_parser = require("core.utils.gps_parser")
 local Constants = require("constants")
 local Enum = require("prototypes.enums.enum")
 
@@ -87,7 +87,7 @@ local function handle_move_btn(player, tag_data, script)
     end
     
     -- Store the new position in move_gps first
-    local new_gps = GPS.gps_from_map_position(pos, player.surface.index)
+    local new_gps = gps_parser.gps_from_map_position(pos, player.surface.index)
     tag_data.move_gps = new_gps
     
     local tag = tag_data.tag or {}

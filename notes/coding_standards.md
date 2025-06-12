@@ -220,20 +220,27 @@ _Last updated: 2025-05-27_
 
 ## Example (What **not** to do):
 ```lua
+-- ex
 -- BAD: This is forbidden!
--- ...module code...
-local GPS = require("core.gps.gps")
+-- using requires in methods
+function foo()
+  local GPS = require("core.gps.gps")
+end
 ```
 
 ## Example (Correct):
 ```lua
+-- ex
+-- ...top of file...
 local GPS = require("core.gps.gps")
+-- ...
+
 -- ...module code...
 ```
 
 ## Refactoring Circular Dependencies
 - If you encounter a circular dependency, break the cycle by moving shared code to a new minimal helper module.
-- Never "game" the Lua parser by moving `require` to the end of a file.
+- Never "game" the Lua parser by moving `require` to the end of a file or contain a `require` within a method
 
 ---
 

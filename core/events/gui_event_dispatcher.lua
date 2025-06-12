@@ -1,5 +1,45 @@
 ---@diagnostic disable: undefined-global
 
+--[[
+gui_event_dispatcher.lua
+TeleportFavorites Factorio Mod
+-----------------------------
+Centralized GUI event dispatcher for all mod GUI interactions.
+
+Architecture:
+-------------
+- Single point of registration for GUI events across all mod GUIs
+- Routes events to appropriate control modules based on element names and parent GUI detection
+- Implements comprehensive error handling with detailed logging and recovery
+- Uses global click guard to prevent event recursion issues
+
+Supported Events:
+-----------------
+- on_gui_click: Dispatches to control_fave_bar, control_tag_editor, control_data_viewer
+- on_gui_text_changed: Handles immediate text input storage (tag editor)
+- on_gui_elem_changed: Handles icon picker changes (tag editor)
+- on_gui_confirmed: Handles modal dialog confirmations
+
+Integration Pattern:
+--------------------
+Each GUI control module implements standardized event handler signatures:
+- control_fave_bar.on_fave_bar_gui_click(event)
+- control_tag_editor.on_tag_editor_gui_click(event, script)
+- control_data_viewer.on_data_viewer_gui_click(event)
+
+Error Handling:
+---------------
+- Comprehensive xpcall usage with detailed error logging
+- Safe element access with validity checks and pcall wrappers
+- Automatic click guard reset on error to prevent deadlocks
+- Multi-channel logging (log + print) for different debug scenarios
+
+Usage:
+------
+-- Register all GUI event handlers (called from control.lua)
+gui_event_dispatcher.register_gui_handlers(script)
+--]]
+
 -- gui_event_dispatcher.lua
 -- Centralized GUI event dispatcher for TeleportFavorites
 -- Wires up all shared GUI event handlers for favorites bar, tag editor, etc.
@@ -13,6 +53,9 @@ local control_data_viewer = require("core.control.control_data_viewer")
 local Cache = require("core.cache.cache")
 
 local M = {}
+
+---@type boolean Global guard to prevent GUI event recursion
+local _tf_gui_click_guard = false
 
 local FAVE_BAR_SLOT_PREFIX = Constants.settings.FAVE_BAR_SLOT_PREFIX
 
@@ -30,9 +73,13 @@ local function is_blank_fave_bar_slot_button(element)
 end
 
 --- Register shared GUI event handler for all GUIs
--- Call this from control.lua, passing script and defines
+---@param script table The Factorio script object
 function M.register_gui_handlers(script)
-  local function shared_on_gui_click(event)
+  -- Validate script object
+  if not script or type(script.on_event) ~= "function" then
+    error("[TeleportFavorites] Invalid script object provided to register_gui_handlers")
+  end
+    local function shared_on_gui_click(event)
     Cache.init()
     if _tf_gui_click_guard then return end
     _tf_gui_click_guard = true
@@ -74,12 +121,14 @@ function M.register_gui_handlers(script)
       if log then log("[TeleportFavorites] Traceback:\n" .. tb) end
       if log then
         local el = event and event.element
-        local ename, etype = "<no element>", "<no type>"
-        -- Safely check if element is valid before accessing properties
+        local ename, etype = "<no element>", "<no type>"        -- Safely check if element is valid before accessing properties
         if el and type(el) == "userdata" then
           pcall(function()
+            ---@diagnostic disable-next-line: undefined-field
             if el.valid then
+              ---@diagnostic disable-next-line: undefined-field
               ename = el.name or "<no name>"
+              ---@diagnostic disable-next-line: undefined-field
               etype = el.type or "<no type>"
             else
               ename = "<invalid element>"
@@ -116,9 +165,19 @@ function M.register_gui_handlers(script)
     local element = event.element
     if element.name and element.name:find("tag_editor") then
       control_tag_editor.on_tag_editor_gui_click(event, script)
+    end  end
+  script.on_event(defines.events.on_gui_elem_changed, shared_on_gui_elem_changed)
+  
+  -- Register GUI confirmed handler for modal dialogs
+  local function shared_on_gui_confirmed(event)
+    if not event or not event.element then return end
+    -- Handle confirmation dialog events in tag editor
+    local element = event.element
+    if element.name and element.name:find("tag_editor") then
+      control_tag_editor.on_tag_editor_gui_click(event, script)
     end
   end
-  script.on_event(defines.events.on_gui_elem_changed, shared_on_gui_elem_changed)
+  script.on_event(defines.events.on_gui_confirmed, shared_on_gui_confirmed)
 end
 
 return M

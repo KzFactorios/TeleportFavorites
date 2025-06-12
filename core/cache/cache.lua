@@ -42,8 +42,7 @@ storage = {
 }
 ]]
 
--- Remove the top-level require to break the circular dependency
--- local GPS = require("core.gps.gps")
+
 local mod_version = require("core.utils.version")
 local Lookups = require("core.cache.lookups")
 local basic_helpers = require("core.utils.basic_helpers")
@@ -60,23 +59,21 @@ local Cache = {}
 Cache.__index = Cache
 
 
--- Ensure storage is always a reference to global.storage for persistence
-if rawget(_G, "global") == nil then _G.global = {} end
-if not global.storage then global.storage = {} end
-storage = global.storage
-
+-- Ensure storage is always available for persistence (Factorio 2.0+)
+if not storage then 
+  error("Storage table not available - this mod requires Factorio 2.0+")
+end
 
 --- Lookup tables for chart tags and other runtime data.
 Cache.lookups = Cache.lookups or Lookups.init()
 
-
 --- Initialize the persistent cache table if not already present.
 function Cache.init()
-  if rawget(_G, "global") == nil then _G.global = {} end
-  if not global.storage then global.storage = {} end
-  storage = global.storage
-  if not storage.players then storage.players = {} end
-  if not storage.surfaces then storage.surfaces = {} end
+  if not storage then 
+    error("Storage table not available - this mod requires Factorio 2.0+")
+  end
+  storage.players = storage.players or {}
+  storage.surfaces = storage.surfaces or {}
   if not storage.mod_version or storage.mod_version ~= mod_version then
     storage.mod_version = mod_version
   end
@@ -92,14 +89,37 @@ function Cache.get(key)
   return storage[key]
 end
 
+--- Set a value in the persistent cache by key.
+---@param key string
+---@param value any
+function Cache.set(key, value)
+  if not key or key == "" then return end
+  Cache.init()
+  storage[key] = value
+end
+
 --- Clear the entire persistent cache.
 function Cache.clear()
-  Cache.init()
-  if rawget(_G, "global") == nil then _G.global = {} end
-  global.storage = { players = {}, surfaces = {} }
-  storage = global.storage
+  if not storage then 
+    error("Storage table not available - cannot clear cache")
+  end
+  
+  -- Clear all data while preserving storage table reference
+  for k in pairs(storage) do
+    storage[k] = nil
+  end
+  
+  -- Reinitialize with clean structure
+  storage.players = {}
+  storage.surfaces = {}
+  storage.mod_version = mod_version
+  
+  -- Clear non-persistent lookup cache if available
   if package.loaded["core.cache.lookups"] then
-    package.loaded["core.cache.lookups"].clear_chart_tag_cache()
+    local lookups_module = package.loaded["core.cache.lookups"]
+    if lookups_module.clear_all_caches then
+      lookups_module.clear_all_caches()
+    end
   end
 end
 
@@ -144,21 +164,9 @@ local function init_player_data(player)
   end
 
   player_data.surfaces[player.surface.index].favorites = init_player_favorites(player)
-
   player_data.player_name = player.name or "Unknown"
   player_data.render_mode = player_data.render_mode or player.render_mode
-  player_data.tag_editor_data = player_data.tag_editor_data or
-      {
-        gps = "",
-        move_gps = "",
-        locked = false,
-        is_favorite = false,
-        icon = "",
-        text = "",
-        tag = nil,
-        chart_tag = nil,
-        error_message = ""
-      }
+  player_data.tag_editor_data = player_data.tag_editor_data or Cache.create_tag_editor_data()
   return player_data
 end
 
@@ -272,6 +280,127 @@ function Cache.set_tag_editor_data(player, data)
   end
 
   return pdata.tag_editor_data
+end
+
+--- Set all favorites for a player on their current surface (batch operation)
+---@param player LuaPlayer
+---@param favorites table[] Array of Favorite objects
+function Cache.set_player_favorites(player, favorites)
+  if not player or not favorites then return end
+  local player_data = Cache.get_player_data(player)
+  player_data.surfaces[player.surface.index].favorites = favorites
+end
+
+--- Get cache statistics for debugging and monitoring
+---@return table Statistics about cache usage
+function Cache.get_stats()
+  Cache.init()
+  local stats = {
+    mod_version = storage.mod_version,
+    players_count = 0,
+    surfaces_count = 0,
+    total_favorites = 0,
+    total_tags = 0
+  }
+  
+  -- Count players
+  if storage.players then
+    for _ in pairs(storage.players) do
+      stats.players_count = stats.players_count + 1
+    end
+  end
+  
+  -- Count surfaces and tags
+  if storage.surfaces then
+    for surface_index, surface_data in pairs(storage.surfaces) do
+      stats.surfaces_count = stats.surfaces_count + 1
+      if surface_data.tags then
+        for _ in pairs(surface_data.tags) do
+          stats.total_tags = stats.total_tags + 1
+        end
+      end
+    end
+  end
+  
+  -- Count total favorites across all players and surfaces
+  if storage.players then
+    for _, player_data in pairs(storage.players) do
+      if player_data.surfaces then
+        for _, surface_data in pairs(player_data.surfaces) do
+          if surface_data.favorites then
+            stats.total_favorites = stats.total_favorites + #surface_data.favorites
+          end
+        end
+      end
+    end
+  end
+  
+  return stats
+end
+
+--- Validate and repair player data structure
+---@param player LuaPlayer
+---@return boolean True if data was valid or successfully repaired
+function Cache.validate_player_data(player)
+  if not player or not player.valid then return false end
+  
+  local success, result = pcall(function()
+    local player_data = Cache.get_player_data(player)
+    
+    -- Ensure required fields exist
+    player_data.player_name = player_data.player_name or player.name or "Unknown"
+    player_data.render_mode = player_data.render_mode or player.render_mode
+    player_data.surfaces = player_data.surfaces or {}    player_data.tag_editor_data = player_data.tag_editor_data or Cache.create_tag_editor_data()
+    
+    -- Ensure surface data exists for current surface
+    local surface_index = player.surface.index
+    player_data.surfaces[surface_index] = player_data.surfaces[surface_index] or {}
+    player_data.surfaces[surface_index].favorites = player_data.surfaces[surface_index].favorites or {}
+    
+    -- Validate favorites array
+    local favorites = player_data.surfaces[surface_index].favorites
+    for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
+      if not favorites[i] or type(favorites[i]) ~= "table" then
+        favorites[i] = FavoriteUtils.get_blank_favorite()
+      end
+      favorites[i].gps = favorites[i].gps or ""
+      favorites[i].locked = favorites[i].locked or false
+    end
+    
+    return true
+  end)
+  
+  return success
+end
+
+--- Create a new tag_editor_data structure with default values
+--- This centralized factory method eliminates duplication across the codebase
+---@param options table|nil Optional override values for specific fields
+---@return table tag_editor_data structure with all required fields
+function Cache.create_tag_editor_data(options)
+  local defaults = {
+    gps = "",
+    move_gps = "",
+    locked = false,
+    is_favorite = false,
+    icon = "",
+    text = "",
+    tag = nil,
+    chart_tag = nil,
+    error_message = ""
+  }
+  
+  if not options or type(options) ~= "table" then
+    return defaults
+  end
+  
+  -- Merge options with defaults, allowing partial overrides
+  local result = {}
+  for key, default_value in pairs(defaults) do
+    result[key] = options[key] ~= nil and options[key] or default_value
+  end
+  
+  return result
 end
 
 return Cache

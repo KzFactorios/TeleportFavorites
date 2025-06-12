@@ -7,53 +7,74 @@ Defines the persistent data structures for the mod, including player favorites, 
 
 ## Top-Level Schema
 
+### Persistent Storage (storage table)
 ```lua
-{
-  mod_version = "0.0.01",
+storage = {
+  mod_version = string,      -- Current mod version (e.g., "0.0.01")
   players = {
     [player_index] = {
-      toggle_fave_bar_buttons = boolean,
-      render_mode = string,
-      tag_editor_data = {},
-      drag_favorite_index = number, --default -1
+      player_name = string,            -- Factorio player name for debugging
+      render_mode = string,            -- Player's current render mode
+      data_viewer_settings = {         -- Data viewer GUI preferences
+        active_tab = string,           -- "player_data", "surface_data", "lookup", "all_data"
+        font_size = number,            -- Font size for data viewer (6-24)
+      },
+      tag_editor_data = {              -- CENTRALIZED via Cache.create_tag_editor_data()
+        gps = string,                  -- GPS coordinates where tag editor was opened
+        move_gps = string,             -- GPS coordinates during move operations (temporary)
+        locked = boolean,              -- Whether the tag is locked
+        is_favorite = boolean,         -- Whether the tag is favorited (pending state)
+        icon = string,                 -- Icon signal name (empty string if none)
+        text = string,                 -- Tag text content (empty string if none)
+        tag = table|nil,              -- Tag object being edited (may be nil)
+        chart_tag = LuaCustomChartTag|nil, -- Associated chart tag (may be nil)
+        error_message = string,        -- Error message to display (empty string if none)
+        -- Additional transient fields for move mode, etc.
+        move_mode = boolean|nil,       -- True if in move mode
+        delete_confirmed = boolean|nil, -- True if delete confirmation is active
+      },
       surfaces = {
         [surface_index] = {
-          favorites = {
-            [slot_number] = {
-              gps = string,
-              slot_locked = boolean,
+          favorites = {                -- Array of Favorite objects
+            [1..MAX_FAVORITE_SLOTS] = {
+              gps = string,            -- GPS in format "xxx.yyy.s"
+              locked = boolean,        -- Whether slot is locked against changes
+              tag = table|nil,         -- Associated tag object (for tooltips)
             },
           },
         },
-      },      -- Tag editor dialog state (cleared on close/disconnect)
-      tag_editor_data = {
-        tag = table,           -- Tag object being edited (may be partial)
-        gps = string,          -- GPS coordinates where tag editor was opened (canonical field)
-        move_gps = string,     -- GPS coordinates during move operations (temporary)
-        icon = string|nil,     -- Icon signal name (optional)
-        text = string|nil,     -- Tag text (optional)
-        is_favorite = bool,   -- Whether the tag is a favorite (pending)
-        move_mode = bool,     -- True if in move mode
-        delete_confirmed = bool, -- True if delete confirmation is active
-        -- ...other transient fields as needed by the tag editor
-      }|nil,
+      },
     },
   },
   surfaces = {
     [surface_index] = {
       tags = {
-        [gps] = { faved_by_players = { [player_index: uint] } },
-      }
+        [gps] = {                      -- Tag objects indexed by GPS string
+          gps = string,                -- Canonical GPS string "xxx.yyy.s"
+          chart_tag = LuaCustomChartTag|nil, -- Associated chart tag
+          faved_by_players = {         -- Array of player indices who favorited this
+            [1..n] = player_index,
+          },
+        },
+      },
     },
   },
 }
+```
 
+### Runtime Cache (_G["Lookups"])
+```lua
 _G["Lookups"] = {
   surfaces = {
     [surface_index] = {
-      chart_tags = { LuaCustomChartTag[] }
-    }
-  }
+      chart_tags = {                   -- Array of all chart tags on surface
+        [1..n] = LuaCustomChartTag,
+      },
+      chart_tags_mapped_by_gps = {     -- O(1) lookup map: GPS -> chart_tag
+        [gps] = LuaCustomChartTag,
+      },
+    },
+  },
 }
 ```
 

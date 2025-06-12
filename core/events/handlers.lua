@@ -4,21 +4,32 @@ TeleportFavorites Factorio Mod
 -----------------------------
 Centralized event handler implementations for TeleportFavorites.
 
-- Handles Factorio events for tag creation, modification, removal, and player actions.
-- Ensures robust multiplayer and surface-aware updates to tags, chart tags, and player favorites.
-- Uses helpers for tag destruction, GPS conversion, and cache management.
-- All event logic is routed through this module for maintainability and separation of concerns.
+Features:
+- Handles Factorio events for tag creation, modification, removal, and player actions
+- Ensures robust multiplayer and surface-aware updates to tags, chart tags, and player favorites
+- Uses helpers for tag destruction, GPS conversion, and cache management
+- All event logic is routed through this module for maintainability and separation of concerns
+- Comprehensive error handling and validation for all event types
+- Type-safe player retrieval and validation
+
+Architecture:
+- Event handlers are pure functions that receive event objects
+- All handlers validate inputs and handle edge cases gracefully
+- Player objects are properly null-checked to prevent runtime errors
+- GPS position normalization is handled through centralized helpers
+- Surface and multi-player compatibility is maintained throughout
 
 API:
 -----
-- handlers.on_init()                  -- Mod initialization logic.
-- handlers.on_load()                  -- Runtime-only structure re-initialization.
-- handlers.on_player_changed_surface(event) -- Ensures surface cache for player after surface change.
-- handlers.on_open_tag_editor(event)  -- (Stub) Handles opening the tag editor GUI.
-- handlers.on_teleport_to_favorite(event, i) -- Teleports player to favorite location.
-- handlers.on_chart_tag_added(event)  -- (Stub) Handles chart tag creation.
-- handlers.on_chart_tag_modified(event) -- Handles chart tag modification, GPS and favorite updates.
-- handlers.on_chart_tag_removed(event) -- Handles chart tag removal and cleanup.
+- handlers.on_init()                              -- Mod initialization logic
+- handlers.on_load()                              -- Runtime-only structure re-initialization
+- handlers.on_player_created(event)               -- New player initialization
+- handlers.on_player_changed_surface(event)      -- Ensures surface cache for player after surface change
+- handlers.on_open_tag_editor_custom_input(event) -- Handles right-click chart tag editor opening
+- handlers.on_teleport_to_favorite(event, i)     -- Teleports player to favorite location
+- handlers.on_chart_tag_added(event)             -- Handles chart tag creation (stub)
+- handlers.on_chart_tag_modified(event)          -- Handles chart tag modification, GPS and favorite updates
+- handlers.on_chart_tag_removed(event)           -- Handles chart tag removal and cleanup
 
 --]]
 
@@ -30,7 +41,6 @@ API:
 local Tag = require("core.tag.tag")
 local _PlayerFavorites = require("core.favorite.player_favorites")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
-local GPS = require("core.gps.gps")
 local Constants = require("constants")
 local Lookups = require("core.cache.lookups")
 local _Favorite = require("core.favorite.favorite")
@@ -41,6 +51,7 @@ local tag_editor = require("gui.tag_editor.tag_editor")
 local _Settings = require("settings")
 local Helpers = require("core.utils.helpers_suite")
 local gps_helpers = require("core.utils.gps_helpers")
+local gps_parser = require("core.utils.gps_parser")
 
 local handlers = {}
 
@@ -56,26 +67,34 @@ function handlers.on_load()
 end
 
 function handlers.on_player_created(event)
+  ---@diagnostic disable-next-line: param-type-mismatch
   local player = game.get_player(event.player_index)
-  if player and player.valid then
-    local parent = player.gui.top
-    fave_bar.build(player, parent)
-  end
+  if not player or not player.valid then return end
+  
+  local parent = player.gui.top
+  fave_bar.build(player, parent)
 end
 
 function handlers.on_player_changed_surface(event)
+  ---@diagnostic disable-next-line: param-type-mismatch
   local player = game.get_player(event.player_index)
-  if player and player.valid then
-    local parent = player.gui.top
-    fave_bar.build(player, parent)
-  end
+  if not player or not player.valid then return end
+  
+  local parent = player.gui.top
+  fave_bar.build(player, parent)
 end
 
---- handles right-click on the chart view
+--- Handles right-click on the chart view to open tag editor
+---@param event table Event data containing player_index and cursor_position
 function handlers.on_open_tag_editor_custom_input(event)
-  ---@type LuaPlayer
+  ---@diagnostic disable-next-line: param-type-mismatch
   local player = game.get_player(event.player_index)
-  if not player or (player.render_mode ~= defines.render_mode.chart and player.render_mode ~= defines.render_mode.chart_zoomed_in) then return end
+  if not player or not player.valid then return end
+  
+  -- Only handle chart mode interactions
+  if player.render_mode ~= defines.render_mode.chart and player.render_mode ~= defines.render_mode.chart_zoomed_in then 
+    return 
+  end
 
   -- Check if tag editor is already open - if so, ignore right-click events
   local tag_editor_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TAG_EDITOR]
@@ -86,41 +105,43 @@ function handlers.on_open_tag_editor_custom_input(event)
   local surface = player.surface
   local surface_id = surface.index
 
-  -- get the position we right-clicked upon
+  -- Get the position we right-clicked upon
   local cursor_position = event.cursor_position
   if not cursor_position or not (cursor_position.x and cursor_position.y) then
     return
-  end  -- Normalize the clicked position and convert to GPS string
-  local normalized_gps = GPS.gps_from_map_position(cursor_position, player.surface.index)
+  end
+  
+  -- Normalize the clicked position and convert to GPS string
+  local normalized_gps = gps_parser.gps_from_map_position(cursor_position, player.surface.index)
   local nrm_pos, nrm_tag, nrm_chart_tag, nrm_favorite = gps_helpers.normalize_landing_position_with_cache(player, normalized_gps, Cache)
   if not nrm_pos then
-    -- TODO play a sound
+    -- TODO: play a sound to indicate invalid position
     return
   end
 
   local gps = gps_helpers.gps_from_map_position(nrm_pos, surface_id)
-
-  local tag_data = {
+  local tag_data = Cache.create_tag_editor_data({
     gps = gps,
-    move_gps = "", -- GPS coordinates during move operations
     locked = nrm_favorite and nrm_favorite.locked or false,
     is_favorite = nrm_favorite ~= nil,
     icon = nrm_chart_tag and nrm_chart_tag.icon or "",
     text = nrm_chart_tag and nrm_chart_tag.text or "",
     tag = nrm_tag or nil,
-    chart_tag = nrm_chart_tag or nil,
-    error_message = ""
-  }
+    chart_tag = nrm_chart_tag or nil
+  })
 
-  -- Persist gps in tag_editor_data
+  -- Persist GPS in tag_editor_data
   Cache.set_tag_editor_data(player, tag_data)
   tag_editor.build(player)
 end
 
+--- Teleport player to a specific favorite slot
+---@param event table Event data containing player_index
+---@param i number Favorite slot index (1-based)
 function handlers.on_teleport_to_favorite(event, i)
   ---@diagnostic disable-next-line: param-type-mismatch
   local player = game.get_player(event.player_index)
-  if not player then return end
+  if not player or not player.valid then return end
 
   ---@diagnostic disable-next-line: param-type-mismatch
   local favorites = Cache.get_player_favorites(player)
@@ -144,32 +165,69 @@ function handlers.on_teleport_to_favorite(event, i)
   end
 end
 
-function handlers.on_chart_tag_added(_event)
-  -- if no matching tag exists in the cache create a matching tag and save in storage.
-  -- update the map that tracks tags
+--- Handle chart tag added events (stub implementation)
+---@param event table Event data for tag addition
+function handlers.on_chart_tag_added(event)
+  -- Stub: Future implementation will handle automatic tag synchronization
+  -- when players create chart tags outside of the mod interface
+  -- TODO: Check if matching tag exists in cache, create matching tag and save in storage
+  -- TODO: Update the map that tracks tags for efficient lookup
 end
 
+--- Validate if a tag modification event is valid
+---@param event table Chart tag modification event
+---@param player LuaPlayer|nil Player who triggered the modification
+---@return boolean valid True if modification should be processed
 local function is_valid_tag_modification(event, player)
-  if not player or not event.tag or not event.tag.valid then return false end
+  if not player or not player.valid then return false end
+  if not event.tag or not event.tag.valid then return false end
+  
+  -- Set last_user if not present
   if not event.tag.last_user or event.tag.last_user == "" then
     event.tag.last_user = player.name
   end
+  
+  -- Only allow modifications by the last user (owner)
   if not event.tag.last_user or event.tag.last_user ~= player.name then
     return false
   end
+  
   return true
 end
 
+--- Extract GPS coordinates from tag modification event
+---@param event table Chart tag modification event
+---@param player LuaPlayer|nil Player context for surface fallbacks
+---@return string|nil new_gps New GPS coordinate string
+---@return string|nil old_gps Old GPS coordinate string
 local function extract_gps(event, player)
-  local new_gps = (event.tag.position and GPS.gps_from_map_position(event.tag.position, event.tag.surface and event.tag.surface.index or player.surface.index))
-  local old_gps = (event.old_position and GPS.gps_from_map_position(event.old_position, event.old_surface and event.old_surface.index or player.surface.index))
+  local new_gps = nil
+  local old_gps = nil
+  
+  if event.tag.position and player then
+    local surface_index = (event.tag.surface and event.tag.surface.index) or player.surface.index
+    new_gps = gps_parser.gps_from_map_position(event.tag.position, surface_index)
+  end
+  
+  if event.old_position and player then
+    local surface_index = (event.old_surface and event.old_surface.index) or player.surface.index
+    old_gps = gps_parser.gps_from_map_position(event.old_position, surface_index)
+  end
+  
   return new_gps, old_gps
 end
 
+--- Get or create chart tag for new GPS position
+---@param new_gps string New GPS coordinate string
+---@param event table Chart tag modification event
+---@param player LuaPlayer|nil Player context
+---@return LuaCustomChartTag|nil chart_tag Chart tag object or nil if creation failed
 local function get_or_create_chart_tag(new_gps, event, player)
   local old_chart_tag = Lookups.get_chart_tag_by_gps(new_gps)
-  if not old_chart_tag then
-    Lookups.clear_chart_tag_cache(event.tag.surface and event.tag.surface.index or player.surface.index)
+  if not old_chart_tag and player then
+    -- Clear cache and retry lookup
+    local surface_index = (event.tag.surface and event.tag.surface.index) or player.surface.index
+    Lookups.clear_chart_tag_cache(surface_index)
     old_chart_tag = Lookups.get_chart_tag_by_gps(new_gps)
     if not old_chart_tag then
       error("[TeleportFavorites] Failed to find or create new chart tag after modification.")
@@ -178,50 +236,80 @@ local function get_or_create_chart_tag(new_gps, event, player)
   return old_chart_tag
 end
 
+--- Update tag data and cleanup old chart tag
+---@param old_gps string Original GPS coordinate string
+---@param new_gps string New GPS coordinate string
+---@param event table Chart tag modification event
+---@param player LuaPlayer|nil Player context
 local function update_tag_and_cleanup(old_gps, new_gps, event, player)
   local old_chart_tag = Lookups.get_chart_tag_by_gps(old_gps)
   local new_chart_tag = Lookups.get_chart_tag_by_gps(new_gps)
-  if not new_chart_tag then
-    Lookups.clear_chart_tag_cache(event.tag.surface and event.tag.surface.index or player.surface.index)
+  
+  -- Ensure new chart tag exists
+  if not new_chart_tag and player then
+    local surface_index = (event.tag.surface and event.tag.surface.index) or player.surface.index
+    Lookups.clear_chart_tag_cache(surface_index)
     new_chart_tag = Lookups.get_chart_tag_by_gps(new_gps)
     if not new_chart_tag then
       error("[TeleportFavorites] Failed to find or create new chart tag after modification.")
     end
   end
+  
+  -- Get or create tag object
   local old_tag = Cache.get_tag_by_gps(old_gps)
   if not old_tag then
     old_tag = Tag.new(new_gps, {})
   end
+  
+  -- Update tag with new coordinates and chart tag reference
   old_tag.gps = new_gps
   old_tag.chart_tag = new_chart_tag
-  if old_chart_tag ~= nil and old_chart_tag.valid then
+  
+  -- Clean up old chart tag if it exists and is different from new one
+  if old_chart_tag and old_chart_tag.valid and old_chart_tag ~= new_chart_tag then
     tag_destroy_helper.destroy_tag_and_chart_tag(nil, old_chart_tag)
   end
 end
 
+--- Update all player favorites that reference the old GPS to use new GPS
+---@param old_gps string Original GPS coordinate string
+---@param new_gps string New GPS coordinate string
 local function update_favorites_gps(old_gps, new_gps)
   for _, p in pairs(game.players) do
     local pfaves = Cache.get_player_favorites(p)
     for _, fav in ipairs(pfaves) do
-      if fav.gps == old_gps then fav.gps = new_gps end
+      if fav.gps == old_gps then 
+        fav.gps = new_gps 
+      end
     end
   end
 end
 
+--- Handle chart tag modification events
+---@param event table Chart tag modification event data
 function handlers.on_chart_tag_modified(event)
+  ---@diagnostic disable-next-line: param-type-mismatch
   local player = event.player_index and game.get_player(event.player_index) or nil
   if not is_valid_tag_modification(event, player) then return end
+  
   local new_gps, old_gps = extract_gps(event, player)
   if not new_gps or not old_gps then return end
+  
   update_tag_and_cleanup(old_gps, new_gps, event, player)
   update_favorites_gps(old_gps, new_gps)
 end
 
+--- Handle chart tag removal events
+---@param event table Chart tag removal event data
 function handlers.on_chart_tag_removed(event)
   if not event or not event.tag or not event.tag.valid then return end
+  
   local chart_tag = event.tag
-  local gps = GPS.gps_from_map_position(chart_tag.position, chart_tag.surface and chart_tag.surface.index or 1)
+  local surface_index = (chart_tag.surface and chart_tag.surface.index) or 1
+  local gps = gps_parser.gps_from_map_position(chart_tag.position, surface_index)
   local tag = Cache.get_tag_by_gps(gps)
+  
+  -- Only destroy if the chart tag is not already being destroyed by our helper
   if not tag_destroy_helper.is_chart_tag_being_destroyed(chart_tag) then
     tag_destroy_helper.destroy_tag_and_chart_tag(tag, chart_tag)
   end

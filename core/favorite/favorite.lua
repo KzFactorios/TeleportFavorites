@@ -18,29 +18,16 @@ Notes:
 ]]
 
 local Constants = require("constants")
-local basic_helpers = require("core.utils.basic_helpers")
+local TableHelpers = require("core.utils.table_helpers")
+local gps_core = require("core.utils.gps_core")
 
 ---@class Favorite
 ---@field gps string GPS coordinates in 'xxx.yyy.s' format
 ---@field locked boolean Whether the favorite is locked (prevents removal/editing)
 ---@field tag table? Optional tag table for tooltip formatting and richer UI
 
-local function deep_copy(orig)
-  if type(orig) ~= 'table' then return orig end
-  local copy = {}
-  for k, v in pairs(orig) do
-    copy[k] = type(v) == 'table' and deep_copy(v) or v
-  end
-  return copy
-end
-
-local function coords_string_from_gps(gps)
-  if not gps or gps == "" or gps == Constants.settings.BLANK_GPS then return nil end
-  local x, y, s = gps:match("^([^%.]+)%.([^%.]+)%.(.+)$")
-  if not (x and y and s) then return nil end
-  local padlen = Constants.settings.GPS_PAD_NUMBER
-  return basic_helpers.pad(tonumber(x), padlen) .. "." .. basic_helpers.pad(tonumber(y), padlen)
-end
+-- Use centralized coordinate string function instead of local duplication
+local coords_string_from_gps = gps_core.coords_string_from_gps
 
 
 local FavoriteUtils = {}
@@ -74,7 +61,7 @@ end
 ---@return Favorite?
 function FavoriteUtils.copy(fav)
   if type(fav) ~= "table" then return nil end
-  local copy = FavoriteUtils.new(fav.gps, fav.locked, fav.tag and deep_copy(fav.tag) or nil)
+  local copy = FavoriteUtils.new(fav.gps, fav.locked, fav.tag and TableHelpers.deep_copy(fav.tag) or nil)
   for k, v in pairs(fav) do
     if copy[k] == nil then copy[k] = v end
   end
@@ -121,20 +108,5 @@ function FavoriteUtils.formatted_tooltip(fav)
   return tooltip
 end
 
----@param fav Favorite
----@param new_gps string
----@return boolean, string?
-function FavoriteUtils.move(fav, new_gps)
-  if type(new_gps) ~= "string" or new_gps == "" or new_gps == Constants.settings.BLANK_GPS then return false, "Invalid GPS string" end
-  fav.gps = new_gps
-  -- Note: Tag position updates are handled by caller if needed
-  if type(fav.tag) == "table" then
-    if fav.tag.gps then fav.tag.gps = new_gps end
-  end
-  return true
-end
-
--- GPS string must always be a string in the format 'xxx.yyy.s'.
--- Never store or pass GPS as a table except for temporary parsing/conversion.
 
 return FavoriteUtils

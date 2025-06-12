@@ -69,7 +69,7 @@ control_data_viewer.register(script)
 gui_event_dispatcher.register_gui_handlers(script)
 
 -- Register custom input (keyboard shortcut) handlers
-custom_input_dispatcher.register_custom_inputs(script)
+custom_input_dispatcher.register_default_inputs(script)
 
 -- Register on_gui_closed handler for ESC key/modal close support
 script.on_event(defines.events.on_gui_closed, on_gui_closed_handler.on_gui_closed)

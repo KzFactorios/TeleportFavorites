@@ -32,3 +32,4 @@
 - [ ] Check for conflicts with other mods. Especially with all those buttons in the top gui. Find alternative display locations?
 - [ ] Destination messages setting in game? switch to fly aways?
 - [ ] If a chart_tag exists at a location that is later turned to a water tile or a space tile, the land use changes need to verify the owner of the tag, and if it is valid for "bulldozing", then that chart_tag/tag/favorites are allowed to be destroyed
+- [x] **COMPLETED 2025-06-11**: Centralize tag_editor_data initialization to eliminate duplication. Created `Cache.create_tag_editor_data()` factory method and refactored all hardcoded initializations across cache.lua, handlers.lua, control_fave_bar.lua, and tag_editor.lua. See `notes/tag_editor_data_centralization_completion.md` for details.

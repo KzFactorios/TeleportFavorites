@@ -7,7 +7,6 @@ print("[DEBUG] control_fave_bar.lua loaded")
 
 local PlayerFavorites = require("core.favorite.player_favorites")
 local FavoriteUtils = require("core.favorite.favorite")
-local GPS = require("core.gps.gps")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local Cache = require("core.cache.cache")
 local Helpers = require("core.utils.helpers_suite")
@@ -97,18 +96,18 @@ end
 local function open_tag_editor_from_favorite(player, favorite)
   local tag_data = {}
   if favorite then    
-    tag_data = {
+    tag_data = Cache.create_tag_editor_data({
       gps = favorite.gps, -- set gps for teleport button
-      move_gps = "", -- GPS coordinates during move operations
       locked = favorite.locked,
       is_favorite = Cache.is_player_favorite(player, favorite.gps),
       icon = favorite.tag.chart_tag.icon or "",
       text = favorite.chart_tag.text,
       tag = favorite.tag,
-      chart_tag = favorite.chart_tag,
-      error_message = ""
-    }
-  end  -- Persist gps in tag_editor_data
+      chart_tag = favorite.chart_tag
+    })
+  else
+    tag_data = Cache.create_tag_editor_data()
+  end-- Persist gps in tag_editor_data
   Cache.set_tag_editor_data(player, tag_data)
   tag_editor.build(player)
   return

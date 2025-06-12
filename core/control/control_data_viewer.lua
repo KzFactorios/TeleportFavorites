@@ -11,6 +11,84 @@ local Lookups = require("core.cache.lookups")
 
 local M = {}
 
+--- Load data for the specified tab - centralized to eliminate duplication
+---@param player LuaPlayer
+---@param active_tab string
+---@param font_size number?
+---@return table state object with data, top_key, and active_tab
+local function load_tab_data(player, active_tab, font_size)
+  local state = { active_tab = active_tab, font_size = font_size or 12 }
+  
+  if active_tab == "player_data" then
+    state.data = Cache.get_player_data(player)
+    state.top_key = "player_data"
+  elseif active_tab == "surface_data" then
+    state.data = Cache.get_surface_data(player.surface.index)
+    state.top_key = "surface_data"
+  elseif active_tab == "lookup" then
+    state.data = Lookups.get and Lookups.get("chart_tag_cache") or {}
+    state.top_key = "lookups"
+  elseif active_tab == "all_data" then
+    state.data = storage
+    state.top_key = "all_data"
+  end
+  
+  return state
+end
+
+--- Rebuild the data viewer with fresh data - centralized to eliminate duplication
+---@param player LuaPlayer
+---@param main_flow LuaGuiElement
+---@param active_tab string
+---@param font_size number?
+---@param show_flying_text boolean?
+local function rebuild_data_viewer(player, main_flow, active_tab, font_size, show_flying_text)
+  local state = load_tab_data(player, active_tab, font_size)
+  helpers.safe_destroy_frame(main_flow, "data_viewer_frame")
+  data_viewer.build(player, main_flow, state)
+  
+  if show_flying_text then
+    data_viewer.show_refresh_flying_text(player)
+  end
+end
+
+--- Update font size and rebuild viewer - centralized to eliminate duplication
+---@param player LuaPlayer
+---@param main_flow LuaGuiElement
+---@param delta number Font size change (-2 or +2)
+local function update_font_size(player, main_flow, delta)
+  local pdata = Cache.get_player_data(player)
+  pdata.data_viewer_settings = pdata.data_viewer_settings or {}
+    local cur_size = tonumber(pdata.data_viewer_settings.font_size) or 12
+  local new_size = math.max(6, math.min(24, cur_size + delta))
+  pdata.data_viewer_settings.font_size = new_size
+  
+  local active_tab = pdata.data_viewer_settings.active_tab or "player_data"
+  rebuild_data_viewer(player, main_flow, active_tab, new_size)
+end
+
+--- Find currently active tab from GUI elements
+---@param main_flow LuaGuiElement
+---@return string active_tab
+local function find_active_tab_from_gui(main_flow)
+  local frame = helpers.find_child_by_name(main_flow, "data_viewer_frame")
+  if not (frame and frame.valid) then return "player_data" end
+  
+  local tabs_flow = frame.data_viewer_inner_flow and frame.data_viewer_inner_flow.data_viewer_tabs_flow
+  if not tabs_flow then return "player_data" end
+  
+  for _, child in pairs(tabs_flow.children) do
+    if child.style and child.style.name == "tf_slot_button_dragged" then
+      if child.name:find("player_data") then return "player_data" end
+      if child.name:find("surface_data") then return "surface_data" end
+      if child.name:find("lookup") then return "lookup" end
+      if child.name:find("all_data") then return "all_data" end
+    end
+  end
+  
+  return "player_data" -- default fallback
+end
+
 local function get_or_create_gui_flow_from_gui_top(player)
   local top = player.gui.top
   local flow = top and top.tf_main_gui_flow
@@ -36,27 +114,11 @@ function M.on_toggle_data_viewer(event)
   pdata.data_viewer_settings = pdata.data_viewer_settings or {}
   local active_tab = pdata.data_viewer_settings.active_tab or "player_data"
   local font_size = pdata.data_viewer_settings.font_size or 12
+  
   if frame and frame.valid ~= false then
     helpers.safe_destroy_frame(main_flow, "data_viewer_frame")
   else
-    -- Always build a fresh data snapshot for the current tab
-    local state = { active_tab = active_tab, font_size = font_size }
-    if active_tab == "player_data" then
-      state.data = Cache.get_player_data(player)
-      state.top_key = "player_data"
-    elseif active_tab == "surface_data" then
-      state.data = Cache.get_surface_data(player.surface.index)
-      state.top_key = "surface_data"
-    elseif active_tab == "lookup" then
-      state.data = Lookups.get and Lookups.get("chart_tag_cache") or {}
-      state.top_key = "lookups"
-    elseif active_tab == "all_data" then
-      -- Show the actual persistent storage table for all_data
-      state.data = global.storage or _G.storage or {}
-      state.top_key = "all_data"
-    end
-    helpers.safe_destroy_frame(main_flow, "data_viewer_frame")
-    data_viewer.build(player, main_flow, state)
+    rebuild_data_viewer(player, main_flow, active_tab, font_size)
   end
 end
 
@@ -70,29 +132,15 @@ function M.on_data_viewer_tab_click(event)
   pdata.data_viewer_settings = pdata.data_viewer_settings or {}
   local tab_key = element.tags and element.tags.tab_key
   if not tab_key then return end
+  
   pdata.data_viewer_settings.active_tab = tab_key
   local font_size = pdata.data_viewer_settings.font_size or 12
-  -- Load correct data for each tab
-  local global_storage = _G.storage or global.storage or {} -- fallback for test/dev
-  local state = { active_tab = tab_key, font_size = font_size }
-  if tab_key == "player_data" then
-    state.data = Cache.get_player_data(player)
-    state.top_key = "player_data"
-  elseif tab_key == "surface_data" then
-    state.data = global_storage.surfaces or {}
-    state.top_key = "surface_data"
-  elseif tab_key == "lookup" then
-    state.data = (global and global["Lookups"]) or Lookups or {}
-    state.top_key = "lookups"
-  elseif tab_key == "all_data" then
-    -- Show the actual persistent storage table for all_data
-    state.data = global.storage or _G.storage or {}
-    state.top_key = "all_data"
-  end  -- Debug: log type and keys of data using functional approach
+  
+  -- Debug logging with centralized data loading
+  local state = load_tab_data(player, tab_key, font_size)
   local dtype = type(state.data)
   local dkeys = ""
   if dtype == "table" then
-    -- Use functional map to extract keys
     local function extract_key(_, key)
       return tostring(key)
     end
@@ -104,8 +152,8 @@ function M.on_data_viewer_tab_click(event)
   log("[TF DataViewer] Data type for tab '" .. tab_key .. "': " .. dtype .. ", keys: " .. dkeys)
   log("[TF DataViewer] State passed to data_viewer.build: active_tab=" ..
     tostring(state.active_tab) .. ", font_size=" .. tostring(font_size))
-  safe_destroy_frame(main_flow, "data_viewer_frame")
-  data_viewer.build(player, main_flow, state)
+  
+  rebuild_data_viewer(player, main_flow, tab_key, font_size)
 end
 
 function M.on_data_viewer_gui_click(event)
@@ -134,78 +182,24 @@ function M.on_data_viewer_gui_click(event)
     pdata.data_viewer_settings.active_tab = "lookup"
   elseif element.name == "data_viewer_all_data_tab" then
     pdata.data_viewer_settings.active_tab = "all_data"
-  end
-  -- Robust tab switching: always persist and use font_size from pdata.data_viewer_settings
+  end  -- Robust tab switching: always persist and use font_size from pdata.data_viewer_settings
   if element.name:find("data_viewer_.*_tab") then
     local active_tab = pdata.data_viewer_settings.active_tab or "player_data"
     local font_size = pdata.data_viewer_settings.font_size or 12
-    local state = { active_tab = active_tab, font_size = font_size }
-    if active_tab == "player_data" then
-      state.data = Cache.get_player_data(player)
-      state.top_key = "player_data"
-    elseif active_tab == "surface_data" then
-      state.data = Cache.get_surface_data(player.surface.index)
-      state.top_key = "surface_data"
-    elseif active_tab == "lookup" then
-      state.data = Lookups.get and Lookups.get("chart_tag_cache") or {}
-      state.top_key = "lookups"
-    elseif active_tab == "all_data" then
-      -- Show the actual persistent storage table for all_data
-      state.data = global.storage or _G.storage or {}
-      state.top_key = "all_data"
-    end
-    helpers.safe_destroy_frame(main_flow, "data_viewer_frame")
-    data_viewer.build(player, main_flow, state)
+    rebuild_data_viewer(player, main_flow, active_tab, font_size)
     return
   end
   -- Unified font size up/down handler
   if element.name == "data_viewer_actions_font_up_btn" or element.name == "data_viewer_actions_font_down_btn" then
-    local cur_size = tonumber(pdata.data_viewer_settings.font_size) or 12
     local delta = (element.name == "data_viewer_actions_font_up_btn") and 2 or -2
-    local new_size = math.max(6, math.min(24, cur_size + delta))
-    pdata.data_viewer_settings.font_size = new_size
-    local active_tab = pdata.data_viewer_settings.active_tab or "player_data"
-    local state = { active_tab = active_tab, font_size = new_size }
-    if active_tab == "player_data" then
-      state.data = Cache.get_player_data(player)
-      state.top_key = "player_data"
-    elseif active_tab == "surface_data" then
-      state.data = Cache.get_surface_data(player.surface.index)
-      state.top_key = "surface_data"
-    elseif active_tab == "lookup" then
-      state.data = Lookups.get and Lookups.get("chart_tag_cache") or {}
-      state.top_key = "lookups"
-    elseif active_tab == "all_data" then
-      -- Show the actual persistent storage table for all_data
-      state.data = global.storage or _G.storage or {}
-      state.top_key = "all_data"
-    end
-    helpers.safe_destroy_frame(main_flow, "data_viewer_frame")
-    data_viewer.build(player, main_flow, state)
+    update_font_size(player, main_flow, delta)
     return
   end
   -- Refresh button
   if element.name == "data_viewer_tab_actions_refresh_data_btn" then
     local active_tab = pdata.data_viewer_settings.active_tab or "player_data"
     local font_size = pdata.data_viewer_settings.font_size or 12
-    local state = { active_tab = active_tab, font_size = font_size }
-    if active_tab == "player_data" then
-      state.data = Cache.get_player_data(player)
-      state.top_key = "player_data"
-    elseif active_tab == "surface_data" then
-      state.data = Cache.get_surface_data(player.surface.index)
-      state.top_key = "surface_data"
-    elseif active_tab == "lookup" then
-      state.data = Lookups.get and Lookups.get("chart_tag_cache") or {}
-      state.top_key = "lookups"
-    elseif active_tab == "all_data" then
-      -- Show the actual persistent storage table for all_data
-      state.data = global.storage or _G.storage or {}
-      state.top_key = "all_data"
-    end
-    helpers.safe_destroy_frame(main_flow, "data_viewer_frame")
-    data_viewer.build(player, main_flow, state)
-    data_viewer.show_refresh_flying_text(player)
+    rebuild_data_viewer(player, main_flow, active_tab, font_size, true)
     return
   end
 end
@@ -223,128 +217,28 @@ function M.register(script)
     if not player then return end
     local main_flow = get_or_create_gui_flow_from_gui_top(player)
     local pdata = Cache.get_player_data(player)
-    pdata.data_viewer_settings = pdata.data_viewer_settings or {}
-    -- Font size up/down buttons for Data Viewer
+    pdata.data_viewer_settings = pdata.data_viewer_settings or {}    -- Font size up/down buttons for Data Viewer
     if element.name == "data_viewer_actions_font_up_btn" or element.name == "data_viewer_actions_font_down_btn" then
-      local cur_size = tonumber(pdata.data_viewer_settings.font_size) or 12
       local delta = (element.name == "data_viewer_actions_font_up_btn") and 2 or -2
-      local new_size = math.max(6, math.min(24, cur_size + delta))
-      pdata.data_viewer_settings.font_size = new_size
-      -- Always use the last tab that was clicked (stored in pdata.data_viewer_settings.active_tab)
-      local active_tab = pdata.data_viewer_settings.active_tab or "player_data"
-      pdata.data_viewer_settings.active_tab = active_tab -- ensure it's set
-      local state = { active_tab = active_tab }
-      safe_destroy_frame(main_flow, "data_viewer_frame")
-      data_viewer.build(player, main_flow, state)
+      update_font_size(player, main_flow, delta)
       return
     end
     -- Handle close button click in data viewer
     if element.name == "titlebar_close_btn" then
       safe_destroy_frame(main_flow, "data_viewer_frame")
       return
-    end
-    -- Handle refresh button click in data viewer
+    end    -- Handle refresh button click in data viewer
     if element.name == "data_viewer_tab_actions_refresh_data_btn" then
       print("[DataViewer DEBUG] Refresh button clicked by player:", player.name)
-      local frame = main_flow.data_viewer_frame
+      local frame = helpers.find_child_by_name(main_flow, "data_viewer_frame")
       if not (frame and frame.valid) then return end
-      -- Find the currently active tab
-      local tabs_flow = frame.data_viewer_inner_flow and frame.data_viewer_inner_flow.data_viewer_tabs_flow
-      local active_tab = "player_data" -- default fallback
-      if tabs_flow then
-        for _, child in pairs(tabs_flow.children) do
-          if child.style and child.style.name == "tf_slot_button_dragged" then
-            if child.name:find("player_data") then active_tab = "player_data" end
-            if child.name:find("surface_data") then active_tab = "surface_data" end
-            if child.name:find("lookup") then active_tab = "lookup" end
-            if child.name:find("all_data") then active_tab = "all_data" end
-          end
-        end
-      end
-      -- Build the correct data snapshot for the tab
-      local state = { active_tab = active_tab }
-      if active_tab == "player_data" then
-        state.data = Cache.get_player_data(player)
-        state.top_key = "player_data"
-      elseif active_tab == "surface_data" then
-        state.data = Cache.get_surface_data(player.surface.index)
-        state.top_key = "surface_data"
-      elseif active_tab == "lookup" then
-        state.data = Lookups.get and Lookups.get("chart_tag_cache") or {}
-        state.top_key = "lookups"
-      elseif active_tab == "all_data" then
-        -- Show the actual persistent storage table for all_data
-        state.data = global.storage or _G.storage or {}
-        state.top_key = "all_data"
-      end
-      -- Rebuild the data viewer with the new snapshot
-      safe_destroy_frame(main_flow, "data_viewer_frame")
-      data_viewer.build(player, main_flow, state)
+      
+      local active_tab = find_active_tab_from_gui(main_flow)
+      rebuild_data_viewer(player, main_flow, active_tab, nil, true)
       return
-    end
-    -- Handle tab button clicks (robust: always use element.tags.tab_key if present)
-
-    -- Handle font size up/down buttons
-    if element.name == "data_viewer_actions_font_up_btn" or element.name == "data_viewer_actions_font_down_btn" then
-      local cur_size = tonumber(pdata.data_viewer_settings.font_size) or 12
-      local delta = (element.name == "data_viewer_actions_font_up_btn") and 2 or -2
-      local new_size = math.max(6, math.min(24, cur_size + delta))
-      pdata.data_viewer_settings.font_size = new_size
-      local active_tab = pdata.data_viewer_settings.active_tab or "player_data"
-      local state = { active_tab = active_tab }
-      safe_destroy_frame(main_flow, "data_viewer_frame")
-      data_viewer.build(player, main_flow, state)
-      return
-    end
-    -- Handle close button click in data viewer
-    if element.name == "titlebar_close_btn" then
-      safe_destroy_frame(main_flow, "data_viewer_frame")
-      return
-    end
-    -- Handle refresh button click in data viewer
-    if element.name == "data_viewer_tab_actions_refresh_data_btn" then
-      print("[DataViewer DEBUG] Refresh button clicked by player:", player.name)
-      local frame = main_flow.data_viewer_frame
-      if not (frame and frame.valid) then return end
-      -- Find the currently active tab
-      local tabs_flow = frame.data_viewer_inner_flow and frame.data_viewer_inner_flow.data_viewer_tabs_flow
-      local active_tab = "player_data" -- default fallback
-      if tabs_flow then
-        for _, child in pairs(tabs_flow.children) do
-          if child.style and child.style.name == "tf_slot_button_dragged" then
-            if child.name:find("player_data") then active_tab = "player_data" end
-            if child.name:find("surface_data") then active_tab = "surface_data" end
-            if child.name:find("lookup") then active_tab = "lookup" end
-            if child.name:find("all_data") then active_tab = "all_data" end
-          end
-        end
-      end
-      -- Build the correct data snapshot for the tab
-      local state = { active_tab = active_tab }
-      if active_tab == "player_data" then
-        state.data = Cache.get_player_data(player)
-        state.top_key = "player_data"
-      elseif active_tab == "surface_data" then
-        state.data = Cache.get_surface_data(player.surface.index)
-        state.top_key = "surface_data"
-      elseif active_tab == "lookup" then
-        state.data = Lookups.get and Lookups.get("chart_tag_cache") or {}
-        state.top_key = "lookups"
-      elseif active_tab == "all_data" then
-        -- Show the actual persistent storage table for all_data
-        state.data = global.storage or _G.storage or {}
-        state.top_key = "all_data"
-      end
-      -- Rebuild the data viewer with the new snapshot
-      safe_destroy_frame(main_flow, "data_viewer_frame")
-      data_viewer.build(player, main_flow, state)
-      return
-    end
-    -- Handle tab button clicks (robust: always use element.tags.tab_key if present)
-
-    -- Handle opacity up/down
+    end-- Handle tab button clicks (robust: always use element.tags.tab_key if present)    -- Handle opacity up/down
     if element.name == "data_viewer_actions_opacity_up_btn" or element.name == "data_viewer_actions_opacity_down_btn" then
-      local frame = main_flow.data_viewer_frame
+      local frame = helpers.find_child_by_name(main_flow, "data_viewer_frame")
       if not (frame and frame.valid) then return end
       local pdata = Cache.get_player_data(player)
       local cur_opacity = tonumber(pdata.data_viewer_opacity) or 1.0
@@ -360,14 +254,13 @@ function M.register(script)
   script.on_event("dv-toggle-data-viewer", function(event)
     M.on_toggle_data_viewer(event)
   end)
-
   -- Keyboard navigation for tabs (tab/shift-tab) using custom inputs
   script.on_event("tf-data-viewer-tab-next", function(event)
     local player = game.get_player(event.player_index)
     if not player then return end
     local main_flow = get_or_create_gui_flow_from_gui_top(player)
-    local tabs_flow = main_flow.data_viewer_frame and main_flow.data_viewer_frame.data_viewer_inner_flow and
-        main_flow.data_viewer_frame.data_viewer_inner_flow.data_viewer_tabs_flow
+    local frame = helpers.find_child_by_name(main_flow, "data_viewer_frame")
+    local tabs_flow = frame and frame.data_viewer_inner_flow and frame.data_viewer_inner_flow.data_viewer_tabs_flow
     if not tabs_flow then return end
     local children = tabs_flow.children
     local focused_idx = 1
@@ -387,8 +280,8 @@ function M.register(script)
     local player = game.get_player(event.player_index)
     if not player then return end
     local main_flow = get_or_create_gui_flow_from_gui_top(player)
-    local tabs_flow = main_flow.data_viewer_frame and main_flow.data_viewer_frame.data_viewer_inner_flow and
-        main_flow.data_viewer_frame.data_viewer_inner_flow.data_viewer_tabs_flow
+    local frame = helpers.find_child_by_name(main_flow, "data_viewer_frame")
+    local tabs_flow = frame and frame.data_viewer_inner_flow and frame.data_viewer_inner_flow.data_viewer_tabs_flow
     if not tabs_flow then return end
     local children = tabs_flow.children
     local focused_idx = 1
