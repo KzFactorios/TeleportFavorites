@@ -67,6 +67,49 @@ This policy applies to all Lua modules in the codebase.
 
 ---
 
+## Chart Tag Validation Pattern
+
+### The Create-Then-Validate Problem
+
+**Issue:** The Factorio API doesn't provide a comprehensive way to validate chart tag positions without actually creating the chart tag. Our `position_can_be_tagged()` function covers common validation cases:
+- Player/force/surface existence
+- Chunk charted status
+- Water/space tile detection
+
+**However**, the actual `LuaForce.add_chart_tag()` method may have additional internal validation that we cannot predict or replicate.
+
+### Current Solution: Create-Then-Validate Pattern
+
+```lua
+-- Pattern used in normalize_landing_position():
+local temp_chart_tag = player.force:add_chart_tag(player.surface, chart_tag_spec)
+if not position_can_be_tagged(player, temp_chart_tag and temp_chart_tag.position or nil) then
+  temp_chart_tag.destroy()
+  temp_chart_tag = nil
+end
+```
+
+**Rationale:**
+1. Pre-validation with `position_can_be_tagged()` catches most invalid positions
+2. Chart tag creation reveals any additional Factorio API restrictions
+3. Immediate destruction minimizes resource waste
+4. This ensures 100% compatibility with Factorio's internal validation
+
+### Trade-offs:
+- **Pro:** Guaranteed compatibility with all Factorio validation rules
+- **Pro:** Catches edge cases we might not anticipate
+- **Con:** Temporary resource allocation (chart tag creation/destruction)
+- **Con:** Slightly less efficient than pure pre-validation
+
+### When This Pattern is Used:
+- `gps_helpers.lua`: `normalize_landing_position()` function
+- Any location where chart tag viability must be absolutely certain
+- Areas where position validation requirements may change between Factorio versions
+
+**Note:** This pattern should be preserved unless a comprehensive Factorio API validation method becomes available.
+
+---
+
 ## See Also
 - `design_specs.md` – Project goals and feature overview.
 - `data_schema.md` – Persistent data schema and structure.
