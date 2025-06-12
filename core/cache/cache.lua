@@ -409,7 +409,8 @@ function Cache.create_tag_editor_data(options)
     text = "",
     tag = nil,
     chart_tag = nil,
-    error_message = ""
+    error_message = "",
+    search_radius = nil  -- Will be set from player settings if not provided
   }
   
   if not options or type(options) ~= "table" then

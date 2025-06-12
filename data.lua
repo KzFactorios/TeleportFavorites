@@ -3,6 +3,15 @@ require("prototypes.styles.init")
 local Constants = require("constants")
 local Enum = require("prototypes.enums.enum")
 
+-- Check if we're in development mode
+local dev_marker_path = "__TeleportFavorites__/.dev_mode"
+local is_dev_mode = pcall(function() return io.open(dev_marker_path, "r") end)
+
+-- Include developer settings if in dev mode
+if is_dev_mode then
+  pcall(function() require("settings-dev") end)
+end
+
 
 -- Ensure the custom virtual signal subgroup exists
 if not data.raw["item-subgroup"]["virtual-signal-special"] then

@@ -16,6 +16,18 @@ Features:
 ---@diagnostic disable-next-line: need-check-nil
 if _G.log then _G.log("[TeleportFavorites] control.lua loaded") end
 
+-- Initialize development environment if available
+-- This is done using pcall to ensure the mod works even if the dev modules are not present
+pcall(function() 
+  require("core.utils.dev_init") 
+  
+  -- Load test modules only in dev mode
+  local DevEnvironment = require("core.utils.dev_environment")
+  if DevEnvironment.is_dev_mode() then
+    require("tests.positionator_test")
+  end
+end)
+
 -- Modular event handler registration
 local handlers = require("core.events.handlers")
 
@@ -150,5 +162,13 @@ script.on_event(_G.defines.events.on_gui_closed, on_gui_closed_handler.on_gui_cl
 script.on_event(_G.defines.events.on_player_left_game, function(event)
   local WorkingCommandManager = require("core.pattern.working_command_manager")
   WorkingCommandManager.cleanup_player_history(event.player_index)
+
+  -- Clean up any active Positionator instances
+  pcall(function()
+    local Positionator = require("core.utils.positionator")
+    if Positionator and Positionator.clear_player_data then
+      Positionator.clear_player_data(event.player_index)
+    end
+  end)
   cleanup_observers_for_player(event.player_index)
 end)

@@ -9,6 +9,7 @@ Complex position normalization logic for GPS coordinates.
 - Handles grid snap requirements and chart tag alignment
 - Manages tag/chart_tag/favorite relationships
 - Provides the main normalize_landing_position functionality
+- Optionally integrates with Positionator for position adjustment in dev mode
 ]]
 
 local Helpers = require("core.utils.helpers_suite")
@@ -19,8 +20,24 @@ local basic_helpers = require("core.utils.basic_helpers")
 local GPSCore = require("core.utils.gps_core")
 local GPSChartHelpers = require("core.utils.gps_chart_helpers")
 
+-- Optional dev tools
+local Positionator
+local DevEnvironment
+
 ---@class GPSPositionNormalizer
 local GPSPositionNormalizer = {}
+
+-- Initialize optional dev environment features on first use
+local function init_dev_features()
+  if not DevEnvironment then
+    DevEnvironment = require("core.utils.dev_environment")
+    
+    -- Only try to load Positionator if in dev mode
+    if DevEnvironment.is_dev_mode() then
+      Positionator = require("core.utils.positionator")
+    end
+  end
+end
 
 --- Validate and prepare context for position normalization
 ---@param player LuaPlayer
@@ -120,9 +137,8 @@ local function find_nearby_matches(context, callbacks, tag, chart_tag, adjusted_
       search_radius = context.search_radius,
       landing_position = context.landing_position
     })
-    
-    -- find a colliding chart_tag
-    local in_area_chart_tag = Helpers.position_has_colliding_tag(context.player, context.landing_position, context.search_radius)
+      -- find the nearest chart tag to the click position
+    local in_area_chart_tag = Helpers.get_nearest_tag_to_click_position(context.player, context.landing_position, context.search_radius)
     if GPSCore.ValidationPatterns.is_valid_chart_tag(in_area_chart_tag) and in_area_chart_tag.position then
       local in_area_gps = GPSCore.gps_from_map_position(in_area_chart_tag.position, context.player.surface.index)
       ErrorHandler.debug_log("Found nearby chart tag", {
@@ -337,30 +353,91 @@ local function normalize_landing_position(player, intended_gps, get_tag_by_gps_f
     get_chart_tag_by_gps_func = get_chart_tag_by_gps_func
   }
   
-  -- Step 2: Find exact matches (tag and chart_tag)
-  local tag, chart_tag, adjusted_gps, check_for_grid_snap
-  tag, chart_tag, adjusted_gps, check_for_grid_snap = find_exact_matches(context, callbacks)
+  -- Initialize dev features if available
+  init_dev_features()
   
-  -- Step 3: Find nearby matches if no exact matches found
-  tag, chart_tag, adjusted_gps, check_for_grid_snap = find_nearby_matches(
-    context, callbacks, tag, chart_tag, adjusted_gps, check_for_grid_snap)
+  -- Check if we should use the Positionator (Dev Mode feature)
+  local should_continue_with_normalization = true
+  
+  if DevEnvironment and DevEnvironment.is_positionator_enabled() and Positionator then
+    -- Prepare a preliminary normalized position (to show the comparison)
+    local prelim_normalized_pos = context.landing_position
     
-  -- Step 4: Handle grid snap requirements (create/align chart tags)
-  if check_for_grid_snap then
-    local snap_tag, snap_chart_tag, snap_gps = handle_grid_snap_requirements(context, tag, chart_tag)
-    -- Use returned values if they exist, otherwise keep original values
-    tag = snap_tag or tag
-    chart_tag = snap_chart_tag or chart_tag  
-    adjusted_gps = snap_gps or adjusted_gps
+    -- Define the callback to continue workflow after adjustment
+    local callback_data = {
+      callback = function(adjust_player, adjusted_position, adjusted_radius)
+        -- Convert adjusted position to GPS
+        local adjusted_gps = GPSCore.gps_from_map_position(adjusted_position, adjust_player.surface.index)
+        
+        -- Update context with adjusted values
+        local adjusted_context = table.deepcopy(context)
+        adjusted_context.landing_position = adjusted_position
+        adjusted_context.search_radius = adjusted_radius
+        adjusted_context.intended_gps = adjusted_gps
+        
+        -- Continue with the normal flow using adjusted position
+        local adj_tag, adj_chart_tag, adj_gps, adj_check_for_grid_snap = find_exact_matches(adjusted_context, callbacks)
+        
+        if adj_check_for_grid_snap then
+          adj_tag, adj_chart_tag, adj_gps, adj_check_for_grid_snap = find_nearby_matches(
+            adjusted_context, callbacks, adj_tag, adj_chart_tag, adj_gps, adj_check_for_grid_snap)
+        end
+        
+        if adj_check_for_grid_snap then
+          local snap_tag, snap_chart_tag, snap_gps = handle_grid_snap_requirements(adjusted_context, adj_tag, adj_chart_tag)
+          -- Use returned values if they exist, otherwise keep original values
+          adj_tag = snap_tag or adj_tag
+          adj_chart_tag = snap_chart_tag or adj_chart_tag  
+          adj_gps = snap_gps or adj_gps
+        end
+        
+        -- Finalize and return results
+        local adj_pos, final_tag, final_chart_tag, final_favorite = finalize_position_data(
+          adjusted_context, adj_gps, adj_tag, adj_chart_tag, callbacks)
+        
+        return adj_pos, final_tag, final_chart_tag, final_favorite
+      end
+    }
+    
+    -- Show the Positionator dialog and await user confirmation
+    should_continue_with_normalization = not Positionator.show(
+      player,
+      context.landing_position,
+      prelim_normalized_pos,
+      callback_data
+    )
   end
+    -- If Positionator is disabled, closed, or we're in production mode, continue with regular flow
+  if should_continue_with_normalization then
+    -- Step 2: Find exact matches (tag and chart_tag)
+    local tag, chart_tag, adjusted_gps, check_for_grid_snap
+    tag, chart_tag, adjusted_gps, check_for_grid_snap = find_exact_matches(context, callbacks)
   
-  -- Step 5: Finalize and return results
-  local adjusted_pos, matching_player_favorite
-  adjusted_pos, tag, chart_tag, matching_player_favorite = finalize_position_data(
-    context, adjusted_gps, tag, chart_tag, callbacks)
-  
-  ErrorHandler.debug_log("Position normalization completed successfully")
-  return adjusted_pos, tag, chart_tag, matching_player_favorite
+    -- Step 3: Find nearby matches if no exact matches found
+    tag, chart_tag, adjusted_gps, check_for_grid_snap = find_nearby_matches(
+      context, callbacks, tag, chart_tag, adjusted_gps, check_for_grid_snap)
+      
+    -- Step 4: Handle grid snap requirements (create/align chart tags)
+    if check_for_grid_snap then
+      local snap_tag, snap_chart_tag, snap_gps = handle_grid_snap_requirements(context, tag, chart_tag)
+      -- Use returned values if they exist, otherwise keep original values
+      tag = snap_tag or tag
+      chart_tag = snap_chart_tag or chart_tag  
+      adjusted_gps = snap_gps or adjusted_gps
+    end
+    
+    -- Step 5: Finalize and return results
+    local adjusted_pos, matching_player_favorite
+    adjusted_pos, tag, chart_tag, matching_player_favorite = finalize_position_data(
+      context, adjusted_gps, tag, chart_tag, callbacks)
+    
+    ErrorHandler.debug_log("Position normalization completed successfully")
+    return adjusted_pos, tag, chart_tag, matching_player_favorite
+  else
+    -- If positionator is handling the process, return nil values
+    -- The actual processing will be done through the callback
+    return nil, nil, nil, nil
+  end
 end
 
 --- Wrapper function that maintains the old API for backwards compatibility

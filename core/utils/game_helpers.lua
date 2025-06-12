@@ -18,22 +18,31 @@ function GameHelpers.is_on_space_platform(player)
   return name:find("space") ~= nil or name == "space-platform"
 end
 
-function GameHelpers.position_has_colliding_tag(player, map_position)
+--- Finds the nearest chart tag to a clicked position within a specified radius
+-- @param player LuaPlayer The player whose force and surface will be used
+-- @param map_position table The map position to search around {x=number, y=number}
+-- @param search_radius Optional explicit search radius (falls back to player settings if nil)
+-- @return The nearest chart tag or nil if none found
+function GameHelpers.get_nearest_tag_to_click_position(player, map_position, search_radius)
   if not player then return nil end
   
-  -- Use player's teleport radius setting instead of hardcoded default
-  -- This ensures collision detection uses the same radius as teleportation logic
-  local player_settings = Settings:getPlayerSettings(player)
-  local collision_radius = player_settings.teleport_radius or Constants.settings.TELEPORT_RADIUS_DEFAULT
-  
-  -- Create collision detection area centered on the map position
+  -- Use provided search_radius if available, otherwise fall back to player settings
+  local collision_radius = search_radius
+  if not collision_radius then
+    local player_settings = Settings:getPlayerSettings(player)
+    collision_radius = player_settings.teleport_radius or Constants.settings.TELEPORT_RADIUS_DEFAULT
+  end
+    -- Create collision detection area centered on the map position
   -- Small buffer (0.1) ensures we don't include tags exactly on the boundary
   local collision_area = {
     left_top = { x = map_position.x - collision_radius + 0.1, y = map_position.y - collision_radius + 0.1 },
     right_bottom = { x = map_position.x + collision_radius - 0.1, y = map_position.y + collision_radius - 0.1 }
-  }  local colliding_tags = player.force.find_chart_tags(player.surface, collision_area)
+  }
+  
+  local colliding_tags = player.force.find_chart_tags(player.surface, collision_area)
   if colliding_tags and #colliding_tags > 0 then return colliding_tags[1] end
-  return nil
+  
+    return nil
 end
 
 function GameHelpers.is_water_tile(surface, pos)

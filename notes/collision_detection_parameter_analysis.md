@@ -1,8 +1,10 @@
 # Collision Detection Parameter Analysis
 
-**Date:** June 11, 2025  
-**Issue:** EntityID error fix and parameter optimization review  
-**File:** `core/utils/gps_helpers.lua` - `normalize_landing_position()` function  
+**Date:** June 12, 2025  
+**Issue:** EntityID error fix, parameter optimization, and function renaming
+**Files:** 
+- `core/utils/gps_helpers.lua` - `normalize_landing_position()` function
+- `core/utils/game_helpers.lua` - `position_has_colliding_tag()` renamed to `get_nearest_tag_to_click_position()`
 
 ## Problem Solved
 Fixed "Invalid EntityID: expected LuaEntityPrototype, LuaEntity or string" error by changing collision detection entity from `"car"` to `"character"` with enhanced safety parameters.
@@ -79,3 +81,52 @@ end
 - `constants.lua` - Default radius and precision values
 - `settings.lua` - Player teleport radius settings
 - `core/tag/tag.lua` - Uses normalized positions for teleportation
+- `core/utils/game_helpers.lua` - Chart tag collision detection
+- `core/utils/helpers_suite.lua` - Helper function exports
+- `core/cache/cache.lua` - Tag editor data structure
+
+## Additional Changes - Chart Tag Collision Detection
+
+### Function Renaming & Parameter Enhancement (June 12, 2025)
+
+The function in `game_helpers.lua` has been renamed to `get_nearest_tag_to_click_position()` to better reflect its purpose. The new function accepts an explicit search radius parameter:
+
+**Old Implementation:**
+```lua
+-- Previous version of the function had a different name and only two parameters
+function GameHelpers.someOldFunction(player, map_position)
+  -- Uses player settings to determine radius
+  local player_settings = Settings:getPlayerSettings(player)
+  local collision_radius = player_settings.teleport_radius or Constants.settings.TELEPORT_RADIUS_DEFAULT
+  -- ...
+end
+```
+
+**New Implementation:**
+```lua
+function GameHelpers.get_nearest_tag_to_click_position(player, map_position, search_radius)
+  -- Uses provided search_radius if available, otherwise falls back to player settings
+  local collision_radius = search_radius
+  if not collision_radius then
+    local player_settings = Settings:getPlayerSettings(player)
+    collision_radius = player_settings.teleport_radius or Constants.settings.TELEPORT_RADIUS_DEFAULT
+  end
+  -- ...
+end
+```
+
+This change allows for more flexibility in specifying the search radius, while maintaining backwards compatibility through a function alias in `helpers_suite.lua`.
+
+The tag editor data structure was also updated to store the search radius:
+
+```lua
+function Cache.create_tag_editor_data(options)
+  local defaults = {
+    -- ... existing fields ...
+    search_radius = nil  -- Will be set from player settings if not provided
+  }
+  -- ...
+end
+```
+
+These changes ensure that the search radius is consistently tracked and applied throughout the position normalization workflow.
