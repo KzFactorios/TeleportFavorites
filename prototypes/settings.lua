@@ -22,8 +22,7 @@ data:extend({
     order = "sb",
     localised_name = {"setting-name.teleport-radius"},
     localised_description = {"setting-description.teleport-radius"}
-  },
-  {
+  },  {
     type = "bool-setting",
     name = "destination-msg-on",
     setting_type = "runtime-per-user",
@@ -31,5 +30,14 @@ data:extend({
     order = "sc",
     localised_name = {"setting-name.destination-msg-on"},
     localised_description = {"setting-description.destination-msg-on"}
+  },
+  {
+    type = "bool-setting",
+    name = "map-reticle-on",
+    setting_type = "runtime-per-user",
+    default_value = true,
+    order = "sd",
+    localised_name = {"setting-name.map-reticle-on"},
+    localised_description = {"setting-description.map-reticle-on"}
   }
 })

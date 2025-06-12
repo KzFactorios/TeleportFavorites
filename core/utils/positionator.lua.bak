@@ -62,8 +62,10 @@ function Positionator.init(script_obj)
     
     -- Register GUI events
     script_to_use.on_event(defines.events.on_gui_click, Positionator.on_gui_click)
-    script_to_use.on_event(defines.events.on_gui_value_changed, Positionator.on_gui_value_changed)    -- Register input events for right-click detection in map view
-    script_to_use.on_event(defines.events.on_player_selected_area, Positionator.on_player_selected_area) -- We'll use this as a proxy for right-click
+    script_to_use.on_event(defines.events.on_gui_value_changed, Positionator.on_gui_value_changed)
+    
+    -- Register input events for right-click detection in map view
+    script_to_use.on_event(defines.events.on_pre_player_right_click, Positionator.on_pre_right_click)
     script_to_use.on_event(defines.events.on_player_cursor_stack_changed, Positionator.on_cursor_changed)
     
     -- Register tick handler for continuous tracking while right-button is held
@@ -73,7 +75,7 @@ function Positionator.init(script_obj)
     script_to_use.on_event(defines.events.on_pre_player_toggled_map_editor, Positionator.on_map_view_change)
     
     -- Register tick event for cursor position tracking in map view
-    script_to_use.on_nth_tick(30, Positionator.on_nth_tick) -- Update every 30 ticks to reduce UPS impact (was 10)
+    script_to_use.on_nth_tick(10, Positionator.on_nth_tick) -- Update every 10 ticks for smooth movement
 end
 
 -- Get the player data table, creating it if needed
@@ -114,15 +116,12 @@ end
 
 -- Show the position adjustment dialog
 function Positionator.show(player, original_pos, normalized_pos, callback_data)
-    -- First determine if we should show the Positionator GUI (requires dev mode)
-    local show_gui = DevEnvironment.is_positionator_enabled()
-    
-    -- If not in dev mode, return false to indicate we didn't show the dialog
-    if not show_gui then
+    -- Do nothing if not in dev mode or positionator is disabled
+    if not DevEnvironment.is_positionator_enabled() then
+        -- Return false to indicate we didn't show the dialog
         return false
     end
-    
-    -- Store the position data for this player
+      -- Store the position data for this player
     local player_data = Positionator.get_player_data(player.index)
     player_data.original_pos = TableHelpers.deep_copy(original_pos)
     player_data.adjusted_pos = TableHelpers.deep_copy(original_pos)
@@ -619,7 +618,9 @@ local function get_cursor_position(event)
 end
 
 -- Handle right-click in map view event
-function Positionator.on_player_selected_area(event)
+function Positionator.on_pre_right_click(event)
+    if not DevEnvironment.is_positionator_enabled() then return end
+    
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end
     
@@ -637,13 +638,9 @@ function Positionator.on_player_selected_area(event)
     local cursor_position = event.cursor_position
     if not cursor_position or not (cursor_position.x and cursor_position.y) then return end
     
-    -- Get player's teleport radius setting and adjust it based on zoom level
+    -- Get player's teleport radius setting
     local player_settings = Settings:getPlayerSettings(player)
     local search_radius = player_settings.teleport_radius or Constants.settings.TELEPORT_RADIUS_DEFAULT
-    
-    -- Check if user has enabled the map reticle in settings
-    local show_reticle = player_settings.map_reticle_on
-    if not show_reticle then return end
     
     -- Create/update map preview data
     local preview_data = Positionator.get_map_preview_data(player.index)
@@ -651,8 +648,6 @@ function Positionator.on_player_selected_area(event)
     preview_data.position = TableHelpers.deep_copy(cursor_position)
     preview_data.search_radius = search_radius
     preview_data.right_click_held = true
-    preview_data.last_update_time = game.tick
-    preview_data.zoom_level = tonumber(player.zoom) or 0.3 -- Convert to number with fallback
     
     -- Start showing preview visualization
     Positionator.visualize_map_preview(player)
@@ -663,7 +658,7 @@ end
 
 -- Handle player cursor stack changes
 function Positionator.on_cursor_changed(event)
-    if not (DevEnvironment and DevEnvironment.is_dev_mode and DevEnvironment.is_dev_mode()) then return end
+    if not DevEnvironment.is_positionator_enabled() then return end
     
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end
@@ -677,49 +672,23 @@ end
 
 -- Handle tick events for continuous tracking
 function Positionator.on_tick(event)
-    -- Only process every 5 ticks to save UPS
-    if event.tick % 5 ~= 0 then return end
+    if not DevEnvironment.is_positionator_enabled() then return end
     
     -- Process any active preview for each player
     for player_index, preview_data in pairs(Positionator.state.map_preview) do
         local player = game.get_player(player_index)
         if player and player.valid and preview_data.active then
-            -- Get player settings to check if reticle is enabled
-            local player_settings = Settings:getPlayerSettings(player)
-            local show_reticle = player_settings.map_reticle_on
-            
-            -- Clear preview if reticle setting is turned off
-            if not show_reticle then
-                Positionator.clear_map_preview(player_index)
-                return
-            end
-            
             -- Check if player is still in map view
             if player.render_mode == defines.render_mode.chart or
                player.render_mode == defines.render_mode.chart_zoomed_in then
                 
                 -- Check if right mouse button is still held down
-                -- The most reliable way to detect this in Factorio is to check
-                -- if player has selection tool active or is selecting area
-                  -- Get the player's selected blueprint or tool
-                local right_click_active = false
+                -- We can detect this by checking input state directly
+                -- The API doesn't have a direct way to check right-click state
+                -- so we have to infer it from changes or use custom inputs
                 
-                -- Method 1: Check if player is actively selecting area
-                if player.is_cursor_blueprint() then
-                    right_click_active = true
-                end
-                
-                -- Method 2: Check if we received a recent right-click event
-                -- Time-based detection - if it's been more than 1 second since the last detection,
-                -- assume the right-click has been released
-                if preview_data.last_update_time and (event.tick - preview_data.last_update_time < 60) then
-                    right_click_active = true
-                end
-                
-                -- If right-click is no longer active, clear the preview
-                if not right_click_active then
-                    Positionator.clear_map_preview(player_index)
-                end
+                -- For now, we'll keep the preview active while in map mode
+                -- and let it be cleared on various other events (cursor change, map exit, etc.)
             else
                 -- Not in map view anymore
                 Positionator.clear_map_preview(player_index)
@@ -733,7 +702,7 @@ end
 
 -- Handle nth tick events for cursor position updates
 function Positionator.on_nth_tick(event)
-    local current_tick = event.tick
+    if not DevEnvironment.is_positionator_enabled() then return end
     
     -- Update cursor positions for any active map previews
     for player_index, preview_data in pairs(Positionator.state.map_preview) do
@@ -741,45 +710,16 @@ function Positionator.on_nth_tick(event)
         if player and player.valid and preview_data.active and
            (player.render_mode == defines.render_mode.chart or player.render_mode == defines.render_mode.chart_zoomed_in) then
             
-            -- Throttle updates based on zoom level
-            -- More zoomed out = less frequent updates needed
-            local update_needed = true
-            local zoom_throttle = 60 -- Base throttle tick count
-              -- Apply throttling based on zoom level
-            local zoom_value = tonumber(player.zoom) or 0.3 -- Convert to number with fallback
-            if zoom_value > 0.5 then
-                zoom_throttle = math.max(30, zoom_throttle * 0.5) -- Faster updates when zoomed in
-            elseif zoom_value < 0.2 then
-                zoom_throttle = math.min(120, zoom_throttle * 2) -- Slower updates when zoomed out
-            end
-            
-            -- Check if we need to update based on throttling and last update time
-            if preview_data.last_update_time and (current_tick - preview_data.last_update_time < zoom_throttle) then
-                update_needed = false
-            end
-              -- Skip expensive rendering if right mouse button is no longer held
-            local right_click_held = player.is_cursor_blueprint() or 
-                (player.cursor_stack and player.cursor_stack.valid_for_read)
-              -- Check if zoom level has changed significantly
-            local zoom_value = tonumber(player.zoom) or 0.3 -- Convert to number with fallback
-            local zoom_changed = preview_data.zoom_level and math.abs(preview_data.zoom_level - zoom_value) > 0.1
-            
             -- Get current cursor position using LuaPlayer.position which returns the 
             -- cursor position when in map view
             local position = player.position
-            if position and position.x and position.y and update_needed then
-                -- Only update if position changed meaningfully
-                local position_changed = not preview_data.position or
-                   math.abs(preview_data.position.x - position.x) > 0.5 or
-                   math.abs(preview_data.position.y - position.y) > 0.5
-                  if position_changed or zoom_changed then
-                    -- Ensure position is proper table format
-                    preview_data.position = {
-                        x = position.x,
-                        y = position.y
-                    }
-                    preview_data.last_update_time = current_tick
-                    preview_data.zoom_level = zoom_value
+            if position and position.x and position.y then
+                -- Only update if position changed
+                if not preview_data.position or 
+                   preview_data.position.x ~= position.x or 
+                   preview_data.position.y ~= position.y then
+                    
+                    preview_data.position = TableHelpers.deep_copy(position)
                     Positionator.visualize_map_preview(player)
                 end
             end
@@ -789,15 +729,17 @@ end
 
 -- Handle display scale change events
 function Positionator.on_display_change(event)
+    if not DevEnvironment.is_positionator_enabled() then return end
+    
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end
     
-    -- For GUI: Only refresh if in dev mode
-    if DevEnvironment.is_positionator_enabled() and Positionator.state.player_data[player.index] then
+    -- Refresh any visualizations
+    if Positionator.state.player_data[player.index] then
         Positionator.update_ui(player)
     end
     
-    -- For map reticle: Refresh if active, regardless of dev mode
+    -- Refresh map preview if active
     if Positionator.state.map_preview[player.index] and 
        Positionator.state.map_preview[player.index].active then
         Positionator.visualize_map_preview(player)
@@ -806,6 +748,8 @@ end
 
 -- Handle map view change events
 function Positionator.on_map_view_change(event)
+    if not DevEnvironment.is_positionator_enabled() then return end
+    
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end
     
@@ -823,24 +767,12 @@ function Positionator.visualize_map_preview(player)
     local preview_data = Positionator.state.map_preview[player.index]
     if not preview_data or not preview_data.active or not preview_data.position then return end
     
-    -- Get player settings to check if reticle is enabled
-    local player_settings = Settings:getPlayerSettings(player)
-    if not player_settings.map_reticle_on then
-        -- Clear any existing visualizations and exit
-        rendering.clear(player.index)
-        return
-    end
-    
     -- Clear any previous rendering
     rendering.clear(player.index)
     
     -- Draw the preview visualization (same style as the regular positionator visualization)
     local position = preview_data.position
     local search_radius = preview_data.search_radius
-      -- Adapt rendering complexity based on zoom level
-    local zoom_value = tonumber(player.zoom) or 0.3 -- Convert to number with fallback
-    local is_zoomed_in = zoom_value > 0.5
-    local zoom_factor = math.min(1, zoom_value * 2)  -- Scale factor for visual elements
     
     -- Draw the bounding box (square)
     local left_top = {
@@ -853,78 +785,163 @@ function Positionator.visualize_map_preview(player)
         y = position.y + search_radius
     }
     
-    -- First, determine what to render based on zoom and performance considerations
-    local render_square = true
-    local render_circle = true
-    local render_center = is_zoomed_in -- Only render center marker when zoomed in
+    -- Draw the square box with lighter color (secondary visualization)
+    rendering.draw_rectangle({
+        color = {r = 0, g = 0.6, b = 1, a = 0.15}, -- Light blue, more transparent
+        filled = true,
+        left_top = left_top,
+        right_bottom = right_bottom,
+        surface = player.surface,
+        players = {player},
+        draw_on_ground = true,
+    })
     
-    -- Reduce transparency when zoomed out for better visibility
-    local square_alpha = 0.15 * zoom_factor
-    local circle_alpha = 0.25 * zoom_factor
-    local outline_alpha = 0.4 + (0.4 * (1 - zoom_factor))  -- Make outlines more visible when zoomed out
-      -- When very zoomed out, only show one visualization to save UPS
-    if zoom_value < 0.2 then
-        render_square = false -- Only show circle when zoomed out
-        render_center = false -- Don't show center when very zoomed out
-    end
-    
-    -- Draw the square box if needed
-    if render_square then
-        rendering.draw_rectangle({
-            color = {r = 0, g = 0.6, b = 1, a = square_alpha}, -- Light blue, transparent
-            filled = true,
-            left_top = left_top,
-            right_bottom = right_bottom,
-            surface = player.surface,
-            players = {player},
-            draw_on_ground = true,
-        })
-        
-        rendering.draw_rectangle({
-            color = {r = 0, g = 0.6, b = 1, a = outline_alpha}, -- Light blue outline
-            width = 1,
-            filled = false,
-            left_top = left_top,
-            right_bottom = right_bottom,
-            surface = player.surface,
-            players = {player},
-        })
-    end
+    rendering.draw_rectangle({
+        color = {r = 0, g = 0.6, b = 1, a = 0.4}, -- Light blue outline
+        width = 1,
+        filled = false,
+        left_top = left_top,
+        right_bottom = right_bottom,
+        surface = player.surface,
+        players = {player},
+    })
     
     -- Draw the circle (primary visualization - matching find_non_colliding_position behavior)
-    if render_circle then
-        rendering.draw_circle({
-            color = {r = 0, g = 1, b = 0, a = circle_alpha}, -- Green, semi-transparent
-            radius = search_radius,
-            filled = true,
-            target = position,
-            surface = player.surface,
-            players = {player},
-            draw_on_ground = true,
-        })
-        
-        rendering.draw_circle({
-            color = {r = 0, g = 1, b = 0, a = outline_alpha}, -- Green, more visible outline
-            radius = search_radius,
-            width = math.max(1, math.ceil(2 * zoom_factor)), -- Adjust line width based on zoom
-            filled = false,
-            target = position,
-            surface = player.surface,
-            players = {player},
-        })
+    rendering.draw_circle({
+        color = {r = 0, g = 1, b = 0, a = 0.25}, -- Green, semi-transparent
+        radius = search_radius,
+        filled = true,
+        target = position,
+        surface = player.surface,
+        players = {player},
+        draw_on_ground = true,
+    })
+    
+    rendering.draw_circle({
+        color = {r = 0, g = 1, b = 0, a = 0.8}, -- Green, more visible outline
+        radius = search_radius,
+        width = 2,
+        filled = false,
+        target = position,
+        surface = player.surface,
+        players = {player},
+    })
+    
+    -- Draw a marker at the center position
+    rendering.draw_circle({
+        color = {r = 1, g = 0, b = 0, a = 1},
+        radius = 0.3,
+        filled = true,
+        target = position,
+        surface = player.surface,
+        players = {player},
+    })
+end
+
+-- Destroy the GUI for a player
+function Positionator.destroy_gui(player)
+    if player.gui.left[Positionator.names.main_frame] then
+        player.gui.left[Positionator.names.main_frame].destroy()
     end
     
-    -- Draw a marker at the center position only when zoomed in enough
-    if render_center then
-        rendering.draw_circle({
-            color = {r = 1, g = 0, b = 0, a = 1},
-            radius = 0.3,
-            filled = true,
-            target = position,
-            surface = player.surface,
-            players = {player},
-        })
+    -- Clear any visualizations
+    rendering.clear(player.index)
+end
+
+-- Handle GUI click events
+function Positionator.on_gui_click(event)
+    local player = game.get_player(event.player_index)
+    if not player then return end
+    
+    local element = event.element
+    if not element or not element.valid then return end
+    
+    -- Handle close button
+    if element.name == Positionator.names.close_button then
+        -- Just close the dialog without applying changes
+        Positionator.destroy_gui(player)
+        Positionator.clear_player_data(player.index)
+        return
     end
+    
+    -- Handle reset button
+    if element.name == Positionator.names.reset_button then
+        local player_data = Positionator.get_player_data(player.index)
+        if player_data then            -- Reset position to original
+            player_data.adjusted_pos = TableHelpers.deep_copy(player_data.original_pos)
+            
+            -- Reset search radius to default
+            local player_settings = Settings:getPlayerSettings(player)
+            player_data.search_radius = player_settings.teleport_radius or Constants.settings.TELEPORT_RADIUS_DEFAULT
+            
+            -- Update the UI
+            Positionator.update_ui(player)
+        end
+        return
+    end
+    
+    -- Handle confirm button
+    if element.name == Positionator.names.confirm_button then
+        Positionator.confirm_and_continue(player)
+        return
+    end
+end
+
+-- Handle GUI value changed events (sliders)
+function Positionator.on_gui_value_changed(event)
+    local player = game.get_player(event.player_index)
+    if not player then return end
+    
+    local element = event.element
+    if not element or not element.valid then return end
+    
+    local player_data = Positionator.get_player_data(player.index)
+    if not player_data then return end
+    
+    -- Handle X position slider
+    if element.name == Positionator.names.x_adjust_slider then
+        player_data.adjusted_pos.x = element.slider_value
+        Positionator.update_ui(player)
+        return
+    end
+    
+    -- Handle Y position slider
+    if element.name == Positionator.names.y_adjust_slider then
+        player_data.adjusted_pos.y = element.slider_value
+        Positionator.update_ui(player)
+        return
+    end
+    
+    -- Handle radius slider
+    if element.name == Positionator.names.radius_slider then
+        player_data.search_radius = element.slider_value
+        Positionator.update_ui(player)
+        return
+    end
+end
+
+-- Confirm the adjustments and continue with the workflow
+function Positionator.confirm_and_continue(player)
+    local player_data = Positionator.get_player_data(player.index)
+    if not player_data or not player_data.callback_data or not player_data.callback_data.callback then
+        -- No callback data, just close
+        Positionator.destroy_gui(player)
+        Positionator.clear_player_data(player.index)
+        return
+    end
+    
+    -- Extract the adjusted position and callback
+    local adjusted_position = player_data.adjusted_pos
+    local search_radius = player_data.search_radius
+    local callback = player_data.callback_data.callback
+    local callback_args = player_data.callback_data.args or {}
+    
+    -- Clean up
+    Positionator.destroy_gui(player)
+    Positionator.clear_player_data(player.index)
+    
+    -- Call the callback with the adjusted position
+    callback(player, adjusted_position, search_radius, table.unpack(callback_args))
 end
 
 return Positionator

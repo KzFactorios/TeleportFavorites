@@ -30,12 +30,12 @@ local Settings = {}
 --- Returns a table of per-player mod settings, with defaults if not set
 --- @param player LuaPlayer|nil The player to get settings for
 --- @return table settings { teleport_radius: integer, favorites_on: boolean, destination_msg_on: boolean }
-function Settings.getPlayerSettings(player)
-  -- Initialize with default values from Constants
+function Settings.getPlayerSettings(player)  -- Initialize with default values from Constants
   local settings = {
     teleport_radius = Constants.settings.TELEPORT_RADIUS_DEFAULT,
     favorites_on = true,
     destination_msg_on = true,
+    map_reticle_on = true,
   }
   
   -- Return defaults if player or mod_settings are nil
@@ -84,8 +84,7 @@ function Settings.getPlayerSettings(player)
       settings.favorites_on = true
     end
   end
-  
-  -- Get destination message on/off setting
+    -- Get destination message on/off setting
   local dmsg = mod_settings["destination-msg-on"]
   if dmsg and dmsg.value ~= nil then 
     -- Explicit boolean conversion using comparison
@@ -94,6 +93,18 @@ function Settings.getPlayerSettings(player)
     else
       -- Default to true if not a boolean
       settings.destination_msg_on = true
+    end
+  end
+  
+  -- Get map reticle on/off setting
+  local reticle = mod_settings["map-reticle-on"]
+  if reticle and reticle.value ~= nil then 
+    -- Explicit boolean conversion using comparison
+    if type(reticle.value) == "boolean" then
+      settings.map_reticle_on = reticle.value
+    else
+      -- Default to true if not a boolean
+      settings.map_reticle_on = true
     end
   end
   
