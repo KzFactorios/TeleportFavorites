@@ -183,6 +183,7 @@ function fave_bar.build(player, force_show)
 
   _fave_bar_building_guard[pid] = nil
   if not success then error(result) end
+    
   return result
 end
 

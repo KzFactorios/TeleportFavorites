@@ -1,3 +1,4 @@
+---@diagnostic disable: undefined-global
 --[[
 Tag Editor GUI for TeleportFavorites
 ====================================

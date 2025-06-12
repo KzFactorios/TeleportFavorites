@@ -15,6 +15,8 @@ local Favorite = require("core.favorite.favorite")
 local Settings = require("settings")
 local helpers = require("core.utils.helpers_suite")
 local GPS = require("core.gps.gps")
+local basic_helpers = require("core.utils.basic_helpers")
+local gps_helpers = require("core.utils.gps_helpers")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local Lookups = require("core.cache.lookups")
 local Cache = require("core.cache.cache")
@@ -55,12 +57,12 @@ end
 ---@param player_index uint
 function Tag:add_faved_by_player(player_index)
   assert(type(player_index) == "number", "player_index must be a number")
-  
+
   -- Use functional approach to check if player already exists
   local function player_exists(idx)
     return idx == player_index
   end
-  
+
   if not helpers.find_first_match(self.faved_by_players, player_exists) then
     table.insert(self.faved_by_players, player_index)
   end
@@ -83,7 +85,10 @@ function Tag.teleport_player_with_messaging(player, gps)
   --local teleport_map_position = GPS.map_position_from_gps(gps)
 
   local aligned_position = GPS.normalize_landing_position_with_cache(player, gps, Cache)
-  if not aligned_position then player:print("Unable to normalize landing position") return end
+  if not aligned_position then
+    player:print("Unable to normalize landing position")
+    return
+  end
 
   local teleport_AOK = false
   local raise_teleported = true
@@ -99,47 +104,8 @@ function Tag.teleport_player_with_messaging(player, gps)
   end
 
   if teleport_AOK then return Constants.enums.return_state.SUCCESS end
-    
+
   return "We were unable to perform the teleport due to unforeseen circumstances"
-end
-
---- Move a chart_tag to a new location, updating all favorites and destroying the old tag.
----@param player LuaPlayer
----@param destination_gps string
----@return string|nil, LuaCustomChartTag|nil
-function Tag:rehome_chart_tag(player, destination_gps)
-  if not self or not self.gps then return "Invalid tag object" end
-  local current_gps = self.gps  local destination_pos = GPS.map_position_from_gps(destination_gps)
-  if not destination_pos then return "[TeleportFavorites] Could not parse destination GPS string" end
-  local aligned_position = GPS.normalize_landing_position_with_cache(player, destination_gps, Cache)
-  if not aligned_position then return "[TeleportFavorites] Could not find a valid location within range" end
-
-  local surface_index = player.surface and player.surface.index or 1
-  local aligned_gps = GPS.gps_from_map_position(aligned_position, surface_index)
-  local old_chart_tag = self:get_chart_tag()
-  if current_gps == aligned_gps and old_chart_tag and old_chart_tag.valid == true then return nil, old_chart_tag end
-
-  local all_fave_tags = {}
-  local game_players = (_G.game and _G.game.players) or {}
-  for _, other_player in pairs(game_players) do
-    local pfaves = Cache.get_player_favorites(other_player)
-    for _, favorite in pairs(pfaves) do
-      if favorite.gps == current_gps then table.insert(all_fave_tags, favorite) end
-    end
-  end
-  local chart_tag_spec = {
-    position = aligned_position,
-    icon = old_chart_tag and old_chart_tag.icon or {},
-    text = old_chart_tag and old_chart_tag.text or "",
-    last_user = old_chart_tag and old_chart_tag.last_user or player.name
-  }
-  local surface = player.surface
-  local new_chart_tag = player.force:add_chart_tag(surface, chart_tag_spec)
-  if not new_chart_tag or not new_chart_tag.valid then return "Failed to create new chart tag" end
-  for _, favorite in pairs(all_fave_tags) do favorite.gps = aligned_gps end
-  self.gps, self.chart_tag = aligned_gps, new_chart_tag
-  if old_chart_tag and old_chart_tag.valid then tag_destroy_helper.destroy_tag_and_chart_tag(nil, old_chart_tag) end
-  return nil, self.chart_tag
 end
 
 --- Unlink and destroy a tag and its associated chart_tag, and remove from all collections.
@@ -147,6 +113,84 @@ end
 function Tag.unlink_and_destroy(tag)
   if not tag or not tag.gps then return end
   tag_destroy_helper.destroy_tag_and_chart_tag(tag, tag.chart_tag)
+end
+
+--- Move a chart_tag to a new location, updating all favorites and destroying the old tag.
+---@param player LuaPlayer
+---@param chart_tag LuaCustomChartTag
+---@param destination_gps string this location needs to be verified/snapped/etc. This function assumes the dest has been OK'd
+---@return LuaCustomChartTag|nil
+function Tag.rehome_chart_tag(player, chart_tag, destination_gps)
+  local current_gps = gps_helpers.gps_from_map_position(chart_tag.position)
+  if current_gps == destination_gps then return chart_tag end
+
+  local destination_pos = GPS.map_position_from_gps(destination_gps)
+  if not destination_pos then return error("There was a problem with the new coordinates") end
+
+  -- get potentially linked faves from all players
+  local all_fave_tags = {}
+  local game_players = (_G.game and _G.game.players) or {}
+  for _, a_player in pairs(game_players) do
+    local pfaves = Cache.get_player_favorites(a_player)
+    for _, favorite in pairs(pfaves) do
+      if favorite.gps == current_gps then table.insert(all_fave_tags, favorite) end
+    end
+  end
+
+  -- Use "character" entity with adjusted parameters for reliable collision detection
+  -- Character entity is guaranteed to be available in all Factorio configurations
+  -- Increased radius provides safety margin similar to car collision box size
+  local safety_radius = Settings.get_player_settings(player).teleport_radius + 2  -- Add safety margin for vehicle-sized clearance  
+  local fine_precision = Constants.settings.TELEPORT_PRECISION * 0.5 -- Finer search precision
+
+  local non_collide_position = nil
+  local success, error_msg = pcall(function()
+    non_collide_position = player.surface:find_non_colliding_position("character", destination_pos,
+      safety_radius, fine_precision)
+  end)
+  if not non_collide_position then
+    return error("There was a problem with the new coordinates. The destination is not available for landing")
+  end
+
+  -- normalize the landing position
+  -- check for tiles/validity
+  local x = basic_helpers.normalize_index(non_collide_position.position.x)
+  local y = basic_helpers.normalize_index(non_collide_position.position.y)
+
+  if not gps_helpers.position_can_be_tagged(player, { x = x, y = y }) then
+    return error("There was a problem with the new coordinates. The destination is not available for landing")
+  end
+
+  -- use the normaled position
+  destination_pos = { x = x, y = y }
+  destination_gps = gps_helpers.gps_from_map_position(destination_pos)
+
+  local chart_tag_spec = {
+    position = destination_pos,
+    icon = chart_tag.icon,
+    text = chart_tag.text,
+    last_user = chart_tag.last_user or player.name
+  }
+
+  local new_chart_tag = player.force:add_chart_tag(player.surface, chart_tag_spec)
+  if not gps_helpers.position_can_be_tagged(player, new_chart_tag.position) then
+    new_chart_tag.destroy()
+    new_chart_tag = nil
+  end
+  if not new_chart_tag or not new_chart_tag.valid then return error("There was a problem with the new coordinates. The destination is not available for landing") end
+
+  -- ensure matching tag has updated gps - refresh collection
+  local matching_tag = Cache.get_tag_by_gps(current_gps)
+  if matching_tag then matching_tag.gps = destination_gps end
+
+  for _, favorite in pairs(all_fave_tags) do
+    favorite.gps = destination_gps
+  end
+
+  -- get rid of the old chart_tag to make way for the new
+  if chart_tag and chart_tag.valid then chart_tag.destroy() end
+
+  return new_chart_tag
 end
 
 return Tag
