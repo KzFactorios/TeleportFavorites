@@ -38,17 +38,21 @@ function Observer.notify_all(event)
     end
 end
 
--- Minimal Observer pattern stub for test runner compatibility
+--- Create a new Observer instance for object-specific observation
 function Observer:new()
   local obj = setmetatable({observers = {}}, self)
   return obj
 end
+
+--- Attach an observer to this specific instance
 function Observer:attach(observer)
   table.insert(self.observers, observer)
 end
-function Observer:notify()
+
+--- Notify all observers attached to this instance
+function Observer:notify(...)
   for _, obs in ipairs(self.observers) do
-    if obs.update then obs:update() end
+    if obs.update then obs:update(...) end
   end
 end
 
