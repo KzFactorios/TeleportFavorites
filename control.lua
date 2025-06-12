@@ -73,3 +73,9 @@ custom_input_dispatcher.register_default_inputs(script)
 
 -- Register on_gui_closed handler for ESC key/modal close support
 script.on_event(defines.events.on_gui_closed, on_gui_closed_handler.on_gui_closed)
+
+-- Clean up command history when players leave (optional)
+script.on_event(defines.events.on_player_left_game, function(event)
+  local WorkingCommandManager = require("core.pattern.working_command_manager")
+  WorkingCommandManager.cleanup_player_history(event.player_index)
+end)

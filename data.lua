@@ -211,8 +211,7 @@ data:extend {
     name = "tf_font_24",
     from = "default",
     size = 24
-  },
-  {
+  },  {
     type = "custom-input",
     name = "tf-data-viewer-tab-next",
     key_sequence = "TAB",
@@ -223,5 +222,11 @@ data:extend {
     name = "tf-data-viewer-tab-prev",
     key_sequence = "SHIFT + TAB",
     consuming = "none"
+  },
+  {
+    type = "custom-input",
+    name = "tf-undo-last-action",
+    key_sequence = "CONTROL + Z",
+    consuming = "game-only"
   },
 }

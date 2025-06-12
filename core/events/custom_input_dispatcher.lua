@@ -88,6 +88,20 @@ end
 ---@type table<string, function>
 local default_custom_input_handlers = {
   ["dv-toggle-data-viewer"] = create_lazy_handler("core.control.control_data_viewer", "on_toggle_data_viewer"),
+  ["tf-undo-last-action"] = function(event)
+    local player = game.get_player(event.player_index)
+    if not player or not player.valid then return end
+    
+    -- Use the GUI handler's undo function
+    local on_gui_closed_handler = require("core.events.on_gui_closed_handler")
+    local success = on_gui_closed_handler.undo_last_gui_close(player)
+    
+    if success then
+      player.print({"tf-command.action_undone"})
+    else
+      player.print({"tf-command.nothing_to_undo"})
+    end
+  end,
   -- Add more custom input handlers here as needed
 }
 
