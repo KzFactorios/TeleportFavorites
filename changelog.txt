@@ -1,6 +1,7 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.0.2
-Date: 2025-06-12    Features:
+Date: 2025-06-12    
+  Features:
     - Added proper localization for all keyboard shortcuts
     - Fixed formatting inconsistencies in data.lua
     - Improved custom input definitions with proper order properties
