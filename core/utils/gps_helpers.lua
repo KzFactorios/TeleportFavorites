@@ -1,3 +1,4 @@
+---@diagnostic disable: undefined-global, need-check-nil, undefined-field
 --[[
 core/utils/gps_helpers.lua
 TeleportFavorites Factorio Mod
@@ -72,24 +73,29 @@ end
 -- Local function to check if a position can be tagged (moved from position_helpers to break circular dependency)
 local function position_can_be_tagged(player, map_position)
   if not (player and player.force and player.surface and player.force.is_chunk_charted) then return false end
+  if not map_position then return false end
 
   local chunk = { x = math.floor(map_position.x / 32), y = math.floor(map_position.y / 32) }
   if not player.force.is_chunk_charted(player.surface, chunk) then
-    player:print("[TeleportFavorites] You are trying to create a tag in uncharted territory: " ..
-      gps_from_map_position(map_position, player.surface.index))
+    if player and player.valid then
+      player:print("[TeleportFavorites] You are trying to create a tag in uncharted territory: " ..
+        gps_from_map_position(map_position, player.surface.index))
+    end
     return false
   end
   
   if Helpers.is_water_tile(player.surface, map_position) or Helpers.is_space_tile(player.surface, map_position) then
-    player:print("[TeleportFavorites] You cannot tag water or space in this interface: " ..
-      gps_from_map_position(map_position, player.surface.index))
+    if player and player.valid then
+      player:print("[TeleportFavorites] You cannot tag water or space in this interface: " ..
+        gps_from_map_position(map_position, player.surface.index))
+    end
     return false
   end
 
   return true
 end
 
---- Convert GPS string to MapPosition {x, y} (surface not included)
+--- Convert GPS string to MapPosition {x, y} (surface not included)  
 ---@param gps string
 ---@return MapPosition?
 local function map_position_from_gps(gps)
@@ -127,11 +133,11 @@ local function create_and_validate_chart_tag(player, chart_tag_spec)
   -- Then validate using our position checker
   -- Note: We validate the created chart tag because position_can_be_tagged may not
   -- catch all Factorio API restrictions that only surface during actual creation
-  if not position_can_be_tagged(player, chart_tag and chart_tag.position or nil) then
+  if chart_tag and chart_tag.position and not position_can_be_tagged(player, chart_tag.position) then
     ErrorHandler.debug_log("Chart tag failed position validation, destroying", {
-      position = chart_tag and chart_tag.position
+      position = chart_tag.position
     })
-    if chart_tag then chart_tag.destroy() end
+    chart_tag.destroy()
     return nil, ErrorHandler.error(
       ErrorHandler.ERROR_TYPES.POSITION_INVALID,
       "This location cannot be tagged. Try again or increase your teleport radius in settings.",
@@ -166,11 +172,19 @@ local function validate_and_prepare_context(player, intended_gps)
     intended_gps = intended_gps
   })
   
-  if not player or not intended_gps or intended_gps == "" then
+  if not player or not player.valid then
     return nil, ErrorHandler.error(
       ErrorHandler.ERROR_TYPES.VALIDATION_FAILED,
-      "Invalid player or GPS string provided",
-      { player_valid = player ~= nil, gps = intended_gps }
+      "Invalid player reference",
+      { player_exists = player ~= nil }
+    )
+  end
+  
+  if not intended_gps or intended_gps == "" then
+    return nil, ErrorHandler.error(
+      ErrorHandler.ERROR_TYPES.VALIDATION_FAILED,
+      "Invalid GPS string provided",
+      { gps = intended_gps }
     )
   end
 
@@ -183,7 +197,8 @@ local function validate_and_prepare_context(player, intended_gps)
     )
   end
 
-  local search_radius = Settings.getPlayerSettings(player).teleport_radius
+  local player_settings = Settings:getPlayerSettings(player)
+  local search_radius = player_settings.tp_radius_tiles or Constants.settings.DEFAULT_TELEPORT_RADIUS_TILES
   
   local context = {
     player = player,
@@ -199,7 +214,7 @@ end
 --- Find exact matches for GPS position (tag and chart_tag)
 ---@param context table
 ---@param callbacks table
----@return table?, LuaCustomChartTag?, string, boolean, ErrorResult
+---@return table?, LuaCustomChartTag?, string, boolean
 local function find_exact_matches(context, callbacks)
   ErrorHandler.debug_log("Searching for exact matches", {
     intended_gps = context.intended_gps
@@ -211,28 +226,24 @@ local function find_exact_matches(context, callbacks)
   local check_for_grid_snap = true
 
   -- Search for exact matches first - tag and chart_tag
-  if ValidationPatterns.is_valid_tag(tag) then
-    if tag.gps then
-      ErrorHandler.debug_log("Found exact tag match", { tag_gps = tag.gps })
-      chart_tag = ValidationPatterns.is_valid_chart_tag(tag.chart_tag) and tag.chart_tag or nil
-      adjusted_gps = tag.gps
-      check_for_grid_snap = false
-    end
+  if ValidationPatterns.is_valid_tag(tag) and tag.gps then
+    ErrorHandler.debug_log("Found exact tag match", { tag_gps = tag.gps })
+    chart_tag = ValidationPatterns.is_valid_chart_tag(tag.chart_tag) and tag.chart_tag or nil
+    adjusted_gps = tag.gps
+    check_for_grid_snap = false
   else
     -- there is no tag so try to find a matching chart_tag in storage
     chart_tag = callbacks.get_chart_tag_by_gps_func and callbacks.get_chart_tag_by_gps_func(context.intended_gps) or nil
-    if ValidationPatterns.is_valid_chart_tag(chart_tag) then
-      if chart_tag.position then
-        ErrorHandler.debug_log("Found exact chart_tag match", { 
-          chart_tag_position = chart_tag.position 
-        })
-        adjusted_gps = gps_from_map_position(chart_tag.position, context.player.surface.index)
-        check_for_grid_snap = true
-      end
+    if ValidationPatterns.is_valid_chart_tag(chart_tag) and chart_tag.position then
+      ErrorHandler.debug_log("Found exact chart_tag match", { 
+        chart_tag_position = chart_tag.position 
+      })
+      adjusted_gps = gps_from_map_position(chart_tag.position, context.player.surface.index)
+      check_for_grid_snap = true
     end
   end
   
-  return tag, chart_tag, adjusted_gps, check_for_grid_snap, ErrorHandler.success()
+  return tag, chart_tag, adjusted_gps, check_for_grid_snap
 end
 
 --- Find nearby matches within search radius
@@ -242,7 +253,7 @@ end
 ---@param chart_tag LuaCustomChartTag?
 ---@param adjusted_gps string
 ---@param check_for_grid_snap boolean
----@return table?, LuaCustomChartTag?, string, boolean, ErrorResult
+---@return table?, LuaCustomChartTag?, string, boolean
 local function find_nearby_matches(context, callbacks, tag, chart_tag, adjusted_gps, check_for_grid_snap)
   -- if we don't have a matching chart_tag, then search for one "in the area"
   if not ValidationPatterns.is_valid_chart_tag(chart_tag) then
@@ -254,48 +265,44 @@ local function find_nearby_matches(context, callbacks, tag, chart_tag, adjusted_
     -- find a colliding chart_tag
     local in_area_chart_tag = Helpers.position_has_colliding_tag(context.player, context.landing_position, context.search_radius)
 
-    if ValidationPatterns.is_valid_chart_tag(in_area_chart_tag) then
-      if in_area_chart_tag.position then
-        local in_area_gps = gps_from_map_position(in_area_chart_tag.position, context.player.surface.index)
-        ErrorHandler.debug_log("Found nearby chart tag", {
-          in_area_gps = in_area_gps,
-          distance_from_intended = math.sqrt(
-            (in_area_chart_tag.position.x - context.landing_position.x)^2 + 
-            (in_area_chart_tag.position.y - context.landing_position.y)^2
-          )
-        })
-        
-        -- if found then see if it has a matching tag
-        local in_area_tag = callbacks.get_tag_by_gps_func and callbacks.get_tag_by_gps_func(in_area_gps) or nil
+    if ValidationPatterns.is_valid_chart_tag(in_area_chart_tag) and in_area_chart_tag.position then
+      local in_area_gps = gps_from_map_position(in_area_chart_tag.position, context.player.surface.index)
+      ErrorHandler.debug_log("Found nearby chart tag", {
+        in_area_gps = in_area_gps,
+        distance_from_intended = math.sqrt(
+          (in_area_chart_tag.position.x - context.landing_position.x)^2 + 
+          (in_area_chart_tag.position.y - context.landing_position.y)^2
+        )
+      })
+      
+      -- if found then see if it has a matching tag
+      local in_area_tag = callbacks.get_tag_by_gps_func and callbacks.get_tag_by_gps_func(in_area_gps) or nil
 
-        if ValidationPatterns.is_valid_tag(in_area_tag) then
-          if in_area_tag.gps then
-            ErrorHandler.debug_log("Nearby chart tag has matching tag", { tag_gps = in_area_tag.gps })
-            tag = in_area_tag
-            chart_tag = ValidationPatterns.is_valid_chart_tag(in_area_tag.chart_tag) and in_area_tag.chart_tag or nil
-            adjusted_gps = in_area_tag.gps
-            check_for_grid_snap = chart_tag == nil
-          end
-        else
-          ErrorHandler.debug_log("Nearby chart tag has no matching tag")
-          tag = nil
-          chart_tag = ValidationPatterns.is_valid_chart_tag(in_area_chart_tag) and in_area_chart_tag or nil
-          check_for_grid_snap = true
-        end
+      if ValidationPatterns.is_valid_tag(in_area_tag) and in_area_tag.gps then
+        ErrorHandler.debug_log("Nearby chart tag has matching tag", { tag_gps = in_area_tag.gps })
+        tag = in_area_tag
+        chart_tag = ValidationPatterns.is_valid_chart_tag(in_area_tag.chart_tag) and in_area_tag.chart_tag or nil
+        adjusted_gps = in_area_tag.gps
+        check_for_grid_snap = chart_tag == nil
+      else
+        ErrorHandler.debug_log("Nearby chart tag has no matching tag")
+        tag = nil
+        chart_tag = ValidationPatterns.is_valid_chart_tag(in_area_chart_tag) and in_area_chart_tag or nil
+        check_for_grid_snap = true
       end
     else
       ErrorHandler.debug_log("No nearby chart tags found")
     end
   end
   
-  return tag, chart_tag, adjusted_gps, check_for_grid_snap, ErrorHandler.success()
+  return tag, chart_tag, adjusted_gps, check_for_grid_snap
 end
 
 --- Handle missing or invalid chart tags by creating new ones or aligning positions
 ---@param context table
 ---@param tag table?
 ---@param chart_tag LuaCustomChartTag?
----@return table?, LuaCustomChartTag?, string, ErrorResult
+---@return table?, LuaCustomChartTag?, string
 local function handle_grid_snap_requirements(context, tag, chart_tag)
   ErrorHandler.debug_log("Handling grid snap requirements", {
     has_tag = tag ~= nil,
@@ -308,8 +315,14 @@ local function handle_grid_snap_requirements(context, tag, chart_tag)
   if tag and tag.gps and (not chart_tag or (chart_tag and not chart_tag.valid)) then
     ErrorHandler.debug_log("Creating new chart tag for existing tag")
     
+    local tag_position = map_position_from_gps(tag.gps)
+    if not tag_position then
+      ErrorHandler.debug_log("Could not parse tag GPS coordinates", { tag_gps = tag.gps })
+      return tag, chart_tag, context.intended_gps
+    end
+    
     local chart_tag_spec = {
-      position = map_position_from_gps(tag.gps),
+      position = tag_position,
       icon = {},
       text = "tag gps: " .. tag.gps,
       last_user = context.player.name
@@ -317,7 +330,8 @@ local function handle_grid_snap_requirements(context, tag, chart_tag)
 
     local new_chart_tag, result = create_and_validate_chart_tag(context.player, chart_tag_spec)
     if not result.success then
-      return tag, chart_tag, context.intended_gps, result
+      ErrorHandler.handle_error(result, context.player)
+      return tag, chart_tag, context.intended_gps
     end
 
     -- Update the tag's chart_tag reference
@@ -327,7 +341,7 @@ local function handle_grid_snap_requirements(context, tag, chart_tag)
     if chart_tag and chart_tag.position then
       local adjusted_gps = gps_from_map_position(chart_tag.position, context.player.surface.index)
       ErrorHandler.debug_log("Successfully created chart tag for tag", { adjusted_gps = adjusted_gps })
-      return tag, chart_tag, adjusted_gps, ErrorHandler.success()
+      return tag, chart_tag, adjusted_gps
     end
     
   elseif chart_tag and chart_tag.valid and chart_tag.position then
@@ -344,33 +358,67 @@ local function handle_grid_snap_requirements(context, tag, chart_tag)
         local rehomed_chart_tag = Tag.rehome_chart_tag(context.player, chart_tag,
           gps_from_map_position({ x = x, y = y }, context.player.surface.index))
         if not rehomed_chart_tag then
-          return tag, chart_tag, context.intended_gps, ErrorHandler.error(
-            ErrorHandler.ERROR_TYPES.CHART_TAG_FAILED,
-            "This location cannot be tagged. Try again or increase your teleport radius in settings.",
-            { original_position = chart_tag.position, target_position = { x = x, y = y } }
-          )
+          ErrorHandler.debug_log("Failed to rehome chart tag", {
+            original_position = chart_tag.position,
+            target_position = { x = x, y = y }
+          })
+          return tag, chart_tag, context.intended_gps
         end
         chart_tag = rehomed_chart_tag
         ErrorHandler.debug_log("Successfully aligned chart tag position")
       end
     end
-    
+
+    -- we now have an aligned chart_tag
     if chart_tag and chart_tag.position then
       local adjusted_gps = gps_from_map_position(chart_tag.position, context.player.surface.index)
-      return tag, chart_tag, adjusted_gps, ErrorHandler.success()
+      return tag, chart_tag, adjusted_gps
+    end
+    
+  else
+    -- we have no tag and no chart_tag
+    -- try to create a temp_chart_tag at the intended location
+    ErrorHandler.debug_log("Creating temporary chart tag for position validation")
+    
+    local intended_position = map_position_from_gps(context.intended_gps)
+    if not intended_position then
+      ErrorHandler.debug_log("Could not parse intended GPS coordinates", { intended_gps = context.intended_gps })
+      return nil, nil, context.intended_gps
+    end
+    
+    local chart_tag_spec = {
+      position = intended_position,
+      icon = {},
+      text = "tag gps: " .. context.intended_gps,
+      last_user = context.player.name
+    }
+
+    local temp_chart_tag, result = create_and_validate_chart_tag(context.player, chart_tag_spec)
+    if not result.success then
+      ErrorHandler.handle_error(result, context.player)
+      return nil, nil, context.intended_gps
+    end
+
+    if temp_chart_tag and temp_chart_tag.position then
+      local adjusted_gps = gps_from_map_position(temp_chart_tag.position, context.player.surface.index)
+      -- destroy the temp_chart_tag - it will ultimately be created by the tag editor
+      temp_chart_tag.destroy()
+      
+      ErrorHandler.debug_log("Temporary chart tag validation successful", { adjusted_gps = adjusted_gps })
+      return nil, nil, adjusted_gps
     end
   end
   
-  return tag, chart_tag, context.intended_gps, ErrorHandler.success()
+  return tag, chart_tag, context.intended_gps
 end
 
---- Finalize position data and prepare return values
+--- Get final position data including player favorites
 ---@param context table
 ---@param adjusted_gps string
 ---@param tag table?
 ---@param chart_tag LuaCustomChartTag?
 ---@param callbacks table
----@return MapPosition?, table?, LuaCustomChartTag?, table?, ErrorResult
+---@return MapPosition?, table?, LuaCustomChartTag?, table?
 local function finalize_position_data(context, adjusted_gps, tag, chart_tag, callbacks)
   ErrorHandler.debug_log("Finalizing position data", {
     adjusted_gps = adjusted_gps,
@@ -378,30 +426,28 @@ local function finalize_position_data(context, adjusted_gps, tag, chart_tag, cal
     has_chart_tag = chart_tag ~= nil
   })
   
+  -- get player favorite if any
+  local matching_player_favorite = callbacks.is_player_favorite_func and 
+    callbacks.is_player_favorite_func(context.player, adjusted_gps) or nil
+
   local adjusted_pos = map_position_from_gps(adjusted_gps)
   if not adjusted_pos then
-    return nil, nil, nil, nil, ErrorHandler.error(
-      ErrorHandler.ERROR_TYPES.GPS_PARSE_FAILED,
-      "Could not parse final GPS coordinates",
-      { adjusted_gps = adjusted_gps }
-    )
+    ErrorHandler.debug_log("Could not parse final GPS coordinates", { adjusted_gps = adjusted_gps })
+    return nil, nil, nil, nil
   end
   
-  -- Check for matching player favorite
-  local matching_player_favorite = nil
-  if callbacks.is_player_favorite_func then
-    matching_player_favorite = callbacks.is_player_favorite_func(context.player, adjusted_gps)
+  if matching_player_favorite then
+    ErrorHandler.debug_log("Found matching player favorite")
   end
   
-  ErrorHandler.debug_log("Position data finalized successfully", {
-    adjusted_pos = adjusted_pos,
-    has_matching_favorite = matching_player_favorite ~= nil
+  ErrorHandler.debug_log("Position normalization completed successfully", {
+    final_position = adjusted_pos,
+    final_gps = adjusted_gps
   })
   
-  return adjusted_pos, tag, chart_tag, matching_player_favorite, ErrorHandler.success()
+  return adjusted_pos, tag, chart_tag, matching_player_favorite
 end
 
----TODO REVIEW - Refactored for clarity and reduced complexity
 --- Normalize a landing position; surface may be LuaSurface, string, or index
 --- This function now requires Cache functions as parameters to avoid circular dependency
 --- 
@@ -413,7 +459,7 @@ end
 ---@param get_tag_by_gps_func function
 ---@param is_player_favorite_func function
 ---@param get_chart_tag_by_gps_func function
----@return MapPosition|nil, Tag|nil, LuaCustomChartTag|nil, table|nil -- favorite is a table
+---@return MapPosition|nil, table|nil, LuaCustomChartTag|nil, table|nil -- favorite is a table
 local function normalize_landing_position(player, intended_gps, get_tag_by_gps_func, is_player_favorite_func,
                                           get_chart_tag_by_gps_func)
   ErrorHandler.debug_log("Starting position normalization", {
@@ -434,40 +480,22 @@ local function normalize_landing_position(player, intended_gps, get_tag_by_gps_f
     is_player_favorite_func = is_player_favorite_func,
     get_chart_tag_by_gps_func = get_chart_tag_by_gps_func
   }
-  
-  -- Step 2: Find exact matches (tag and chart_tag)
+    -- Step 2: Find exact matches (tag and chart_tag)
   local tag, chart_tag, adjusted_gps, check_for_grid_snap
-  tag, chart_tag, adjusted_gps, check_for_grid_snap, result = find_exact_matches(context, callbacks)
-  if not result.success then
-    ErrorHandler.handle_error(result, player)
-    return nil, nil, nil, nil
-  end
+  tag, chart_tag, adjusted_gps, check_for_grid_snap = find_exact_matches(context, callbacks)
   
   -- Step 3: Find nearby matches if no exact matches found
-  tag, chart_tag, adjusted_gps, check_for_grid_snap, result = find_nearby_matches(
+  tag, chart_tag, adjusted_gps, check_for_grid_snap = find_nearby_matches(
     context, callbacks, tag, chart_tag, adjusted_gps, check_for_grid_snap)
-  if not result.success then
-    ErrorHandler.handle_error(result, player)
-    return nil, nil, nil, nil
-  end
-  
-  -- Step 4: Handle grid snap requirements (create/align chart tags)
+    -- Step 4: Handle grid snap requirements (create/align chart tags)
   if check_for_grid_snap then
-    tag, chart_tag, adjusted_gps, result = handle_grid_snap_requirements(context, tag, chart_tag)
-    if not result.success then
-      ErrorHandler.handle_error(result, player)
-      return nil, nil, nil, nil
-    end
+    tag, chart_tag, adjusted_gps = handle_grid_snap_requirements(context, tag, chart_tag)
   end
   
   -- Step 5: Finalize and return results
   local adjusted_pos, matching_player_favorite
-  adjusted_pos, tag, chart_tag, matching_player_favorite, result = finalize_position_data(
+  adjusted_pos, tag, chart_tag, matching_player_favorite = finalize_position_data(
     context, adjusted_gps, tag, chart_tag, callbacks)
-  if not result.success then
-    ErrorHandler.handle_error(result, player)
-    return nil, nil, nil, nil
-  end
   
   ErrorHandler.debug_log("Position normalization completed successfully")
   return adjusted_pos, tag, chart_tag, matching_player_favorite
@@ -498,7 +526,7 @@ end
 ---@return MapPosition|nil, table|nil, LuaCustomChartTag|nil, table|nil
 local function normalize_landing_position_with_cache(player, intended_gps, Cache)
   if not Cache then 
-    if player then
+    if player and player.valid then
       player:print("[TeleportFavorites] Internal error: Cache module missing")
     end
     return nil, nil, nil, nil
@@ -507,304 +535,7 @@ local function normalize_landing_position_with_cache(player, intended_gps, Cache
     Cache.lookups.get_chart_tag_by_gps)
 end
 
---- Create-then-validate pattern for chart tags
---- This pattern is necessary because Factorio's API doesn't provide comprehensive
---- validation without actually creating the chart tag. Our position_can_be_tagged()
---- covers common cases, but the API may have additional internal restrictions.
---- See notes/factorio_api_validation_gaps.md for detailed rationale.
----@param player LuaPlayer
----@param chart_tag_spec table
----@return LuaCustomChartTag?, ErrorResult
-local function create_and_validate_chart_tag(player, chart_tag_spec)
-  ErrorHandler.debug_log("Creating chart tag for validation", {
-    position = chart_tag_spec.position,
-    text = chart_tag_spec.text
-  })
-  
-  -- Create the chart tag first
-  local chart_tag = player.force:add_chart_tag(player.surface, chart_tag_spec)
-  
-  -- Then validate using our position checker
-  -- Note: We validate the created chart tag because position_can_be_tagged may not
-  -- catch all Factorio API restrictions that only surface during actual creation
-  if not position_can_be_tagged(player, chart_tag and chart_tag.position or nil) then
-    ErrorHandler.debug_log("Chart tag failed position validation, destroying", {
-      position = chart_tag and chart_tag.position
-    })
-    if chart_tag then chart_tag.destroy() end
-    return nil, ErrorHandler.error(
-      ErrorHandler.ERROR_TYPES.POSITION_INVALID,
-      "This location cannot be tagged. Try again or increase your teleport radius in settings.",
-      { position = chart_tag_spec.position }
-    )
-  end
-  
-  -- Final validation that chart tag was created successfully
-  if not chart_tag or not chart_tag.valid then
-    ErrorHandler.warn_log("Chart tag creation succeeded but tag is invalid", {
-      chart_tag_exists = chart_tag ~= nil,
-      position = chart_tag_spec.position
-    })
-    return nil, ErrorHandler.error(
-      ErrorHandler.ERROR_TYPES.CHART_TAG_FAILED,
-      "This location cannot be tagged. Try again or increase your teleport radius in settings.",
-      { position = chart_tag_spec.position }
-    )
-  end
-  
-  ErrorHandler.debug_log("Chart tag created and validated successfully")
-  return chart_tag, ErrorHandler.success()
-end
-
---- Validate and prepare context for position normalization
----@param player LuaPlayer
----@param intended_gps string
----@return table?, ErrorResult
-local function validate_and_prepare_context(player, intended_gps)
-  ErrorHandler.debug_log("Validating context for position normalization", {
-    player_name = player and player.name,
-    intended_gps = intended_gps
-  })
-  
-  if not player or not intended_gps or intended_gps == "" then
-    return nil, ErrorHandler.error(
-      ErrorHandler.ERROR_TYPES.VALIDATION_FAILED,
-      "Invalid player or GPS string provided",
-      { player_valid = player ~= nil, gps = intended_gps }
-    )
-  end
-
-  local landing_position = map_position_from_gps(intended_gps)
-  if not landing_position then
-    return nil, ErrorHandler.error(
-      ErrorHandler.ERROR_TYPES.GPS_PARSE_FAILED,
-      "Could not parse GPS coordinates",
-      { intended_gps = intended_gps }
-    )
-  end
-
-  local search_radius = Settings.getPlayerSettings(player).teleport_radius
-  
-  local context = {
-    player = player,
-    intended_gps = intended_gps,
-    landing_position = landing_position,
-    search_radius = search_radius
-  }
-  
-  ErrorHandler.debug_log("Context validation successful", context)
-  return context, ErrorHandler.success()
-end
-
---- Find exact matches for GPS position (tag and chart_tag)
----@param context table
----@param callbacks table
----@return table?, table?, string, boolean, ErrorResult
-local function find_exact_matches(context, callbacks)
-  ErrorHandler.debug_log("Searching for exact matches", {
-    intended_gps = context.intended_gps
-  })
-  
-  local tag = callbacks.get_tag_by_gps_func and callbacks.get_tag_by_gps_func(context.intended_gps) or nil
-  local adjusted_gps = context.intended_gps
-  local chart_tag = nil
-  local check_for_grid_snap = true
-
-  -- Search for exact matches first - tag and chart_tag
-  if ValidationPatterns.is_valid_tag(tag) then
-    ErrorHandler.debug_log("Found exact tag match", { tag_gps = tag.gps })
-    chart_tag = ValidationPatterns.is_valid_chart_tag(tag.chart_tag) and tag.chart_tag or nil
-    adjusted_gps = tag.gps
-    check_for_grid_snap = false
-  else
-    -- there is no tag so try to find a matching chart_tag in storage
-    chart_tag = callbacks.get_chart_tag_by_gps_func and callbacks.get_chart_tag_by_gps_func(context.intended_gps) or nil
-    if ValidationPatterns.is_valid_chart_tag(chart_tag) then
-      ErrorHandler.debug_log("Found exact chart_tag match", { 
-        chart_tag_position = chart_tag.position 
-      })
-      adjusted_gps = gps_from_map_position(chart_tag.position, context.player.surface.index)
-      check_for_grid_snap = true
-    end
-  end
-  
-  return tag, chart_tag, adjusted_gps, check_for_grid_snap, ErrorHandler.success()
-end
-
---- Find nearby matches within search radius
----@param context table
----@param callbacks table
----@param tag table?
----@param chart_tag LuaCustomChartTag?
----@param adjusted_gps string
----@param check_for_grid_snap boolean
----@return table?, table?, string, boolean, ErrorResult
-local function find_nearby_matches(context, callbacks, tag, chart_tag, adjusted_gps, check_for_grid_snap)
-  -- if we don't have a matching chart_tag, then search for one "in the area"
-  if not ValidationPatterns.is_valid_chart_tag(chart_tag) then
-    ErrorHandler.debug_log("Searching for nearby matches", {
-      search_radius = context.search_radius,
-      landing_position = context.landing_position
-    })
-    
-    -- find a colliding chart_tag
-    local in_area_chart_tag = Helpers.position_has_colliding_tag(context.player, context.landing_position, context.search_radius)
-
-    if ValidationPatterns.is_valid_chart_tag(in_area_chart_tag) then
-      local in_area_gps = gps_from_map_position(in_area_chart_tag.position, context.player.surface.index)
-      ErrorHandler.debug_log("Found nearby chart tag", {
-        in_area_gps = in_area_gps,
-        distance_from_intended = math.sqrt(
-          (in_area_chart_tag.position.x - context.landing_position.x)^2 + 
-          (in_area_chart_tag.position.y - context.landing_position.y)^2
-        )
-      })
-      
-      -- if found then see if it has a matching tag
-      local in_area_tag = callbacks.get_tag_by_gps_func and callbacks.get_tag_by_gps_func(in_area_gps) or nil
-
-      if ValidationPatterns.is_valid_tag(in_area_tag) then
-        ErrorHandler.debug_log("Nearby chart tag has matching tag", { tag_gps = in_area_tag.gps })
-        tag = in_area_tag
-        chart_tag = ValidationPatterns.is_valid_chart_tag(in_area_tag.chart_tag) and in_area_tag.chart_tag or nil
-        adjusted_gps = in_area_tag.gps
-        check_for_grid_snap = chart_tag == nil
-      else
-        ErrorHandler.debug_log("Nearby chart tag has no matching tag")
-        tag = nil
-        chart_tag = ValidationPatterns.is_valid_chart_tag(in_area_chart_tag) and in_area_chart_tag or nil
-        check_for_grid_snap = true
-      end
-    else
-      ErrorHandler.debug_log("No nearby chart tags found")
-    end
-  end
-  
-  return tag, chart_tag, adjusted_gps, check_for_grid_snap, ErrorHandler.success()
-end
-
---- Handle missing or invalid chart tags by creating new ones or aligning positions
----@param context table
----@param tag table?
----@param chart_tag LuaCustomChartTag?
----@return table?, LuaCustomChartTag?, string, ErrorResult
-local function handle_grid_snap_requirements(context, tag, chart_tag)
-  ErrorHandler.debug_log("Handling grid snap requirements", {
-    has_tag = tag ~= nil,
-    has_chart_tag = chart_tag ~= nil,
-    chart_tag_valid = chart_tag and chart_tag.valid
-  })
-  
-  -- if we have a tag and that tag.chart_tag is nil or not valid
-  -- then create a new chart_tag to use, Use the tag's gps
-  if tag and (not chart_tag or (chart_tag and not chart_tag.valid)) then
-    ErrorHandler.debug_log("Creating new chart tag for existing tag")
-    
-    local chart_tag_spec = {
-      position = map_position_from_gps(tag.gps),
-      icon = {},
-      text = "tag gps: " .. tag.gps,
-      last_user = context.player.name
-    }
-
-    local new_chart_tag, result = create_and_validate_chart_tag(context.player, chart_tag_spec)
-    if not result.success then
-      return tag, chart_tag, context.intended_gps, result
-    end
-
-    -- Update the tag's chart_tag reference
-    tag.chart_tag = new_chart_tag
-    chart_tag = new_chart_tag
-    
-    local adjusted_gps = gps_from_map_position(chart_tag.position, context.player.surface.index)
-    ErrorHandler.debug_log("Successfully created chart tag for tag", { adjusted_gps = adjusted_gps })
-    return tag, chart_tag, adjusted_gps, ErrorHandler.success()
-    
-  elseif chart_tag and chart_tag.valid then
-    -- mainly we just want to get rid of any possible decimal values in the gps
-    if not basic_helpers.is_whole_number(chart_tag.position.x) or not basic_helpers.is_whole_number(chart_tag.position.y) then
-      ErrorHandler.debug_log("Aligning chart tag to whole number coordinates", {
-        current_position = chart_tag.position
-      })
-      
-      local x = basic_helpers.normalize_index(chart_tag.position.x)
-      local y = basic_helpers.normalize_index(chart_tag.position.y)
-      
-      local rehomed_chart_tag = Tag.rehome_chart_tag(context.player, chart_tag,
-        gps_from_map_position({ x = x, y = y }, context.player.surface.index))
-      if not rehomed_chart_tag then
-        return tag, chart_tag, context.intended_gps, ErrorHandler.error(
-          ErrorHandler.ERROR_TYPES.CHART_TAG_FAILED,
-          "This location cannot be tagged. Try again or increase your teleport radius in settings.",
-          { original_position = chart_tag.position, target_position = { x = x, y = y } }
-        )
-      end
-      chart_tag = rehomed_chart_tag
-      ErrorHandler.debug_log("Successfully aligned chart tag position")
-    end
-
-    -- we now have an aligned chart_tag
-    local adjusted_gps = gps_from_map_position(chart_tag.position, context.player.surface.index)
-    return tag, chart_tag, adjusted_gps, ErrorHandler.success()
-    
-  else
-    -- we have no tag and no chart_tag
-    -- try to create a temp_chart_tag at the intended location
-    ErrorHandler.debug_log("Creating temporary chart tag for position validation")
-    
-    local chart_tag_spec = {
-      position = map_position_from_gps(context.intended_gps),
-      icon = {},
-      text = "tag gps: " .. context.intended_gps,
-      last_user = context.player.name
-    }
-
-    local temp_chart_tag, result = create_and_validate_chart_tag(context.player, chart_tag_spec)
-    if not result.success then
-      return nil, nil, context.intended_gps, result
-    end
-
-    local adjusted_gps = gps_from_map_position(temp_chart_tag.position, context.player.surface.index)
-    -- destroy the temp_chart_tag - it will ultimately be created by the tag editor
-    temp_chart_tag.destroy()
-    
-    ErrorHandler.debug_log("Temporary chart tag validation successful", { adjusted_gps = adjusted_gps })
-    return nil, nil, adjusted_gps, ErrorHandler.success()
-  end
-end
-
---- Get final position data including player favorites
----@param context table
----@param adjusted_gps string
----@param tag table?
----@param chart_tag LuaCustomChartTag?
----@param callbacks table
----@return MapPosition?, table?, LuaCustomChartTag?, table?, ErrorResult
-local function finalize_position_data(context, adjusted_gps, tag, chart_tag, callbacks)
-  ErrorHandler.debug_log("Finalizing position data", {
-    adjusted_gps = adjusted_gps,
-    has_tag = tag ~= nil,
-    has_chart_tag = chart_tag ~= nil
-  })
-  
-  -- get player favorite if any
-  local matching_player_favorite = callbacks.is_player_favorite_func and 
-    callbacks.is_player_favorite_func(context.player, adjusted_gps) or nil
-
-  local adjusted_pos = map_position_from_gps(adjusted_gps)
-  
-  if matching_player_favorite then
-    ErrorHandler.debug_log("Found matching player favorite")
-  end
-  
-  ErrorHandler.debug_log("Position normalization completed successfully", {
-    final_position = adjusted_pos,
-    final_gps = adjusted_gps
-  })
-  
-  return adjusted_pos, tag, chart_tag, matching_player_favorite, ErrorHandler.success()
-end
-
+-- Export public functions
 return {
   BLANK_GPS = BLANK_GPS,
   parse_gps_string = parse_gps_string,
@@ -815,30 +546,10 @@ return {
   normalize_landing_position_with_cache = normalize_landing_position_with_cache,
   parse_and_normalize_gps = parse_and_normalize_gps,
   ValidationPatterns = ValidationPatterns,
-  --- Create-then-validate pattern for chart tags
-  --- This pattern is necessary because Factorio's API doesn't provide comprehensive
-  --- validation without actually creating the chart tag. Our position_can_be_tagged()
-  --- covers common cases, but the API may have additional internal restrictions.
-  --- See notes/factorio_api_validation_gaps.md for detailed rationale.
+  -- Helper functions for testing/external use
   create_and_validate_chart_tag = create_and_validate_chart_tag,
-  --- Validate and prepare context for position normalization
-  ---@param player LuaPlayer
-  ---@param intended_gps string
-  ---@return table?, ErrorResult
   validate_and_prepare_context = validate_and_prepare_context,
-  --- Find exact matches for GPS position (tag and chart_tag)
-  ---@param context table
-  ---@param callbacks table
-  ---@return table?, table?, string, boolean, ErrorResult
   find_exact_matches = find_exact_matches,
-  --- Find nearby matches within search radius
-  ---@param context table
-  ---@param callbacks table
-  ---@param tag table?
-  ---@param chart_tag LuaCustomChartTag?
-  ---@param adjusted_gps string
-  ---@param check_for_grid_snap boolean
-  ---@return table?, table?, string, boolean, ErrorResult
   find_nearby_matches = find_nearby_matches,
   handle_grid_snap_requirements = handle_grid_snap_requirements,
   finalize_position_data = finalize_position_data
