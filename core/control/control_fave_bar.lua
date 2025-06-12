@@ -77,12 +77,17 @@ local function reorder_favorites(player, favorites, drag_index, slot)
 end
 
 ---@param player LuaPlayer
----@param fav table
-local function teleport_to_favorite(player, fav)
+---@param fav Favorite
+local function teleport_to_favorite(player, fav)  -- Check if we need to add nil check annotation
+  if not fav then return end
+  if not fav.gps then return end
+  
   -- normalize position
+  ---@diagnostic disable-next-line: need-check-nil, undefined-field
   local norm_position = gps_helpers.normalize_landing_position_with_cache(player, fav.gps, Cache)
   if norm_position then
     Helpers.safe_teleport(player, norm_position)
+    ---@diagnostic disable-next-line: need-check-nil
     Helpers.player_print(player, lstr("tf-gui.teleported_to", player.name, fav.gps))
   else
     Helpers.player_print(player, lstr("tf-gui.teleport_failed"))
@@ -103,10 +108,9 @@ local function open_tag_editor_from_favorite(player, favorite)
       chart_tag = favorite.chart_tag,
       error_message = ""
     }
-  end
-  -- Persist gps in tag_editor_data
+  end  -- Persist gps in tag_editor_data
   Cache.set_tag_editor_data(player, tag_data)
-  tag_editor.build(player, tag_data)
+  tag_editor.build(player)
   return
 end
 

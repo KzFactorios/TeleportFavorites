@@ -32,21 +32,21 @@ local Cache = require("core.cache.cache")
 --- @field player LuaPlayer
 --- @field player_index uint
 --- @field surface_index uint
---- @field favorites Favorite[]
+--- @field favorites (Favorite?)[]
 local PlayerFavorites = {}
 PlayerFavorites.__index = PlayerFavorites
 
 
 --- Get a favorite by GPS (O(1) lookup)
 ---@param gps string
----@return Favorite|nil
+---@return Favorite?
 function PlayerFavorites:get_favorite_by_gps(gps)
   return Helpers.find_by_predicate(self.favorites, function(v) return v.gps == gps end) or nil
 end
 
 --- Add a favorite GPS to the first available slot. Update matched Tag and storage
 ---@param gps string
----@return Favorite|nil
+---@return Favorite?
 function PlayerFavorites:add_favorite(gps)
   if not gps or type(gps) ~= "string" or gps == "" then return nil end
 

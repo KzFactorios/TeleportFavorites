@@ -50,7 +50,7 @@ local basic_helpers = require("core.utils.basic_helpers")
 local FavoriteUtils = require("core.favorite.favorite")
 local Constants = require("constants")
 local GPSParser = require("core.utils.gps_parser")
-local player_favorites = require("core.favorite.player_favorites")
+-- Removed player_favorites to break circular dependency - it's not used in this module
 
 
 --- Persistent and runtime cache management for TeleportFavorites mod.
