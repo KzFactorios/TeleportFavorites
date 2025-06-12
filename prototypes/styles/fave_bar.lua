@@ -3,6 +3,8 @@
 Custom styles for the Favorites Bar GUI (fave_bar)
 ]]
 
+-- 'data' is a global provided by Factorio during mod loading
+---@diagnostic disable-next-line: undefined-global
 local gui_style = data.raw["gui-style"].default
 
 

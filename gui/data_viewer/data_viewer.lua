@@ -1,4 +1,4 @@
----@diagnostic disable: undefined-global
+---@diagnostic disable: undefined-global, missing-fields, param-type-mismatch, assign-type-mismatch, need-check-nil
 --[[
 TeleportFavorites Factorio Mod - Data Viewer GUI
 ------------------------------------------------
@@ -21,7 +21,6 @@ Functions:
 --]]
 
 local GuiBase = require("gui.gui_base")
-local _Constants = require("constants")
 local Cache = require("core.cache.cache")
 local Lookups = require("core.cache.lookups")
 local Helpers = require("core.utils.helpers_suite")
@@ -333,9 +332,16 @@ function data_viewer.build(player, parent, state)
   lbl2.style.font_color = { r = 1, g = 1, b = 1 } -- White for closing brace
   lbl2.style.top_margin = 2
   -- REMOVE TEST LABEL: Remove visible test label for Data Viewer GUI
-  -- caption = "[TEST] Data Viewer GUI is visible!",
-  -- Always return the frame so the GUI is built
+  -- caption = "[TEST] Data Viewer GUI is visible!",  -- Always return the frame so the GUI is built
   return frame
+end
+
+--- Show a message when data viewer is refreshed
+---@param player LuaPlayer
+function data_viewer.show_refresh_flying_text(player)
+  if not player or not player.valid then return end
+  
+  player.print({"tf-gui.data_viewer_refreshed"})
 end
 
 return data_viewer

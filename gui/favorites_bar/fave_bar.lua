@@ -27,7 +27,7 @@ Features:
 - Renders a horizontal bar of favorite slots, each as an icon button with tooltip and slot number.
 - Handles locked, blank, and overflow slot states with distinct visuals and tooltips.
 - Supports drag-and-drop visuals for slot reordering (Factorio 2.0+).
-- Integrates with PlayerFavorites and Favorite modules for data, and uses shared gui helpers.
+- Integrates with Favorite modules for data, and uses shared gui helpers.
 - Displays error feedback if the number of favorites exceeds the allowed maximum.
 
 Main Function:
@@ -41,7 +41,6 @@ Event handling for slot clicks and drag is managed externally (see control.lua).
 local GuiBase = require("gui.gui_base")
 local Constants = require("constants")
 local FavoriteUtils = require("core.favorite.favorite")
-local PlayerFavorites = require("core.favorite.player_favorites")
 local Helpers = require("core.utils.helpers_suite")
 local Settings = require("settings")
 local Cache = require("core.cache.cache")
@@ -79,17 +78,12 @@ local function get_or_create_gui_flow_from_gui_top(parent)
 end
 
 -- Build the favorites bar to visually match the quickbar top row
-function fave_bar.build_quickbar_style(player, parent)
-  -- Add a horizontal flow to contain the toggle and slots row
+function fave_bar.build_quickbar_style(player, parent)  -- Add a horizontal flow to contain the toggle and slots row
   local bar_flow = parent.add {
     type = "flow",
     name = "fave_bar_flow",
     direction = "horizontal"
   }
-
-  --[[local fave_drag = GuiBase.create_draggable(bar_flow, "fave_bar_draggable")
-  fave_drag.style = "tf_fave_bar_draggable"
-  fave_drag.drag_target = parent]]
 
   -- Add a thin dark background frame for the toggle button
   local toggle_container = bar_flow.add {
@@ -128,7 +122,6 @@ local _fave_bar_building_guard = _G._fave_bar_building_guard or {}
 _G._fave_bar_building_guard = _fave_bar_building_guard
 
 local function set_slot_row_visibility(slots_frame, visibility)
-  print("[TF DEBUG] set_slot_row_visibility called with:", visibility)
   slots_frame.visible = visibility
 end
 
@@ -189,12 +182,14 @@ end
 -- Build a row of favorite slot buttons for the favorites bar
 function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
   drag_index = drag_index or -1
-  local max_slots = Constants.settings.MAX_FAVORITE_SLOTS or 10
-  for i = 1, max_slots do
+  local max_slots = Constants.settings.MAX_FAVORITE_SLOTS or 10  for i = 1, max_slots do
     local fav = pfaves[i]
-    local icon = pfaves[i].icon or nil
+    local icon = nil
+    if fav and fav.icon then
+      icon = fav.icon
+    end
     local tooltip = { "tf-gui.fave_slot_tooltip", i }
-    local style = "tf_slot_button_smallfont"    if fav and not FavoriteUtils.is_blank_favorite(fav) then
+    local style = "tf_slot_button_smallfont"if fav and not FavoriteUtils.is_blank_favorite(fav) then
       if fav.icon and fav.icon ~= "" then
         icon = fav.icon
       else
@@ -220,7 +215,6 @@ function fave_bar.update_slot_row(player, bar_flow)
   for _, child in pairs(bar_flow.children) do
     if child.name == "fave_bar_slots_flow" then
       child.destroy()
-      _G.print("[TF DEBUG] Destroyed fave_bar_slots_flow row.")
     end
   end
   local slots_frame = bar_flow.add {
@@ -231,12 +225,10 @@ function fave_bar.update_slot_row(player, bar_flow)
   }
   local pfaves = Cache.get_player_favorites(player)
   local drag_index = Cache.get_player_data(player).drag_favorite_index or -1
-  local fav_btns = build_favorite_buttons_row(slots_frame, player, pfaves, drag_index)
+  local fav_btns = fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves, drag_index)
   set_slot_row_visibility(slots_frame, true)
-  _G.print("[TF DEBUG] Built new fave_bar_slots_flow row.")
   return fav_btns
 end
 
-fave_bar.update_slot_row = update_slot_row
 fave_bar.get_or_create_gui_flow_from_gui_top = get_or_create_gui_flow_from_gui_top
 return fave_bar

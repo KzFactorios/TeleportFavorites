@@ -1,6 +1,6 @@
 print("[DEBUG] control_fave_bar.lua loaded")
 
----@diagnostic disable: undefined-global
+---@diagnostic disable: undefined-global, assign-type-mismatch, param-type-mismatch
 
 -- control_fave_bar.lua
 -- Handles favorites bar GUI events for TeleportFavorites
@@ -12,6 +12,10 @@ local Cache = require("core.cache.cache")
 local Helpers = require("core.utils.helpers_suite")
 local tag_editor = require("gui.tag_editor.tag_editor")
 local gps_helpers = require("core.utils.gps_helpers")
+
+-- Observer Pattern Integration
+local GuiObserver = require("core.pattern.gui_observer")
+local GuiEventBus = GuiObserver.GuiEventBus
 
 local M = {}
 local script = script
@@ -60,6 +64,15 @@ local function reorder_favorites(player, favorites, drag_index, slot)
     local moved = table.remove(favs, drag_index)
     table.insert(favs, slot, moved)
     favorites:set_favorites(favs)
+    
+    -- Notify observers of favorites reorder
+    GuiEventBus.notify("favorites_reordered", {
+      player = player,
+      from_slot = drag_index,
+      to_slot = slot,
+      type = "favorites_reordered"
+    })
+    
     -- Efficiently update only the slot row, not the whole bar
     local parent = player.gui.top
     local bar_frame = parent and parent.fave_bar_frame

@@ -3,7 +3,7 @@
 --[[
 Centralized GUI style prototypes for TeleportFavorites
 =====================================================
-File: prototypes/styles.lua
+File: prototypes/styles/init.lua
 
 Defines custom GUI styles for use in runtime GUIs, ensuring a consistent, vanilla-aligned look across the mod.
 
@@ -29,9 +29,10 @@ caption_label: Use this style for any other labels in the subheader
 --]]
 
 -- Load GUI styles for each major GUI
-require("prototypes.styles_fave_bar")
-require("prototypes.styles_tag_editor")
-require("prototypes.styles_data_viewer")
+require("prototypes.styles.fave_bar")
+require("prototypes.styles.tag_editor")
+require("prototypes.styles.data_viewer")
+require("prototypes.styles.debugger")
 local Constants = require("constants")
 local Enum = require("prototypes.enums.enum")
 
@@ -78,7 +79,7 @@ end
 
 --- Place all shared/global style definitions below this line ---
 
--- (No GUI-specific styles should be defined here. See prototypes/styles_fave_bar.lua, styles_tag_editor.lua, styles_data_viewer.lua)
+-- (No GUI-specific styles should be defined here. See prototypes/styles/fave_bar.lua, styles/tag_editor.lua, styles/data_viewer.lua)
 
 if not gui_style.tf_titlebar_flow then
   gui_style.tf_titlebar_flow = {

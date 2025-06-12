@@ -157,6 +157,7 @@ end
 - All core logic and helpers must be covered by automated tests. Use the `tests/` directory for all test files. Each core module and helper should have a corresponding test file, and all tests should be automated and cover edge cases and multiplayer scenarios.
 - Edge cases should be examined in all tests where applicable. Multiplayer scenarios must be tested to ensure correctness and robustness.
 - File names in `tests/` should mirror the modules they represent and all test files should end with "_spec". This makes it easy to find and run tests for any given module.
+- **IMPORTANT**: All test files must be placed in the `tests/` directory. Test files should never be placed in the root directory or any other location. See [Test Organization Guidelines](test_organization_guidelines.md) for details.
 - If I delete all the files in the tests folder, do not recreate any tests unless I explicitly ask
 
 ---
@@ -289,3 +290,14 @@ All GUI event handlers:
 - Are robust to multiplayer and hot-reload scenarios.
 
 See each GUI's notes file for details and examples.
+
+## Shell Command Formatting
+
+When writing shell commands in documentation or scripts:
+
+1. **Use PowerShell syntax**: This project is developed on Windows using PowerShell.
+2. **Follow PowerShell command chaining**: Use semicolons (`;`) instead of `&&` for command chaining.
+3. **Use PowerShell path conventions**: Use backslashes (`\`) or forward slashes (`/`) consistently.
+4. **Format multi-line commands properly**: Use backticks for line continuation in PowerShell.
+
+For detailed guidance, refer to [PowerShell Command Format](powershell_command_format.md).

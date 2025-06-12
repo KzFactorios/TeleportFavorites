@@ -3,6 +3,8 @@
 --- Leaving this here to demonstrate that it will not work here due to lifecycle
 -- local Enum = require("prototypes.enums.enum")
 
+-- 'data' is a global provided by Factorio during mod loading
+---@diagnostic disable-next-line: undefined-global
 local gui_style = data.raw["gui-style"].default
 local line_height = 44
 

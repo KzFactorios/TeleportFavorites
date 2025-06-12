@@ -63,6 +63,7 @@ local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local Lookups = require("core.cache.lookups")
 local Cache = require("core.cache.cache")
 local ErrorHandler = require("core.utils.error_handler")
+local TeleportStrategies = require("core.pattern.teleport_strategy")
 
 ---@class Tag
 ---@field gps string # The GPS string (serves as the index)
@@ -170,54 +171,98 @@ function Tag:remove_faved_by_player(player_index)
 end
 
 --- Teleport a player to a position on a surface, with robust checks and error messaging.
+--- Now uses Strategy Pattern for different teleportation scenarios.
+---@param player LuaPlayer
+---@param gps string
+---@param context TeleportContext? Optional context for strategy selection
+---@return string|integer
+function Tag.teleport_player_with_messaging(player, gps, context)
+  ErrorHandler.debug_log("Starting strategy-based teleportation", {
+    player_name = player and player.name,
+    gps = gps,
+    context = context
+  })
+
+  -- Use Strategy Pattern for teleportation
+  local result = TeleportStrategies.TeleportStrategyManager.execute_teleport(player, gps, context)
+  
+  ErrorHandler.debug_log("Strategy-based teleportation completed", {
+    player_name = player and player.name,
+    result = result
+  })
+  
+  return result
+end
+
+--- Legacy teleport function for backward compatibility
+--- Delegates to strategy-based implementation
 ---@param player LuaPlayer
 ---@param gps string
 ---@return string|integer
-function Tag.teleport_player_with_messaging(player, gps)
-  ErrorHandler.debug_log("Starting teleportation", {
+---@deprecated Use Tag.teleport_player_with_messaging(player, gps, context) instead
+function Tag.teleport_player_with_messaging_legacy(player, gps)
+  ErrorHandler.debug_log("Legacy teleportation function called", {
     player_name = player and player.name,
     gps = gps
   })
-
-  if not player or not player.valid then 
-    ErrorHandler.debug_log("Teleport failed: Invalid player")
-    return "Unable to teleport. Player is missing" 
-  end
   
-  if rawget(player, "character") == nil then 
-    ErrorHandler.debug_log("Teleport failed: Player character missing")
-    return "Unable to teleport. Player character is missing" 
-  end
+  return Tag.teleport_player_with_messaging(player, gps, nil)
+end
 
-  local aligned_position = gps_helpers.normalize_landing_position_with_cache(player, gps, Cache)
-  if not aligned_position then
-    ErrorHandler.debug_log("Teleport failed: Unable to normalize landing position")
-    player:print("Unable to normalize landing position")
-    return "Unable to normalize landing position"
-  end
+--- Safe teleportation with enhanced collision detection
+---@param player LuaPlayer
+---@param gps string
+---@param custom_radius number? Custom safety radius
+---@return string|integer
+function Tag.teleport_player_safe(player, gps, custom_radius)
+  ErrorHandler.debug_log("Safe teleportation requested", {
+    player_name = player and player.name,
+    gps = gps,
+    custom_radius = custom_radius
+  })
+  
+  local context = {
+    force_safe = true,
+    custom_radius = custom_radius
+  }
+  
+  return Tag.teleport_player_with_messaging(player, gps, context)
+end
 
-  local teleport_AOK = false
-  local raise_teleported = true
+--- Precision teleportation for exact positioning
+---@param player LuaPlayer
+---@param gps string
+---@return string|integer
+function Tag.teleport_player_precise(player, gps)
+  ErrorHandler.debug_log("Precision teleportation requested", {
+    player_name = player and player.name,
+    gps = gps
+  })
+  
+  local context = {
+    precision_mode = true
+  }
+  
+  return Tag.teleport_player_with_messaging(player, gps, context)
+end
 
-  if player.driving and player.vehicle then
-    if _G.defines and player.riding_state and player.riding_state ~= _G.defines.riding.acceleration.nothing then
-      ErrorHandler.debug_log("Teleport blocked: Player is driving")
-      player:print("Are you crazy? Trying to teleport while driving is strictly prohibited.")
-      return "Teleport blocked: Player is driving"
-    end
-    player.vehicle:teleport(aligned_position, player.surface, not raise_teleported)
-    teleport_AOK = player:teleport(aligned_position, player.surface, raise_teleported)
-  else
-    teleport_AOK = player:teleport(aligned_position, player.surface, raise_teleported)
-  end
-
-  if teleport_AOK then 
-    ErrorHandler.debug_log("Teleportation successful")
-    return Constants.enums.return_state.SUCCESS 
-  end
-
-  ErrorHandler.debug_log("Teleport failed: Unforeseen circumstances")
-  return "We were unable to perform the teleport due to unforeseen circumstances"
+--- Vehicle-aware teleportation
+---@param player LuaPlayer
+---@param gps string
+---@param allow_vehicle boolean Whether to allow vehicle teleportation
+---@return string|integer
+function Tag.teleport_player_vehicle_aware(player, gps, allow_vehicle)
+  ErrorHandler.debug_log("Vehicle-aware teleportation requested", {
+    player_name = player and player.name,
+    gps = gps,
+    allow_vehicle = allow_vehicle
+  })
+  
+  local context = {
+    allow_vehicle = allow_vehicle
+  }
+  
+  return Tag.teleport_player_with_messaging(player, gps, context)
 end
 
 --- Unlink and destroy a tag and its associated chart_tag, and remove from all collections.

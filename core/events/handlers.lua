@@ -150,12 +150,11 @@ function handlers.on_teleport_to_favorite(event, i)
     player:print({ "tf-handler.teleport-favorite-no-location" })
     return
   end
-
   local favorite = favorites[i]
   if type(favorite) == "table" and favorite.gps ~= nil then
     ---@diagnostic disable-next-line: param-type-mismatch
     local result = Tag.teleport_player_with_messaging(player, favorite.gps)
-    if result ~= Constants.enums.return_state.SUCCESS then
+    if result ~= Enum.ReturnStateEnum.SUCCESS then
       ---@diagnostic disable-next-line: param-type-mismatch
       player:print(result)
     end

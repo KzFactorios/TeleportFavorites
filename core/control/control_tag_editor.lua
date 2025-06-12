@@ -1,4 +1,4 @@
----@diagnostic disable: undefined-global
+---@diagnostic disable: undefined-global, assign-type-mismatch, param-type-mismatch
 
 -- control_tag_editor.lua
 -- Handles tag editor GUI events for TeleportFavorites
@@ -13,6 +13,10 @@ local PlayerFavorites = require("core.favorite.player_favorites")
 local gps_parser = require("core.utils.gps_parser")
 local Constants = require("constants")
 local Enum = require("prototypes.enums.enum")
+
+-- Observer Pattern Integration
+local GuiObserver = require("core.pattern.gui_observer")
+local GuiEventBus = GuiObserver.GuiEventBus
 
 local M = {}
 
@@ -31,10 +35,30 @@ end
 
 local function update_favorite_state(player, tag, is_favorite)
   Helpers.update_favorite_state(player, tag, is_favorite, PlayerFavorites)
+  
+  -- Notify observers of favorite change
+  GuiEventBus.notify(is_favorite and "favorite_added" or "favorite_removed", {
+    player = player,
+    gps = tag.gps,
+    tag = tag,
+    type = is_favorite and "favorite_added" or "favorite_removed"
+  })
 end
 
 local function update_tag_chart_fields(tag, text, icon, player)
   Helpers.update_tag_chart_fields(tag, text, icon, player)
+  
+  -- Notify observers of tag modification
+  GuiEventBus.notify("tag_modified", {
+    player = player,
+    gps = tag.gps,
+    tag = tag,
+    type = "tag_modified",
+    changes = {
+      text = text,
+      icon = icon
+    }
+  })
 end
 
 local function update_tag_position(tag, pos, gps)
@@ -59,11 +83,22 @@ local function handle_confirm_btn(player, element, tag_data)
   local surface_index = player.surface.index
   local tags = Cache.get_surface_tags(surface_index)
   local tag = tag_data.tag or {}
+  local is_new_tag = not tags[tag.gps]
 
   update_tag_chart_fields(tag, text, icon, player)
   update_favorite_state(player, tag, is_favorite)
   
   tags[tag.gps] = tag
+
+  -- Notify observers of tag creation or modification
+  local event_type = is_new_tag and "tag_created" or "tag_modified"
+  GuiEventBus.notify(event_type, {
+    player = player,
+    gps = tag.gps,
+    tag = tag,
+    type = event_type,
+    is_new = is_new_tag
+  })
 
   clear_and_close_tag_editor(player, element)
   Helpers.player_print(player, { "tf-gui.tag_editor_confirmed" })
@@ -120,22 +155,29 @@ local function handle_move_btn(player, tag_data, script)
 end
 
 local function handle_favorite_btn(player, tag_data)
-  if log then log("[TeleportFavorites] handle_favorite_btn called for player: " .. tostring(player and player.name)) end
   if not tag_data then
-    if log then log("[TeleportFavorites] tag_data is nil, initializing empty") end
     tag_data = {}
   end
   -- Ensure is_favorite is a boolean
   if type(tag_data.is_favorite) ~= "boolean" then
-    if log then log("[TeleportFavorites] is_favorite not boolean, setting to false") end
     tag_data.is_favorite = false
   end
   local old_state = tag_data.is_favorite
   tag_data.is_favorite = not tag_data.is_favorite
-  if log then log("[TeleportFavorites] Toggled is_favorite from " .. tostring(old_state) .. " to " .. tostring(tag_data.is_favorite)) end
+  
   -- Update the tag_data and refresh the UI
   Cache.set_tag_editor_data(player, tag_data)
   refresh_tag_editor(player, tag_data)
+  
+  -- Notify observers of favorite toggle
+  if tag_data.tag then
+    GuiEventBus.notify(tag_data.is_favorite and "favorite_added" or "favorite_removed", {
+      player = player,
+      gps = tag_data.tag.gps or tag_data.gps,
+      tag = tag_data.tag,
+      type = tag_data.is_favorite and "favorite_added" or "favorite_removed"
+    })
+  end
 end
 
 local function handle_delete_btn(player, tag_data, element)
@@ -158,36 +200,39 @@ local function handle_delete_confirm(player, tag_data)
   -- Validate deletion is still allowed (ownership + no other favorites)
   local can_delete = false
   if tag.chart_tag then
-    local is_owner = (not tag.chart_tag.last_user or tag.chart_tag.last_user == "" or tag.chart_tag.last_user == player.name)
-    can_delete = is_owner
-    if can_delete and tag.faved_by_players then
-      for _, player_index in ipairs(tag.faved_by_players) do
-        if player_index ~= player.index then
-          can_delete = false
-          break
-        end
-      end
-    end
+    local last_user = tag.chart_tag.last_user or ""
+    local is_owner = (last_user == "" or last_user == player.name)
+    local has_other_favorites = #(tag.faved_by_players or {}) > 1
+    can_delete = is_owner and not has_other_favorites
+  else
+    can_delete = true
   end
-
   if not can_delete then
-    -- Show error and keep tag editor open, close confirmation dialog
     Helpers.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
-    tag_data.error_message = "You no longer have permission to delete this tag."
-    refresh_tag_editor(player, tag_data)
+    show_tag_editor_error(player, tag_data,
+      "The spirits whisper: others claim this place, or you lack dominion.")
     return
   end
 
-  -- Execute deletion using existing infrastructure
+  -- Store tag info for observers before deletion
+  local tag_gps = tag.gps
+
+  -- Execute deletion
   local tag_destroy_helper = require("core.tag.tag_destroy_helper")
   tag_destroy_helper.destroy_tag_and_chart_tag(tag, tag.chart_tag)
-  
-  -- Clear tag_editor_data and close both dialogs
-  Cache.set_tag_editor_data(player, nil)
+
+  -- Notify observers of tag deletion
+  GuiEventBus.notify("tag_deleted", {
+    player = player,
+    gps = tag_gps,
+    type = "tag_deleted",
+    deleted_by = player.name
+  })
+
+  -- Close both dialogs
   Helpers.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
   close_tag_editor(player)
-  
-  Helpers.player_print(player, { "tf-gui.tag_deleted_successfully" })
+  Helpers.player_print(player, { "tf-gui.tag_deleted" })
 end
 
 local function handle_delete_cancel(player, tag_data)

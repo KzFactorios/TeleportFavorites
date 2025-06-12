@@ -56,9 +56,8 @@ local function validate_and_prepare_context(player, intended_gps)
       { intended_gps = intended_gps }
     )
   end
-
   local player_settings = Settings:getPlayerSettings(player)
-  local search_radius = player_settings.tp_radius_tiles or Constants.settings.DEFAULT_TELEPORT_RADIUS_TILES
+  local search_radius = player_settings.teleport_radius or Constants.settings.TELEPORT_RADIUS_DEFAULT
   
   local context = {
     player = player,

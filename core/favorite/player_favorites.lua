@@ -34,6 +34,15 @@ local Helpers = require("core.utils.helpers_suite")
 local basic_helpers = require("core.utils.basic_helpers")
 local Cache = require("core.cache.cache")
 
+-- Observer Pattern Integration
+local function notify_observers_safe(event_type, data)
+  -- Safe notification that handles module load order
+  local success, gui_observer = pcall(require, "core.pattern.gui_observer")
+  if success and gui_observer.GuiEventBus then
+    gui_observer.GuiEventBus.notify(event_type, data)
+  end
+end
+
 --- PlayerFavorites class for managing a player's favorite collection
 --- @class PlayerFavorites
 --- @field player LuaPlayer
@@ -71,6 +80,7 @@ end
 local function update_tag_favorites(tag, player_index, action)
   if not tag or not tag.faved_by_players then return end
 
+  ---@type integer?
   local found_index = nil
   for i, pid in ipairs(tag.faved_by_players) do
     if pid == player_index then
@@ -83,7 +93,7 @@ local function update_tag_favorites(tag, player_index, action)
     if not found_index then
       table.insert(tag.faved_by_players, player_index)
     end
-  elseif action == "remove" then
+  else -- action == "remove"
     if found_index then
       table.remove(tag.faved_by_players, found_index)
     end
@@ -219,10 +229,16 @@ function PlayerFavorites:add_favorite(gps)
   if existing_tag then
     update_tag_favorites(existing_tag, self.player_index, "add")
   end
-
   -- Update favorites and storage
   self.favorites[slot_idx] = new_favorite
   sync_to_storage(self)
+
+  -- Notify observers
+  notify_observers_safe("favorite_added", {
+    player_index = self.player_index,
+    favorite = new_favorite,
+    slot_index = slot_idx
+  })
 
   return new_favorite, nil
 end
@@ -245,10 +261,16 @@ function PlayerFavorites:remove_favorite(gps)
   if existing_tag then
     update_tag_favorites(existing_tag, self.player_index, "remove")
   end
-
   -- Replace with blank favorite
   self.favorites[slot_idx] = FavoriteUtils.get_blank_favorite()
   sync_to_storage(self)
+
+  -- Notify observers
+  notify_observers_safe("favorite_removed", {
+    player_index = self.player_index,
+    gps = gps,
+    slot_index = slot_idx
+  })
 
   return true, nil
 end

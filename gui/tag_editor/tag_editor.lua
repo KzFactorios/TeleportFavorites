@@ -35,8 +35,6 @@ local Cache = require("core.cache.cache")
 
 local tag_editor = {}
 
-local factorio_label_color = { r = 1, b = 0.79, g = .93, a = 1 } -- rgb(244,222,186) rbg = { r = 0.96, b = 0.73, g = .87, a = 1 } - needs to be lighter
-
 -- Sets up the tag editor UI, including all controls and their state
 -- This function now only sets state, tooltips, and styles. It does NOT create any elements.
 local function setup_tag_editor_ui(refs, tag_data, player)
@@ -77,13 +75,16 @@ local function setup_tag_editor_ui(refs, tag_data, player)
         Helpers.set_button_state(refs.move_btn, can_move)
     end    if refs.delete_btn then Helpers.set_button_state(refs.delete_btn, can_delete) end    -- Confirm button enabled only if text input has content or icon is selected
     local has_text = tag_data.text and tag_data.text ~= ""
-    local has_icon = tag_data.icon and tag_data.icon ~= "" and (tag_data.icon.name or tag_data.icon.type)
+    local function has_valid_icon(icon)
+        if not icon or icon == "" then return false end
+        if type(icon) == "string" then return true end
+        if type(icon) == "table" then return icon.name or icon.type end
+        return false
+    end
+    local has_icon = has_valid_icon(tag_data.icon)
     local can_confirm = has_text or has_icon
-    if refs.confirm_btn then Helpers.set_button_state(refs.confirm_btn, can_confirm) end
-
-    -- Button style/tooltips
+    if refs.confirm_btn then Helpers.set_button_state(refs.confirm_btn, can_confirm) end    -- Button style/tooltips
     if refs.icon_btn then refs.icon_btn.tooltip = { "tf-gui.icon_tooltip" } end
-    if refs.text_input then refs.text_input.tooltip = { "tf-gui.text_tooltip" } end
     if refs.move_btn then refs.move_btn.tooltip = { "tf-gui.move_tooltip" } end
     if refs.delete_btn then refs.delete_btn.tooltip = { "tf-gui.delete_tooltip" } end
     if refs.teleport_btn then refs.teleport_btn.tooltip = { "tf-gui.teleport_tooltip" } end
@@ -191,7 +192,7 @@ end
 
 local function build_error_row(parent, tag_data)
     local error_row_frame, error_label = nil, nil
-    if tag_data and tag_data.error_message and tag_data.error_message ~= nil and BasicHelpers.trim(tag_data.error_message) ~= "" then
+    if tag_data and tag_data.error_message and BasicHelpers.trim(tag_data.error_message) ~= "" then
         error_row_frame = GuiBase.create_frame(parent, "tag_editor_error_row_frame", "vertical",
             "tf_tag_editor_error_row_frame")
         error_label = GuiBase.create_label(error_row_frame, "error_row_error_message", tag_data.error_message or "",
@@ -304,7 +305,13 @@ function tag_editor.update_confirm_button_state(player, tag_data)
     
     -- Check if text input has content or icon is selected
     local has_text = tag_data.text and tag_data.text ~= ""
-    local has_icon = tag_data.icon and tag_data.icon ~= "" and (tag_data.icon.name or tag_data.icon.type)
+    local function has_valid_icon(icon)
+        if not icon or icon == "" then return false end
+        if type(icon) == "string" then return true end
+        if type(icon) == "table" then return icon.name or icon.type end
+        return false
+    end
+    local has_icon = has_valid_icon(tag_data.icon)
     local can_confirm = has_text or has_icon
     
     Helpers.set_button_state(confirm_btn, can_confirm)

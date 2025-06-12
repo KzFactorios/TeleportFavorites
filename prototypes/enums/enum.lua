@@ -3,15 +3,19 @@
 ---@field SpriteEnum SpriteEnum
 ---@field ColorEnum table
 ---@field GuiEnum table
+---@field ReturnStateEnum table
+---@field EventEnum table
 local Enum = {}
 
 Enum.SpriteEnum = require("prototypes.enums.sprite_enum")
 Enum.ColorEnum = require("prototypes.enums.color_enum")
 Enum.GuiEnum = require("prototypes.enums.gui_enum")
+Enum.ReturnStateEnum = require("prototypes.enums.return_state_enum")
+Enum.EventEnum = require("prototypes.enums.event_enum")
 
 
 --- Generic: Given a value to match and an enum table, return the key for the matching value (or nil if not found)
---- @return COLOR_ENUM|GUI_FRAME|GUI_ELEMENT|SPRITE_ENUM|nil
+--- @return string|nil
 function Enum.get_enum_by_value(value, enum)
   if type(enum) ~= "table" then return nil end
   for k, v in pairs(enum) do

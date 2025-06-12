@@ -16,9 +16,11 @@ API:
 - GuiBase.create_icon_button(parent, name, sprite, tooltip, style, enabled): Create a sprite button with icon and tooltip.
 - GuiBase.create_label(parent, name, caption, style): Create a label with optional style.
 - GuiBase.create_textfield(parent, name, text, style): Create a textfield with optional style.
+- GuiBase.create_textbox(parent, name, text, style, icon_selector): Create a text-box with optional icon selector.
 - GuiBase.create_hflow(parent, name, style): Create a horizontal flow container.
 - GuiBase.create_vflow(parent, name, style): Create a vertical flow container.
-- GuiBase.create_titlebar(parent, title, close_callback): Create a draggable titlebar with optional close button.
+- GuiBase.create_draggable(parent, name): Create a draggable space widget.
+- GuiBase.create_titlebar(parent, name, close_button_name): Create a draggable titlebar with optional close button.
 
 Each function is annotated with argument and return value details.
 --]]
@@ -41,12 +43,13 @@ function GuiBase.create_element(element_type, parent, opts)
     end
     if opts.type then opts.type = nil end --- Prevent accidental overwrite
     local params = { type = element_type }
-    for k, v in pairs(opts) do params[k] = v end
-    -- Defensive: ensure name is a string
+    for k, v in pairs(opts) do params[k] = v end    -- Defensive: ensure name is a string
     if params.name == nil or type(params.name) ~= "string" or params.name == "" then
-        params.name = element_type .. "_unnamed_" .. tostring(math.random(100000, 999999))
-        log("[TF DEBUG] unnamed element for " .. element_type)
-    end    ---@diagnostic disable-next-line
+        -- Use deterministic naming based on element type and current tick for reproducibility
+        local fallback_id = (game and game.tick) or os.time() or 0
+        params.name = element_type .. "_unnamed_" .. tostring(fallback_id)
+        log("[TF DEBUG] unnamed element for " .. element_type .. " assigned name: " .. params.name)
+    end---@diagnostic disable-next-line
     local elem = parent.add(params)
     -- Handle style assignment: if it's a string, we can't assign it directly to elem.style
     -- The style should be set during creation in the params table
@@ -87,11 +90,30 @@ end
 --- @return LuaGuiElement: The created label
 function GuiBase.create_label(parent, name, caption, style)
     local opts = { name = name, caption = caption }
-    if style and not (string.find(style, "button")) then
+    if style then
         opts.style = style
     end
     local elem = GuiBase.create_element('label', parent, opts)
     return elem
+end
+
+--- Create a textfield with optional style.
+--- @param parent LuaGuiElement: Parent element
+--- @param name string: Name of the textfield
+--- @param text? string: Initial text (default: "")
+--- @param style? string|nil: Optional style name
+--- @return LuaGuiElement: The created textfield
+function GuiBase.create_textfield(parent, name, text, style)
+    local opts = {
+        name = name,
+        text = text or "",
+        style = style
+    }
+    -- Remove nil values
+    for k, v in pairs(opts) do
+        if v == nil then opts[k] = nil end
+    end
+    return GuiBase.create_element('textfield', parent, opts)
 end
 
 --- Create a horizontal flow container.
@@ -125,8 +147,8 @@ function GuiBase.create_draggable(parent, name)
         error("GuiBase.create_draggable: failed to create draggable space")
     end    local drag_target = Helpers.get_gui_frame_by_element(parent) or nil
 
-    -- only if the drag_target is a child of player.gui.screen
-    if drag_target and drag_target.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
+    -- Set drag target for any screen-based GUI frame (generalized for reusability)
+    if drag_target and drag_target.parent and drag_target.parent.name == "screen" then
         dragger.drag_target = drag_target
     end
 

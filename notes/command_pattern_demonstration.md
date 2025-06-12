@@ -127,17 +127,22 @@ local success = on_gui_closed_handler.undo_last_gui_close(player)
 
 ## Next Steps for Further Pattern Adoption
 
-### Immediate Opportunities
-1. **Builder Pattern** - Use `gui_builder.lua` for GUI construction
-2. **Observer Pattern** - Implement `gui_observer.lua` for state updates
-3. **Additional Commands** - Create commands for favorite operations
+### Immediate Opportunities (Phase 2)
+1. **Strategy Pattern** - **READY FOR IMPLEMENTATION** 
+   - Complete validation strategies already built (`validation_strategy.lua`)
+   - Clear integration points identified in existing validation code
+   - Non-breaking incremental adoption possible
+   - See: `notes/strategy_pattern_next_phase_plan.md`
 
-### Command Extensions
+2. **Builder Pattern** - Use `gui_builder.lua` for GUI construction
+3. **Observer Pattern** - Implement `gui_observer.lua` for state updates
+
+### Command Extensions (Phase 2 Continuation)
 - `ToggleFavoriteCommand` - Add/remove favorites with undo
 - `UpdateTagCommand` - Tag editing with revert capability
 - `TeleportCommand` - Teleportation with return functionality
 
-### Pattern Integration
+### Pattern Integration (Phase 3)
 - Retrofit existing event handlers to use Command pattern
 - Apply Observer pattern for GUI state synchronization
 - Use Builder pattern for complex GUI hierarchies

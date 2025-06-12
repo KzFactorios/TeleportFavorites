@@ -1,8 +1,8 @@
-
 --[[
 Custom styles for the Data Viewer GUI
 ]]
 
+-- 'data' is a global provided by Factorio during mod loading
 ---@diagnostic disable-next-line: undefined-global
 local gui_style = data.raw["gui-style"].default
 

@@ -51,6 +51,14 @@ local Constants = require("constants")
 local GPSParser = require("core.utils.gps_parser")
 -- Removed player_favorites to break circular dependency - it's not used in this module
 
+-- Observer Pattern Integration
+local function notify_observers_safe(event_type, data)
+  -- Safe notification that handles module load order
+  local success, gui_observer = pcall(require, "core.pattern.gui_observer")
+  if success and gui_observer.GuiEventBus then
+    gui_observer.GuiEventBus.notify(event_type, data)
+  end
+end
 
 --- Persistent and runtime cache management for TeleportFavorites mod.
 ---@class Cache
@@ -121,6 +129,12 @@ function Cache.clear()
       lookups_module.clear_all_caches()
     end
   end
+  
+  -- Notify observers of cache refresh
+  notify_observers_safe("cache_updated", {
+    type = "cache_cleared",
+    timestamp = game and game.tick or 0
+  })
 end
 
 --- Get the mod version from the cache, setting it if not present.
@@ -289,6 +303,14 @@ function Cache.set_player_favorites(player, favorites)
   if not player or not favorites then return end
   local player_data = Cache.get_player_data(player)
   player_data.surfaces[player.surface.index].favorites = favorites
+  
+  -- Notify observers of favorites data change
+  notify_observers_safe("data_refreshed", {
+    player_index = player.index,
+    type = "favorites_updated",
+    surface_index = player.surface.index,
+    favorites_count = #favorites
+  })
 end
 
 --- Get cache statistics for debugging and monitoring
