@@ -15,7 +15,7 @@ REFACTORING COMPLETE (2025-06-11):
 - Standardized validation patterns throughout the module
 - Fixed all compilation errors and type annotation issues
 - Maintained full backward compatibility and functionality
-- Resolved circular dependency issue with gps_helpers module
+- ✅ RESOLVED CIRCULAR DEPENDENCY: Removed gps_helpers → gps_position_normalizer → tag.lua cycle
 
 REFACTORED FUNCTIONS:
 - rehome_chart_tag(): Broken down into 5 helper functions for maintainability
@@ -29,6 +29,12 @@ HELPER FUNCTIONS CREATED:
 3. create_new_chart_tag(): Chart tag creation with validation pattern
 4. update_favorites_gps(): Update favorites GPS coordinates
 5. cleanup_old_chart_tag(): Clean up old chart tag with logging
+
+CIRCULAR DEPENDENCY FIX (2025-06-11):
+- Moved chart tag alignment logic from Tag.rehome_chart_tag to GPSChartHelpers.align_chart_tag_to_whole_numbers
+- Removed Tag import from gps_position_normalizer.lua
+- Broke dependency cycle: tag.lua → gps_helpers.lua → gps_position_normalizer.lua → tag.lua
+- Fixed "too many C levels (limit is 200)" error
 
 ERROR HANDLING IMPROVEMENTS:
 - Added ErrorHandler.debug_log() throughout all functions
@@ -382,9 +388,7 @@ function Tag.rehome_chart_tag(player, chart_tag, destination_gps)
   if not destination_gps or destination_gps == "" then
     ErrorHandler.debug_log("Rehome failed: Invalid destination GPS")
     return nil
-  end
-
-  local current_gps = GPS.gps_from_map_position(chart_tag.position, player.surface.index)
+  end  local current_gps = GPS.gps_from_map_position(chart_tag.position, player.surface.index)
   if current_gps == destination_gps then 
     ErrorHandler.debug_log("Current and destination GPS are identical, no action needed")
     return chart_tag 
@@ -411,8 +415,7 @@ function Tag.rehome_chart_tag(player, chart_tag, destination_gps)
   if not new_chart_tag then
     ErrorHandler.debug_log("Chart tag creation failed", { error = create_error })
     return nil
-  end
-  -- Step 4: Update GPS coordinates in all favorites
+  end  -- Step 4: Update GPS coordinates in all favorites
   local final_gps = GPS.gps_from_map_position(new_chart_tag.position, player.surface.index)
   update_favorites_gps(all_fave_tags, final_gps)
     -- Step 5: Update matching tag GPS

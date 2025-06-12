@@ -16,7 +16,6 @@ local Settings = require("settings")
 local Constants = require("constants")
 local ErrorHandler = require("core.utils.error_handler")
 local basic_helpers = require("core.utils.basic_helpers")
-local Tag = require("core.tag.tag")
 local GPSCore = require("core.utils.gps_core")
 local GPSChartHelpers = require("core.utils.gps_chart_helpers")
 
@@ -213,12 +212,10 @@ local function handle_grid_snap_requirements(context, tag, chart_tag)
       
       local x = basic_helpers.normalize_index(chart_tag.position.x)
       local y = basic_helpers.normalize_index(chart_tag.position.y)
-      
-      if x and y then
-        local rehomed_chart_tag = Tag.rehome_chart_tag(context.player, chart_tag,
-          GPSCore.gps_from_map_position({ x = x, y = y }, context.player.surface.index))
+        if x and y then
+        local rehomed_chart_tag = GPSChartHelpers.align_chart_tag_position(context.player, chart_tag)
         if not rehomed_chart_tag then
-          ErrorHandler.debug_log("Failed to rehome chart tag", {
+          ErrorHandler.debug_log("Failed to align chart tag", {
             original_position = chart_tag.position,
             target_position = { x = x, y = y }
           })

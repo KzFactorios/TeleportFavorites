@@ -91,8 +91,69 @@ local function create_and_validate_chart_tag(player, chart_tag_spec)
   return chart_tag, ErrorHandler.success()
 end
 
+--- Align a chart tag's position to whole number coordinates if needed
+--- This is a simplified version that doesn't require the Tag module
+---@param player LuaPlayer
+---@param chart_tag LuaCustomChartTag
+---@return LuaCustomChartTag|nil
+local function align_chart_tag_position(player, chart_tag)
+  if not player or not player.valid or not chart_tag or not chart_tag.valid then
+    return nil
+  end
+  
+  local basic_helpers = require("core.utils.basic_helpers")
+  local GPSCore = require("core.utils.gps_core")
+  
+  -- Check if alignment is needed
+  if basic_helpers.is_whole_number(chart_tag.position.x) and basic_helpers.is_whole_number(chart_tag.position.y) then
+    return chart_tag -- No alignment needed
+  end
+  
+  ErrorHandler.debug_log("Aligning chart tag to whole number coordinates", {
+    current_position = chart_tag.position
+  })
+  
+  -- Normalize coordinates to whole numbers
+  local x = basic_helpers.normalize_index(chart_tag.position.x)
+  local y = basic_helpers.normalize_index(chart_tag.position.y)
+  
+  if not x or not y then
+    ErrorHandler.debug_log("Failed to normalize chart tag coordinates")
+    return chart_tag -- Return original if normalization fails
+  end
+  
+  local new_position = { x = x, y = y }
+  
+  -- Create new chart tag at aligned position
+  local chart_tag_spec = {
+    position = new_position,
+    icon = chart_tag.icon or {},
+    text = chart_tag.text or "",
+    last_user = chart_tag.last_user or player.name
+  }
+  
+  local new_chart_tag = player.force:add_chart_tag(player.surface, chart_tag_spec)
+  if not new_chart_tag or not new_chart_tag.valid then
+    ErrorHandler.debug_log("Failed to create aligned chart tag")
+    return chart_tag -- Return original if creation fails
+  end
+  
+  -- Destroy the old chart tag
+  if chart_tag.valid then
+    chart_tag.destroy()
+  end
+  
+  ErrorHandler.debug_log("Successfully aligned chart tag position", {
+    old_position = chart_tag.position,
+    new_position = new_position
+  })
+  
+  return new_chart_tag
+end
+
 -- Export public functions
 GPSChartHelpers.position_can_be_tagged = position_can_be_tagged
 GPSChartHelpers.create_and_validate_chart_tag = create_and_validate_chart_tag
+GPSChartHelpers.align_chart_tag_position = align_chart_tag_position
 
 return GPSChartHelpers

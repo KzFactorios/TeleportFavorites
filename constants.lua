@@ -19,6 +19,7 @@ local constants = {
     TELEPORT_RADIUS_MIN = 1,
     TELEPORT_RADIUS_MAX = 32,
     TELEPORT_PRECISION = 2,
+    DEFAULT_SNAP_SCALE = 4,
     MAX_FAVORITE_SLOTS = 10,
     FAVE_BAR_SLOT_PREFIX = "fave_bar_slot_",
     GPS_PAD_NUMBER = 3, -- min digits for gps x/y

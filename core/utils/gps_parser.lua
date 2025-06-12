@@ -49,13 +49,13 @@ end
 
 --- Return canonical GPS string 'xxx.yyy.s' from map position and surface index
 ---@param map_position MapPosition
----@param surface_index number
+---@param surface_index uint
 ---@return string
 function GPSParser.gps_from_map_position(map_position, surface_index)
   if not map_position or not surface_index or surface_index <= 0 then return BLANK_GPS end
   return basic_helpers.pad(map_position.x, padlen) ..
       "." .. basic_helpers.pad(map_position.y, padlen) ..
-      "." .. tostring(math.floor(surface_index))
+      "." .. tostring(surface_index)
 end
 
 --- Convert GPS string to MapPosition {x, y} (surface not included)
