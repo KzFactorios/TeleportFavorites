@@ -110,7 +110,8 @@ local function handle_confirm_btn(player, element, tag_data)
 end
 
 local function unregister_move_handlers(script)
-  script.on_event(defines.events.on_player_selected_area, nil)
+  -- Restore the original handlers instead of setting to nil
+  local handlers = require("core.events.handlers")
   script.on_event(defines.events.on_player_alt_selected_area, nil)
 end
 

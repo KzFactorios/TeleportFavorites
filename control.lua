@@ -30,7 +30,6 @@ local fave_bar = require("gui.favorites_bar.fave_bar")
 -- Optional modules - load safely
 local gui_observer
 local WorkingCommandManager
-local Positionator
 
 do
   local success, module = pcall(require, "core.pattern.gui_observer")
@@ -42,26 +41,11 @@ do
   if success then WorkingCommandManager = module end
 end
 
-do
-  local success, module = pcall(require, "core.utils.positionator")
-  if success then Positionator = module end
-end
-
-
 -- Log control.lua loading
 if log then log("[TeleportFavorites] control.lua loaded") end
 
--- Initialize development environment if available
--- This is done using pcall to ensure the mod works even if the dev modules are not present
-pcall(function()
-  require("core.utils.dev_init")
-
-  -- Load test modules only in dev mode
-  local DevEnvironment = require("core.utils.dev_environment")
-  if DevEnvironment.is_dev_mode() then
-    require("tests.positionator_test")
-  end
-end)
+-- Development environment initialization removed
+-- All dev mode functionality has been removed from the codebase
 
 -- Observer Pattern Integration
 local function setup_observers_for_player(player)
@@ -112,7 +96,6 @@ script.on_init(custom_on_init)
 script.on_load(handlers.on_load)
 script.on_event(defines.events.on_player_created, handle_player_join_or_create)
 script.on_event(defines.events.on_player_changed_surface, handlers.on_player_changed_surface)
-script.on_event(defines.events.on_player_selected_area, handlers.on_player_selected_area)
 script.on_event(defines.events.on_player_joined_game, handle_player_join_or_create)
 script.on_event("tf-open-tag-editor", handlers.on_open_tag_editor_custom_input)
 
@@ -180,11 +163,6 @@ tag_terrain_watcher.register(script)
 script.on_event(defines.events.on_player_left_game, function(event)
   if WorkingCommandManager then
     WorkingCommandManager.cleanup_player_history(event.player_index)
-  end
-
-  -- Clean up any active Positionator instances
-  if Positionator and Positionator.clear_player_data then
-    Positionator.clear_player_data(event.player_index)
   end
   
   cleanup_observers_for_player(event.player_index)

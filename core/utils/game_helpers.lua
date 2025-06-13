@@ -71,23 +71,50 @@ end
 
 function GameHelpers.is_water_tile(surface, pos)
   if not surface or not surface.get_tile then return false end
-  local tile = surface.get_tile(math.floor(pos.x), math.floor(pos.y))
-  if tile and tile.prototype and tile.prototype.collision_mask then
-    for _, mask in pairs(tile.prototype.collision_mask) do
-      if mask == "water-tile" then return true end
+  
+  local x, y = math.floor(pos.x), math.floor(pos.y)
+  local tile = surface.get_tile(x, y)
+  if not tile then return false end
+  
+  -- Primary method: Use collides_with which is the most reliable for modern Factorio
+  local collides_water = tile.collides_with("water-tile")
+  if collides_water then
+    return true
+  end
+  
+  -- Fallback method: Check tile name for common water patterns
+  local tile_name = tile.name
+  if tile_name then
+    local name = tile_name:lower()
+    -- Check for various water tile naming patterns
+    if name:find("water") or name:find("deepwater") or name:find("shallow%-water") or 
+       name == "water" or name == "deepwater" or name == "shallow-water" then
+      return true
     end
   end
+  
   return false
 end
 
 function GameHelpers.is_space_tile(surface, pos)
   if not surface or not surface.get_tile then return false end
   local tile = surface.get_tile(math.floor(pos.x), math.floor(pos.y))
-  if tile and tile.prototype and tile.prototype.collision_mask then
-    for _, mask in pairs(tile.prototype.collision_mask) do
-      if mask == "space" then return true end
+  if not tile then return false end
+  
+  -- Primary method: Use collides_with for space platforms
+  if tile.collides_with("space-tile") then
+    return true
+  end
+  
+  -- Fallback method: Check tile name for space patterns  
+  if tile.name then
+    local name = tile.name:lower()
+    -- Common space tile names in Factorio
+    if name:find("space") or name:find("void") or name == "out-of-map" then
+      return true
     end
   end
+  
   return false
 end
 

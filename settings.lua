@@ -20,21 +20,14 @@ if data then
       minimum_value = 1,
       maximum_value = 32,
       order = "sb"
-    },
-    {
+    },    {
       type = "bool-setting",
       name = "destination-msg-on",
       setting_type = "runtime-per-user", 
       default_value = true,
       order = "sc"
-    },
-    {
-      type = "bool-setting",
-      name = "map-reticle-on",
-      setting_type = "runtime-per-user",
-      default_value = true,
-      order = "sd"
     }
+    -- map-reticle-on setting removed - functionality no longer exists
   })
 else
   -- Log that settings couldn't be loaded

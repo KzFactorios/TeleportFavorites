@@ -28,24 +28,7 @@ The position normalization process takes a raw cursor position from a right-clic
 │  │ Context Validation  │                          │
 │  └──────────┬──────────┘                          │
 │             │                                     │
-│             ▼                                     │
-│  ┌─────────────────────┐                          │
-│  │ Dev Environment?    │                          │
-│  └──────────┬──────────┘                          │
-│             │                                     │
-│             ▼            YES   ┌──────────────┐   │
-│  ┌─────────────────────┐ ─────►│ Positionator │   │
-│  │ Positionator Check  │      │ Dialog Opens  │   │
-│  └──────────┬──────────┘      └───────┬──────┘   │
-│             │ NO                      │          │
-│             │                         │          │
-│             │                 ┌───────▼──────┐   │
-│             │                 │ User Adjusts │   │
-│             │                 │ & Confirms   │   │
-│             │                 └───────┬──────┘   │
-│             ▼                         │          │
-│             │◄────────────────────────┘          │
-│             ▼                          YES       │
+│             ▼                          YES        │
 │  ┌─────────────────────┐      ┌──────────────┐   │
 │  │   Exact Match?      ├─────►│ Use existing │   │
 │  └──────────┬──────────┘      │ tag/chart tag│   │
@@ -62,6 +45,16 @@ The position normalization process takes a raw cursor position from a right-clic
 │  │ Create/align chart  │                         │
 │  │ tag to ensure whole │                         │
 │  │ number coordinates  │                         │
+│  └──────────┬──────────┘                         │
+│             │                                    │
+│             ▼                                    │
+│  ┌─────────────────────┐                         │
+│  │ Position Validation │                         │
+│  │                     │                         │
+│  │ Check for water/    │                         │
+│  │ space tiles and     │                         │
+│  │ find valid nearby   │                         │
+│  │ position if needed  │                         │
 │  └──────────┬──────────┘                         │
 │             │                                    │
 │             ▼                                    │
@@ -187,81 +180,6 @@ The context validation step ensures:
 - Player object is valid
 - GPS string is valid and can be parsed
 - Creates a context object with player settings and search radius information
-
-### 2.5. Positionator Integration (Dev Mode Only)
-
-After context validation and before exact match search, the workflow checks if the Positionator system should be used. This is a developer tool that allows fine-tuning positions and search radius before proceeding with normalization.
-
-```lua
--- Initialize dev features if available
-init_dev_features()
-
--- Check if we should use the Positionator (Dev Mode feature)
-local should_continue_with_normalization = true
-
-if DevEnvironment and DevEnvironment.is_positionator_enabled() and Positionator then
-  -- Prepare a preliminary normalized position (to show the comparison)
-  local prelim_normalized_pos = context.landing_position
-  
-  -- Define the callback to continue workflow after adjustment
-  local callback_data = {
-    callback = function(adjust_player, adjusted_position, adjusted_radius)
-      -- Continue workflow with adjusted position and radius
-      -- ...
-    end
-  }
-  
-  -- Show the Positionator dialog and await user confirmation
-  should_continue_with_normalization = not Positionator.show(
-    player,
-    context.landing_position,
-    prelim_normalized_pos,
-    callback_data
-  )
-end
-
--- If Positionator is disabled, closed, or we're in production mode,
--- continue with regular flow
-if should_continue_with_normalization then
-  -- Proceed with normal flow...
-end
-```
-
-#### Positionator Features
-
-The Positionator dialog provides several key features that enhance the position normalization process during development:
-
-1. **Real-time Position Adjustment**: Allows X and Y coordinate adjustments using sliders
-2. **Search Radius Control**: Adjusts the teleport radius used in nearby tag detection
-3. **Visualization**: Shows a bounding box representing the search area
-4. **Original vs. Normalized Display**: Shows both the original clicked position and the normalized position
-5. **Workflow Control**: Provides options to reset, confirm, or cancel the adjustment
-
-![Positionator Dialog](https://placeholder.com/positionator-dialog.png)
-
-#### Environment Detection
-
-The Positionator is only available in development mode, which is detected by:
-- Presence of a `.dev_mode` file in the mod's root directory
-- Settings in `settings-dev.lua` that control features
-- Safety checks to ensure no performance impact in production
-
-```lua
-function DevEnvironment.is_positionator_enabled()
-  return DevEnvironment.is_dev_mode() and DevEnvironment.config.positionator_enabled
-end
-```
-
-#### Integration Flow
-
-When the Positionator is active:
-1. After validating the context, the system checks if in development mode
-2. If in dev mode, the Positionator dialog opens showing the original position
-3. User adjusts position and radius values as needed
-4. On confirmation, the adjusted values are used in subsequent normalization steps
-5. On cancel, the system continues with the original values
-
-This integration is designed to be loosely coupled - the mod works identically whether the Positionator is present or not.
 
 ### 3. Exact Match Search
 
@@ -409,6 +327,35 @@ The grid snap processing:
 2. If chart tag exists: ensures coordinates are whole numbers
 3. If neither exists: creates temporary chart tag to validate position, then destroys it
 
+### 5. Position Validation
+
+```lua
+-- Check if the position is on water or space
+local map_position = GPSCore.map_position_from_gps(adjusted_gps)
+if map_position and not PositionValidator.is_valid_tag_position(player, map_position, true) then
+  -- Try to find valid position nearby
+  local valid_position = PositionValidator.find_valid_position(player, map_position, context.search_radius)
+  if valid_position then
+    adjusted_gps = GPSCore.gps_from_map_position(valid_position, player.surface.index)
+    ErrorHandler.debug_log("Adjusted position to avoid water/space", { 
+      new_position = valid_position,
+      new_gps = adjusted_gps
+    })
+  else
+    -- Could not find valid position
+    ErrorHandler.debug_log("Could not find valid position nearby")
+    -- Return nil to indicate invalid position
+    return nil, nil, nil, nil
+  end
+end
+```
+
+The position validation step:
+1. Checks if the normalized position is on water or space tiles
+2. If invalid, searches for a valid position within the search radius
+3. Updates the GPS if a valid nearby position is found
+4. Returns nil if no valid position can be found
+
 ### 6. Favorites Association
 
 ```lua
@@ -499,36 +446,33 @@ local tag_data = Cache.create_tag_editor_data({
 The position normalization logic is primarily implemented in these files:
 
 - `core/utils/gps_position_normalizer.lua`: Main normalization logic
-- `core/utils/gps_parser.lua`: GPS string parsing and creation
-- `core/utils/gps_core.lua`: Core GPS utility functions
+- `core/utils/gps_core.lua`: Core GPS utility functions  
 - `core/utils/gps_chart_helpers.lua`: Chart tag creation and validation
+- `core/utils/position_validator.lua`: Position validation and terrain checking
+- `core/utils/basic_helpers.lua`: Grid alignment and number normalization utilities
+- `core/utils/error_handler.lua`: Error handling and logging
+- `core/utils/settings_access.lua`: Player settings access
 
-### Developer Tools (Dev Mode Only)
+### Removed Files
 
-The position adjustment dialog and development environment detection are implemented in:
+**NOTE: All developer mode and Positionator files have been removed from the codebase.**
 
-- `core/utils/dev_environment.lua`: Detection of development mode and feature toggles
-- `core/utils/positionator.lua`: Position adjustment dialog and visualization
-- `core/utils/dev_init.lua`: Initialization of development features
-- `settings-dev.lua`: Development-only mod settings
-- `docs/positionator_dev_tool.md`: Documentation for the Positionator tool
+The following files were part of the Positionator system but have been removed:
+- ~~`core/utils/positionator.lua`~~: Position adjustment dialog and visualization (REMOVED)
+- ~~`docs/positionator_dev_tool.md`~~: Documentation for the Positionator tool (REMOVED)
+- ~~`core/utils/dev_environment.lua`~~: Detection of development mode and feature toggles (REMOVED)
+- ~~`core/utils/dev_init.lua`~~: Initialization of development features (REMOVED)
+- ~~`core/utils/dev_mode.lua`~~: Development mode utilities (REMOVED)
 
 ## Key Benefits
 
 This complex normalization process ensures:
 
-1. Tags align properly to the game's grid system (whole numbers only)
-2. Existing tags and chart tags are properly associated
-3. Nearby tags are found if the player didn't click exactly on a tag
-4. Only valid positions that can be tagged are processed
-5. All related objects (tags, chart tags, favorites) are properly linked
+1. **Grid Alignment**: Tags align properly to the game's grid system (whole numbers only)
+2. **Smart Detection**: Existing tags and chart tags are properly associated
+3. **Nearby Search**: Nearby tags are found if the player didn't click exactly on a tag
+4. **Position Validation**: Only valid positions that can be tagged are processed, with automatic adjustment away from water/space tiles
+5. **Relationship Management**: All related objects (tags, chart tags, favorites) are properly linked
+6. **Error Handling**: Comprehensive validation and error reporting throughout the process
 
-### Development Benefits
-
-In development mode, the Positionator system provides additional benefits:
-
-1. **Fine-tuning**: Developers can adjust positions and search radius in real-time
-2. **Visualization**: The bounding box used for tag detection is visualized on the map
-3. **Experimentation**: Different radius values can be tested without modifying code
-4. **Real-time feedback**: Immediate visual feedback of how position adjustments affect the workflow
-5. **Loose coupling**: The system is designed to have zero impact when disabled or in production
+The normalization process is designed to be robust and handle edge cases while maintaining data integrity and providing a smooth user experience.

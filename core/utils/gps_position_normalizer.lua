@@ -9,7 +9,6 @@ Complex position normalization logic for GPS coordinates.
 - Handles grid snap requirements and chart tag alignment
 - Manages tag/chart_tag/favorite relationships
 - Provides the main normalize_landing_position functionality
-- Optionally integrates with Positionator position adjustment in dev mode
 - Validates positions to avoid water/space tiles
 ]]
 
@@ -21,13 +20,8 @@ local basic_helpers = require("core.utils.basic_helpers")
 local GPSCore = require("core.utils.gps_core")
 local GPSChartHelpers = require("core.utils.gps_chart_helpers")
 local PositionValidator = require("core.utils.position_validator")
-local DevEnvironment = require("core.utils.dev_environment")
-local Positionator = require("core.utils.positionator")
 
-
--- Optional dev tools
-local Positionator
-local DevEnvironment
+-- Dev environment detection removed - functionality no longer needed
 
 ---@class GPSPositionNormalizer
 local GPSPositionNormalizer = {}
@@ -389,90 +383,16 @@ local function normalize_landing_position(player, intended_gps, get_tag_by_gps_f
     ErrorHandler.handle_error(result, player, false) -- Don't print to player for validation errors
     return nil, nil, nil, nil
   end
-  
-  -- Package callbacks for cleaner parameter passing
+    -- Package callbacks for cleaner parameter passing
   local callbacks = {
     get_tag_by_gps_func = get_tag_by_gps_func,
     is_player_favorite_func = is_player_favorite_func,
     get_chart_tag_by_gps_func = get_chart_tag_by_gps_func
   }
-  
-  -- Check if we should use the Positionator (Dev Mode feature)
-  local should_continue_with_normalization = true
-  
-  if DevEnvironment and DevEnvironment.is_positionator_enabled() and Positionator then
-    -- Prepare a preliminary normalized position (to show the comparison)
-    local prelim_normalized_pos = context.landing_position
     
-    -- Define the callback to continue workflow after adjustment
-    local callback_data = {
-      callback = function(adjust_player, adjusted_position, adjusted_radius)
-        -- Convert adjusted position to GPS
-        local adjusted_gps = GPSCore.gps_from_map_position(adjusted_position, adjust_player.surface.index)
-        
-        -- Update context with adjusted values
-        local adjusted_context = table.deepcopy(context)
-        adjusted_context.landing_position = adjusted_position
-        adjusted_context.search_radius = adjusted_radius
-        adjusted_context.intended_gps = adjusted_gps
-        
-        -- Continue with the normal flow using adjusted position
-        local adj_tag, adj_chart_tag, adj_gps, adj_check_for_grid_snap = find_exact_matches(adjusted_context, callbacks)
-        
-        if adj_check_for_grid_snap then
-          adj_tag, adj_chart_tag, adj_gps, adj_check_for_grid_snap = find_nearby_matches(
-            adjusted_context, callbacks, adj_tag, adj_chart_tag, adj_gps, adj_check_for_grid_snap)
-        end
-        
-        if adj_check_for_grid_snap then
-          local snap_tag, snap_chart_tag, snap_gps = handle_grid_snap_requirements(adjusted_context, adj_tag, adj_chart_tag)
-          -- Use returned values if they exist, otherwise keep original values
-          adj_tag = snap_tag or adj_tag
-          adj_chart_tag = snap_chart_tag or adj_chart_tag  
-          adj_gps = snap_gps or adj_gps
-        end
-        
-        -- Check if the position is on water or space
-        local map_position = GPSCore.map_position_from_gps(adj_gps)
-        if map_position and not PositionValidator.is_valid_tag_position(player, map_position, true) then
-          -- Try to find valid position nearby
-          local valid_position = PositionValidator.find_valid_position(player, map_position, adjusted_context.search_radius)
-          if valid_position then
-            adj_gps = GPSCore.gps_from_map_position(valid_position, player.surface.index)
-            ErrorHandler.debug_log("Adjusted position to avoid water/space", { 
-              new_position = valid_position,
-              new_gps = adj_gps
-            })
-          else
-            -- Could not find valid position
-            ErrorHandler.debug_log("Could not find valid position nearby")
-            -- Return nil to indicate invalid position
-            return nil, nil, nil, nil
-          end
-        end
-        
-        -- Finalize and return results
-        local adj_pos, final_tag, final_chart_tag, final_favorite = finalize_position_data(
-          adjusted_context, adj_gps, adj_tag, adj_chart_tag, callbacks)
-        
-        return adj_pos, final_tag, final_chart_tag, final_favorite
-      end
-    }
-    
-    -- Show the Positionator dialog and await user confirmation
-    should_continue_with_normalization = not Positionator.show(
-      player,
-      context.landing_position,
-      prelim_normalized_pos,
-      callback_data
-    )
-  end
-    
-  -- If Positionator is disabled, closed, or we're in production mode, continue with regular flow
-  if should_continue_with_normalization then
-    -- Step 2: Find exact matches (tag and chart_tag)
-    local tag, chart_tag, adjusted_gps, check_for_grid_snap
-    tag, chart_tag, adjusted_gps, check_for_grid_snap = find_exact_matches(context, callbacks)
+  -- Step 2: Find exact matches (tag and chart_tag)
+  local tag, chart_tag, adjusted_gps, check_for_grid_snap
+  tag, chart_tag, adjusted_gps, check_for_grid_snap = find_exact_matches(context, callbacks)
   
     -- Step 3: Find nearby matches if no exact matches found
     tag, chart_tag, adjusted_gps, check_for_grid_snap = find_nearby_matches(
@@ -505,19 +425,13 @@ local function normalize_landing_position(player, intended_gps, get_tag_by_gps_f
         return nil, nil, nil, nil
       end
     end
-    
-    -- Step 5: Finalize and return results
+      -- Step 5: Finalize and return results
     local adjusted_pos, matching_player_favorite
     adjusted_pos, tag, chart_tag, matching_player_favorite = finalize_position_data(
       context, adjusted_gps, tag, chart_tag, callbacks)
     
     ErrorHandler.debug_log("Position normalization completed successfully")
     return adjusted_pos, tag, chart_tag, matching_player_favorite
-  else
-    -- If positionator is handling the process, return nil values
-    -- The actual processing will be done through the callback
-    return nil, nil, nil, nil
-  end
 end
 
 --- Wrapper function that maintains the old API for backwards compatibility

@@ -14,6 +14,7 @@ API:
                               Bounded by Constants.settings.TELEPORT_RADIUS_MIN and TELEPORT_RADIUS_MAX
   - favorites_on (boolean): Whether the favorites bar is enabled (default: true)
   - destination_msg_on (boolean): Whether to show destination messages (default: true)
+  -- map_reticle_on removed - functionality no longer exists
 
 Error Handling:
 - Returns default values if player or player.mod_settings is nil
@@ -28,7 +29,6 @@ local Constants = require("constants")
 local Settings = {}
 
 --- Returns a table of per-player mod settings, with defaults if not set
---- @param self Settings
 --- @param player LuaPlayer|nil The player to get settings for
 --- @return table settings { teleport_radius: integer, favorites_on: boolean, destination_msg_on: boolean }
 function Settings:getPlayerSettings(player)-- Initialize with default values from Constants
@@ -36,7 +36,7 @@ function Settings:getPlayerSettings(player)-- Initialize with default values fro
     teleport_radius = Constants.settings.TELEPORT_RADIUS_DEFAULT,
     favorites_on = true,
     destination_msg_on = true,
-    map_reticle_on = true,
+    -- map_reticle_on removed - functionality no longer exists
   }
   
   -- Return defaults if player or mod_settings are nil
@@ -94,20 +94,9 @@ function Settings:getPlayerSettings(player)-- Initialize with default values fro
     else
       -- Default to true if not a boolean
       settings.destination_msg_on = true
-    end
-  end
+    end  end
   
-  -- Get map reticle on/off setting
-  local reticle = mod_settings["map-reticle-on"]
-  if reticle and reticle.value ~= nil then 
-    -- Explicit boolean conversion using comparison
-    if type(reticle.value) == "boolean" then
-      settings.map_reticle_on = reticle.value
-    else
-      -- Default to true if not a boolean
-      settings.map_reticle_on = true
-    end
-  end
+  -- map reticle setting removed - functionality no longer exists
   
   return settings
 end
