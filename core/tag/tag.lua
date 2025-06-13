@@ -356,14 +356,16 @@ local function create_new_chart_tag(player, destination_pos, chart_tag)
   
   local chart_tag_spec = {
     position = destination_pos,
-    icon = chart_tag and chart_tag.icon or {},
-    text = chart_tag and chart_tag.text or "",
+    text = chart_tag and chart_tag.text or "Tag",
     last_user = (chart_tag and chart_tag.last_user) or player.name
   }
-
-  -- Create chart tag using Factorio API directly
-  local new_chart_tag = player.force:add_chart_tag(player.surface, chart_tag_spec)
-  if not new_chart_tag or not new_chart_tag.valid then 
+    -- Only include icon if it's a valid SignalID
+  if chart_tag and chart_tag.icon and type(chart_tag.icon) == "table" and chart_tag.icon.name then
+    chart_tag_spec.icon = chart_tag.icon
+  end  -- Create chart tag using our safe wrapper
+  local GPSChartHelpers = require("core.utils.gps_chart_helpers")
+  local new_chart_tag = GPSChartHelpers.safe_add_chart_tag(player.force, player.surface, chart_tag_spec)
+  if not new_chart_tag or not new_chart_tag.valid then
     ErrorHandler.debug_log("Chart tag creation failed")
     return nil, "The destination is not available for landing"
   end

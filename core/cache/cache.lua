@@ -289,8 +289,20 @@ end
 function Cache.set_tag_editor_data(player, data)
   if not data then data = {} end
   local pdata = Cache.get_player_data(player)
-  for k, v in pairs(data) do
-    pdata.tag_editor_data[k] = v
+  
+  -- If data is empty table, clear all tag_editor_data
+  local is_empty = true
+  for _ in pairs(data) do
+    is_empty = false
+    break
+  end
+  
+  if is_empty then
+    pdata.tag_editor_data = Cache.create_tag_editor_data()
+  else
+    for k, v in pairs(data) do
+      pdata.tag_editor_data[k] = v
+    end
   end
 
   return pdata.tag_editor_data

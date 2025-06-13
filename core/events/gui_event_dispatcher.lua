@@ -61,7 +61,10 @@ local FAVE_BAR_SLOT_PREFIX = Constants.settings.FAVE_BAR_SLOT_PREFIX
 
 --- Returns true if the element is a favorite bar slot button
 local function is_fave_bar_slot_button(element)
-  return element and element.name and tostring(element.name):find(FAVE_BAR_SLOT_PREFIX, 1, true)
+  if not element or not element.name then return false end
+  local name = tostring(element.name)
+  local prefix = tostring(FAVE_BAR_SLOT_PREFIX)
+  return name:find(prefix, 1, true) ~= nil
 end
 
 --- Returns true if the element is a blank favorite bar slot button (no caption and no sprite)
@@ -79,12 +82,10 @@ function M.register_gui_handlers(script)
   if not script or type(script.on_event) ~= "function" then
     error("[TeleportFavorites] Invalid script object provided to register_gui_handlers")
   end
-    local function shared_on_gui_click(event)
+  local function shared_on_gui_click(event)
     Cache.init()
     if _tf_gui_click_guard then return end
-    _tf_gui_click_guard = true
-
-    local ok, err = xpcall(function()
+    _tf_gui_click_guard = true    local ok, result = xpcall(function()
       local element = event.element
       if not element or not element.valid then return end
 
@@ -99,7 +100,9 @@ function M.register_gui_handlers(script)
       local parent_gui = Helpers.get_gui_frame_by_element(element)
       if not parent_gui then
         error("Element: " .. element.name .. ", parent GUI not found")
-      end      -- Dispatch based on parent_gui
+      end
+      
+      -- Dispatch based on parent_gui
       if parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
         control_tag_editor.on_tag_editor_gui_click(event, script)
         return true
@@ -121,7 +124,8 @@ function M.register_gui_handlers(script)
       if log then log("[TeleportFavorites] Traceback:\n" .. tb) end
       if log then
         local el = event and event.element
-        local ename, etype = "<no element>", "<no type>"        -- Safely check if element is valid before accessing properties
+        local ename, etype = "<no element>", "<no type>"
+        -- Safely check if element is valid before accessing properties
         if el and type(el) == "userdata" then
           pcall(function()
             ---@diagnostic disable-next-line: undefined-field
@@ -141,23 +145,27 @@ function M.register_gui_handlers(script)
         for k, v in pairs(event or {}) do
           if type(v) ~= "table" and type(v) ~= "userdata" then
             log("[TeleportFavorites] event[" .. tostring(k) .. "] = " .. tostring(v))
-          end
-        end
+          end        end
       end
     end)
     _tf_gui_click_guard = false
     if not ok then
-      error(err)
-    end  end
-  script.on_event(defines.events.on_gui_click, shared_on_gui_click)
+      -- Log the error but don't re-throw it to prevent cascading errors
+      local err_msg = "[TeleportFavorites] GUI click handler failed: " .. tostring(result)
+      if log then log(err_msg) end
+      print(err_msg)
+    end
+  end
   
+  script.on_event(defines.events.on_gui_click, shared_on_gui_click)
+
   -- Register text change handler for immediate storage saving
   local function shared_on_gui_text_changed(event)
     if not event or not event.element then return end
     control_tag_editor.on_tag_editor_gui_text_changed(event)
   end
   script.on_event(defines.events.on_gui_text_changed, shared_on_gui_text_changed)
-  
+
   -- Register elem changed handler for immediate storage saving (for icon picker)
   local function shared_on_gui_elem_changed(event)
     if not event or not event.element then return end
@@ -165,9 +173,10 @@ function M.register_gui_handlers(script)
     local element = event.element
     if element.name and element.name:find("tag_editor") then
       control_tag_editor.on_tag_editor_gui_click(event, script)
-    end  end
+    end
+  end
   script.on_event(defines.events.on_gui_elem_changed, shared_on_gui_elem_changed)
-  
+
   -- Register GUI confirmed handler for modal dialogs
   local function shared_on_gui_confirmed(event)
     if not event or not event.element then return end

@@ -1,3 +1,4 @@
+---@diagnostic disable: undefined-global
 -- Initialize the development environment module
 local DevEnvironment = require("core.utils.dev_environment")
 

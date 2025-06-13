@@ -9,16 +9,21 @@ Complex position normalization logic for GPS coordinates.
 - Handles grid snap requirements and chart tag alignment
 - Manages tag/chart_tag/favorite relationships
 - Provides the main normalize_landing_position functionality
-- Optionally integrates with Positionator for position adjustment in dev mode
+- Optionally integrates with Positionator position adjustment in dev mode
+- Validates positions to avoid water/space tiles
 ]]
 
 local Helpers = require("core.utils.helpers_suite")
-local Settings = require("settings")
+local Settings = require("core.utils.settings_access")
 local Constants = require("constants")
 local ErrorHandler = require("core.utils.error_handler")
 local basic_helpers = require("core.utils.basic_helpers")
 local GPSCore = require("core.utils.gps_core")
 local GPSChartHelpers = require("core.utils.gps_chart_helpers")
+local PositionValidator = require("core.utils.position_validator")
+local DevEnvironment = require("core.utils.dev_environment")
+local Positionator = require("core.utils.positionator")
+
 
 -- Optional dev tools
 local Positionator
@@ -27,17 +32,6 @@ local DevEnvironment
 ---@class GPSPositionNormalizer
 local GPSPositionNormalizer = {}
 
--- Initialize optional dev environment features on first use
-local function init_dev_features()
-  if not DevEnvironment then
-    DevEnvironment = require("core.utils.dev_environment")
-    
-    -- Only try to load Positionator if in dev mode
-    if DevEnvironment.is_dev_mode() then
-      Positionator = require("core.utils.positionator")
-    end
-  end
-end
 
 --- Validate and prepare context for position normalization
 ---@param player LuaPlayer
@@ -195,9 +189,27 @@ local function handle_grid_snap_requirements(context, tag, chart_tag)
       return tag, chart_tag, context.intended_gps
     end
     
-    local chart_tag_spec = {
+    -- Validate position is not on water or space
+    if not PositionValidator.is_valid_tag_position(context.player, tag_position, true) then
+      -- Find valid position nearby
+      local valid_position = PositionValidator.find_valid_position(
+        context.player, tag_position, context.search_radius)
+      
+      -- If found valid position, use it instead
+      if valid_position then
+        tag_position = valid_position
+        tag.gps = GPSCore.gps_from_map_position(valid_position, context.player.surface.index)
+        ErrorHandler.debug_log("Fixed invalid position", { 
+          original_position = tag_position,
+          new_position = valid_position 
+        })
+      else
+        -- Could not find valid position
+        ErrorHandler.debug_log("Could not find valid position, will prompt user later")
+      end
+    end
+      local chart_tag_spec = {
       position = tag_position,
-      icon = {},
       text = "tag gps: " .. tag.gps,
       last_user = context.player.name
     }
@@ -227,7 +239,25 @@ local function handle_grid_snap_requirements(context, tag, chart_tag)
       
       local x = basic_helpers.normalize_index(chart_tag.position.x)
       local y = basic_helpers.normalize_index(chart_tag.position.y)
-        if x and y then
+      if x and y then
+        -- Check if normalized position is valid
+        local normalized_pos = {x = x, y = y}
+        if not PositionValidator.is_valid_tag_position(context.player, normalized_pos, true) then
+          -- Find valid position nearby
+          local valid_position = PositionValidator.find_valid_position(
+            context.player, normalized_pos, context.search_radius)
+          
+          -- If found valid position, use it
+          if valid_position then
+            x = valid_position.x
+            y = valid_position.y
+            ErrorHandler.debug_log("Fixed invalid position during normalization", { 
+              original_position = normalized_pos,
+              new_position = valid_position 
+            })
+          end
+        end
+        
         local rehomed_chart_tag = GPSChartHelpers.align_chart_tag_position(context.player, chart_tag)
         if not rehomed_chart_tag then
           ErrorHandler.debug_log("Failed to align chart tag", {
@@ -257,10 +287,24 @@ local function handle_grid_snap_requirements(context, tag, chart_tag)
       ErrorHandler.debug_log("Could not parse intended GPS coordinates", { intended_gps = context.intended_gps })
       return nil, nil, context.intended_gps
     end
+      -- Ensure position is valid (not water/space)
+    if not PositionValidator.is_valid_tag_position(context.player, intended_position, true) then
+      -- Find valid position nearby
+      local valid_position = PositionValidator.find_valid_position(
+        context.player, intended_position, context.search_radius)
+      
+      -- If found valid position, use it
+      if valid_position then
+        intended_position = valid_position
+        ErrorHandler.debug_log("Fixed invalid position for new chart tag", { 
+          original_position = intended_position,
+          new_position = valid_position 
+        })
+      end
+    end
     
     local chart_tag_spec = {
       position = intended_position,
-      icon = {},
       text = "tag gps: " .. context.intended_gps,
       last_user = context.player.name
     }
@@ -353,9 +397,6 @@ local function normalize_landing_position(player, intended_gps, get_tag_by_gps_f
     get_chart_tag_by_gps_func = get_chart_tag_by_gps_func
   }
   
-  -- Initialize dev features if available
-  init_dev_features()
-  
   -- Check if we should use the Positionator (Dev Mode feature)
   local should_continue_with_normalization = true
   
@@ -391,6 +432,25 @@ local function normalize_landing_position(player, intended_gps, get_tag_by_gps_f
           adj_gps = snap_gps or adj_gps
         end
         
+        -- Check if the position is on water or space
+        local map_position = GPSCore.map_position_from_gps(adj_gps)
+        if map_position and not PositionValidator.is_valid_tag_position(player, map_position, true) then
+          -- Try to find valid position nearby
+          local valid_position = PositionValidator.find_valid_position(player, map_position, adjusted_context.search_radius)
+          if valid_position then
+            adj_gps = GPSCore.gps_from_map_position(valid_position, player.surface.index)
+            ErrorHandler.debug_log("Adjusted position to avoid water/space", { 
+              new_position = valid_position,
+              new_gps = adj_gps
+            })
+          else
+            -- Could not find valid position
+            ErrorHandler.debug_log("Could not find valid position nearby")
+            -- Return nil to indicate invalid position
+            return nil, nil, nil, nil
+          end
+        end
+        
         -- Finalize and return results
         local adj_pos, final_tag, final_chart_tag, final_favorite = finalize_position_data(
           adjusted_context, adj_gps, adj_tag, adj_chart_tag, callbacks)
@@ -407,7 +467,8 @@ local function normalize_landing_position(player, intended_gps, get_tag_by_gps_f
       callback_data
     )
   end
-    -- If Positionator is disabled, closed, or we're in production mode, continue with regular flow
+    
+  -- If Positionator is disabled, closed, or we're in production mode, continue with regular flow
   if should_continue_with_normalization then
     -- Step 2: Find exact matches (tag and chart_tag)
     local tag, chart_tag, adjusted_gps, check_for_grid_snap
@@ -424,6 +485,25 @@ local function normalize_landing_position(player, intended_gps, get_tag_by_gps_f
       tag = snap_tag or tag
       chart_tag = snap_chart_tag or chart_tag  
       adjusted_gps = snap_gps or adjusted_gps
+    end
+    
+    -- Check if the position is on water or space
+    local map_position = GPSCore.map_position_from_gps(adjusted_gps)
+    if map_position and not PositionValidator.is_valid_tag_position(player, map_position, true) then
+      -- Try to find valid position nearby
+      local valid_position = PositionValidator.find_valid_position(player, map_position, context.search_radius)
+      if valid_position then
+        adjusted_gps = GPSCore.gps_from_map_position(valid_position, player.surface.index)
+        ErrorHandler.debug_log("Adjusted position to avoid water/space", { 
+          new_position = valid_position,
+          new_gps = adjusted_gps
+        })
+      else
+        -- Could not find valid position
+        ErrorHandler.debug_log("Could not find valid position nearby")
+        -- Return nil to indicate invalid position
+        return nil, nil, nil, nil
+      end
     end
     
     -- Step 5: Finalize and return results

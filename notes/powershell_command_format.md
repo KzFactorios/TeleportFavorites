@@ -70,6 +70,21 @@ cd "v:\Fac2orios\2_Gemini\mods\TeleportFavorites"
 cd "v:/Fac2orios/2_Gemini/mods/TeleportFavorites"
 ```
 
+## Working Directory
+
+### Optimization ⚡
+
+```powershell
+# If you're already in the target directory, no CD command is needed
+# Unnecessary:
+cd "v:\Fac2orios\2_Gemini\mods\TeleportFavorites"; Get-ChildItem
+
+# Better - simply run the command if already in the directory:
+Get-ChildItem
+```
+
+PowerShell maintains the current working directory between commands, so there's no need to navigate to the current directory again.
+
 ## Command Execution
 
 ### Incorrect ❌

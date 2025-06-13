@@ -12,6 +12,8 @@ local Cache = require("core.cache.cache")
 local Helpers = require("core.utils.helpers_suite")
 local tag_editor = require("gui.tag_editor.tag_editor")
 local gps_helpers = require("core.utils.gps_helpers")
+local gps_core = require("core.utils.gps_core")
+local PositionValidator = require("core.utils.position_validator")
 
 -- Observer Pattern Integration
 local GuiObserver = require("core.pattern.gui_observer")
@@ -64,7 +66,7 @@ local function reorder_favorites(player, favorites, drag_index, slot)
     local moved = table.remove(favs, drag_index)
     table.insert(favs, slot, moved)
     favorites:set_favorites(favs)
-    
+
     -- Notify observers of favorites reorder
     GuiEventBus.notify("favorites_reordered", {
       player = player,
@@ -72,7 +74,7 @@ local function reorder_favorites(player, favorites, drag_index, slot)
       to_slot = slot,
       type = "favorites_reordered"
     })
-    
+
     -- Efficiently update only the slot row, not the whole bar
     local parent = player.gui.top
     local bar_frame = parent and parent.fave_bar_frame
@@ -90,27 +92,17 @@ end
 
 ---@param player LuaPlayer
 ---@param fav Favorite
-local function teleport_to_favorite(player, fav)  -- Check if we need to add nil check annotation
-  if not fav then return end
-  if not fav.gps then return end
-  
-  -- normalize position
-  ---@diagnostic disable-next-line: need-check-nil, undefined-field
-  local norm_position = gps_helpers.normalize_landing_position_with_cache(player, fav.gps, Cache)
-  if norm_position then
-    Helpers.safe_teleport(player, norm_position)
-    ---@diagnostic disable-next-line: need-check-nil
-    Helpers.player_print(player, lstr("tf-gui.teleported_to", player.name, fav.gps))
-  else
-    Helpers.player_print(player, lstr("tf-gui.teleport_failed"))
-  end
+local function teleport_to_favorite(player, fav) -- Check if we need to add nil check annotation
+  if not fav or not fav.gps then return end
+  Helpers.safe_teleport(player, gps_core.map_position_from_gps(fav.gps))
 end
 
 local function open_tag_editor_from_favorite(player, favorite)
   local tag_data = {}
-  if favorite then    
+  if favorite then
+    -- Create initial tag data from favorite
     tag_data = Cache.create_tag_editor_data({
-      gps = favorite.gps, -- set gps for teleport button
+      gps = favorite.gps,
       locked = favorite.locked,
       is_favorite = Cache.is_player_favorite(player, favorite.gps),
       icon = favorite.tag.chart_tag.icon or "",
@@ -118,12 +110,58 @@ local function open_tag_editor_from_favorite(player, favorite)
       tag = favorite.tag,
       chart_tag = favorite.chart_tag
     })
+
+    -- Get position from GPS
+    local position = gps_helpers.map_position_from_gps(favorite.gps)
+    if position then
+      -- Check if the position is valid (not water or space)
+      if not PositionValidator.is_valid_tag_position(player, position, true) then
+        -- Show dialog to handle invalid position
+        PositionValidator.show_invalid_position_dialog(player, tag_data, function(action, updated_tag_data)
+          if action == "delete" then
+            -- Delete the tag if player owns it and no other favorites are attached
+            if tag_data.tag and tag_data.tag.player.name == player.name then
+              if not tag_data.tag.faved_by_players or #tag_data.tag.faved_by_players == 0 then -- Delete the tag and chart tag
+                if tag_data.chart_tag and tag_data.chart_tag.valid then
+                  tag_data.chart_tag.destroy()
+                end
+                -- Remove from storage
+                Cache.remove_stored_tag(tag_data.tag.gps)
+                player.print("[TeleportFavorites] Tag deleted")
+              else
+                player.print("[TeleportFavorites] Cannot delete tag as other players have favorited it")
+              end
+            end
+          elseif action == "move" then
+            -- Move tag to valid position
+            local new_position = gps_helpers.map_position_from_gps(updated_tag_data.gps)
+            if new_position and tag_data.tag and tag_data.chart_tag then
+              local success = PositionValidator.move_tag_to_valid_position(
+                player,
+                tag_data.tag,
+                tag_data.chart_tag,
+                new_position
+              )
+
+              if success then
+                player.print("[TeleportFavorites] Tag moved to valid position: " .. updated_tag_data.gps)
+                -- Continue with opening tag editor with updated position
+                Cache.set_tag_editor_data(player, updated_tag_data)
+                tag_editor.build(player)
+              end
+            end
+          end
+        end)
+        return -- Don't continue with normal tag editor opening
+      end
+    end
   else
     tag_data = Cache.create_tag_editor_data()
-  end-- Persist gps in tag_editor_data
+  end
+
+  -- Persist gps in tag_editor_data
   Cache.set_tag_editor_data(player, tag_data)
   tag_editor.build(player)
-  return
 end
 
 local function can_start_drag(fav)

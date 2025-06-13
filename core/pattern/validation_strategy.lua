@@ -210,18 +210,14 @@ function CreateThenValidateStrategy:execute(player, position, context)
     if not basic_valid then
         return false, basic_error
     end
-    
-    -- Create temporary chart tag to test Factorio's internal validation
+      -- Create temporary chart tag to test Factorio's internal validation
     local chart_tag_spec = {
         position = position,
-        icon = {},
         text = "temp_validation_tag",
-        last_user = player.name
-    }
-    
-    local temp_chart_tag = nil
+        last_user = player.name    }    local temp_chart_tag = nil
+    local GPSChartHelpers = require("core.utils.gps_chart_helpers")
     local success = pcall(function()
-        temp_chart_tag = player.force:add_chart_tag(player.surface, chart_tag_spec)
+        temp_chart_tag = GPSChartHelpers.safe_add_chart_tag(player.force, player.surface, chart_tag_spec)
     end)
     
     if not success or not temp_chart_tag then

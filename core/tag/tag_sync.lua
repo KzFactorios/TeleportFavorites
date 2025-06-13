@@ -156,14 +156,19 @@ function TagSync.add_new_chart_tag(player, normal_pos, text, icon)
     position = normal_pos,
     text = text
   })
-  
-  local success, chart_tag = pcall(function()
-    return game.forces["player"]:add_chart_tag(player.surface, {
-      position = normal_pos, 
-      text = text, 
-      icon = icon, 
+    local success, chart_tag = pcall(function()
+    -- Prepare chart_tag_spec properly
+    local chart_tag_spec = {
+      position = normal_pos,
+      text = text or "Tag", -- Ensure text is never nil
       last_user = player.name
-    })
+    }    -- Only include icon if it's a valid SignalID
+    if icon and type(icon) == "table" and icon.name then
+      chart_tag_spec.icon = icon
+    end
+    
+    local GPSChartHelpers = require("core.utils.gps_chart_helpers")
+    return GPSChartHelpers.safe_add_chart_tag(game.forces["player"], player.surface, chart_tag_spec)
   end)
   
   if not success then

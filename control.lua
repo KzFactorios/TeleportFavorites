@@ -1,4 +1,5 @@
 ---@diagnostic disable: undefined-global, need-check-nil, assign-type-mismatch
+
 --[[
 TeleportFavorites Factorio Mod - Control Script
 Main event handler and public API entry points.
@@ -12,59 +13,8 @@ Features:
 - All new/changed features are documented inline and in notes/ as appropriate.
 ]]
 
--- Log control.lua loading
----@diagnostic disable-next-line: need-check-nil
-if _G.log then _G.log("[TeleportFavorites] control.lua loaded") end
-
--- Initialize development environment if available
--- This is done using pcall to ensure the mod works even if the dev modules are not present
-pcall(function() 
-  require("core.utils.dev_init") 
-  
-  -- Load test modules only in dev mode
-  local DevEnvironment = require("core.utils.dev_environment")
-  if DevEnvironment.is_dev_mode() then
-    require("tests.positionator_test")
-  end
-end)
-
--- Modular event handler registration
-local handlers = require("core.events.handlers")
-
--- Observer Pattern Integration
-local function setup_observers_for_player(player)
-  local success, gui_observer = pcall(require, "core.pattern.gui_observer")
-  if not success then
-    if _G.log then _G.log("[TeleportFavorites] Failed to require gui_observer: " .. tostring(gui_observer)) end
-    return
-  end
-  
-  if gui_observer.GuiEventBus and gui_observer.GuiEventBus.register_player_observers then
-    gui_observer.GuiEventBus.register_player_observers(player)
-  else
-    if _G.log then _G.log("[TeleportFavorites] GuiEventBus or register_player_observers not available") end
-  end
-end
-
-local function cleanup_observers_for_player(player_index)
-  local success, gui_observer = pcall(require, "core.pattern.gui_observer")
-  if not success then
-    if _G.log then _G.log("[TeleportFavorites] Failed to require gui_observer: " .. tostring(gui_observer)) end
-    return
-  end
-  
-  if gui_observer.GuiEventBus and gui_observer.GuiEventBus.cleanup_all then
-    -- For now, clean up all observers since there's no player-specific cleanup
-    gui_observer.GuiEventBus.cleanup_all()
-  else
-    if _G.log then _G.log("[TeleportFavorites] GuiEventBus or cleanup_all not available") end
-  end
-end
-
-local script = _G.script
-
 -- Import controllers for various mod components
-local control_fave_bar = require("core.control.control_fave_bar")      -- Required for favorites bar functionality
+local control_fave_bar = require("core.control.control_fave_bar")       -- Required for favorites bar functionality
 local control_tag_editor = require("core.control.control_tag_editor")   -- Required for tag editor functionality
 local control_data_viewer = require("core.control.control_data_viewer") -- Used for data viewer registration
 
@@ -72,10 +22,74 @@ local control_data_viewer = require("core.control.control_data_viewer") -- Used 
 local gui_event_dispatcher = require("core.events.gui_event_dispatcher")
 local custom_input_dispatcher = require("core.events.custom_input_dispatcher")
 local on_gui_closed_handler = require("core.events.on_gui_closed_handler")
+local tag_terrain_watcher = require("core.tag.tag_terrain_watcher") -- For handling terrain changes under chart tags
+local handlers = require("core.events.handlers")
+local Settings = require("core.utils.settings_access")
+local fave_bar = require("gui.favorites_bar.fave_bar")
 
--- Import mod constants and settings
-local Constants = require("constants")
-local Settings = require("settings")
+-- Optional modules - load safely
+local gui_observer
+local WorkingCommandManager
+local Positionator
+
+do
+  local success, module = pcall(require, "core.pattern.gui_observer")
+  if success then gui_observer = module end
+end
+
+do
+  local success, module = pcall(require, "core.pattern.working_command_manager")
+  if success then WorkingCommandManager = module end
+end
+
+do
+  local success, module = pcall(require, "core.utils.positionator")
+  if success then Positionator = module end
+end
+
+
+-- Log control.lua loading
+if log then log("[TeleportFavorites] control.lua loaded") end
+
+-- Initialize development environment if available
+-- This is done using pcall to ensure the mod works even if the dev modules are not present
+pcall(function()
+  require("core.utils.dev_init")
+
+  -- Load test modules only in dev mode
+  local DevEnvironment = require("core.utils.dev_environment")
+  if DevEnvironment.is_dev_mode() then
+    require("tests.positionator_test")
+  end
+end)
+
+-- Observer Pattern Integration
+local function setup_observers_for_player(player)
+  if not gui_observer then
+    if log then log("[TeleportFavorites] gui_observer module not available") end
+    return
+  end
+
+  if gui_observer.GuiEventBus and gui_observer.GuiEventBus.register_player_observers then
+    gui_observer.GuiEventBus.register_player_observers(player)
+  else
+    if log then log("[TeleportFavorites] GuiEventBus or register_player_observers not available") end
+  end
+end
+
+local function cleanup_observers_for_player(player_index)
+  if not gui_observer then
+    if log then log("[TeleportFavorites] gui_observer module not available") end
+    return
+  end
+
+  if gui_observer.GuiEventBus and gui_observer.GuiEventBus.cleanup_all then
+    -- For now, clean up all observers since there's no player-specific cleanup
+    gui_observer.GuiEventBus.cleanup_all()
+  else
+    if log then log("[TeleportFavorites] GuiEventBus or cleanup_all not available") end
+  end
+end
 
 -- Custom on_init to allow easy toggling of intro cutscene skip
 local function custom_on_init()
@@ -96,29 +110,30 @@ end
 
 script.on_init(custom_on_init)
 script.on_load(handlers.on_load)
-script.on_event(_G.defines.events.on_player_created, handle_player_join_or_create)
-script.on_event(_G.defines.events.on_player_changed_surface, handlers.on_player_changed_surface)
-script.on_event(_G.defines.events.on_player_selected_area, handlers.on_player_selected_area)
-script.on_event(_G.defines.events.on_player_joined_game, handle_player_join_or_create)
+script.on_event(defines.events.on_player_created, handle_player_join_or_create)
+script.on_event(defines.events.on_player_changed_surface, handlers.on_player_changed_surface)
+script.on_event(defines.events.on_player_selected_area, handlers.on_player_selected_area)
+script.on_event(defines.events.on_player_joined_game, handle_player_join_or_create)
 script.on_event("tf-open-tag-editor", handlers.on_open_tag_editor_custom_input)
 
 -- KEEP THIS CODE for development (disabled in production)
 -- Instantly skip any cutscene (including intro) for all players
--- script.on_event(_G.defines.events.on_cutscene_started, function(event)
---   -- Cutscene skipping disabled due to API compatibility issues
---   -- If needed in development, uncomment and implement for faster testing
--- end)
+script.on_event(defines.events.on_cutscene_started, function(event)
+  -- Cutscene skipping disabled due to API compatibility issues
+  -- If needed in development, uncomment and implement for faster testing
+  local player = game.players[event.player_index]
+  if player then
+    player.exit_cutscene()
+  end
+end)
 
 -- Handle mod setting changes
-script.on_event(_G.defines.events.on_runtime_mod_setting_changed, function(event)
-  -- Get the fave_bar module only when needed
-  local fave_bar = require("gui.favorites_bar.fave_bar")
-  
+script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   -- Handle changes to the favorites on/off setting
   if event.setting == "favorites-on" then
     for _, player in pairs(game.connected_players) do
       -- Update the favorites bar visibility based on the setting
-      local player_settings = Settings.getPlayerSettings(player)
+      local player_settings = Settings:getPlayerSettings(player)
       if player_settings.favorites_on then
         -- Show or rebuild the favorites bar
         fave_bar.build(player, player.gui.top)
@@ -129,18 +144,18 @@ script.on_event(_G.defines.events.on_runtime_mod_setting_changed, function(event
     end
     return
   end
-  
+
   -- Handle changes to the teleport radius
   if event.setting == "teleport-radius" then
     -- No UI needs updating, but we could log the change
-    if _G.log then _G.log("[TeleportFavorites] Teleport radius setting changed for player " .. event.player_index) end
+    if log then log("[TeleportFavorites] Teleport radius setting changed for player " .. event.player_index) end
     return
   end
-  
+
   -- Handle changes to the destination message setting
   if event.setting == "destination-msg-on" then
     -- This setting affects messaging only, no UI changes required
-    if _G.log then _G.log("[TeleportFavorites] Destination message setting changed for player " .. event.player_index) end
+    if log then log("[TeleportFavorites] Destination message setting changed for player " .. event.player_index) end
     return
   end
 end)
@@ -156,19 +171,21 @@ gui_event_dispatcher.register_gui_handlers(script)
 custom_input_dispatcher.register_default_inputs(script)
 
 -- Register on_gui_closed handler for ESC key/modal close support
-script.on_event(_G.defines.events.on_gui_closed, on_gui_closed_handler.on_gui_closed)
+script.on_event(defines.events.on_gui_closed, on_gui_closed_handler.on_gui_closed)
+
+-- Register terrain watcher to handle chart tags when the terrain changes beneath them
+tag_terrain_watcher.register(script)
 
 -- Clean up command history and observers when players leave
-script.on_event(_G.defines.events.on_player_left_game, function(event)
-  local WorkingCommandManager = require("core.pattern.working_command_manager")
-  WorkingCommandManager.cleanup_player_history(event.player_index)
+script.on_event(defines.events.on_player_left_game, function(event)
+  if WorkingCommandManager then
+    WorkingCommandManager.cleanup_player_history(event.player_index)
+  end
 
   -- Clean up any active Positionator instances
-  pcall(function()
-    local Positionator = require("core.utils.positionator")
-    if Positionator and Positionator.clear_player_data then
-      Positionator.clear_player_data(event.player_index)
-    end
-  end)
+  if Positionator and Positionator.clear_player_data then
+    Positionator.clear_player_data(event.player_index)
+  end
+  
   cleanup_observers_for_player(event.player_index)
 end)

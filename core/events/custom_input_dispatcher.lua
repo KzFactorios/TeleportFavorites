@@ -33,6 +33,11 @@ function handler(event)
 end
 --]]
 
+local control_data_viewer = require("core.control.control_data_viewer")
+local on_gui_closed_handler = require("core.events.on_gui_closed_handler")
+
+
+
 ---@class CustomInputDispatcher
 local M = {}
 
@@ -60,40 +65,15 @@ local function create_safe_handler(handler, handler_name)  return function(event
   end
 end
 
---- Create a lazy-loaded handler that requires modules on demand
----@param module_path string Path to the module to require
----@param method_name string Name of the method to call
----@return function Lazy-loaded handler function
-local function create_lazy_handler(module_path, method_name)
-  return function(event)
-    local success, module = pcall(require, module_path)
-    if not success then
-      log("[TeleportFavorites] Failed to load module '" .. module_path .. "': " .. tostring(module))
-      return
-    end
-    
-    if type(module[method_name]) ~= "function" then
-      log("[TeleportFavorites] Method '" .. method_name .. "' not found in module '" .. module_path .. "'")
-      return
-    end
-    
-    local handler_success, err = pcall(module[method_name], event)
-    if not handler_success then
-      log("[TeleportFavorites] Error in handler " .. module_path .. "." .. method_name .. ": " .. tostring(err))
-    end
-  end
-end
-
 -- Default custom input handlers (private to avoid global pollution)
 ---@type table<string, function>
 local default_custom_input_handlers = {
-  ["dv-toggle-data-viewer"] = create_lazy_handler("core.control.control_data_viewer", "on_toggle_data_viewer"),
+  ["dv-toggle-data-viewer"] = control_data_viewer.on_toggle_data_viewer,
   ["tf-undo-last-action"] = function(event)
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end
     
     -- Use the GUI handler's undo function
-    local on_gui_closed_handler = require("core.events.on_gui_closed_handler")
     local success = on_gui_closed_handler.undo_last_gui_close(player)
     
     if success then

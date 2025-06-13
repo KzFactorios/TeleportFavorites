@@ -3,10 +3,10 @@
 -- Provides a developer utility for fine-tuning positions and bounding boxes
 -- before proceeding with the normalization workflow
 
-local DevEnvironment = require("core.utils.dev_environment")
+local DevMode = require("core.utils.dev_mode")
 local GuiBase = require("gui.gui_base")
 local Constants = require("constants")
-local Settings = require("core.control.settings")
+local Settings = require("__TeleportFavorites__.settings")
 local GPSCore = require("core.utils.gps_core")
 local GPSParser = require("core.utils.gps_parser")
 local TableHelpers = require("core.utils.table_helpers")
@@ -34,6 +34,9 @@ Positionator.names = {
     box_height_label = "tf_positionator_box_height_label",
     reset_button = "tf_positionator_reset_button",
     confirm_button = "tf_positionator_confirm_button",
+    nearby_tags_label = "tf_positionator_nearby_tags_label",
+    nearby_tags_scroll = "tf_positionator_nearby_tags_scroll",
+    nearby_tags_list = "tf_positionator_nearby_tags_list"
 }
 
 -- State data for the positionator
@@ -113,9 +116,8 @@ function Positionator.clear_map_preview(player_index)
 end
 
 -- Show the position adjustment dialog
-function Positionator.show(player, original_pos, normalized_pos, callback_data)
-    -- First determine if we should show the Positionator GUI (requires dev mode)
-    local show_gui = DevEnvironment.is_positionator_enabled()
+function Positionator.show(player, original_pos, normalized_pos, callback_data)    -- First determine if we should show the Positionator GUI (requires dev mode)
+    local show_gui = DevMode.is_positionator_enabled()
     
     -- If not in dev mode, return false to indicate we didn't show the dialog
     if not show_gui then
@@ -379,8 +381,162 @@ function Positionator.create_gui(player)
         tooltip = "Use current position and continue with workflow",
     })
     
+    -- Add a separator
+    main_content.add({
+        type = "line",
+        direction = "horizontal",
+    })
+      -- Nearby Chart Tags Section (sorted by distance - closest at top)
+    local nearby_tags_header = main_content.add({
+        type = "flow",
+        direction = "horizontal",
+    })
+    nearby_tags_header.style.vertical_align = "center"
+    nearby_tags_header.style.horizontally_stretchable = true
+    
+    nearby_tags_header.add({
+        type = "label",
+        name = Positionator.names.nearby_tags_label,
+        caption = "Nearby Chart Tags (closest first):",
+        style = "caption_label",
+    })
+    
+    -- Scrollable list for nearby chart tags
+    local scroll_pane = main_content.add({
+        type = "scroll-pane",
+        name = Positionator.names.nearby_tags_scroll,
+        horizontal_scroll_policy = "never",
+        vertical_scroll_policy = "auto"
+    })
+    scroll_pane.style.maximal_height = 150
+    scroll_pane.style.horizontally_stretchable = true
+    
+    -- Flow for the list of tags
+    local tags_list = scroll_pane.add({
+        type = "flow",
+        name = Positionator.names.nearby_tags_list,
+        direction = "vertical"
+    })
+    tags_list.style.vertical_spacing = 2
+    tags_list.style.horizontally_stretchable = true
+    
     -- Visualize the bounding box on the map
     Positionator.visualize_bounding_box(player)
+    
+    -- Update the nearby chart tags list
+    Positionator.update_nearby_chart_tags(player)
+end
+
+-- Update the nearby chart tags list in the UI
+function Positionator.update_nearby_chart_tags(player)
+    -- Get the main frame
+    local frame = player.gui.left[Positionator.names.main_frame]
+    if not frame then return end
+    
+    -- Get the scroll pane and list container
+    local main_content = frame[Positionator.names.main_content]
+    local scroll_pane = main_content[Positionator.names.nearby_tags_scroll]
+    if not scroll_pane then return end
+    
+    local tags_list = scroll_pane[Positionator.names.nearby_tags_list]
+    if not tags_list then return end
+    
+    -- Clear the existing list
+    tags_list.clear()
+    
+    -- Get player data
+    local player_data = Positionator.get_player_data(player.index)
+    if not player_data then return end
+    
+    -- Get position and radius
+    local position = player_data.adjusted_pos
+    local radius = player_data.search_radius
+    local surface = player.surface
+    
+    -- Define the search area
+    local search_area = {
+        {position.x - radius, position.y - radius},
+        {position.x + radius, position.y + radius}
+    }
+    
+    -- Get all chart tags in the area
+    local chart_tags = player.force.find_chart_tags(surface, search_area)
+    if not chart_tags or #chart_tags == 0 then
+        -- No tags found
+        tags_list.add({
+            type = "label",
+            caption = "No chart tags found in radius"
+        }).style.font_color = {r=0.7, g=0.7, b=0.7}
+        return
+    end
+    
+    -- Calculate distance from center position for each tag
+    local tags_with_distance = {}
+    for _, tag in pairs(chart_tags) do
+        if tag and tag.valid then
+            local dx = tag.position.x - position.x
+            local dy = tag.position.y - position.y
+            local distance = math.sqrt(dx*dx + dy*dy)
+            
+            table.insert(tags_with_distance, {
+                tag = tag,
+                distance = distance
+            })
+        end
+    end
+      -- Sort by distance (closest first, to appear at the top of the list)
+    table.sort(tags_with_distance, function(a, b)
+        return a.distance < b.distance
+    end)
+    
+    -- Add each tag to the list
+    for _, tag_data in ipairs(tags_with_distance) do
+        local tag = tag_data.tag
+        local distance = tag_data.distance
+        
+        -- Create the GPS string
+        local gps = GPSParser.gps_from_map_position(tag.position, surface.index)
+        
+        -- Create a flow for this tag
+        local tag_flow = tags_list.add({
+            type = "flow",
+            direction = "horizontal"
+        })
+        tag_flow.style.horizontally_stretchable = true
+        
+        -- Distance indicator
+        local distance_label = tag_flow.add({
+            type = "label",
+            caption = string.format("%.1f", distance)
+        })
+        distance_label.style.width = 40
+        distance_label.style.font = "default-small"
+        distance_label.style.font_color = {r=0.7, g=0.7, b=0.7}        -- Icon if present
+        if tag.icon and tag.icon.type and tag.icon.name then
+            local sprite_name = tag.icon.type .. "/" .. tag.icon.name
+            -- Just try to add the sprite - Factorio will handle invalid sprites gracefully
+            tag_flow.add({
+                type = "sprite",
+                sprite = sprite_name,
+                tooltip = tag.text or ""
+            })
+        end
+        
+        -- GPS text
+        local gps_label = tag_flow.add({
+            type = "label",
+            caption = gps
+        })
+        gps_label.style.font = "default-small"
+        
+        -- Add tooltip with full tag info
+        local tooltip = tag.text or ""
+        if tooltip ~= "" then
+            tooltip = tooltip .. "\n"
+        end
+        tooltip = tooltip .. gps
+        gps_label.tooltip = tooltip
+    end
 end
 
 -- Update the UI elements based on current state
@@ -428,7 +584,10 @@ function Positionator.update_ui(player)
         box_height_label.caption = string.format("Height: %.1f", player_data.search_radius * 2)
     end
     
-    -- Update visualization
+    -- Update the nearby chart tags list
+    Positionator.update_nearby_chart_tags(player)
+    
+    -- Visualize the bounding box on the map
     Positionator.visualize_bounding_box(player)
 end
 
@@ -663,7 +822,7 @@ end
 
 -- Handle player cursor stack changes
 function Positionator.on_cursor_changed(event)
-    if not (DevEnvironment and DevEnvironment.is_dev_mode and DevEnvironment.is_dev_mode()) then return end
+    if not DevMode.is_dev_environment() then return end
     
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end
@@ -791,9 +950,8 @@ end
 function Positionator.on_display_change(event)
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end
-    
-    -- For GUI: Only refresh if in dev mode
-    if DevEnvironment.is_positionator_enabled() and Positionator.state.player_data[player.index] then
+      -- For GUI: Only refresh if in dev mode
+    if DevMode.is_positionator_enabled() and Positionator.state.player_data[player.index] then
         Positionator.update_ui(player)
     end
     

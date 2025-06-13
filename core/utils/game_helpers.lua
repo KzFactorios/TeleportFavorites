@@ -7,7 +7,8 @@ Extracted from helpers_suite.lua for better organization and maintainability.
 ]]
 
 local Constants = require("constants")
-local Settings = require("settings")
+local gps_core = require("core.utils.gps_core")
+local SettingsAccess = require("core.utils.settings_access")
 
 ---@class GameHelpers
 local GameHelpers = {}
@@ -25,24 +26,47 @@ end
 -- @return The nearest chart tag or nil if none found
 function GameHelpers.get_nearest_tag_to_click_position(player, map_position, search_radius)
   if not player then return nil end
-  
   -- Use provided search_radius if available, otherwise fall back to player settings
   local collision_radius = search_radius
   if not collision_radius then
-    local player_settings = Settings:getPlayerSettings(player)
+    local player_settings = SettingsAccess:getPlayerSettings(player)
     collision_radius = player_settings.teleport_radius or Constants.settings.TELEPORT_RADIUS_DEFAULT
   end
-    -- Create collision detection area centered on the map position
+  -- Create collision detection area centered on the map position
   -- Small buffer (0.1) ensures we don't include tags exactly on the boundary
   local collision_area = {
     left_top = { x = map_position.x - collision_radius + 0.1, y = map_position.y - collision_radius + 0.1 },
     right_bottom = { x = map_position.x + collision_radius - 0.1, y = map_position.y + collision_radius - 0.1 }
   }
-  
+
   local colliding_tags = player.force.find_chart_tags(player.surface, collision_area)
-  if colliding_tags and #colliding_tags > 0 then return colliding_tags[1] end
-  
-    return nil
+  if colliding_tags and #colliding_tags > 0 then
+    -- If only one tag found, just return it
+    if #colliding_tags == 1 then
+      return colliding_tags[1]
+    end
+
+    -- If multiple tags found, find the closest one to map_position
+    local closest_tag = nil
+    local min_distance = math.huge
+
+    for _, tag in pairs(colliding_tags) do
+      if tag and tag.valid and tag.position then
+        local dx = tag.position.x - map_position.x
+        local dy = tag.position.y - map_position.y
+        local distance = dx * dx + dy * dy -- Square distance is sufficient for comparison
+
+        if distance < min_distance then
+          min_distance = distance
+          closest_tag = tag
+        end
+      end
+    end
+
+    return closest_tag
+  end
+
+  return nil
 end
 
 function GameHelpers.is_water_tile(surface, pos)
@@ -67,12 +91,23 @@ function GameHelpers.is_space_tile(surface, pos)
   return false
 end
 
-function GameHelpers.safe_teleport(player, pos)
+local function cya_teleport(player, pos)
   if player and player.valid then
-    if pos.x and pos.y then return player.teleport({ x = pos.x, y = pos.y }, player.surface) end
-    if pos[1] and pos[2] then return player.teleport({ x = pos[1], y = pos[2] }, player.surface) end
+    if pos.x and pos.y then player.teleport({ x = pos.x, y = pos.y }, player.surface) return true end
+    if pos[1] and pos[2] then player.teleport({ x = pos[1], y = pos[2] }, player.surface) return true end
   end
   return false
+end
+
+function GameHelpers.safe_teleport(player, pos)
+  -- do not print msg if player has the setting turned off
+  local player_approves_dest_messaging = SettingsAccess:getPlayerSettings(player).destination_msg_on
+
+  if cya_teleport(player, pos) and player_approves_dest_messaging then
+    GameHelpers.player_print(player, { "tf-gui.teleported_to", player.name, gps_core.coords_string_from_map_position(pos) })
+  elseif player_approves_dest_messaging then
+    GameHelpers.player_print(player, ("tf-gui.teleport_failed"))
+  end
 end
 
 function GameHelpers.safe_play_sound(player, sound)
@@ -83,7 +118,9 @@ end
 
 -- Player print (already present, but ensure DRY)
 function GameHelpers.player_print(player, message)
-  if player and player.valid and type(player.print) == "function" then player.print(message) end
+  if player and player.valid and type(player.print) == "function" then
+    player.print(message)
+  end
 end
 
 -- Tag/favorite state update logic

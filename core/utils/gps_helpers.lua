@@ -85,9 +85,9 @@ return {
   
   -- Validation patterns
   ValidationPatterns = GPSCore.ValidationPatterns,
-  
-  -- Chart helper functions (delegated through facade)
+    -- Chart helper functions (delegated through facade)
   create_and_validate_chart_tag = function(player, spec) return gps_facade:create_chart_tag(player, spec) end,
+  safe_add_chart_tag = GPSChartHelpers.safe_add_chart_tag,
   
   -- Position normalization functions (delegated through facade)
   normalize_landing_position = GPSPositionNormalizer.normalize_landing_position,

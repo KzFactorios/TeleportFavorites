@@ -102,4 +102,37 @@ function RichTextFormatter.deletion_prevention_notification(chart_tag)
         MOD_NAME, icon_str, tag_text, position_str)
 end
 
+-- Generate a tag relocation notification message when terrain changes
+-- @param chart_tag The chart tag that was relocated
+-- @param old_position The previous position {x=X, y=Y}
+-- @param new_position The new position {x=X, y=Y}
+-- @return A formatted notification message
+function RichTextFormatter.tag_relocated_notification(chart_tag, old_position, new_position)
+    if not chart_tag or not chart_tag.valid or not old_position or not new_position then
+        return "[Invalid tag relocation data]"
+    end
+    
+    local tag_text = chart_tag.text or "Tag"
+    
+    -- Format the icon if present
+    local icon_str = ""
+    if chart_tag.icon and chart_tag.icon.type and chart_tag.icon.name then
+        icon_str = string.format("[img=%s/%s] ", chart_tag.icon.type, chart_tag.icon.name)
+    end
+    
+    -- Format old and new positions
+    local old_position_str = string.format("[gps=%d,%d,%d]", 
+        math.floor(old_position.x), 
+        math.floor(old_position.y), 
+        chart_tag.surface.index)
+    
+    local new_position_str = string.format("[gps=%d,%d,%d]", 
+        math.floor(chart_tag.position.x), 
+        math.floor(chart_tag.position.y), 
+        chart_tag.surface.index)
+    
+    return string.format("[%s] %s%s has been relocated from %s to %s due to terrain changes", 
+        MOD_NAME, icon_str, tag_text, old_position_str, new_position_str)
+end
+
 return RichTextFormatter

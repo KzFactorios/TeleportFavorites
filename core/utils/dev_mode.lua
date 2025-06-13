@@ -7,11 +7,21 @@ Provides a way to detect whether the mod is running in a development
 or production environment, and toggle development features.
 ]]
 
-local Cache = require("core.cache.cache")
 local Constants = require("constants")
+
+-- The Cache module is optional in this context since we'll check before using it
+local Cache
+-- Use pcall to safely require the module, as it might not be available in some contexts
+local cache_success, cache_module = pcall(function() return require("core.cache.cache") end)
+if cache_success then Cache = cache_module end
 
 ---@class DevMode
 local DevMode = {}
+
+-- Simple local cache for runtime values
+local runtime_cache = {
+    dev_environment = nil -- Will store the detected environment state
+}
 
 -- File paths used for dev environment detection
 local DEV_MARKERS = {
@@ -33,11 +43,8 @@ local DEV_FEATURES = {
 --- @return boolean is_dev_env True if detected as development environment
 function DevMode.is_dev_environment()
     -- Check if we've already determined and cached the environment type
-    if Cache and Cache.get_runtime_data then
-        local cached = Cache.get_runtime_data("dev_environment")
-        if cached ~= nil then
-            return cached
-        end
+    if runtime_cache.dev_environment ~= nil then
+        return runtime_cache.dev_environment
     end
 
     -- Try to detect using file system checks
@@ -48,12 +55,14 @@ function DevMode.is_dev_environment()
         -- Use pcall since attempting to read files may throw errors in production
         local success = pcall(function()
             -- For directories, check if they exist using a dummy file access
-            local dummy_file = marker .. "/.dev_check"
-            local test = io.open(dummy_file, "r")
-            if test then
-                test:close()
-                is_dev = true
-                return true
+            if _G.io then -- Check if io library is available
+                local dummy_file = marker .. "/.dev_check"
+                local test = _G.io.open(dummy_file, "r")
+                if test then
+                    test:close()
+                    is_dev = true
+                    return true
+                end
             end
         end)
         
@@ -63,20 +72,23 @@ function DevMode.is_dev_environment()
     end
     
     -- Second check: look for dev mods that are only installed in development
-    if not is_dev and script and script.active_mods then
-        local dev_mods = {"debugadapter", "EditorExtensions", "creative-mode"}
-        for _, mod_name in ipairs(dev_mods) do
-            if script.active_mods[mod_name] then
-                is_dev = true
-                break
+    -- Check if the script global exists (will only be available in control stage, not data stage)
+    if not is_dev and _G.script ~= nil then
+        -- Protect against missing active_mods property
+        local active_mods = _G.script.active_mods
+        if active_mods then
+            local dev_mods = {"debugadapter", "EditorExtensions", "creative-mode"}
+            for _, mod_name in ipairs(dev_mods) do
+                if active_mods[mod_name] then
+                    is_dev = true
+                    break
+                end
             end
         end
     end
     
-    -- Cache the result for subsequent calls
-    if Cache and Cache.set_runtime_data then
-        Cache.set_runtime_data("dev_environment", is_dev)
-    end
+    -- Cache the result in our local runtime cache
+    runtime_cache.dev_environment = is_dev
     
     return is_dev
 end
@@ -110,7 +122,8 @@ function DevMode.is_enabled_for_player(player, feature_name)
     
     -- Check player data for dev mode preference
     if player and player.valid then
-        local pdata = Cache.get_player_data(player)
+        -- Only try to get player data if the Cache module is available
+        local pdata = Cache and Cache.get_player_data and Cache.get_player_data(player) or {}
         
         -- If player has explicitly disabled dev features, respect that
         if pdata.dev_features_disabled == true then
@@ -142,20 +155,25 @@ function DevMode.set_enabled_for_player(player, enabled, feature_name)
     end
     
     if player and player.valid then
-        local pdata = Cache.get_player_data(player)
-        
-        -- If toggling specific feature
-        if feature_name then
-            pdata.dev_features = pdata.dev_features or {}
-            pdata.dev_features[feature_name] = enabled
-        else
-            -- Toggle all features
-            pdata.dev_features_disabled = not enabled
+        -- Only try to get player data if the Cache module is available
+        if Cache and Cache.get_player_data then
+            local pdata = Cache.get_player_data(player)
+            
+            -- If toggling specific feature
+            if feature_name then
+                pdata.dev_features = pdata.dev_features or {}
+                pdata.dev_features[feature_name] = enabled
+            else
+                -- Toggle all features
+                pdata.dev_features_disabled = not enabled
+            end
         end
         
         -- Notify player
-        player.print("[Dev Mode] " .. (enabled and "Enabled" or "Disabled") .. 
-                    (feature_name and (" feature: " .. feature_name) or ""))
+        if player and player.valid and player.print then
+            player.print("[Dev Mode] " .. (enabled and "Enabled" or "Disabled") .. 
+                      (feature_name and (" feature: " .. feature_name) or ""))
+        end
     end
 end
 
@@ -169,6 +187,13 @@ function DevMode.get_env_value(prod_value, dev_value)
     else
         return prod_value
     end
+end
+
+--- Check if positionator tool is enabled
+--- @return boolean enabled True if positionator tool is enabled
+function DevMode.is_positionator_enabled()
+    -- Positionator is enabled if we're in dev environment and the feature is on
+    return DevMode.is_dev_environment() and DEV_FEATURES.POSITION_ADJUSTMENT_DIALOG
 end
 
 return DevMode

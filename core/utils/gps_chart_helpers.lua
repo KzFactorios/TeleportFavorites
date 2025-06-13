@@ -13,6 +13,7 @@ Chart tag creation, validation, and management utilities.
 local Helpers = require("core.utils.helpers_suite")
 local ErrorHandler = require("core.utils.error_handler")
 local GPSCore = require("core.utils.gps_core")
+local basic_helpers = require("core.utils.basic_helpers")
 
 ---@class GPSChartHelpers
 local GPSChartHelpers = {}
@@ -30,7 +31,7 @@ local function position_can_be_tagged(player, map_position)
     end
     return false
   end
-  
+
   if Helpers.is_water_tile(player.surface, map_position) or Helpers.is_space_tile(player.surface, map_position) then
     if player and player.valid then
       player:print("[TeleportFavorites] You cannot tag water or space in this interface: " ..
@@ -54,11 +55,9 @@ local function create_and_validate_chart_tag(player, chart_tag_spec)
   ErrorHandler.debug_log("Creating chart tag for validation", {
     position = chart_tag_spec.position,
     text = chart_tag_spec.text
-  })
-  
-  -- Create the chart tag first
-  local chart_tag = player.force:add_chart_tag(player.surface, chart_tag_spec)
-  
+  })                               -- Create the chart tag first using our safe wrapper
+  local chart_tag = GPSChartHelpers.safe_add_chart_tag(player.force, player.surface, chart_tag_spec)
+
   -- Then validate using our position checker
   -- Note: We validate the created chart tag because position_can_be_tagged may not
   -- catch all Factorio API restrictions that only surface during actual creation
@@ -73,7 +72,7 @@ local function create_and_validate_chart_tag(player, chart_tag_spec)
       { position = chart_tag_spec.position }
     )
   end
-  
+
   -- Final validation that chart tag was created successfully
   if not chart_tag or not chart_tag.valid then
     ErrorHandler.warn_log("Chart tag creation succeeded but tag is invalid", {
@@ -86,7 +85,7 @@ local function create_and_validate_chart_tag(player, chart_tag_spec)
       { position = chart_tag_spec.position }
     )
   end
-  
+
   ErrorHandler.debug_log("Chart tag created and validated successfully")
   return chart_tag, ErrorHandler.success()
 end
@@ -100,54 +99,53 @@ local function align_chart_tag_position(player, chart_tag)
   if not player or not player.valid or not chart_tag or not chart_tag.valid then
     return nil
   end
-  
-  local basic_helpers = require("core.utils.basic_helpers")
-  local GPSCore = require("core.utils.gps_core")
-  
+
   -- Check if alignment is needed
   if basic_helpers.is_whole_number(chart_tag.position.x) and basic_helpers.is_whole_number(chart_tag.position.y) then
     return chart_tag -- No alignment needed
   end
-  
+
   ErrorHandler.debug_log("Aligning chart tag to whole number coordinates", {
     current_position = chart_tag.position
   })
-  
+
   -- Normalize coordinates to whole numbers
   local x = basic_helpers.normalize_index(chart_tag.position.x)
   local y = basic_helpers.normalize_index(chart_tag.position.y)
-  
+
   if not x or not y then
     ErrorHandler.debug_log("Failed to normalize chart tag coordinates")
     return chart_tag -- Return original if normalization fails
   end
-  
   local new_position = { x = x, y = y }
-  
   -- Create new chart tag at aligned position
   local chart_tag_spec = {
     position = new_position,
-    icon = chart_tag.icon or {},
-    text = chart_tag.text or "",
+    text = chart_tag.text or "Tag", -- Always provide a default text
     last_user = chart_tag.last_user or player.name
   }
-  
-  local new_chart_tag = player.force:add_chart_tag(player.surface, chart_tag_spec)
+  -- Only include icon if it's a valid SignalID
+  if chart_tag.icon and type(chart_tag.icon) == "table" and chart_tag.icon.name then
+    chart_tag_spec.icon = chart_tag.icon
+  end
+  -- Use our safe wrapper to create the chart tag
+  local new_chart_tag = GPSChartHelpers.safe_add_chart_tag(player.force, player.surface, chart_tag_spec)
+
   if not new_chart_tag or not new_chart_tag.valid then
     ErrorHandler.debug_log("Failed to create aligned chart tag")
     return chart_tag -- Return original if creation fails
   end
-  
+
   -- Destroy the old chart tag
   if chart_tag.valid then
     chart_tag.destroy()
   end
-  
+
   ErrorHandler.debug_log("Successfully aligned chart tag position", {
     old_position = chart_tag.position,
     new_position = new_position
   })
-  
+
   return new_chart_tag
 end
 
@@ -155,5 +153,43 @@ end
 GPSChartHelpers.position_can_be_tagged = position_can_be_tagged
 GPSChartHelpers.create_and_validate_chart_tag = create_and_validate_chart_tag
 GPSChartHelpers.align_chart_tag_position = align_chart_tag_position
+
+--- Safe wrapper for add_chart_tag to ensure consistent calling pattern
+--- This prevents errors related to incorrect argument counts
+---@param force LuaForce The force that will own the chart tag
+---@param surface LuaSurface The surface where the tag will be placed
+---@param spec table Chart tag specification table (position, text, etc.)
+---@return LuaCustomChartTag|nil chart_tag The created chart tag or nil if failed
+function GPSChartHelpers.safe_add_chart_tag(force, surface, spec)
+  if not force or not surface or not spec then
+    ErrorHandler.debug_log("Invalid arguments to safe_add_chart_tag", {
+      has_force = force ~= nil,
+      has_surface = surface ~= nil,
+      has_spec = spec ~= nil
+    })
+    return nil
+  end
+  -- Use protected call to catch any errors
+  local success, result = pcall(function()
+    -- Create local variables to ensure clean argument passing
+    local chart_tag
+    do
+      local temp_force = force
+      -- use dot to access the correct call. Colon access wil fail
+      chart_tag = temp_force.add_chart_tag(surface, spec)
+    end
+    return chart_tag
+  end)
+
+  if not success or not result or not result.valid then
+    ErrorHandler.debug_log("Chart tag creation failed in wrapper", {
+      success = success,
+      error = not success and result or "Tag invalid after creation"
+    })
+    return nil
+  end
+
+  return result
+end
 
 return GPSChartHelpers

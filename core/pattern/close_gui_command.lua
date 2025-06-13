@@ -14,8 +14,9 @@ This demonstrates the Command pattern in action by:
 --]]
 
 local Cache = require("core.cache.cache")
-local Helpers = require("core.utils.helpers_suite")
+local control_tag_editor = require("core.control.control_tag_editor")
 local ErrorHandler = require("core.utils.error_handler")
+local Helpers = require("core.utils.helpers_suite")
 
 ---@class CloseGuiCommand
 ---@field player LuaPlayer
@@ -114,7 +115,6 @@ end
 ---@return boolean success
 function CloseGuiCommand:_perform_close()
   if self.gui_name == "tag_editor" then
-    local control_tag_editor = require("core.control.control_tag_editor")
     local success, err = pcall(control_tag_editor.close_tag_editor, self.player)
     return success
   elseif self.gui_name == "data_viewer" then
@@ -129,7 +129,6 @@ end
 ---@return boolean success
 function CloseGuiCommand:_perform_reopen()
   if self.gui_name == "tag_editor" and self.gui_data then
-    local control_tag_editor = require("core.control.control_tag_editor")
     -- Restore the tag editor with previous data
     Cache.set_tag_editor_data(self.player, self.gui_data)
     return pcall(control_tag_editor.open_tag_editor, self.player)

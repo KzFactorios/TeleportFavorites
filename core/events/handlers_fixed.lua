@@ -53,8 +53,6 @@ local basic_helpers = require("core.utils.basic_helpers")
 local GPSCore = require("core.utils.gps_core")
 local Lookups = require("core.cache.lookups")
 local RichTextFormatter = require("core.utils.rich_text_formatter")
-local GPSChartHelpers = require("core.utils.gps_chart_helpers")
-local GameHelpers = require("core.utils.game_helpers")
 
 local handlers = {}
 
@@ -195,7 +193,8 @@ function handlers.on_chart_tag_added(event)
       x = basic_helpers.normalize_index(position.x),
       y = basic_helpers.normalize_index(position.y)
     }
-      -- Create new chart tag at normalized position
+    
+    -- Create new chart tag at normalized position
     -- Prepare chart_tag_spec properly
     local chart_tag_spec = {
       position = new_position,
@@ -207,21 +206,24 @@ function handlers.on_chart_tag_added(event)
       chart_tag_spec.icon = chart_tag.icon
     end
     
+    local GPSChartHelpers = require("core.utils.gps_chart_helpers")
     local new_chart_tag = GPSChartHelpers.safe_add_chart_tag(player.force, chart_tag.surface, chart_tag_spec)
     
     if new_chart_tag and new_chart_tag.valid then
       -- Destroy the old chart tag with fractional coordinates
       chart_tag.destroy()
-        -- Refresh the cache to include the new chart tag
-      Lookups.invalidate_surface_chart_tags(surface_index)      -- Inform the player about the position normalization
-      local notification_msg = RichTextFormatter.position_change_notification(
+      
+      -- Refresh the cache to include the new chart tag
+      Lookups.invalidate_surface_chart_tags(surface_index)
+      
+      -- Inform the player about the position normalization
+      player.print(RichTextFormatter.position_change_notification(
         player,
         new_chart_tag,
         old_position,
         new_position, 
         surface_index
-      )
-      GameHelpers.player_print(player, notification_msg)
+      ))
     end
   end
   
@@ -370,16 +372,17 @@ local function update_favorites_gps(old_gps, new_gps, acting_player)
     end
     
     -- Get chart tag for better notification
-    local chart_tag = Lookups.get_chart_tag_by_gps(new_gps)    for _, affected_player in ipairs(affected_players) do
+    local chart_tag = Lookups.get_chart_tag_by_gps(new_gps)
+    
+    for _, affected_player in ipairs(affected_players) do
       if affected_player and affected_player.valid then
-        local position_msg = RichTextFormatter.position_change_notification(
+        affected_player.print(RichTextFormatter.position_change_notification(
           affected_player,
           chart_tag,
           old_position or {x=0, y=0},
           new_position or {x=0, y=0},
           surface_index
-        )
-        GameHelpers.player_print(affected_player, position_msg)
+        ))
       end
     end
   end
@@ -396,8 +399,7 @@ function handlers.on_chart_tag_modified(event)
   
   -- Check for need to normalize coordinates
   local chart_tag = event.tag
-  ---@cast player LuaPlayer
-  if chart_tag and chart_tag.valid and chart_tag.position and player and player.valid then
+  if chart_tag and chart_tag.valid and chart_tag.position and player then
     local position = chart_tag.position
     
     -- Ensure coordinates are whole numbers
@@ -416,11 +418,13 @@ function handlers.on_chart_tag_modified(event)
         position = new_position,
         text = chart_tag.text or "Tag", -- Ensure text is never nil
         last_user = chart_tag.last_user or player.name
-      }      -- Only include icon if it's a valid SignalID
+      }
+      -- Only include icon if it's a valid SignalID
       if chart_tag.icon and type(chart_tag.icon) == "table" and chart_tag.icon.name then
         chart_tag_spec.icon = chart_tag.icon
       end
       
+      local GPSChartHelpers = require("core.utils.gps_chart_helpers")
       local new_chart_tag = GPSChartHelpers.safe_add_chart_tag(player.force, surface, chart_tag_spec)
       
       if new_chart_tag and new_chart_tag.valid then
@@ -428,22 +432,25 @@ function handlers.on_chart_tag_modified(event)
         chart_tag.destroy()
         
         -- Update the tag and gps
-        local surface_index = surface and surface.index or 1        -- Cast new_position to ensure it's a MapPosition
+        local surface_index = surface and surface.index or 1
+        -- Cast new_position to ensure it's a MapPosition
         local map_position = {x = math.floor(new_position.x or 0), y = math.floor(new_position.y or 0)}
         new_gps = gps_parser.gps_from_map_position(map_position, surface_index)
         
         -- Refresh the cache
         Lookups.invalidate_surface_chart_tags(surface_index)
-          -- Update chart_tag reference for future operations
-        chart_tag = new_chart_tag        -- Notify the player about the normalization
-        local notification_msg = RichTextFormatter.position_change_notification(
+        
+        -- Update chart_tag reference for future operations
+        chart_tag = new_chart_tag
+        
+        -- Notify the player about the normalization
+        player.print(RichTextFormatter.position_change_notification(
           player, 
           new_chart_tag,
           old_position,
           new_position,
           surface_index
-        )
-        GameHelpers.player_print(player, notification_msg)
+        ))
       end
     end
   end
@@ -464,13 +471,13 @@ function handlers.on_chart_tag_removed(event)
   local chart_tag = event.tag
   local surface_index = (chart_tag.surface and chart_tag.surface.index) or 1
   local gps = gps_parser.gps_from_map_position(chart_tag.position, surface_index)
-  local tag = Cache.get_tag_by_gps(gps)  -- Get the player who is removing the chart tag
+  local tag = Cache.get_tag_by_gps(gps)
+  
+  -- Get the player who is removing the chart tag
   local player = event.player_index and game.get_player(event.player_index) or nil
   
   -- Check if this tag has favorites from other players
-  ---@diagnostic disable-next-line: need-check-nil, undefined-field
   if tag and tag.faved_by_players and #tag.faved_by_players > 0 and player and player.valid then
-    ---@cast tag -nil
     -- Check if any favorites belong to other players
     local has_other_players_favorites = false
     local owner = chart_tag.last_user or ""
@@ -484,7 +491,8 @@ function handlers.on_chart_tag_removed(event)
     end
     
     -- If other players have favorited this tag, prevent deletion
-    if has_other_players_favorites and player.name == owner and player.force then-- Recreate the chart tag since it was already removed by the event
+    if has_other_players_favorites and player.name == owner and player.force then
+      -- Recreate the chart tag since it was already removed by the event
       
       -- Prepare chart_tag_spec properly
       local chart_tag_spec = {
@@ -497,6 +505,7 @@ function handlers.on_chart_tag_removed(event)
         chart_tag_spec.icon = chart_tag.icon
       end
       
+      local GPSChartHelpers = require("core.utils.gps_chart_helpers")
       local new_chart_tag = GPSChartHelpers.safe_add_chart_tag(player.force, chart_tag.surface, chart_tag_spec)
       
       if new_chart_tag and new_chart_tag.valid then
@@ -504,9 +513,10 @@ function handlers.on_chart_tag_removed(event)
         tag.chart_tag = new_chart_tag
         
         -- Refresh the cache
-        Lookups.invalidate_surface_chart_tags(surface_index)        -- Notify the player
-        local deletion_msg = RichTextFormatter.deletion_prevention_notification(new_chart_tag)
-        GameHelpers.player_print(player, deletion_msg)
+        Lookups.invalidate_surface_chart_tags(surface_index)
+        
+        -- Notify the player
+        player.print(RichTextFormatter.deletion_prevention_notification(new_chart_tag))
         return
       end
     end
