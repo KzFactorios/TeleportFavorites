@@ -13,7 +13,8 @@ Features:
 - All new/changed features are documented inline and in notes/ as appropriate.
 ]]
 
--- Import controllers for various mod componentsslocal control_fave_bar = require("core.control.control_fave_bar")       -- Required for favorites bar functionality
+-- Import controllers for various mod components
+local control_fave_bar = require("core.control.control_fave_bar")       -- Required for favorites bar functionality
 local control_tag_editor = require("core.control.control_tag_editor")   -- Required for tag editor functionality
 local control_data_viewer = require("core.control.control_data_viewer") -- Used for data viewer registration
 

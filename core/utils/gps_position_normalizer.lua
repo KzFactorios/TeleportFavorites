@@ -19,14 +19,12 @@ local ErrorHandler = require("core.utils.error_handler")
 local basic_helpers = require("core.utils.basic_helpers")
 local GPSCore = require("core.utils.gps_core")
 local gps_parser = require("core.utils.gps_parser")
-local gps_core = require("core.utils.gps_core")
-local gps_chart_helpers = require("core.utils.gps_chart_helpers")
 local GPSChartHelpers = require("core.utils.gps_chart_helpers")
 local PositionValidator = require("core.utils.position_validator")
 local GameHelpers = require("core.utils.game_helpers")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local Lookups = require("core.cache.lookups")
-local RichTextFormatter = ("core.utils.rich_text_formatter")
+local RichTextFormatter = require("core.utils.rich_text_formatter")
 
 -- Dev environment detection removed - functionality no longer needed
 
@@ -107,17 +105,16 @@ local function find_exact_matches(context, callbacks)
   if not chart_tag or not chart_tag.valid then
     chart_tag = callbacks.get_chart_tag_by_gps_func and callbacks.get_chart_tag_by_gps_func(context.intended_gps) or nil
   end
-
   -- ensure a valid chart_tag to match the tag, if we can't get a match, then the tag should be destroyed
   -- however, it is ok for a chart_tag not to have a matching tag
   if tag and not chart_tag then
     local chart_tag_spec = {
       position = gps_parser.map_position_from_gps(adjusted_gps),
-      text = gps_core.coords_string_from_gps(adjusted_gps),
+      text = GPSCore.coords_string_from_gps(adjusted_gps),
       last_user = context.player.name
-    }
+  }
 
-    local new_chart_tag, _ = gps_chart_helpers.create_and_validate_chart_tag(context.player, chart_tag_spec) or nil
+    local new_chart_tag, _ = GPSChartHelpers.create_and_validate_chart_tag(context.player, chart_tag_spec) or nil
 
     if new_chart_tag then
       chart_tag = new_chart_tag
@@ -299,11 +296,10 @@ local function normalize_landing_position(player, intended_gps, get_tag_by_gps_f
     -- find a suitable location
     local valid_pos = PositionValidator.find_valid_position(context.player, context.landing_position,
       context.search_radius)
-    if valid_pos then
-      local chart_tag_spec = {
+    if valid_pos then      local chart_tag_spec = {
         position = valid_pos
       }
-      local new_chart_tag, _ = gps_chart_helpers.create_and_validate_chart_tag(context.player, chart_tag_spec) or nil
+      local new_chart_tag, _ = GPSChartHelpers.create_and_validate_chart_tag(context.player, chart_tag_spec) or nil
       if new_chart_tag then
         context.landing_position = new_chart_tag.position
         context.intended_gps = gps_parser.gps_from_map_position(new_chart_tag.position)
