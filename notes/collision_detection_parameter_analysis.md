@@ -4,7 +4,7 @@
 **Issue:** EntityID error fix, parameter optimization, and function renaming
 **Files:** 
 - `core/utils/gps_helpers.lua` - `normalize_landing_position()` function
-- `core/utils/game_helpers.lua` - `position_has_colliding_tag()` renamed to `get_nearest_tag_to_click_position()`
+- `core/utils/game_helpers.lua` - `position_has_colliding_tag()` renamed to `get_nearest_chart_tag_to_click_position()`
 
 ## Problem Solved
 Fixed "Invalid EntityID: expected LuaEntityPrototype, LuaEntity or string" error by changing collision detection entity from `"car"` to `"character"` with enhanced safety parameters.
@@ -89,7 +89,7 @@ end
 
 ### Function Renaming & Parameter Enhancement (June 12, 2025)
 
-The function in `game_helpers.lua` has been renamed to `get_nearest_tag_to_click_position()` to better reflect its purpose. The new function accepts an explicit search radius parameter:
+The function in `game_helpers.lua` has been renamed to `get_nearest_chart_tag_to_click_position()` to better reflect its purpose. The new function accepts an explicit search radius parameter:
 
 **Old Implementation:**
 ```lua
@@ -104,7 +104,7 @@ end
 
 **New Implementation:**
 ```lua
-function GameHelpers.get_nearest_tag_to_click_position(player, map_position, search_radius)
+function GameHelpers.get_nearest_chart_tag_to_click_position(player, map_position, search_radius)
   -- Uses provided search_radius if available, otherwise falls back to player settings
   local collision_radius = search_radius
   if not collision_radius then

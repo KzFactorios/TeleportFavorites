@@ -117,12 +117,12 @@ function handlers.on_open_tag_editor_custom_input(event)
   
   -- Normalize the clicked position and convert to GPS string
   local normalized_gps = gps_parser.gps_from_map_position(cursor_position, player.surface.index)
-  local nrm_pos, nrm_tag, nrm_chart_tag, nrm_favorite = gps_helpers.normalize_landing_position_with_cache(player, normalized_gps, Cache)
-  if not nrm_pos then
+  local nrm_tag, nrm_chart_tag, nrm_favorite = gps_helpers.normalize_landing_position_with_cache(player, normalized_gps, Cache)
+  if not nrm_chart_tag then
     -- TODO: play a sound to indicate invalid position
     return
   end
-  local gps = gps_helpers.gps_from_map_position(nrm_pos, surface_id)
+  local gps = gps_helpers.gps_from_map_position(nrm_chart_tag.position, surface_id)
   
   -- Get player's teleport radius setting for use in tag editor
   local player_settings = Settings:getPlayerSettings(player)
@@ -271,25 +271,6 @@ local function extract_gps(event, player)
   return new_gps, old_gps
 end
 
---- Get or create chart tag for new GPS position
----@param new_gps string New GPS coordinate string
----@param event table Chart tag modification event
----@param player LuaPlayer|nil Player context
----@return LuaCustomChartTag|nil chart_tag Chart tag object or nil if creation failed
-local function get_or_create_chart_tag(new_gps, event, player)
-  local old_chart_tag = Lookups.get_chart_tag_by_gps(new_gps)
-  if not old_chart_tag and player then
-    -- Clear cache and retry lookup
-    local surface_index = (event.tag.surface and event.tag.surface.index) or player.surface.index
-    Lookups.clear_chart_tag_cache(surface_index)
-    old_chart_tag = Lookups.get_chart_tag_by_gps(new_gps)
-    if not old_chart_tag then
-      error("[TeleportFavorites] Failed to find or create new chart tag after modification.")
-    end
-  end
-  return old_chart_tag
-end
-
 --- Update tag data and cleanup old chart tag
 ---@param old_gps string|nil Original GPS coordinate string
 ---@param new_gps string|nil New GPS coordinate string
@@ -316,7 +297,7 @@ local function update_tag_and_cleanup(old_gps, new_gps, event, player)
   if not old_tag then
     old_tag = Tag.new(new_gps, {})
   end
-  
+
   -- Update tag with new coordinates and chart tag reference
   old_tag.gps = new_gps
   old_tag.chart_tag = new_chart_tag
@@ -541,7 +522,7 @@ function handlers.on_debug_tile_info_custom_input(event)
   local surface = player.surface
   
   -- Get tile at position
-  local tile = surface:get_tile(pos.x, pos.y)
+  local tile = surface.get_tile(pos.x, pos.y)
   if not tile then
     GameHelpers.player_print(player, "[TF Debug] No tile found at position")
     return
@@ -568,7 +549,7 @@ function handlers.on_debug_tile_info_custom_input(event)
     
     if tile_prototype.collision_mask then
       local collision_layers = {}
-      for layer_name, enabled in pairs(tile_prototype.collision_mask) do
+      for layer_name, enabled in pairs(tile_prototype.collision_mask.layers) do
         if enabled then
           table.insert(collision_layers, layer_name)
         end
@@ -592,7 +573,7 @@ function handlers.on_debug_tile_info_custom_input(event)
   table.insert(debug_info, "Is space tile: " .. tostring(is_space))
   
   -- Test pathfinding
-  local pathfind_pos = surface:find_non_colliding_position("character", pos, 0, 0.1)
+  local pathfind_pos = surface.find_non_colliding_position("character", pos, 0, 0.1)
   if pathfind_pos then
     local dx = math.abs(pathfind_pos.x - pos.x)
     local dy = math.abs(pathfind_pos.y - pos.y)
@@ -609,12 +590,12 @@ function handlers.on_debug_tile_info_custom_input(event)
   table.insert(debug_info, "Valid for tagging: " .. tostring(is_valid_pos))
   
   -- Check for nearby chart tags
-  local nearest_tag = GameHelpers.get_nearest_tag_to_click_position(player, pos, 5.0)
-  if nearest_tag then
-    local tag_distance = math.sqrt((nearest_tag.position.x - pos.x)^2 + (nearest_tag.position.y - pos.y)^2)
+  local nearest_chart_tag = GameHelpers.get_nearest_chart_tag_to_click_position(player, pos, 5.0)
+  if nearest_chart_tag then
+    local tag_distance = math.sqrt((nearest_chart_tag.position.x - pos.x)^2 + (nearest_chart_tag.position.y - pos.y)^2)
     table.insert(debug_info, "Nearest chart tag: " .. string.format("%.2f", tag_distance) .. " tiles away")
-    if nearest_tag.text and nearest_tag.text ~= "" then
-      table.insert(debug_info, "Tag text: " .. nearest_tag.text)
+    if nearest_chart_tag.text and nearest_chart_tag.text ~= "" then
+      table.insert(debug_info, "Tag text: " .. nearest_chart_tag.text)
     end
   else
     table.insert(debug_info, "No chart tags nearby")

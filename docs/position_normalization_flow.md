@@ -219,9 +219,9 @@ The exact match search:
 ### 4. Nearby Match Search
 
 ```lua
-local function find_nearby_matches(context, callbacks, tag, chart_tag, adjusted_gps, check_for_grid_snap)
+local function find_nearby_matches(context, callbacks, tag, chart_tag, adjusted_gps)
   if not chart_tag then    -- Search for the nearest chart tag to the clicked position
-    local in_area_chart_tag = Helpers.get_nearest_tag_to_click_position(context.player, context.landing_position, context.search_radius)
+    local in_area_chart_tag = GameHelpers.get_nearest_chart_tag_to_click_position(context.player, context.landing_position, context.search_radius)
     
     if in_area_chart_tag and in_area_chart_tag.position then
       local in_area_gps = GPSCore.gps_from_map_position(in_area_chart_tag.position, context.player.surface.index)
@@ -232,16 +232,14 @@ local function find_nearby_matches(context, callbacks, tag, chart_tag, adjusted_
         tag = in_area_tag
         chart_tag = in_area_tag.chart_tag
         adjusted_gps = in_area_tag.gps
-        check_for_grid_snap = chart_tag == nil
       else
         tag = nil
         chart_tag = in_area_chart_tag
-        check_for_grid_snap = true
       end
     end
   end
   
-  return tag, chart_tag, adjusted_gps, check_for_grid_snap
+  return tag, chart_tag, adjusted_gps
 end
 ```
 
@@ -250,82 +248,6 @@ The nearby match search:
 2. Uses player's teleport radius setting to search for nearby tags
 3. If found, gets the associated tag object or uses the chart tag directly
 
-### 5. Grid Snap Processing
-
-```lua
-local function handle_grid_snap_requirements(context, tag, chart_tag)
-  -- Case 1: We have tag but no valid chart_tag - create new chart_tag
-  if tag and tag.gps and (not chart_tag or not chart_tag.valid) then
-    local tag_position = GPSCore.map_position_from_gps(tag.gps)
-    if not tag_position then return tag, chart_tag, context.intended_gps end
-    
-    -- Create new chart_tag at tag's position
-    local chart_tag_spec = {
-      position = tag_position,
-      icon = {},
-      text = "tag gps: " .. tag.gps,
-      last_user = context.player.name
-    }
-
-    local new_chart_tag = GPSChartHelpers.create_and_validate_chart_tag(context.player, chart_tag_spec)
-    tag.chart_tag = new_chart_tag
-    chart_tag = new_chart_tag
-    
-    if chart_tag and chart_tag.position then
-      local adjusted_gps = GPSCore.gps_from_map_position(chart_tag.position, context.player.surface.index)
-      return tag, chart_tag, adjusted_gps
-    end
-    
-  -- Case 2: We have chart_tag but position needs alignment
-  elseif chart_tag and chart_tag.valid and chart_tag.position then
-    if not basic_helpers.is_whole_number(chart_tag.position.x) or not basic_helpers.is_whole_number(chart_tag.position.y) then
-      -- Align to whole numbers
-      local x = basic_helpers.normalize_index(chart_tag.position.x)
-      local y = basic_helpers.normalize_index(chart_tag.position.y)
-      if x and y then
-        local rehomed_chart_tag = GPSChartHelpers.align_chart_tag_position(context.player, chart_tag)
-        if rehomed_chart_tag then
-          chart_tag = rehomed_chart_tag
-        end
-      }
-    }
-    
-    -- Return aligned position
-    if chart_tag and chart_tag.position then
-      local adjusted_gps = GPSCore.gps_from_map_position(chart_tag.position, context.player.surface.index)
-      return tag, chart_tag, adjusted_gps
-    }
-    
-  -- Case 3: No tag or chart_tag - create temporary one for validation
-  else
-    local intended_position = GPSCore.map_position_from_gps(context.intended_gps)
-    if not intended_position then return nil, nil, context.intended_gps end
-    
-    -- Create temporary chart_tag for validation
-    local chart_tag_spec = {
-      position = intended_position,
-      icon = {},
-      text = "tag gps: " .. context.intended_gps,
-      last_user = context.player.name
-    }
-
-    local temp_chart_tag = GPSChartHelpers.create_and_validate_chart_tag(context.player, chart_tag_spec)
-    if temp_chart_tag and temp_chart_tag.position then
-      local adjusted_gps = GPSCore.gps_from_map_position(temp_chart_tag.position, context.player.surface.index)
-      -- Destroy temporary chart_tag
-      temp_chart_tag.destroy()
-      return nil, nil, adjusted_gps
-    }
-  }
-  
-  return tag, chart_tag, context.intended_gps
-}
-```
-
-The grid snap processing:
-1. If tag exists but chart tag doesn't: creates a new chart tag at the tag's position
-2. If chart tag exists: ensures coordinates are whole numbers
-3. If neither exists: creates temporary chart tag to validate position, then destroys it
 
 ### 5. Position Validation
 

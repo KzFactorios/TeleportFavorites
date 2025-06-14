@@ -13,10 +13,10 @@ This module handles:
 ]]
 
 local Helpers = require("core.utils.helpers_suite")
-local ErrorHandler = require("core.utils.error_handler")
 local GPSCore = require("core.utils.gps_core")
-local Cache = require("core.cache.cache")
+local game_helpers = require("core.utils.game_helpers")
 local basic_helpers = require("core.utils.basic_helpers")
+local Constants = require("constants")
 
 ---@class PositionValidator
 local PositionValidator = {}
@@ -30,68 +30,78 @@ function PositionValidator.is_valid_tag_position(player, map_position, skip_noti
   if not player or not player.valid or not map_position then
     return false
   end
-    -- Validate x and y are numbers
+  -- Validate x and y are numbers
   if type(map_position.x) ~= "number" or type(map_position.y) ~= "number" then
     return false
   end
-  
+
   -- Check if position is walkable (this replaces separate water/space checks)
   if not Helpers.is_walkable_position(player.surface, map_position) then
     if not skip_notification then
       -- Debug output for non-walkable position detection
-      game.print("[DEBUG] Non-walkable position detected at " .. map_position.x .. ", " .. map_position.y)
       local location_gps = GPSCore.gps_from_map_position(map_position, player.surface.index)
-      game.print("[TeleportFavorites] Cannot tag non-walkable location: " .. location_gps)
+      game_helpers.player_print("[TeleportFavorites] Cannot tag non-walkable location: " .. location_gps)
     end
     return false
   end
-  
+
   return true
+end
+
+---@param map_position MapPosition
+---@return MapPosition
+function PositionValidator.normalize_map_position(map_position)
+  local x = tonumber(basic_helpers.normalize_index(map_position.x or 0)) or 0
+  local y = tonumber(basic_helpers.normalize_index(map_position.y or 0)) or 0
+  return { x = x, y = y }
 end
 
 --- Find a valid position nearby for tag placement
 ---@param player LuaPlayer
----@param normalized_pos MapPosition
+---@param map_position MapPosition
 ---@param search_radius number? Optional search radius (default 50)
 ---@return MapPosition? valid_position
-function PositionValidator.find_valid_position(player, normalized_pos, search_radius)
-  if not player or not player.valid or not normalized_pos then
+function PositionValidator.find_valid_position(player, map_position, search_radius)
+  if not player or not player.valid or not map_position then
     return nil
   end
-  
+
   -- Ensure coordinates are numbers
-  if type(normalized_pos.x) ~= "number" or type(normalized_pos.y) ~= "number" then
+  if type(map_position.x) ~= "number" or type(map_position.y) ~= "number" then
     return nil
   end
-  
+
+  local normalized_pos = PositionValidator.normalize_map_position(map_position)
+
   -- First check if the original position is already valid
   if PositionValidator.is_valid_tag_position(player, normalized_pos, true) then
     return normalized_pos
   end
+
+  -- Create a bounding box around the normalized_pos
+  local tolerance = Constants.settings.BOUNDING_BOX_TOLERANCE or 4
+  local bounding_box = {
+    left_top = {
+      x = normalized_pos.x - tolerance,
+      y = normalized_pos.y - tolerance
+    },
+    right_bottom = {
+      x = normalized_pos.x + tolerance,
+      y = normalized_pos.y + tolerance
+    }
+  }
+
+  -- Try Factorio's pathfinding first
+  local pathfinding_pos = player.surface.find_non_colliding_position_in_box("character", bounding_box, 1)
   
-  -- Search in expanding squares around the position for a valid tag position
-  local max_radius = math.min(search_radius or 50, 50) -- Cap the search radius
-  
-  for radius = 1, max_radius do
-    -- Check the perimeter of the current radius
-    for dx = -radius, radius do
-      for dy = -radius, radius do
-        -- Only check positions on the perimeter of the square
-        if math.abs(dx) == radius or math.abs(dy) == radius then
-          local test_pos = {
-            x = normalized_pos.x + dx,
-            y = normalized_pos.y + dy
-          }
-          
-          -- Check if this position is valid for tagging
-          if PositionValidator.is_valid_tag_position(player, test_pos, true) then
-            return test_pos
-          end
-        end
-      end
+  if pathfinding_pos and PositionValidator.is_valid_tag_position(player, pathfinding_pos, true) then
+  -- find the closest, normalize it's coords and check validity
+    local normalized_path_pos = PositionValidator.normalize_map_position(pathfinding_pos)
+    if normalized_path_pos and PositionValidator.is_valid_tag_position(player, normalized_path_pos, true) then
+      return normalized_path_pos
     end
   end
-  
+
   return nil -- No valid position found within search radius
 end
 
@@ -103,13 +113,14 @@ function PositionValidator.move_tag_to_valid_position(player, tag_data)
   if not player or not player.valid or not tag_data or not tag_data.gps then
     return false
   end
-  
+
   local position = GPSCore.map_position_from_gps(tag_data.gps)
   if not position then
     return false
   end
-  
-  local valid_position = PositionValidator.find_valid_position(player, position, 50)  if valid_position then
+
+  local valid_position = PositionValidator.find_valid_position(player, position, 50)
+  if valid_position then
     -- Update the tag's GPS to the new valid position
     tag_data.gps = GPSCore.gps_from_map_position(valid_position, player.surface.index)
     game.print("[TeleportFavorites] Tag moved to valid position: " .. tag_data.gps)

@@ -32,11 +32,11 @@ local TagTerrainManager = {}
 ---@return boolean is_on_water True if the chart tag is on a water tile
 function TagTerrainManager.is_chart_tag_on_water(chart_tag, surface)
     if not chart_tag or not chart_tag.valid then return false end
-    
+
     -- Get the surface from chart tag if not provided
     surface = surface or chart_tag.surface
     if not surface or not surface.valid then return false end
-    
+
     -- Check if position is on water
     return Helpers.is_water_tile(surface, chart_tag.position)
 end
@@ -47,11 +47,11 @@ end
 ---@return boolean is_on_space True if the chart tag is on a space tile
 function TagTerrainManager.is_chart_tag_on_space(chart_tag, surface)
     if not chart_tag or not chart_tag.valid then return false end
-    
+
     -- Get the surface from chart tag if not provided
     surface = surface or chart_tag.surface
     if not surface or not surface.valid then return false end
-    
+
     -- Check if position is on space
     return Helpers.is_space_tile(surface, chart_tag.position)
 end
@@ -59,54 +59,25 @@ end
 --- Find the player who owns a tag or who last modified the chart tag
 ---@param tag table|nil The tag object
 ---@param chart_tag LuaCustomChartTag The chart tag
----@return LuaPlayer|nil owner The player who owns the tag or last modified the chart tag
+---@return LuaPlayer|nil The player who owns the tag or last modified the chart tag
 local function find_tag_owner(tag, chart_tag)
-    if not chart_tag or not chart_tag.valid then return nil end
-    
-    -- First try to find the owner from the tag
-    if tag and tag.faved_by_players then
-        for _, player_index in ipairs(tag.faved_by_players) do
-            local player = game.get_player(player_index)
-            if player and player.valid then
-                return player
-            end
-        end
+    -- the chart tag provided by the tag supercedes
+    if tag and tag.chart_tag.valid then
+        chart_tag = tag.chart_tag
     end
-    
-    -- If no owner found from tag, try the chart tag's last_user
-    if chart_tag.last_user then
-        for _, player in pairs(game.players) do
-            if player.valid and player.name == chart_tag.last_user then
-                return player
-            end
-        end
-    end
-    
-    return nil
+    return chart_tag and chart_tag.valid and chart_tag.last_user or nil
 end
 
---- Find a valid position near a chart tag that is on water
+--- Find a valid position near a chart_tag (water tile) that is walkable
 ---@param chart_tag LuaCustomChartTag The chart tag on water
 ---@param search_radius number The radius to search for valid land
----@param player LuaPlayer|nil The player for validation context (optional)
+---@param player LuaPlayer The player for validation context (optional)
 ---@return MapPosition|nil valid_position A valid position nearby or nil if none found
 local function find_valid_position_near_chart_tag(chart_tag, search_radius, player)
     if not chart_tag or not chart_tag.valid then return nil end
-    
     -- Get surface from chart tag
     local surface = chart_tag.surface
     if not surface or not surface.valid then return nil end
-    
-    -- If player not provided, try to find the owner
-    if not player or not player.valid then
-        local tag = Lookups and gps_parser and chart_tag.position and 
-                   Lookups.get_tag_by_gps(gps_parser.gps_from_map_position(chart_tag.position, surface.index))
-        player = find_tag_owner(tag, chart_tag)
-    end
-    
-    -- If still no player, we can't validate
-    if not player or not player.valid then return nil end
-    
     -- Use position validator to find valid position
     return PositionValidator.find_valid_position(player, chart_tag.position, search_radius)
 end
@@ -118,14 +89,14 @@ end
 ---@return boolean success True if relocation was successful
 function TagTerrainManager.relocate_chart_tag_from_water(chart_tag, search_radius, notify_players)
     if not chart_tag or not chart_tag.valid then return false end
-    
+
     -- Get the tag and a player context
     local surface = chart_tag.surface
     local surface_index = surface and surface.index or 1
     local gps = gps_parser.gps_from_map_position(chart_tag.position, surface_index)
     local tag = Cache.get_tag_by_gps(gps)
     local player = find_tag_owner(tag, chart_tag)
-    
+
     -- If no player context, we can't properly validate
     if not player or not player.valid then
         ErrorHandler.debug_log("No valid player context for chart tag relocation", {
@@ -135,10 +106,10 @@ function TagTerrainManager.relocate_chart_tag_from_water(chart_tag, search_radiu
         })
         return false
     end
-    
+
     -- Store the old position for notification
-    local old_position = {x = chart_tag.position.x, y = chart_tag.position.y}
-    
+    local old_position = { x = chart_tag.position.x, y = chart_tag.position.y }
+
     -- Find a valid position nearby
     local new_position = find_valid_position_near_chart_tag(chart_tag, search_radius, player)
     if not new_position then
@@ -148,18 +119,18 @@ function TagTerrainManager.relocate_chart_tag_from_water(chart_tag, search_radiu
         })
         return false
     end
-    
+
     -- Create a new chart tag at the valid position
     local chart_tag_spec = {
         position = new_position,
         text = chart_tag.text or "Tag", -- Ensure text is never nil
         last_user = chart_tag.last_user or player.name
     }
-    
+
     -- Only include icon if it's a valid SignalID
     if chart_tag.icon and type(chart_tag.icon) == "table" and chart_tag.icon.name then
         chart_tag_spec.icon = chart_tag.icon
-    end    -- Create new chart tag at valid position using safe wrapper
+    end -- Create new chart tag at valid position using safe wrapper
     local GPSChartHelpers = require("core.utils.gps_chart_helpers")
     local new_chart_tag = GPSChartHelpers.safe_add_chart_tag(player.force, surface, chart_tag_spec)
     if not new_chart_tag or not new_chart_tag.valid then
@@ -169,21 +140,22 @@ function TagTerrainManager.relocate_chart_tag_from_water(chart_tag, search_radiu
         })
         return false
     end
-    
+
     -- Update the tag with the new chart tag reference
     local old_gps = gps
     local new_gps = gps_parser.gps_from_map_position(new_position, surface_index)
-    
+
     -- If there's a tag, update its GPS and references
     if tag then
         tag.chart_tag = new_chart_tag
         tag.gps = new_gps
-        
+
         -- Update all favorites that use this tag
         if tag.faved_by_players and #tag.faved_by_players > 0 then
             for _, player_index in ipairs(tag.faved_by_players) do
                 local fav_player = game.get_player(player_index)
-                if fav_player and fav_player.valid then                    local favorites = Cache.get_player_favorites(fav_player)
+                if fav_player and fav_player.valid then
+                    local favorites = Cache.get_player_favorites(fav_player)
                     for i = 1, #favorites do
                         local favorite = favorites[i]
                         if favorite and favorite.gps == old_gps then
@@ -193,37 +165,37 @@ function TagTerrainManager.relocate_chart_tag_from_water(chart_tag, search_radiu
                 end
             end
         end
-          -- Update surface tags
+        -- Update surface tags
         local tags = Cache.get_surface_tags(surface_index)
         tags[old_gps] = nil
         tags[new_gps] = tag
     end
-      -- Destroy the old chart tag
+    -- Destroy the old chart tag
     chart_tag.destroy()
-    
+
     -- Refresh cache
     Lookups.invalidate_surface_chart_tags(surface_index)
-    
+
     -- Notify affected players if requested
     if notify_players and tag and tag.faved_by_players and #tag.faved_by_players > 0 then
         local message = RichTextFormatter.position_change_notification_terrain(
             player, new_chart_tag, old_position, new_position, surface_index
         )
-          for _, player_index in ipairs(tag.faved_by_players) do
+        for _, player_index in ipairs(tag.faved_by_players) do
             local fav_player = game.get_player(player_index)
             if fav_player and fav_player.valid then
                 GameHelpers.player_print(fav_player, message)
             end
         end
     end
-    
+
     ErrorHandler.debug_log("Chart tag successfully relocated from water", {
         old_position = old_position,
         new_position = new_position,
         old_gps = old_gps,
         new_gps = new_gps
     })
-    
+
     return true
 end
 
@@ -234,14 +206,14 @@ end
 ---@return number relocated_count The number of chart tags relocated
 function TagTerrainManager.check_and_relocate_all_water_chart_tags(surface, search_radius, notify_players)
     if not surface or not surface.valid then return 0 end
-    
+
     local relocated_count = 0
     local surface_index = surface.index
-    
+
     -- Get all chart tags for this surface
     local chart_tags = Lookups.get_surface_chart_tags(surface_index)
     if not chart_tags or #chart_tags == 0 then return 0 end
-    
+
     -- Make a copy of the tags to avoid modification issues during iteration
     local tags_to_check = {}
     for i = 1, #chart_tags do
@@ -249,17 +221,17 @@ function TagTerrainManager.check_and_relocate_all_water_chart_tags(surface, sear
             table.insert(tags_to_check, chart_tags[i])
         end
     end
-    
+
     -- Check each chart tag
     for _, chart_tag in ipairs(tags_to_check) do
-        if TagTerrainManager.is_chart_tag_on_water(chart_tag, surface) or 
-           TagTerrainManager.is_chart_tag_on_space(chart_tag, surface) then
+        if TagTerrainManager.is_chart_tag_on_water(chart_tag, surface) or
+            TagTerrainManager.is_chart_tag_on_space(chart_tag, surface) then
             if TagTerrainManager.relocate_chart_tag_from_water(chart_tag, search_radius, notify_players) then
                 relocated_count = relocated_count + 1
             end
         end
     end
-    
+
     return relocated_count
 end
 
@@ -271,35 +243,35 @@ end
 ---@return number relocated_count The number of chart tags relocated
 function TagTerrainManager.check_area_for_water_chart_tags(surface, area, search_radius, notify_players)
     if not surface or not surface.valid or not area then return 0 end
-    
+
     local relocated_count = 0
     local surface_index = surface.index
-    
+
     -- Get all chart tags for this surface
     local chart_tags = Lookups.get_surface_chart_tags(surface_index)
     if not chart_tags or #chart_tags == 0 then return 0 end
-    
+
     -- Make a copy of the tags in the area to avoid modification issues during iteration
     local tags_to_check = {}
     for i = 1, #chart_tags do
         local chart_tag = chart_tags[i]
-        if chart_tag and chart_tag.valid and 
-           chart_tag.position.x >= area.left_top.x and chart_tag.position.x <= area.right_bottom.x and
-           chart_tag.position.y >= area.left_top.y and chart_tag.position.y <= area.right_bottom.y then
+        if chart_tag and chart_tag.valid and
+            chart_tag.position.x >= area.left_top.x and chart_tag.position.x <= area.right_bottom.x and
+            chart_tag.position.y >= area.left_top.y and chart_tag.position.y <= area.right_bottom.y then
             table.insert(tags_to_check, chart_tag)
         end
     end
-    
+
     -- Check each chart tag in the area
     for _, chart_tag in ipairs(tags_to_check) do
-        if TagTerrainManager.is_chart_tag_on_water(chart_tag, surface) or 
-           TagTerrainManager.is_chart_tag_on_space(chart_tag, surface) then
+        if TagTerrainManager.is_chart_tag_on_water(chart_tag, surface) or
+            TagTerrainManager.is_chart_tag_on_space(chart_tag, surface) then
             if TagTerrainManager.relocate_chart_tag_from_water(chart_tag, search_radius, notify_players) then
                 relocated_count = relocated_count + 1
             end
         end
     end
-    
+
     return relocated_count
 end
 

@@ -19,15 +19,15 @@ function GameHelpers.is_on_space_platform(player)
   return name:find("space") ~= nil or name == "space-platform"
 end
 
---- Finds the nearest chart tag to a clicked position within a specified radius
--- @param player LuaPlayer The player whose force and surface will be used
--- @param map_position table The map position to search around {x=number, y=number}
--- @param search_radius Optional explicit search radius (falls back to player settings if nil)
--- @return The nearest chart tag or nil if none found
-function GameHelpers.get_nearest_tag_to_click_position(player, map_position, search_radius)
+--- Finds the nearest walkable chart tag to a clicked position within a specified radius
+--- @param player LuaPlayer The player whose force and surface will be used
+--- @param map_position table The map position to search around {x=number, y=number}
+--- @param search_radius Optional explicit search radius (falls back to player settings if nil)
+--- @return LuaCustomChartTag|nil The nearest chart tag or nil if none found
+function GameHelpers.get_nearest_chart_tag_to_click_position(player, map_position, search_radius)
   if not player then return nil end
   -- Use provided search_radius if available, otherwise fall back to player settings
-  local collision_radius = search_radius
+  local collision_radius = search_radius or SettingsAccess:getPlayerSettings(player).teleport_radius
   if not collision_radius then
     local player_settings = SettingsAccess:getPlayerSettings(player)
     collision_radius = player_settings.teleport_radius or Constants.settings.TELEPORT_RADIUS_DEFAULT
@@ -41,29 +41,23 @@ function GameHelpers.get_nearest_tag_to_click_position(player, map_position, sea
 
   local colliding_tags = player.force.find_chart_tags(player.surface, collision_area)
   if colliding_tags and #colliding_tags > 0 then
-    -- If only one tag found, just return it
-    if #colliding_tags == 1 then
-      return colliding_tags[1]
-    end
-
-    -- If multiple tags found, find the closest one to map_position
-    local closest_tag = nil
+    local closest_chart_tag = nil
     local min_distance = math.huge
 
-    for _, tag in pairs(colliding_tags) do
-      if tag and tag.valid and tag.position then
-        local dx = tag.position.x - map_position.x
-        local dy = tag.position.y - map_position.y
+    for _, ct in pairs(colliding_tags) do
+      if ct and ct.valid and ct.position and GameHelpers.is_walkable_position(player.surface, ct.position) then
+        local dx = ct.position.x - map_position.x
+        local dy = ct.position.y - map_position.y
         local distance = dx * dx + dy * dy -- Square distance is sufficient for comparison
 
         if distance < min_distance then
           min_distance = distance
-          closest_tag = tag
+          closest_chart_tag = ct
         end
       end
     end
 
-    return closest_tag
+    return closest_chart_tag
   end
 
   return nil

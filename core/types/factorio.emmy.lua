@@ -127,7 +127,7 @@
 
 ---@class LuaCustomChartTag
 ---@field icon SignalID
----@field last_user? LuaPlayer|string|uint
+---@field last_user? LuaPlayer|nil
 ---@field position MapPosition
 ---@field text string
 ---@field tag_number string

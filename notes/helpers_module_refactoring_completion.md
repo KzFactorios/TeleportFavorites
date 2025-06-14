@@ -36,7 +36,7 @@ Successfully refactored the large `helpers_suite.lua` file (491 lines) into smal
 ### 4. `game_helpers.lua` (102 lines)
 **Purpose**: Game-specific utilities
 **Functions**:
-- `is_on_space_platform()`, `get_nearest_tag_to_click_position()` (renamed from `position_has_colliding_tag()`)
+- `is_on_space_platform()`, `get_nearest_chart_tag_to_click_position()` (renamed from `position_has_colliding_tag()`)
 - `is_water_tile()`, `is_space_tile()`
 - `safe_teleport()`, `safe_play_sound()`, `player_print()`
 - `update_favorite_state()`, `update_tag_chart_fields()`, `update_tag_position()`

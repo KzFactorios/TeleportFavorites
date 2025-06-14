@@ -14,7 +14,7 @@ local Constants = {
   
   settings = {
     -- Teleport settings
-    TELEPORT_RADIUS_DEFAULT = 8,     -- Default radius for teleportation search in tiles
+    TELEPORT_RADIUS_DEFAULT = 4,     -- Default radius for teleportation search in tiles
     TELEPORT_RADIUS_MIN = 1,         -- Minimum allowed teleport radius
     TELEPORT_RADIUS_MAX = 32,        -- Maximum allowed teleport radius
     TELEPORT_PRECISION = 2,          -- Step length in tiles. Lower values (0.5) are more precise but slower, 
@@ -36,7 +36,7 @@ local Constants = {
     FAVORITES_ON = "favorites_on",   -- Setting name for enabling/disabling favorites feature
     
     -- Physics
-    BOUNDING_BOX_TOLERANCE = 8,      -- Tolerance in tiles for bounding box calculations    
+    BOUNDING_BOX_TOLERANCE = 4,      -- Tolerance in tiles for bounding box calculations    
     -- Text limits
     TAG_TEXT_MAX_LENGTH = 256        -- Maximum character length for tag text
   }

@@ -186,7 +186,7 @@ end
 ---@param tag table|nil Tag object (may be nil)
 ---@param chart_tag LuaCustomChartTag|nil Chart tag object (may be nil)
 ---@return boolean success True if destruction completed successfully
-function destroy_tag_and_chart_tag(tag, chart_tag)
+local function destroy_tag_and_chart_tag(tag, chart_tag)
   ErrorHandler.debug_log("Starting tag destruction", {
     has_tag = tag ~= nil,
     has_chart_tag = chart_tag ~= nil,

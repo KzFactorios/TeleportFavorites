@@ -136,7 +136,7 @@ After validation, the handler processes the position data through a complex norm
       - If not, checks if there's a standalone chart tag at this position
      c. **Nearby Match Search**: If no exact match, searches for nearby tags/chart tags
       - Uses player's teleport radius setting to define the search area
-      - Calls `Helpers.get_nearest_tag_to_click_position()` to find the closest chart tag
+      - Calls `GameHelpers.get_nearest_chart_tag_to_click_position()` to find the closest chart tag
       - If found, gets associated tag object or uses the standalone chart tag
    
    d. **Grid Snap Processing**: Ensures positions align to the grid

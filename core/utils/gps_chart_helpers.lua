@@ -14,6 +14,7 @@ local Helpers = require("core.utils.helpers_suite")
 local ErrorHandler = require("core.utils.error_handler")
 local GPSCore = require("core.utils.gps_core")
 local basic_helpers = require("core.utils.basic_helpers")
+local validation_strategy = require("core.pattern.validation_strategy")
 
 ---@class GPSChartHelpers
 local GPSChartHelpers = {}
@@ -22,12 +23,14 @@ local GPSChartHelpers = {}
 local function position_can_be_tagged(player, map_position)
   if not (player and player.force and player.surface and player.force.is_chunk_charted) then return false end
   if not map_position then return false end
+
   local chunk = { x = math.floor(map_position.x / 32), y = math.floor(map_position.y / 32) }
   if not player.force.is_chunk_charted(player.surface, chunk) then
     if player and player.valid then
       Helpers.player_print(player, "[TeleportFavorites] You are trying to create a tag in uncharted territory: " ..
         GPSCore.gps_from_map_position(map_position, player.surface.index))
-    end    return false
+    end    
+    return false
   end
 
   if not Helpers.is_walkable_position(player.surface, map_position) then
@@ -53,13 +56,15 @@ local function create_and_validate_chart_tag(player, chart_tag_spec)
   ErrorHandler.debug_log("Creating chart tag for validation", {
     position = chart_tag_spec.position,
     text = chart_tag_spec.text
-  })                               -- Create the chart tag first using our safe wrapper
+  })                               
+  
+  -- Create the chart tag first using our safe wrapper
   local chart_tag = GPSChartHelpers.safe_add_chart_tag(player.force, player.surface, chart_tag_spec)
 
   -- Then validate using our position checker
   -- Note: We validate the created chart tag because position_can_be_tagged may not
   -- catch all Factorio API restrictions that only surface during actual creation
-  if chart_tag and chart_tag.position and not position_can_be_tagged(player, chart_tag.position) then
+  if chart_tag and not position_can_be_tagged(player, chart_tag.position) then
     ErrorHandler.debug_log("Chart tag failed position validation, destroying", {
       position = chart_tag.position
     })
@@ -180,6 +185,14 @@ function GPSChartHelpers.safe_add_chart_tag(force, surface, spec)
   end)
 
   if not success or not result or not result.valid then
+    ErrorHandler.debug_log("Chart tag creation failed in wrapper", {
+      success = success,
+      error = not success and result or "Tag invalid after creation"
+    })
+    return nil
+  end
+
+  if not result or not result.valid or not position_can_be_tagged(result) then
     ErrorHandler.debug_log("Chart tag creation failed in wrapper", {
       success = success,
       error = not success and result or "Tag invalid after creation"

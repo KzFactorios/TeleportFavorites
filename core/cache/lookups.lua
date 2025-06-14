@@ -25,7 +25,7 @@ global["Lookups"] = {
 --]]
 
 local basic_helpers = require("core.utils.basic_helpers")
-local Helpers = require("core.utils.helpers_suite")
+local GameHelpers = require("core.utils.game_helpers")
 local GPSParser = require("core.utils.gps_parser")
 
 
@@ -53,7 +53,7 @@ local function ensure_surface_cache(surface_index)
   if not surface_idx then
     error("Invalid surface index: " .. tostring(surface_index))
   end
-  
+
   local cache = ensure_cache()
   cache.surfaces[surface_idx] = cache.surfaces[surface_idx] or {}
 
@@ -72,7 +72,7 @@ local function ensure_surface_cache(surface_index)
   if not cache.surfaces[surface_idx].chart_tags_mapped_by_gps then
     cache.surfaces[surface_idx].chart_tags_mapped_by_gps = {}
   end
-    -- Check if we need to rebuild the GPS mapping (avoid using # on tables)
+  -- Check if we need to rebuild the GPS mapping (avoid using # on tables)
   local chart_tags = cache.surfaces[surface_idx].chart_tags
   local gps_map = cache.surfaces[surface_idx].chart_tags_mapped_by_gps
   local map_count = 0
@@ -89,7 +89,7 @@ local function ensure_surface_cache(surface_index)
         end
       end
     end
-    
+
     -- Process each chart tag with the mapping function
     for _, chart_tag in ipairs(chart_tags) do
       build_gps_mapping(chart_tag)
@@ -112,7 +112,7 @@ local function clear_surface_cache_chart_tags(surface_index)
   if not surface_index then
     error("Invalid surface index: " .. tostring(surface_index))
   end
-  
+
   local surface_idx = basic_helpers.normalize_index(surface_index)
   local surface_cache = ensure_surface_cache(surface_idx)
   surface_cache.chart_tags = {}
@@ -133,11 +133,17 @@ end
 --- uses the
 ---@param gps string
 ---@return LuaCustomChartTag|nil
-local function get_chart_tag_by_gps(gps)  if not gps or gps == "" then return nil end
-  local surface_cache = ensure_surface_cache(GPSParser.get_surface_index_from_gps(gps))
+local function get_chart_tag_by_gps(gps)
+  if not gps or gps == "" then return nil end
+  local surface_index = GPSParser.get_surface_index_from_gps(gps)
+  local surface_cache = ensure_surface_cache(surface_index)
   if not surface_cache then return nil end
-
-  return surface_cache.chart_tags_mapped_by_gps[gps] or nil
+  local match_chart_tag = surface_cache.chart_tags_mapped_by_gps[gps] or nil
+  if (match_chart_tag and not match_chart_tag.valid) or
+      (match_chart_tag and not GameHelpers.is_walkable_position(surface_index, match_chart_tag.position)) then
+    match_chart_tag = nil
+  end
+  return match_chart_tag
 end
 
 
@@ -161,7 +167,7 @@ local function clear_all_caches()
   ensure_cache()
 end
 
-  
+
 return {
   init = init,
   get_chart_tag_cache = get_chart_tag_cache,

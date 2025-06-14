@@ -55,7 +55,7 @@ end
 ---@param player LuaPlayer Player context
 ---@param gps string Target GPS
 ---@param Cache table Cache module reference
----@return MapPosition?, table?, LuaCustomChartTag?, table?
+---@return Tag|nil, LuaCustomChartTag|nil, table|nil
 function GPSFacade:normalize_position(player, gps, Cache)
   return self.position_normalizer.normalize_landing_position_with_cache(player, gps, Cache)
 end
@@ -91,16 +91,12 @@ return {
   safe_add_chart_tag = GPSChartHelpers.safe_add_chart_tag,
   
   -- Position normalization functions (delegated through facade)
-  normalize_landing_position = GPSPositionNormalizer.normalize_landing_position,
   normalize_landing_position_with_cache = function(player, gps, Cache) 
     return gps_facade:normalize_position(player, gps, Cache) 
   end,
   
   -- Helper functions for testing/external use
   validate_and_prepare_context = GPSPositionNormalizer.validate_and_prepare_context,
-  find_exact_matches = GPSPositionNormalizer.find_exact_matches,
-  find_nearby_matches = GPSPositionNormalizer.find_nearby_matches,
-  handle_grid_snap_requirements = GPSPositionNormalizer.handle_grid_snap_requirements,
   finalize_position_data = GPSPositionNormalizer.finalize_position_data,
   
   -- Facade access for advanced usage

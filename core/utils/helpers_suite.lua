@@ -55,7 +55,6 @@ Helpers.partition = FunctionalHelpers.partition
 
 -- Re-export Game helpers
 Helpers.is_on_space_platform = GameHelpers.is_on_space_platform
-Helpers.get_nearest_tag_to_click_position = GameHelpers.get_nearest_tag_to_click_position
 Helpers.is_walkable_position = GameHelpers.is_walkable_position
 Helpers.is_water_tile = GameHelpers.is_water_tile
 Helpers.is_space_tile = GameHelpers.is_space_tile

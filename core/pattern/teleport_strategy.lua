@@ -26,8 +26,7 @@ API:
 - TeleportStrategyManager.get_available_strategies() -> table
 ]]
 
-local Constants = require("constants")
-local Settings = require("settings")
+local settings_access = require("core.utils.settings_access")
 local gps_helpers = require("core.utils.gps_helpers")
 local Cache = require("core.cache.cache")
 local ErrorHandler = require("core.utils.error_handler")
@@ -102,11 +101,11 @@ end
 ---@param gps string
 ---@return MapPosition? position, string error_message
 function BaseTeleportStrategy:get_landing_position(player, gps)
-  local aligned_position = gps_helpers.normalize_landing_position_with_cache(player, gps, Cache)
-  if not aligned_position then
+  local nrm_tag, nrm_chart_tag, nrm_favorite = gps_helpers.normalize_landing_position_with_cache(player, gps, Cache)
+  if not nrm_chart_tag then
     return nil, "Unable to normalize landing position"
   end
-  return aligned_position, ""
+  return nrm_chart_tag.position, ""
 end
 
 --- Standard Teleportation Strategy
@@ -281,7 +280,7 @@ function SafeTeleportStrategy:execute(player, gps, context)
   end
   
   -- Enhanced safety checks for safe teleportation
-  local player_settings = Settings:getPlayerSettings(player)
+  local player_settings = settings_access:getPlayerSettings(player)
   local safety_radius = (context and context.custom_radius) or (player_settings.tp_radius_tiles * 2) -- Double radius for extra safety
   
   local safe_position = player.surface:find_non_colliding_position("character", position, safety_radius, 0.25)
