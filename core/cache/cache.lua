@@ -44,7 +44,7 @@ storage = {
 
 
 local mod_version = require("core.utils.version")
-local Lookups = require("core.cache.lookups")
+local Lookups = require("__TeleportFavorites__.core.cache.lookups")
 local basic_helpers = require("core.utils.basic_helpers")
 local FavoriteUtils = require("core.favorite.favorite")
 local Constants = require("constants")

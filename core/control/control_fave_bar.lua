@@ -14,6 +14,7 @@ local tag_editor = require("gui.tag_editor.tag_editor")
 local gps_helpers = require("core.utils.gps_helpers")
 local gps_core = require("core.utils.gps_core")
 local PositionValidator = require("core.utils.position_validator")
+local GameHelpers = require("core.utils.game_helpers")
 
 -- Observer Pattern Integration
 local GuiObserver = require("core.pattern.gui_observer")
@@ -117,34 +118,32 @@ local function open_tag_editor_from_favorite(player, favorite)
       -- Check if the position is valid (not water or space)
       if not PositionValidator.is_valid_tag_position(player, position, true) then
         -- Show dialog to handle invalid position
-        PositionValidator.show_invalid_position_dialog(player, tag_data, function(action, updated_tag_data)
-          if action == "delete" then
+        PositionValidator.show_invalid_position_dialog(player, tag_data, function(action, updated_tag_data)          if action == "delete" then
             -- Delete the tag if player owns it and no other favorites are attached
             if tag_data.tag and tag_data.tag.player.name == player.name then
-              if not tag_data.tag.faved_by_players or #tag_data.tag.faved_by_players == 0 then -- Delete the tag and chart tag
+              if not tag_data.tag.faved_by_players or #tag_data.tag.faved_by_players == 0 then
+                -- Delete the tag and chart tag
                 if tag_data.chart_tag and tag_data.chart_tag.valid then
                   tag_data.chart_tag.destroy()
                 end
                 -- Remove from storage
                 Cache.remove_stored_tag(tag_data.tag.gps)
-                player.print("[TeleportFavorites] Tag deleted")
+                GameHelpers.player_print(player, "[TeleportFavorites] Tag deleted")
               else
-                player.print("[TeleportFavorites] Cannot delete tag as other players have favorited it")
+                GameHelpers.player_print(player, "[TeleportFavorites] Cannot delete tag as other players have favorited it")
               end
             end
           elseif action == "move" then
             -- Move tag to valid position
             local new_position = gps_helpers.map_position_from_gps(updated_tag_data.gps)
-            if new_position and tag_data.tag and tag_data.chart_tag then
-              local success = PositionValidator.move_tag_to_valid_position(
+            if new_position and tag_data.tag and tag_data.chart_tag then              local success = PositionValidator.move_tag_to_valid_position(
                 player,
                 tag_data.tag,
                 tag_data.chart_tag,
                 new_position
               )
-
               if success then
-                player.print("[TeleportFavorites] Tag moved to valid position: " .. updated_tag_data.gps)
+                GameHelpers.player_print(player, "[TeleportFavorites] Tag moved to valid position: " .. updated_tag_data.gps)
                 -- Continue with opening tag editor with updated position
                 Cache.set_tag_editor_data(player, updated_tag_data)
                 tag_editor.build(player)

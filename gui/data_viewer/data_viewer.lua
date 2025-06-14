@@ -24,6 +24,7 @@ local GuiBase = require("gui.gui_base")
 local Cache = require("core.cache.cache")
 local Lookups = require("core.cache.lookups")
 local Helpers = require("core.utils.helpers_suite")
+local GameHelpers = require("core.utils.game_helpers")
 local Enum = require("prototypes.enums.enum")
 
 local data_viewer = {}
@@ -341,7 +342,7 @@ end
 function data_viewer.show_refresh_flying_text(player)
   if not player or not player.valid then return end
   
-  player.print({"tf-gui.data_viewer_refreshed"})
+  GameHelpers.player_print(player, {"tf-gui.data_viewer_refreshed"})
 end
 
 return data_viewer

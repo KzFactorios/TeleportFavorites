@@ -52,9 +52,10 @@ local gps_parser = require("core.utils.gps_parser")
 local basic_helpers = require("core.utils.basic_helpers")
 local GPSCore = require("core.utils.gps_core")
 local Lookups = require("core.cache.lookups")
-local RichTextFormatter = require("core.utils.rich_text_formatter")
+local RichTextFormatter = require("__TeleportFavorites__.core.utils.rich_text_formatter")
 local GPSChartHelpers = require("core.utils.gps_chart_helpers")
 local GameHelpers = require("core.utils.game_helpers")
+local PositionValidator = require("core.utils.position_validator")
 
 local handlers = {}
 
@@ -150,25 +151,23 @@ function handlers.on_teleport_to_favorite(event, i)
   ---@diagnostic disable-next-line: param-type-mismatch
   local player = game.get_player(event.player_index)
   if not player or not player.valid then return end
-
   ---@diagnostic disable-next-line: param-type-mismatch
   local favorites = Cache.get_player_favorites(player)
   if type(favorites) ~= "table" or not i or not favorites[i] then
     ---@diagnostic disable-next-line: param-type-mismatch
-    player:print({ "tf-handler.teleport-favorite-no-location" })
+    GameHelpers.player_print(player, { "tf-handler.teleport-favorite-no-location" })
     return
   end
   local favorite = favorites[i]
-  if type(favorite) == "table" and favorite.gps ~= nil then
-    ---@diagnostic disable-next-line: param-type-mismatch
+  if type(favorite) == "table" and favorite.gps ~= nil then    ---@diagnostic disable-next-line: param-type-mismatch
     local result = Tag.teleport_player_with_messaging(player, favorite.gps)
     if result ~= Enum.ReturnStateEnum.SUCCESS then
       ---@diagnostic disable-next-line: param-type-mismatch
-      player:print(result)
+      GameHelpers.player_print(player, result)
     end
   else
     ---@diagnostic disable-next-line: param-type-mismatch
-    player:print({ "tf-handler.teleport-favorite-no-location" })
+    GameHelpers.player_print(player, { "tf-handler.teleport-favorite-no-location" })
   end
 end
 
@@ -466,10 +465,13 @@ function handlers.on_chart_tag_removed(event)
   local gps = gps_parser.gps_from_map_position(chart_tag.position, surface_index)
   local tag = Cache.get_tag_by_gps(gps)  -- Get the player who is removing the chart tag
   local player = event.player_index and game.get_player(event.player_index) or nil
-  
   -- Check if this tag has favorites from other players
-  ---@diagnostic disable-next-line: need-check-nil, undefined-field
-  if tag and tag.faved_by_players and #tag.faved_by_players > 0 and player and player.valid then
+  if tag and tag.faved_by_players and #tag.faved_by_players > 0 then
+    if not player or not player.valid then
+      -- No valid player to handle the removal, just clear the cache
+      Lookups.invalidate_surface_chart_tags(surface_index)
+      return
+    end
     ---@cast tag -nil
     -- Check if any favorites belong to other players
     local has_other_players_favorites = false
@@ -482,9 +484,9 @@ function handlers.on_chart_tag_removed(event)
         break
       end
     end
-    
-    -- If other players have favorited this tag, prevent deletion
-    if has_other_players_favorites and player.name == owner and player.force then-- Recreate the chart tag since it was already removed by the event
+      -- If other players have favorited this tag, prevent deletion
+    if has_other_players_favorites and player.name == owner and player.force then
+      -- Recreate the chart tag since it was already removed by the event
       
       -- Prepare chart_tag_spec properly
       local chart_tag_spec = {
@@ -515,6 +517,113 @@ function handlers.on_chart_tag_removed(event)
   -- Only destroy if the chart tag is not already being destroyed by our helper
   if not tag_destroy_helper.is_chart_tag_being_destroyed(chart_tag) then
     tag_destroy_helper.destroy_tag_and_chart_tag(tag, chart_tag)
+  end
+end
+
+--- Handles Ctrl+Shift+Right-click to display tile debugging information
+---@param event table Event data containing player_index and cursor_position
+function handlers.on_debug_tile_info_custom_input(event)
+  -- Debug logging
+  log("[TF Debug] Handler called with event: " .. serpent.line(event))
+    local player = game.get_player(event.player_index)
+  if not player or not player.valid then 
+    log("[TF Debug] Invalid player: " .. tostring(event.player_index))
+    return 
+  end
+  
+  -- Check if cursor position is available
+  if not event.cursor_position then
+    GameHelpers.player_print(player, "[TF Debug] No cursor position available")
+    log("[TF Debug] No cursor position in event")
+    return
+  end
+  local pos = event.cursor_position
+  local surface = player.surface
+  
+  -- Get tile at position
+  local tile = surface:get_tile(pos.x, pos.y)
+  if not tile then
+    GameHelpers.player_print(player, "[TF Debug] No tile found at position")
+    return
+  end
+
+  -- Gather comprehensive tile information
+  local tile_name = tile.name or "unknown"
+  local tile_prototype = tile.prototype
+  
+  -- Create debug information string
+  local debug_info = {}
+  table.insert(debug_info, "=== TILE DEBUG INFO ===")
+  table.insert(debug_info, "Position: " .. string.format("%.2f", pos.x) .. ", " .. string.format("%.2f", pos.y))
+  table.insert(debug_info, "Tile name: " .. tile_name)
+  
+  -- Get tile prototype information if available
+  if tile_prototype then
+    local walking_speed = tile_prototype.walking_speed_modifier or 1.0
+    table.insert(debug_info, "Walking speed modifier: " .. string.format("%.2f", walking_speed))
+    
+    if tile_prototype.layer then
+      table.insert(debug_info, "Tile layer: " .. tile_prototype.layer)
+    end
+    
+    if tile_prototype.collision_mask then
+      local collision_layers = {}
+      for layer_name, enabled in pairs(tile_prototype.collision_mask) do
+        if enabled then
+          table.insert(collision_layers, layer_name)
+        end
+      end
+      if #collision_layers > 0 then
+        table.insert(debug_info, "Collision layers: " .. table.concat(collision_layers, ", "))
+      else
+        table.insert(debug_info, "Collision layers: none")
+      end
+    end
+  end
+    -- Test walkability using our enhanced function
+  local is_walkable = GameHelpers.is_walkable_position(surface, pos)
+  table.insert(debug_info, "Is walkable (comprehensive): " .. tostring(is_walkable))
+  
+  -- Test individual checks
+  local is_water = GameHelpers.is_water_tile(surface, pos)
+  table.insert(debug_info, "Is water tile: " .. tostring(is_water))
+  
+  local is_space = GameHelpers.is_space_tile(surface, pos)
+  table.insert(debug_info, "Is space tile: " .. tostring(is_space))
+  
+  -- Test pathfinding
+  local pathfind_pos = surface:find_non_colliding_position("character", pos, 0, 0.1)
+  if pathfind_pos then
+    local dx = math.abs(pathfind_pos.x - pos.x)
+    local dy = math.abs(pathfind_pos.y - pos.y)
+    local distance = math.sqrt(dx*dx + dy*dy)    table.insert(debug_info, "Pathfinding result: " .. string.format("%.3f", pathfind_pos.x) .. 
+                            ", " .. string.format("%.3f", pathfind_pos.y))
+    table.insert(debug_info, "Distance from original: " .. string.format("%.3f", distance))
+    table.insert(debug_info, "Pathfinding says walkable: " .. tostring(distance < 0.1))
+  else
+    table.insert(debug_info, "Pathfinding result: No valid position found")
+  end
+  
+  -- Test position validation
+  local is_valid_pos = PositionValidator.is_valid_tag_position(player, pos, true) -- skip notification
+  table.insert(debug_info, "Valid for tagging: " .. tostring(is_valid_pos))
+  
+  -- Check for nearby chart tags
+  local nearest_tag = GameHelpers.get_nearest_tag_to_click_position(player, pos, 5.0)
+  if nearest_tag then
+    local tag_distance = math.sqrt((nearest_tag.position.x - pos.x)^2 + (nearest_tag.position.y - pos.y)^2)
+    table.insert(debug_info, "Nearest chart tag: " .. string.format("%.2f", tag_distance) .. " tiles away")
+    if nearest_tag.text and nearest_tag.text ~= "" then
+      table.insert(debug_info, "Tag text: " .. nearest_tag.text)
+    end
+  else
+    table.insert(debug_info, "No chart tags nearby")
+  end
+  
+  table.insert(debug_info, "=======================")
+  -- Print all debug information
+  for _, line in ipairs(debug_info) do
+    GameHelpers.player_print(player, line)
   end
 end
 

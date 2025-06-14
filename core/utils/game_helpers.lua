@@ -69,6 +69,51 @@ function GameHelpers.get_nearest_tag_to_click_position(player, map_position, sea
   return nil
 end
 
+--- Check if a position is walkable (can be tagged)
+--- Uses comprehensive walkability checks based on Factorio's traversability rules
+---@param surface LuaSurface
+---@param pos MapPosition
+---@return boolean is_walkable
+function GameHelpers.is_walkable_position(surface, pos)
+  if not surface then return false end
+  
+  -- Get the tile at the position
+  local tile = surface.get_tile(pos.x, pos.y)
+  if not tile or not tile.valid then return false end
+  
+  -- Primary check: Water tiles are never walkable
+  local tile_name = tile.name
+  if tile_name then
+    local name = tile_name:lower()
+    -- Check for various water tile naming patterns
+    if name:find("water") or name:find("deepwater") or name:find("shallow%-water") or 
+       name == "water" or name == "deepwater" or name == "shallow-water" then
+      return false  -- Water tiles are not walkable
+    end
+    
+    -- Check for other non-walkable tile types
+    if name:find("void") or name == "out-of-map" then
+      return false  -- Void/out-of-map tiles are not walkable
+    end
+  end
+  
+  -- Secondary check: Use Factorio's pathfinding to verify walkability
+  -- This accounts for tile properties, walking speed modifiers, and collision masks
+  local walkable_pos = surface.find_non_colliding_position("character", pos, 0, 0.1)
+  if not walkable_pos then
+    return false  -- No valid position found, tile is not walkable
+  end
+  
+  -- Check if the returned position is very close to the original
+  -- If find_non_colliding_position returns the exact same position (or very close),
+  -- it means the original position is walkable
+  local dx = math.abs(walkable_pos.x - pos.x)
+  local dy = math.abs(walkable_pos.y - pos.y)
+  
+  -- Position is walkable if the pathfinding returned nearly the same position
+  return dx < 0.1 and dy < 0.1
+end
+
 function GameHelpers.is_water_tile(surface, pos)
   if not surface or not surface.get_tile then return false end
   
@@ -76,13 +121,7 @@ function GameHelpers.is_water_tile(surface, pos)
   local tile = surface.get_tile(x, y)
   if not tile then return false end
   
-  -- Primary method: Use collides_with which is the most reliable for modern Factorio
-  local collides_water = tile.collides_with("water-tile")
-  if collides_water then
-    return true
-  end
-  
-  -- Fallback method: Check tile name for common water patterns
+  -- Check tile name for water patterns - this is the most reliable method
   local tile_name = tile.name
   if tile_name then
     local name = tile_name:lower()
@@ -101,12 +140,7 @@ function GameHelpers.is_space_tile(surface, pos)
   local tile = surface.get_tile(math.floor(pos.x), math.floor(pos.y))
   if not tile then return false end
   
-  -- Primary method: Use collides_with for space platforms
-  if tile.collides_with("space-tile") then
-    return true
-  end
-  
-  -- Fallback method: Check tile name for space patterns  
+  -- Check tile name for space patterns
   if tile.name then
     local name = tile.name:lower()
     -- Common space tile names in Factorio

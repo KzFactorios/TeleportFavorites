@@ -32,6 +32,7 @@ local gps_helpers = require("core.utils.gps_helpers")
 local Cache = require("core.cache.cache")
 local ErrorHandler = require("core.utils.error_handler")
 local Enum = require("prototypes.enums.enum")
+local GameHelpers = require("core.utils.game_helpers")
 
 ---@class TeleportContext
 ---@field force_safe boolean? Force safe teleportation mode
@@ -136,12 +137,11 @@ function StandardTeleportStrategy:execute(player, gps, context)
     ErrorHandler.debug_log("Standard teleport failed validation", { error = error_msg })
     return error_msg or "Validation failed"
   end
-  
-  local position, pos_error = self:get_landing_position(player, gps)
+    local position, pos_error = self:get_landing_position(player, gps)
   if not position then
     ErrorHandler.debug_log("Standard teleport failed position normalization", { error = pos_error })
     local error_message = pos_error or "Position normalization failed"
-    player:print(error_message)
+    GameHelpers.player_print(player, error_message)
     return error_message
   end
     local teleport_success = player:teleport(position, player.surface, true)
@@ -200,11 +200,10 @@ function VehicleTeleportStrategy:execute(player, gps, context)
     ErrorHandler.debug_log("Vehicle teleport failed validation", { error = error_msg })
     return error_msg or "Validation failed"
   end
-  
-  -- Check if player is actively driving (not just a passenger)
+    -- Check if player is actively driving (not just a passenger)
   if _G.defines and player.riding_state and player.riding_state ~= _G.defines.riding.acceleration.nothing then
     ErrorHandler.debug_log("Teleport blocked: Player is actively driving")
-    player:print("Are you crazy? Trying to teleport while driving is strictly prohibited.")
+    GameHelpers.player_print(player, "Are you crazy? Trying to teleport while driving is strictly prohibited.")
     return "Teleport blocked: Player is driving"
   end
   
@@ -212,7 +211,7 @@ function VehicleTeleportStrategy:execute(player, gps, context)
   if not position then
     ErrorHandler.debug_log("Vehicle teleport failed position normalization", { error = pos_error })
     local error_message = pos_error or "Position normalization failed"
-    player:print(error_message)
+    GameHelpers.player_print(player, error_message)
     return error_message
   end
   
@@ -273,12 +272,11 @@ function SafeTeleportStrategy:execute(player, gps, context)
     ErrorHandler.debug_log("Safe teleport failed validation", { error = error_msg })
     return error_msg or "Validation failed"
   end
-  
-  local position, pos_error = self:get_landing_position(player, gps)
+    local position, pos_error = self:get_landing_position(player, gps)
   if not position then
     ErrorHandler.debug_log("Safe teleport failed position normalization", { error = pos_error })
     local error_message = pos_error or "Position normalization failed"
-    player:print(error_message)
+    GameHelpers.player_print(player, error_message)
     return error_message
   end
   
@@ -289,7 +287,7 @@ function SafeTeleportStrategy:execute(player, gps, context)
   local safe_position = player.surface:find_non_colliding_position("character", position, safety_radius, 0.25)
   if not safe_position then
     ErrorHandler.debug_log("Safe teleport: No safe position found")
-    player:print("No safe landing position found within safety radius")
+    GameHelpers.player_print(player, "No safe landing position found within safety radius")
     return "No safe landing position available"
   end
   

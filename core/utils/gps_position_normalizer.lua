@@ -20,6 +20,7 @@ local basic_helpers = require("core.utils.basic_helpers")
 local GPSCore = require("core.utils.gps_core")
 local GPSChartHelpers = require("core.utils.gps_chart_helpers")
 local PositionValidator = require("core.utils.position_validator")
+local GameHelpers = require("core.utils.game_helpers")
 
 -- Dev environment detection removed - functionality no longer needed
 
@@ -443,7 +444,7 @@ end
 local function normalize_landing_position_with_cache(player, intended_gps, Cache)
   if not Cache then 
     if player and player.valid then
-      player:print("[TeleportFavorites] Internal error: Cache module missing")
+      GameHelpers.player_print(player, "[TeleportFavorites] Internal error: Cache module missing")
     end
     return nil, nil, nil, nil
   end

@@ -391,7 +391,7 @@
 ---@field enable_research_notifications fun(self: LuaPlayer)
 ---@field enable_tutorial fun(self: LuaPlayer, tutorial: string)
 ---@field find_entity_ghost fun(self: LuaPlayer, position: MapPosition): LuaEntity?
----@field find_non_colliding_position fun(self: LuaPlayer, name: string, center: MapPosition, radius: double, precision: double): MapPosition?
+---@field find_non_colliding_position fun(self: LuaPlayer, name: string, center: MapPosition, radius: double, precision: double, force_to_tile_center?: boolean): MapPosition?
 ---@field get_active_quick_bar fun(self: LuaPlayer): LuaInventory
 ---@field get_associated_character fun(self: LuaPlayer): LuaEntity?
 ---@field get_blueprint_entities fun(self: LuaPlayer): table?
@@ -524,7 +524,7 @@
 ---@field can_place_entity fun(self: LuaSurface, name: string, position: MapPosition, spec: table): boolean
 ---@field count_entities_filtered fun(self: LuaSurface, spec: table): uint
 ---@field find_entities_filtered fun(self: LuaSurface, spec: table): LuaEntity[]
----@field find_non_colliding_position fun(self: LuaSurface, name: string, center: MapPosition, radius: double, precision: double): MapPosition?
+---@field find_non_colliding_position fun(self: LuaSurface, name: string, center: MapPosition, radius: double, precision: double, force_to_tile_center?: boolean): MapPosition?
 ---@field get_chunks fun(self: LuaSurface): table
 ---@field get_pollution fun(self: LuaSurface, position: MapPosition): double
 ---@field spill_item_stack fun(self: LuaSurface, position: MapPosition, item_stack: LuaItemStack, enable_looted?: boolean, force?: LuaForce, allow_belts?: boolean): uint

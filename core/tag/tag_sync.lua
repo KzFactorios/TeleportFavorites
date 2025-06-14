@@ -156,7 +156,7 @@ function TagSync.add_new_chart_tag(player, normal_pos, text, icon)
     position = normal_pos,
     text = text
   })
-    local success, chart_tag = pcall(function()
+  local success, result = pcall(function()
     -- Prepare chart_tag_spec properly
     local chart_tag_spec = {
       position = normal_pos,
@@ -170,16 +170,16 @@ function TagSync.add_new_chart_tag(player, normal_pos, text, icon)
     local GPSChartHelpers = require("core.utils.gps_chart_helpers")
     return GPSChartHelpers.safe_add_chart_tag(game.forces["player"], player.surface, chart_tag_spec)
   end)
-  
-  if not success then
+    if not success then
     ErrorHandler.warn_log("Chart tag creation failed", {
-      error = chart_tag,
+      error = result,
       player = player.name
     })
     return nil
   end
   
-  return chart_tag
+  ---@cast result LuaCustomChartTag?
+  return result
 end
 
 ---Ensure a chart_tag exists for a given Tag, creating one if needed.

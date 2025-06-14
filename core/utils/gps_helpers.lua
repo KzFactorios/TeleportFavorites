@@ -65,7 +65,8 @@ end
 ---@param spec table Chart tag specification
 ---@return LuaCustomChartTag?, table result
 function GPSFacade:create_chart_tag(player, spec)
-  return self.chart_helpers.create_and_validate_chart_tag(player, spec)
+  local chart_tag, result = self.chart_helpers.create_and_validate_chart_tag(player, spec)
+  return chart_tag, result
 end
 
 -- Create singleton facade instance

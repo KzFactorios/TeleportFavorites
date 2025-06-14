@@ -33,8 +33,11 @@ function handler(event)
 end
 --]]
 
+-- Dependencies
 local control_data_viewer = require("core.control.control_data_viewer")
 local on_gui_closed_handler = require("core.events.on_gui_closed_handler")
+local handlers = require("core.events.handlers")
+local GameHelpers = require("core.utils.game_helpers")
 
 
 
@@ -47,9 +50,10 @@ local M = {}
 ---@param handler function The handler function to wrap
 ---@param handler_name string Name for logging purposes
 ---@return function Safe wrapper function
-local function create_safe_handler(handler, handler_name)  return function(event)
+local function create_safe_handler(handler, handler_name)
+  return function(event)
     local success, err = pcall(handler, event)
-    if not success then
+    if not success then      
       log("[TeleportFavorites] Error in custom input handler '" .. handler_name .. "': " .. tostring(err))
       -- Could also show player message for user-facing errors
       if event.player_index then
@@ -58,7 +62,7 @@ local function create_safe_handler(handler, handler_name)  return function(event
         ---@diagnostic disable-next-line: need-check-nil
         if player and player.valid then
           ---@diagnostic disable-next-line: param-type-mismatch
-          player.print({"tf-error.input_handler_error"})
+          GameHelpers.player_print(player, {"tf-error.input_handler_error"})
         end
       end
     end
@@ -69,6 +73,7 @@ end
 ---@type table<string, function>
 local default_custom_input_handlers = {
   ["dv-toggle-data-viewer"] = control_data_viewer.on_toggle_data_viewer,
+  ["tf-debug-tile-info"] = handlers.on_debug_tile_info_custom_input,
   ["tf-undo-last-action"] = function(event)
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end
@@ -77,9 +82,9 @@ local default_custom_input_handlers = {
     local success = on_gui_closed_handler.undo_last_gui_close(player)
     
     if success then
-      player.print({"tf-command.action_undone"})
+      GameHelpers.player_print(player, {"tf-command.action_undone"})
     else
-      player.print({"tf-command.nothing_to_undo"})
+      GameHelpers.player_print(player, {"tf-command.nothing_to_undo"})
     end
   end,
   -- Add more custom input handlers here as needed

@@ -22,19 +22,17 @@ local GPSChartHelpers = {}
 local function position_can_be_tagged(player, map_position)
   if not (player and player.force and player.surface and player.force.is_chunk_charted) then return false end
   if not map_position then return false end
-
   local chunk = { x = math.floor(map_position.x / 32), y = math.floor(map_position.y / 32) }
   if not player.force.is_chunk_charted(player.surface, chunk) then
     if player and player.valid then
-      player:print("[TeleportFavorites] You are trying to create a tag in uncharted territory: " ..
+      Helpers.player_print(player, "[TeleportFavorites] You are trying to create a tag in uncharted territory: " ..
         GPSCore.gps_from_map_position(map_position, player.surface.index))
-    end
-    return false
+    end    return false
   end
 
-  if Helpers.is_water_tile(player.surface, map_position) or Helpers.is_space_tile(player.surface, map_position) then
+  if not Helpers.is_walkable_position(player.surface, map_position) then
     if player and player.valid then
-      player:print("[TeleportFavorites] You cannot tag water or space in this interface: " ..
+      Helpers.player_print(player, "[TeleportFavorites] You cannot tag non-walkable locations: " ..
         GPSCore.gps_from_map_position(map_position, player.surface.index))
     end
     return false

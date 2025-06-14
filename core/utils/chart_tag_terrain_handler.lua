@@ -22,8 +22,18 @@ local function is_position_over_water(position, surface)
   local tile = surface.get_tile(position.x, position.y)
   if not tile or not tile.valid then return true end
   
-  -- Check if the tile is water
-  return tile.collides_with("water-tile")
+  -- Check if the tile is water by name (same approach as GameHelpers.is_water_tile)
+  local tile_name = tile.name
+  if tile_name then
+    local name = tile_name:lower()
+    -- Check for various water tile naming patterns
+    if name:find("water") or name:find("deepwater") or name:find("shallow%-water") or 
+       name == "water" or name == "deepwater" or name == "shallow-water" then
+      return true  -- Water tiles
+    end
+  end
+  
+  return false  -- Non-water tiles
 end
 
 --- Find nearest land position

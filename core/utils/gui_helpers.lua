@@ -70,14 +70,13 @@ function GuiHelpers.set_button_state(element, enabled, style_overrides)
   if not element or not element.valid then
     _G.print("[TeleportFavorites] set_button_state: element is nil or invalid")
     return
-  end
-  if not (element.type == "button" or element.type == "sprite-button" or element.type == "textfield" or element.type == "text-box") then
+  end  if not (element.type == "button" or element.type == "sprite-button" or element.type == "textfield" or element.type == "text-box" or element.type == "choose-elem-button") then
     _G.print("[TeleportFavorites] set_button_state: Unexpected element type: " ..
     tostring(element.type) .. " (name: " .. tostring(element.name) .. ")")
     return
   end
   element.enabled = enabled ~= false
-  if (element.type == "button" or element.type == "sprite-button") and style_overrides and type(style_overrides) == "table" then
+  if (element.type == "button" or element.type == "sprite-button" or element.type == "choose-elem-button") and style_overrides and type(style_overrides) == "table" then
     for k, v in pairs(style_overrides) do
       element.style[k] = v
     end

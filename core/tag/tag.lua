@@ -60,7 +60,7 @@ local basic_helpers = require("core.utils.basic_helpers")
 local gps_helpers = require("core.utils.gps_helpers")
 local gps_parser = require("core.utils.gps_parser")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
-local Lookups = require("core.cache.lookups")
+local Lookups = require("__TeleportFavorites__.core.cache.lookups")
 local Cache = require("core.cache.cache")
 local ErrorHandler = require("core.utils.error_handler")
 local TeleportStrategies = require("core.pattern.teleport_strategy")
@@ -308,10 +308,9 @@ end
 ---@return MapPosition?, string?
 local function validate_destination_position(player, destination_pos)
   ErrorHandler.debug_log("Validating destination position", { destination_pos = destination_pos })
-  
-  local player_settings = Settings:getPlayerSettings(player)
-  local safety_radius = player_settings.tp_radius_tiles + 2  -- Add safety margin for vehicle-sized clearance  
-  local fine_precision = Constants.settings.TELEPORT_PRECISION * 0.5 -- Finer search precision
+    local player_settings = Settings:getPlayerSettings(player)
+  local safety_radius = (player_settings.tp_radius_tiles or 0) + 2.0  -- Add safety margin for vehicle-sized clearance  
+  local fine_precision = (Constants.settings.TELEPORT_PRECISION or 0.1) * 0.5 -- Finer search precision
 
   local non_collide_position = nil
   local success, error_msg = pcall(function()

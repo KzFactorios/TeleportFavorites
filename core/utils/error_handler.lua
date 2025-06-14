@@ -8,6 +8,7 @@ Provides consistent error reporting and logging patterns.
 ]]
 
 local Constants = require("constants")
+local GameHelpers = require("core.utils.game_helpers")
 
 ---@class ErrorResult
 ---@field success boolean
@@ -70,10 +71,9 @@ function ErrorHandler.handle_error(result, player, should_print)
   else
     log("[TeleportFavorites] Error: " .. result.error_type .. " - " .. result.message)
   end
-  
-  -- Show message to player if requested
+    -- Show message to player if requested
   if should_print and player and player.valid then
-    player.print("[TeleportFavorites] " .. result.message)
+    GameHelpers.player_print(player, "[TeleportFavorites] " .. result.message)
   end
   
   return true

@@ -30,25 +30,18 @@ function PositionValidator.is_valid_tag_position(player, map_position, skip_noti
   if not player or not player.valid or not map_position then
     return false
   end
-  
-  -- Validate x and y are numbers
+    -- Validate x and y are numbers
   if type(map_position.x) ~= "number" or type(map_position.y) ~= "number" then
     return false
-  end    -- Check if position is on water tile
-  if Helpers.is_water_tile(player.surface, map_position) then
-    if not skip_notification then
-      -- Debug output for water detection
-      game.print("[DEBUG] Water tile detected at " .. map_position.x .. ", " .. map_position.y)
-      local location_gps = GPSCore.gps_from_map_position(map_position, player.surface.index)
-      game.print("[TeleportFavorites] Cannot tag water location: " .. location_gps)
-    end
-    return false
   end
-    -- Check if position is on space tile
-  if Helpers.is_space_tile(player.surface, map_position) then
+  
+  -- Check if position is walkable (this replaces separate water/space checks)
+  if not Helpers.is_walkable_position(player.surface, map_position) then
     if not skip_notification then
+      -- Debug output for non-walkable position detection
+      game.print("[DEBUG] Non-walkable position detected at " .. map_position.x .. ", " .. map_position.y)
       local location_gps = GPSCore.gps_from_map_position(map_position, player.surface.index)
-      game.print("[TeleportFavorites] Cannot tag space location: " .. location_gps)
+      game.print("[TeleportFavorites] Cannot tag non-walkable location: " .. location_gps)
     end
     return false
   end

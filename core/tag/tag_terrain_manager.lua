@@ -18,9 +18,10 @@ local PositionValidator = require("core.utils.position_validator")
 local Cache = require("core.cache.cache")
 local Lookups = Cache.lookups
 local gps_parser = require("core.utils.gps_helpers")
-local RichTextFormatter = require("core.utils.rich_text_formatter")
+local RichTextFormatter = require("__TeleportFavorites__.core.utils.rich_text_formatter")
 local basic_helpers = require("core.utils.basic_helpers")
 local Tag = require("core.tag.tag")
+local GameHelpers = require("core.utils.game_helpers")
 
 ---@class TagTerrainManager
 local TagTerrainManager = {}
@@ -88,7 +89,7 @@ end
 ---@param chart_tag LuaCustomChartTag The chart tag on water
 ---@param search_radius number The radius to search for valid land
 ---@param player LuaPlayer|nil The player for validation context (optional)
----@return {x: number, y: number}|nil valid_position A valid position nearby or nil if none found
+---@return MapPosition|nil valid_position A valid position nearby or nil if none found
 local function find_valid_position_near_chart_tag(chart_tag, search_radius, player)
     if not chart_tag or not chart_tag.valid then return nil end
     
@@ -182,29 +183,23 @@ function TagTerrainManager.relocate_chart_tag_from_water(chart_tag, search_radiu
         if tag.faved_by_players and #tag.faved_by_players > 0 then
             for _, player_index in ipairs(tag.faved_by_players) do
                 local fav_player = game.get_player(player_index)
-                if fav_player and fav_player.valid then
-                    local favorites = Cache.get_player_favorites(fav_player)
+                if fav_player and fav_player.valid then                    local favorites = Cache.get_player_favorites(fav_player)
                     for i = 1, #favorites do
-                        if favorites[i] and favorites[i].gps == old_gps then
-                            favorites[i].gps = new_gps
+                        local favorite = favorites[i]
+                        if favorite and favorite.gps == old_gps then
+                            favorite.gps = new_gps
                         end
                     end
                 end
             end
         end
-        
-        -- Update surface tags
+          -- Update surface tags
         local tags = Cache.get_surface_tags(surface_index)
-        if tags then
-            tags[old_gps] = nil
-            tags[new_gps] = tag
-        end
+        tags[old_gps] = nil
+        tags[new_gps] = tag
     end
-    
-    -- Destroy the old chart tag
-    if chart_tag.valid then
-        chart_tag.destroy()
-    end
+      -- Destroy the old chart tag
+    chart_tag.destroy()
     
     -- Refresh cache
     Lookups.invalidate_surface_chart_tags(surface_index)
@@ -214,11 +209,10 @@ function TagTerrainManager.relocate_chart_tag_from_water(chart_tag, search_radiu
         local message = RichTextFormatter.position_change_notification_terrain(
             player, new_chart_tag, old_position, new_position, surface_index
         )
-        
-        for _, player_index in ipairs(tag.faved_by_players) do
+          for _, player_index in ipairs(tag.faved_by_players) do
             local fav_player = game.get_player(player_index)
             if fav_player and fav_player.valid then
-                fav_player.print(message)
+                GameHelpers.player_print(fav_player, message)
             end
         end
     end

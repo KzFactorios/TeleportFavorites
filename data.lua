@@ -111,13 +111,18 @@ data:extend {
     name = "dv-toggle-data-viewer",
     key_sequence = "CONTROL + F12",
     consuming = "game-only",
-    order = "z[data-viewer]"
-  },{
+    order = "z[data-viewer]"  },{
     type = "custom-input",
     name = "tf-open-tag-editor",
     key_sequence = "mouse-button-2",
     consuming = "none",
     order = "ba[tag-editor-1]"
+  },  {
+    type = "custom-input",
+    name = "tf-debug-tile-info",
+    key_sequence = "CONTROL + SHIFT + mouse-button-2",
+    consuming = "none",
+    order = "ba[tile-debug-1]"
   },
   {
     type = "sprite",

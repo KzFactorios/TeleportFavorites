@@ -1,36 +1,48 @@
----@diagnostic disable: undefined-global
--- Simple settings approach for TeleportFavorites
--- Testing if we can define settings without data:extend()
+--[[
+settings.lua
+TeleportFavorites Factorio Mod Settings Definition
+-------------------------------------------------
+Defines the mod settings that players can configure in the game's mod settings menu.
+These settings are accessed via the settings_access module in the control stage.
 
--- Check if data global exists, if not, skip settings for now
-if data then
-  data:extend({
-    {
-      type = "bool-setting",
-      name = "favorites-on",
-      setting_type = "runtime-per-user",
-      default_value = true,
-      order = "sa"
-    },
-    {
-      type = "int-setting", 
-      name = "teleport-radius",
-      setting_type = "runtime-per-user",
-      default_value = 8,
-      minimum_value = 1,
-      maximum_value = 32,
-      order = "sb"
-    },    {
-      type = "bool-setting",
-      name = "destination-msg-on",
-      setting_type = "runtime-per-user", 
-      default_value = true,
-      order = "sc"
-    }
-    -- map-reticle-on setting removed - functionality no longer exists
-  })
-else
-  -- Log that settings couldn't be loaded
-  log("TeleportFavorites: data global not available during settings stage")
-end
+Settings Defined:
+- teleport-radius: Integer setting for teleportation search radius (1-32 tiles)
+- favorites-on: Boolean setting to enable/disable the favorites bar
+- destination-msg-on: Boolean setting to show/hide teleportation destination messages
 
+Note: Settings defined here are automatically available in player.mod_settings 
+during the control stage and can be accessed via the Settings module.
+--]]
+
+local Constants = require("constants")
+
+data:extend({
+  -- Teleport radius setting
+  {
+    type = "int-setting",
+    name = "teleport-radius",
+    setting_type = "runtime-per-user",
+    default_value = Constants.settings.TELEPORT_RADIUS_DEFAULT,
+    minimum_value = Constants.settings.TELEPORT_RADIUS_MIN,
+    maximum_value = Constants.settings.TELEPORT_RADIUS_MAX,
+    order = "a-teleport-radius"
+  },
+  
+  -- Favorites bar enable/disable setting
+  {
+    type = "bool-setting",
+    name = "favorites-on",
+    setting_type = "runtime-per-user",
+    default_value = true,
+    order = "b-favorites-on"
+  },
+  
+  -- Destination message enable/disable setting
+  {
+    type = "bool-setting", 
+    name = "destination-msg-on",
+    setting_type = "runtime-per-user",
+    default_value = true,
+    order = "c-destination-msg-on"
+  }
+})

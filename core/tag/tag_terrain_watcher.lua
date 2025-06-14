@@ -1,4 +1,4 @@
----@diagnostic disable: undefined-global
+---@diagnostic disable: undefined-global, param-type-mismatch, assign-type-mismatch
 --[[
 TeleportFavorites Mod - Tag Terrain Watcher
 Handles cases where the terrain under chart tags changes (e.g., land becomes water)
@@ -12,6 +12,7 @@ local Cache = require("__TeleportFavorites__.core.cache.cache")
 local Lookups = require("__TeleportFavorites__.core.cache.lookups")
 local gps_parser = require("__TeleportFavorites__.core.utils.gps_parser")
 local RichTextFormatter = require("__TeleportFavorites__.core.utils.rich_text_formatter")
+local GameHelpers = require("__TeleportFavorites__.core.utils.game_helpers")
 
 local tag_terrain_watcher = {}
 
@@ -24,13 +25,22 @@ local MAX_SEARCH_RADIUS = 10
 ---@return boolean isWater True if the position is on water
 local function is_position_on_water(surface, position)
   if not surface or not surface.valid then return false end
-  
-  -- Get the tile at the position
-  local tile = surface.get_tile(position)
+    -- Get the tile at the position
+  local tile = surface.get_tile(position.x, position.y)
   if not tile or not tile.valid then return false end
   
-  -- Check if the tile is water
-  return tile.collides_with("water-tile")
+  -- Check if the tile is water by name (same approach as GameHelpers.is_water_tile)
+  local tile_name = tile.name
+  if tile_name then
+    local name = tile_name:lower()
+    -- Check for various water tile naming patterns
+    if name:find("water") or name:find("deepwater") or name:find("shallow%-water") or 
+       name == "water" or name == "deepwater" or name == "shallow-water" then
+      return true  -- Water tiles
+    end
+  end
+  
+  return false  -- Non-water tiles
 end
 
 -- Find nearest valid land position for a chart tag
@@ -132,11 +142,10 @@ local function relocate_tag_if_on_water(chart_tag)
   Lookups.invalidate_surface_chart_tags(surface_index)
   
   -- Notify tag owners and favorites users
-  if tag.faved_by_players and #tag.faved_by_players > 0 then
-    for _, player_index in ipairs(tag.faved_by_players) do
+  if tag.faved_by_players and #tag.faved_by_players > 0 then    for _, player_index in ipairs(tag.faved_by_players) do
       local player = game.get_player(player_index)
       if player and player.valid then
-        player.print(RichTextFormatter.tag_relocated_notification(new_chart_tag, old_position, new_position))
+        GameHelpers.player_print(player, RichTextFormatter.tag_relocated_notification(new_chart_tag, old_position, new_position))
       end
     end
   end
