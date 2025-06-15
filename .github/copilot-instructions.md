@@ -93,3 +93,6 @@ You are a specialized Factorio mod development assistant. Apply this checklist r
 - Reliable error handling throughout
 
 **REMEMBER**: Complete 3 things perfectly rather than attempt 10 and get stuck halfway.
+
+// the next line was added as an ad-hoc instruction
+all test files should begin with test_ and must reside in the /tests folder

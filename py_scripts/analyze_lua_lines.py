@@ -8,7 +8,7 @@ Analyzes all *.lua files in the project (excluding tests) and provides:
 - Totals per folder
 - Grand total across the project
 
-Usage: python analyze_lua_lines.py
+Usage: python py_scripts/analyze_lua_lines.py
 """
 
 import os
@@ -217,9 +217,9 @@ def print_analysis_report(file_results: List[Tuple[str, int]],
 
 def main():
     """Main function to run the analysis."""
-    # Get the directory where this script is located (project root)
+    # Get the directory where this script is located and go up one level to project root
     script_dir = Path(__file__).parent
-    project_root = str(script_dir)
+    project_root = str(script_dir.parent)  # Go up one level from py_scripts to mod root
     
     print(f"Analyzing Lua files in: {project_root}")
     print("Excluding: comments and blank lines (but keeping annotations like ---@param)")

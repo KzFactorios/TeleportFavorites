@@ -1,11 +1,16 @@
 include = {
   "core/",
+  "gui/",
   "prototypes/",
   "control.lua",
-  "data.lua"
+  "data.lua",
+  "settings.lua",
+  "constants.lua"
 }
 exclude = {
   "tests/",
-  "mocks/",
-  "spec/"
+  "py_scripts/",
+  "notes/",
+  "docs/",
+  "migrations/"
 }

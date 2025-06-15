@@ -4,7 +4,7 @@ update_version.py
 Reads info.json and writes the mod version to core/utils/version.lua for runtime use.
 
 To update the version in runtime code, run:
-    python update_version.py
+    python py_scripts/update_version.py
 This will update core/utils/version.lua with the current version from info.json.
 Do NOT edit core/utils/version.lua manually.
 
@@ -12,10 +12,11 @@ Do NOT edit core/utils/version.lua manually.
 import json
 import os
 
-# Paths
-root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-info_path = os.path.join(root, 'TeleportFavorites', 'info.json')
-lua_out_path = os.path.join(root, 'TeleportFavorites', 'core', 'utils', 'version.lua')
+# Paths - adjusted for py_scripts subdirectory
+script_dir = os.path.dirname(os.path.abspath(__file__))
+root = os.path.dirname(script_dir)  # Go up one level from py_scripts to mod root
+info_path = os.path.join(root, 'info.json')
+lua_out_path = os.path.join(root, 'core', 'utils', 'version.lua')
 
 # Read info.json
 with open(info_path, 'r', encoding='utf-8') as f:

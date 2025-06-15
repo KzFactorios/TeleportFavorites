@@ -1,7 +1,7 @@
 {
   "name": "TeleportFavorites",
   "title": "Teleport Favorites",
-  "version": "0.0.124",
+  "version": "0.0.125",
   "description": "A utility mod for managing favorite locations and offering teleport functionality.",
   "author": "kurtz",
   "license": "MIT",
