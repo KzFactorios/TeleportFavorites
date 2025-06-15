@@ -1,5 +1,3 @@
-print("[DEBUG] control_fave_bar.lua loaded")
-
 ---@diagnostic disable: undefined-global, assign-type-mismatch, param-type-mismatch
 
 -- control_fave_bar.lua
@@ -205,21 +203,16 @@ local function handle_tag_editor(event, player, fav, slot)
   return false
 end
 
-local function handle_favorite_slot_click(event, player, favorites)
-  local element = event.element
+local function handle_favorite_slot_click(event, player, favorites)  local element = event.element
   local slot = tonumber(element.name:match("fave_bar_slot_(%d+)"))
-  print("[TF DEBUG] handle_favorite_slot_click: slot=" .. tostring(slot))
   if not slot then return end
   local fav = favorites.favorites[slot]
   if fav == nil then
-    print("[TF DEBUG] handle_favorite_slot_click: fav is nil, ignoring click.")
     return
   end
   if FavoriteUtils.is_blank_favorite(fav) then
-    print("[TF DEBUG] handle_favorite_slot_click: blank favorite, ignoring click.")
     return
   end
-  print("[TF DEBUG] handle_favorite_slot_click: fav=" .. (fav and (fav.gps or "<no gps>") or "<nil fav>"))
   local pdata = Cache.get_player_data(player)
   local drag_index = pdata.drag_favorite_index
   local did_drag = false
@@ -246,24 +239,19 @@ local function handle_favorite_slot_click(event, player, favorites)
 end
 
 local function handle_visible_fave_btns_toggle_click(player)
-  local main_flow = fave_bar.get_or_create_gui_flow_from_gui_top(player.gui.top)
-  if not main_flow or not main_flow.valid then return end
+  local main_flow = fave_bar.get_or_create_gui_flow_from_gui_top(player.gui.top)  if not main_flow or not main_flow.valid then return end
   local slots_row = Helpers.find_child_by_name(main_flow, "fave_bar_slots_flow")
   if not slots_row or not slots_row.valid then
-    print("[TF DEBUG] fave_bar_slots_flow not found, cannot toggle visibility.")
     return
   end
 
   local currently_visible = slots_row.visible
   slots_row.visible = not currently_visible
-  print("[TF DEBUG] fave_bar_slots_flow visibility toggled to:", slots_row.visible)
 end
 
 --- Handle favorites bar GUI click events
 local function on_fave_bar_gui_click(event)
-  print("[HANDLER DEBUG] on_fave_bar_gui_click called")
   local element = event.element
-  print("[HANDLER DEBUG] event.element.name:", element and element.name)
   if not element or not element.valid then return end
   local player = game.get_player(event.player_index)
   if not player or not player.valid then return end
@@ -272,12 +260,10 @@ local function on_fave_bar_gui_click(event)
     local favorites = PlayerFavorites.new(player)
     handle_favorite_slot_click(event, player, favorites)
     return
-  end  if element.name == "fave_bar_visible_btns_toggle" then
-    print("[TF DEBUG] fave_bar_visible_btns_toggle clicked by player:", player and player.name)
-    print("[TF DEBUG] handle_visible_fave_btns_toggle_click pointer:", tostring(handle_visible_fave_btns_toggle_click))
-    print("[TF DEBUG] calling handle_visible_fave_btns_toggle_click")
+  end
+
+  if element.name == "fave_bar_visible_btns_toggle" then
     local success, err = pcall(handle_visible_fave_btns_toggle_click, player)
-    print("[TF DEBUG] after handle_visible_fave_btns_toggle_click, ok=", tostring(success), "err=", tostring(err))
     if not success then
       ErrorHandler.debug_log("Handle visible fave buttons toggle failed", {
         player = player.name,

@@ -14,7 +14,6 @@ local Helpers = require("core.utils.helpers_suite")
 local ErrorHandler = require("core.utils.error_handler")
 local GPSCore = require("core.utils.gps_core")
 local basic_helpers = require("core.utils.basic_helpers")
-local validation_strategy = require("core.pattern.validation_strategy")
 
 ---@class GPSChartHelpers
 local GPSChartHelpers = {}

@@ -12,21 +12,19 @@ Complex position normalization logic for GPS coordinates.
 - Validates positions to avoid water/space tiles
 ]]
 
-local Helpers = require("core.utils.helpers_suite")
-local Settings = require("core.utils.settings_access")
 local Constants = require("constants")
 local ErrorHandler = require("core.utils.error_handler")
-local basic_helpers = require("core.utils.basic_helpers")
 local GPSCore = require("core.utils.gps_core")
 local gps_parser = require("core.utils.gps_parser")
 local GPSChartHelpers = require("core.utils.gps_chart_helpers")
-local PositionValidator = require("core.utils.position_validator")
 local GameHelpers = require("core.utils.game_helpers")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local Lookups = require("core.cache.lookups")
 local RichTextFormatter = require("core.utils.rich_text_formatter")
 local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 local PositionNormalizer = require("core.utils.position_normalizer")
+local PositionValidator = require("core.utils.position_validator")
+local Settings = require("core.utils.settings_access")
 
 -- Dev environment detection removed - functionality no longer needed
 
@@ -77,18 +75,10 @@ local function validate_and_prepare_context(player, intended_gps)
     landing_position = landing_position,
     search_radius = search_radius
   }
-
   ErrorHandler.debug_log("Context validation successful", context)
   return context, ErrorHandler.success()
 end
 
-
---[[local context = {
-    player = player,
-    intended_gps = intended_gps,
-    landing_position = landing_position,
-    search_radius = search_radius
-  }]]
 --- Find exact matches for GPS position (tag and chart_tag). Invalidates a tag if the matching chart tag position is invalid
 ---@param context table
 ---@param callbacks table
@@ -313,15 +303,6 @@ local function normalize_landing_position(player, intended_gps, get_tag_by_gps_f
 
   return tag, chart_tag, matching_player_favorite
 end
-
-
---[[local context = {
-    player = player,
-    intended_gps = intended_gps,
-    landing_position = landing_position,
-    search_radius = search_radius
-  }]]
-
 
 --- Wrapper function that maintains the old API for backwards compatibility
 --- This requires Cache to be passed in to avoid circular dependency

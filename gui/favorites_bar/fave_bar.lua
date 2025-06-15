@@ -197,5 +197,4 @@ function fave_bar.update_slot_row(player, bar_flow)
   return fav_btns
 end
 
-fave_bar.get_or_create_gui_flow_from_gui_top = get_or_create_gui_flow_from_gui_top
 return fave_bar

@@ -32,7 +32,6 @@ caption_label: Use this style for any other labels in the subheader
 require("prototypes.styles.fave_bar")
 require("prototypes.styles.tag_editor")
 require("prototypes.styles.data_viewer")
-require("prototypes.styles.debugger")
 local Constants = require("constants")
 local Enum = require("prototypes.enums.enum")
 

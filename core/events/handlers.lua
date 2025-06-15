@@ -39,7 +39,6 @@ API:
 -- core/events/handlers.lua
 -- Centralized event handler implementations for TeleportFavorites
 
-local basic_helpers = require("core.utils.basic_helpers")
 local Cache = require("core.cache.cache")
 local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 local Constants = require("constants")
@@ -49,7 +48,6 @@ local GameHelpers = require("core.utils.game_helpers")
 local gps_helpers = require("core.utils.gps_helpers")
 local gps_parser = require("core.utils.gps_parser")
 local GPSChartHelpers = require("core.utils.gps_chart_helpers")
-local GPSCore = require("core.utils.gps_core")
 local Lookups = require("core.cache.lookups")
 local PositionNormalizer = require("core.utils.position_normalizer")
 local PositionValidator = require("core.utils.position_validator")
@@ -117,11 +115,11 @@ function handlers.on_open_tag_editor_custom_input(event)
     return
   end
   
-  -- Normalize the clicked position and convert to GPS string
-  local normalized_gps = gps_parser.gps_from_map_position(cursor_position, player.surface.index)
+  -- Normalize the clicked position and convert to GPS string  local normalized_gps = gps_parser.gps_from_map_position(cursor_position, player.surface.index)
   local nrm_tag, nrm_chart_tag, nrm_favorite = gps_helpers.normalize_landing_position_with_cache(player, normalized_gps, Cache)
   if not nrm_chart_tag then
-    -- TODO: play a sound to indicate invalid position
+    -- Play error sound to indicate invalid position
+    GameHelpers.safe_play_sound(player, { path = "utility/cannot_build" })
     return
   end
   local gps = gps_helpers.gps_from_map_position(nrm_chart_tag.position, surface_id)

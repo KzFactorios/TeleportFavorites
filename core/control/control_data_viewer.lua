@@ -231,10 +231,8 @@ function M.register(script)
       safe_destroy_frame(main_flow, "data_viewer_frame")
       return
     end
-    
-    -- Handle refresh button click in data viewer
+      -- Handle refresh button click in data viewer
     if element.name == "data_viewer_tab_actions_refresh_data_btn" then
-      print("[DataViewer DEBUG] Refresh button clicked by player:", player.name)
       local frame = helpers.find_child_by_name(main_flow, "data_viewer_frame")
       if not (frame and frame.valid) then return end
       

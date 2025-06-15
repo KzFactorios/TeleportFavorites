@@ -53,14 +53,27 @@ I will apply this checklist rigorously BEFORE every response involving code chan
 9. **NEVER**: Comments merged with code on same line
 10. **ALWAYS**: Proper newline separation between comments and code
 
-## 8. COMMON FORMATTING ERRORS TO AVOID
-- **Merged comments**: `-- comment  local var = value`
-- **Missing newlines**: `end  if condition then`
-- **Malformed strings**: Missing quotes, improper escaping
-- **Unbalanced brackets**: Missing closing `)`, `]`, `}`
-- **Invalid require placement**: `require()` inside functions
+## 8. SYSTEMATIC PROBLEM SOLVING APPROACH
+- [ ] **BREAK DOWN COMPLEX TASKS**: Split large requests into smaller, focused steps
+- [ ] **ONE THING AT A TIME**: Complete each step fully before moving to the next
+- [ ] **VERIFY EACH STEP**: Test/validate each change before proceeding
+- [ ] **USE CHECKLISTS**: Create specific action items for complex tasks
+- [ ] **AVOID OVERWHELMING SCOPE**: Don't try to fix everything simultaneously
 
-## IF I VIOLATE THESE:
-The user should respond with: "CRITICAL VIOLATION - CODING_STANDARDS.md rule [X]"
+### Example Systematic Approach:
+1. **Identify the problem** - What specifically needs to be fixed?
+2. **Plan the solution** - What are the discrete steps?
+3. **Execute one step** - Make one focused change
+4. **Verify the step** - Check that it works correctly
+5. **Move to next step** - Only after current step is complete
+6. **Final validation** - Test the complete solution
+
+### When Working on Code Cleanup:
+- [ ] Focus on ONE category at a time (e.g., unused files, then debug prints, then TODO items)
+- [ ] Complete each file fully before moving to the next
+- [ ] Verify each change with compilation checks
+- [ ] Document what was accomplished before moving on
+
+**REMEMBER**: It's better to complete 3 things perfectly than to attempt 10 things and get stuck halfway through.
 
 

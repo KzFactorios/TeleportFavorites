@@ -10,7 +10,6 @@ local game_helpers = require("core.utils.game_helpers")
 local safe_destroy_frame = Helpers.safe_destroy_frame
 local PlayerFavorites = require("core.favorite.player_favorites")
 local gps_parser = require("core.utils.gps_parser")
-local gps_core = require("core.utils.gps_core")
 local Constants = require("constants")
 local Enum = require("prototypes.enums.enum")
 local PositionValidator = require("core.utils.position_validator")
