@@ -525,6 +525,7 @@
 ---@field count_entities_filtered fun(self: LuaSurface, spec: table): uint
 ---@field find_entities_filtered fun(self: LuaSurface, spec: table): LuaEntity[]
 ---@field find_non_colliding_position fun(self: LuaSurface, name: string, center: MapPosition, radius: double, precision: double, force_to_tile_center?: boolean): MapPosition?
+---@field find_non_colliding_position_in_box fun(self: LuaSurface, name: string, search_space: BoundingBox, precision: double, force_to_tile_center?: boolean): MapPosition?
 ---@field get_chunks fun(self: LuaSurface): table
 ---@field get_pollution fun(self: LuaSurface, position: MapPosition): double
 ---@field spill_item_stack fun(self: LuaSurface, position: MapPosition, item_stack: LuaItemStack, enable_looted?: boolean, force?: LuaForce, allow_belts?: boolean): uint

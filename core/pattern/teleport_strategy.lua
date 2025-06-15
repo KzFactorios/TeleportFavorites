@@ -101,7 +101,7 @@ end
 ---@param gps string
 ---@return MapPosition? position, string error_message
 function BaseTeleportStrategy:get_landing_position(player, gps)
-  local nrm_tag, nrm_chart_tag, nrm_favorite = gps_helpers.normalize_landing_position_with_cache(player, gps, Cache)
+  local _nrm_tag, nrm_chart_tag, _nrm_favorite = gps_helpers.normalize_landing_position_with_cache(player, gps, Cache)
   if not nrm_chart_tag then
     return nil, "Unable to normalize landing position"
   end

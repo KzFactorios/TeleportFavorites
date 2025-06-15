@@ -291,31 +291,99 @@ function PlayerFavorites:remove_favorite_by_slot(slot_idx)
   return self:remove_favorite(fav.gps)
 end
 
+--- Generic slot operation method to consolidate similar operations
+---@param operation_type string Type of operation: "swap", "move", "remove", "toggle_lock"
+---@param ... any Variable arguments based on operation type
+---@return boolean success, string|nil error_message
+function PlayerFavorites:modify_slot(operation_type, ...)
+  local args = {...}
+  
+  if operation_type == "swap" then
+    local slot_a, slot_b = args[1], args[2]
+    if not is_valid_slot(slot_a) or not is_valid_slot(slot_b) then
+      return false, "Invalid slot indices"
+    end
+    if slot_a == slot_b then return true, nil end
+    
+    local fav_a = self.favorites[slot_a]
+    local fav_b = self.favorites[slot_b]
+    
+    if (fav_a and fav_a.locked) or (fav_b and fav_b.locked) then
+      return false, "Cannot swap locked favorites"
+    end
+    
+    self.favorites[slot_a] = fav_b
+    self.favorites[slot_b] = fav_a
+    sync_to_storage(self)
+    return true, nil
+    
+  elseif operation_type == "move" then
+    local from_slot, to_slot = args[1], args[2]
+    if not is_valid_slot(from_slot) or not is_valid_slot(to_slot) then
+      return false, "Invalid slot indices"
+    end
+    if from_slot == to_slot then return true, nil end
+    
+    local fav = self.favorites[from_slot]
+    if FavoriteUtils.is_blank_favorite(fav) then
+      return false, "Cannot move blank favorite"
+    end
+    if fav and fav.locked then
+      return false, "Cannot move locked favorite"
+    end
+    
+    local moved_fav = table.remove(self.favorites, math.floor(from_slot))
+    table.insert(self.favorites, math.floor(to_slot), moved_fav)
+    
+    -- Ensure array stays correct size
+    while #self.favorites < Constants.settings.MAX_FAVORITE_SLOTS do
+      table.insert(self.favorites, FavoriteUtils.get_blank_favorite())
+    end
+    while #self.favorites > Constants.settings.MAX_FAVORITE_SLOTS do
+      table.remove(self.favorites)
+    end
+    
+    sync_to_storage(self)
+    return true, nil
+    
+  elseif operation_type == "remove" then
+    local slot_idx = args[1]
+    if not is_valid_slot(slot_idx) then
+      return false, "Invalid slot index"
+    end
+    
+    local fav = self.favorites[slot_idx]
+    if not fav or FavoriteUtils.is_blank_favorite(fav) then
+      return true, nil -- Already blank
+    end
+    
+    return self:remove_favorite(fav.gps)
+    
+  elseif operation_type == "toggle_lock" then
+    local slot_idx = args[1]
+    if not is_valid_slot(slot_idx) then
+      return false, "Invalid slot index"
+    end
+    
+    local fav = self.favorites[slot_idx]
+    if not fav or FavoriteUtils.is_blank_favorite(fav) then
+      return false, "Cannot lock blank favorite"
+    end
+    
+    FavoriteUtils.toggle_locked(fav)
+    sync_to_storage(self)
+    return true, nil
+  end
+  
+  return false, "Unknown operation type: " .. tostring(operation_type)
+end
+
 --- Swap two favorites by slot indices
 ---@param slot_a number
 ---@param slot_b number
 ---@return boolean success, string|nil error_message
 function PlayerFavorites:swap_slots(slot_a, slot_b)
-  if not is_valid_slot(slot_a) or not is_valid_slot(slot_b) then
-    return false, "Invalid slot indices"
-  end
-
-  if slot_a == slot_b then return true, nil end
-
-  local fav_a = self.favorites[slot_a]
-  local fav_b = self.favorites[slot_b]
-
-  -- Check if either is locked
-  if (fav_a and fav_a.locked) or (fav_b and fav_b.locked) then
-    return false, "Cannot swap locked favorites"
-  end
-
-  -- Perform swap
-  self.favorites[slot_a] = fav_b
-  self.favorites[slot_b] = fav_a
-  sync_to_storage(self)
-
-  return true, nil
+  return self:modify_slot("swap", slot_a, slot_b)
 end
 
 --- Move a favorite from one slot to another
@@ -323,53 +391,14 @@ end
 ---@param to_slot number
 ---@return boolean success, string|nil error_message
 function PlayerFavorites:move_favorite(from_slot, to_slot)
-  if not is_valid_slot(from_slot) or not is_valid_slot(to_slot) then
-    return false, "Invalid slot indices"
-  end
-
-  if from_slot == to_slot then return true, nil end
-
-  local fav = self.favorites[from_slot]
-  if FavoriteUtils.is_blank_favorite(fav) then
-    return false, "Cannot move blank favorite"
-  end
-
-  if fav and fav.locked then
-    return false, "Cannot move locked favorite"
-  end
-
-  -- Move favorite and shift others
-  local moved_fav = table.remove(self.favorites, math.floor(from_slot))
-  table.insert(self.favorites, math.floor(to_slot), moved_fav)
-
-  -- Ensure array stays correct size
-  while #self.favorites < Constants.settings.MAX_FAVORITE_SLOTS do
-    table.insert(self.favorites, FavoriteUtils.get_blank_favorite())
-  end
-  while #self.favorites > Constants.settings.MAX_FAVORITE_SLOTS do
-    table.remove(self.favorites)
-  end
-
-  sync_to_storage(self)
-  return true, nil
+  return self:modify_slot("move", from_slot, to_slot)
 end
 
 --- Toggle the locked state of a favorite
 ---@param slot_idx number
 ---@return boolean success, string|nil error_message
 function PlayerFavorites:toggle_favorite_lock(slot_idx)
-  if not is_valid_slot(slot_idx) then
-    return false, "Invalid slot index"
-  end
-
-  local fav = self.favorites[slot_idx]
-  if not fav or FavoriteUtils.is_blank_favorite(fav) then
-    return false, "Cannot lock blank favorite"
-  end
-
-  FavoriteUtils.toggle_locked(fav)
-  sync_to_storage(self)
-  return true, nil
+  return self:modify_slot("toggle_lock", slot_idx)
 end
 
 --- Check if favorites collection is full

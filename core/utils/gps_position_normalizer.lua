@@ -20,6 +20,7 @@ local ErrorHandler = require("core.utils.error_handler")
 local Settings = require("core.utils.settings_access")
 local GameHelpers = require("core.utils.game_helpers")
 local RichTextFormatter = require("core.utils.rich_text_formatter")
+local ValidationHelpers = require("core.utils.validation_helpers")
 
 -- GPS and Position Handling
 local GPSCore = require("core.utils.gps_core")
@@ -49,37 +50,21 @@ local function validate_and_prepare_context(player, intended_gps)
     intended_gps = intended_gps
   })
 
-  if not player or not player.valid then
+  -- Use consolidated validation for position operations
+  local valid, position, error_msg = ValidationHelpers.validate_position_operation(player, intended_gps)
+  if not valid then
     return nil, ErrorHandler.error(
       ErrorHandler.ERROR_TYPES.VALIDATION_FAILED,
-      "Invalid player reference",
-      { player_exists = player ~= nil }
-    )
-  end
-
-  if not intended_gps or intended_gps == "" then
-    return nil, ErrorHandler.error(
-      ErrorHandler.ERROR_TYPES.VALIDATION_FAILED,
-      "Invalid GPS string provided",
-      { gps = intended_gps }
-    )
-  end
-
-  local landing_position = GPSCore.map_position_from_gps(intended_gps)
-  if not landing_position then
-    return nil, ErrorHandler.error(
-      ErrorHandler.ERROR_TYPES.GPS_PARSE_FAILED,
-      "Could not parse GPS coordinates",
+      error_msg or "Validation failed",
       { intended_gps = intended_gps }
     )
-  end
-  local player_settings = Settings:getPlayerSettings(player)
+  end  local player_settings = Settings:getPlayerSettings(player)
   local search_radius = player_settings.teleport_radius or Constants.settings.TELEPORT_RADIUS_DEFAULT
 
   local context = {
     player = player,
     intended_gps = intended_gps,
-    landing_position = landing_position,
+    landing_position = position,
     search_radius = search_radius
   }
   ErrorHandler.debug_log("Context validation successful", context)

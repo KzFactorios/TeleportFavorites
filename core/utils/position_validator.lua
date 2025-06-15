@@ -17,6 +17,7 @@ local GPSCore = require("core.utils.gps_core")
 local game_helpers = require("core.utils.game_helpers")
 local basic_helpers = require("core.utils.basic_helpers")
 local Constants = require("constants")
+local ValidationHelpers = require("core.utils.validation_helpers")
 
 ---@class PositionValidator
 local PositionValidator = {}
@@ -27,11 +28,15 @@ local PositionValidator = {}
 ---@param skip_notification boolean? Whether to skip player notification on failure
 ---@return boolean is_valid
 function PositionValidator.is_valid_tag_position(player, map_position, skip_notification)
-  if not player or not player.valid or not map_position then
+  -- Use consolidated validation helper for player check
+  local player_valid, player_error = ValidationHelpers.validate_player(player)
+  if not player_valid then
     return false
   end
-  -- Validate x and y are numbers
-  if type(map_position.x) ~= "number" or type(map_position.y) ~= "number" then
+  
+  -- Use consolidated validation helper for position structure check
+  local pos_valid, pos_error = ValidationHelpers.validate_position_structure(map_position)
+  if not pos_valid then
     return false
   end
 
@@ -72,11 +77,12 @@ function PositionValidator.find_valid_position(player, map_position, search_radi
   end
 
   local normalized_pos = PositionValidator.normalize_map_position(map_position)
-
   -- First check if the original position is already valid
   if PositionValidator.is_valid_tag_position(player, normalized_pos, true) then
     return normalized_pos
   end
+  -- Use search radius to find a valid position
+  search_radius = search_radius or 50
 
   -- Create a bounding box around the normalized_pos
   local tolerance = Constants.settings.BOUNDING_BOX_TOLERANCE or 4
@@ -89,13 +95,11 @@ function PositionValidator.find_valid_position(player, map_position, search_radi
       x = normalized_pos.x + tolerance,
       y = normalized_pos.y + tolerance
     }
-  }
-
-  -- Try Factorio's pathfinding first
-  local pathfinding_pos = player.surface.find_non_colliding_position_in_box("character", bounding_box, 1)
+  }  -- Try Factorio's pathfinding first using bounding box method
+  local pathfinding_pos = player.surface:find_non_colliding_position_in_box("character", bounding_box, 1.0)
   
   if pathfinding_pos and PositionValidator.is_valid_tag_position(player, pathfinding_pos, true) then
-  -- find the closest, normalize it's coords and check validity
+    -- Find the closest, normalize its coords and check validity
     local normalized_path_pos = PositionValidator.normalize_map_position(pathfinding_pos)
     if normalized_path_pos and PositionValidator.is_valid_tag_position(player, normalized_path_pos, true) then
       return normalized_path_pos

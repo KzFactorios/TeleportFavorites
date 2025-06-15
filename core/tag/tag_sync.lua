@@ -46,6 +46,7 @@ local gps_parser = require("core.utils.gps_parser")
 local Lookups = Cache.lookups
 local ErrorHandler = require("core.utils.error_handler")
 local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
+local ValidationHelpers = require("core.utils.validation_helpers")
 
 ---@class TagSync
 local TagSync = {}
@@ -74,21 +75,8 @@ end
 ---@return boolean is_valid
 ---@return string[] issues
 local function validate_sync_inputs(player, tag, new_gps)
-  local issues = {}
-  
-  if not player or not player.valid then
-    table.insert(issues, "Invalid player")
-  end
-  
-  if not tag or not tag.gps then
-    table.insert(issues, "Invalid tag or missing GPS")
-  end
-  
-  if new_gps and (not new_gps or new_gps == "") then
-    table.insert(issues, "Invalid new GPS coordinate")
-  end
-  
-  return #issues == 0, issues
+  -- Use consolidated validation helper
+  return ValidationHelpers.validate_sync_inputs(player, tag, new_gps)
 end
 
 --- Safely extract chart tag properties with nil checks

@@ -71,35 +71,12 @@ if not gui_style.tf_fave_slots_row then
     }
 end
 
--- Functional programming approach for button style creation
-local function extend_style(base_style, overrides)
-  local result = {}
-  for k, v in pairs(base_style) do result[k] = v end
-  for k, v in pairs(overrides) do result[k] = v end
-  return result
-end
-
-local function create_tinted_graphical_sets(tint)
-  return {
-    default_graphical_set = {
-      base = { position = { 68, 0 }, corner_size = 8, draw_type = "outer", tint = tint }
-    },
-    hovered_graphical_set = {
-      base = { position = { 51, 0 }, corner_size = 8, draw_type = "outer", tint = tint }
-    },
-    clicked_graphical_set = {
-      base = { position = { 34, 0 }, corner_size = 8, draw_type = "outer", tint = tint }
-    },
-    disabled_graphical_set = {
-      base = { position = { 17, 0 }, corner_size = 8, draw_type = "outer", 
-             tint = { r = tint.r, g = tint.g, b = tint.b, a = tint.a * 0.5 } }
-    }
-  }
-end
+-- Use consolidated style helpers instead of duplicating style creation logic
+local StyleHelpers = require("core.utils.style_helpers")
 
 -- Small font button style
 if not gui_style.tf_slot_button_smallfont then
-    gui_style.tf_slot_button_smallfont = extend_style(gui_style.slot_button, {
+    gui_style.tf_slot_button_smallfont = StyleHelpers.extend_style(gui_style.slot_button, {
         type = "button_style",
         font = "default-small",
         horizontal_align = "center",
@@ -115,8 +92,8 @@ if not gui_style.tf_slot_button_smallfont then
     })
 end
 
--- Create tinted button variants using functional approach
-local tinted_button_configs = {
+-- Create tinted button variants using consolidated style helper
+StyleHelpers.create_tinted_button_styles(gui_style.slot_button, {
   {
     name = "tf_slot_button_dragged",
     tint = { r = 0.2, g = 0.7, b = 1, a = 1 } -- blue
@@ -129,12 +106,6 @@ local tinted_button_configs = {
     name = "tf_slot_button_drag_target",
     tint = { r = 1, g = 1, b = 0.2, a = 1 } -- yellow
   }
-}
-
-for _, config in ipairs(tinted_button_configs) do
-  if not gui_style[config.name] then
-    gui_style[config.name] = extend_style(gui_style.slot_button, create_tinted_graphical_sets(config.tint))
-  end
-end
+}, gui_style)
 
 return true

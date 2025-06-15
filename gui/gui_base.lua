@@ -197,9 +197,8 @@ function GuiBase.create_titlebar(parent, name, close_button_name)
 
     local title_label = GuiBase.create_label(titlebar, "gui_base_title_label", "", "tf_frame_title")
 
-    local draggable = GuiBase.create_draggable(titlebar, "tf_titlebar_draggable")
-    local close_button = GuiBase.create_icon_button(titlebar, close_button_name or "titlebar_close_button",
-        Enum.SpriteEnum.CLOSE, nil,
+    local draggable = GuiBase.create_draggable(titlebar, "tf_titlebar_draggable")    local close_button = GuiBase.create_icon_button(titlebar, close_button_name or "titlebar_close_button",
+        Enum.SpriteEnum.CLOSE, "",
         "tf_frame_action_button")
 
     return titlebar, title_label, close_button

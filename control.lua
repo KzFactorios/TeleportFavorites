@@ -19,13 +19,8 @@ local control_tag_editor = require("core.control.control_tag_editor")   -- Requi
 local control_data_viewer = require("core.control.control_data_viewer") -- Used for data viewer registration
 
 -- Import event handling components
-local gui_event_dispatcher = require("core.events.gui_event_dispatcher")
-local custom_input_dispatcher = require("core.events.custom_input_dispatcher")
-local on_gui_closed_handler = require("core.events.on_gui_closed_handler")
-local tag_terrain_watcher = require("core.tag.tag_terrain_watcher") -- For handling terrain changes under chart tags
+local event_registration_dispatcher = require("core.events.event_registration_dispatcher")
 local handlers = require("core.events.handlers")
-local Settings = require("core.utils.settings_access")
-local fave_bar = require("gui.favorites_bar.fave_bar")
 
 -- Optional modules - load safely
 local gui_observer
@@ -35,65 +30,21 @@ do
   if success then gui_observer = module end
 end
 
--- WorkingCommandManager removed - command pattern not implemented
-
 -- Log control.lua loading
 if log then log("[TeleportFavorites] control.lua loaded") end
 
 -- Development environment initialization removed
 -- All dev mode functionality has been removed from the codebase
 
--- Observer Pattern Integration
-local function setup_observers_for_player(player)
-  if not gui_observer then
-    if log then log("[TeleportFavorites] gui_observer module not available") end
-    return
-  end
-
-  if gui_observer.GuiEventBus and gui_observer.GuiEventBus.register_player_observers then
-    gui_observer.GuiEventBus.register_player_observers(player)
-  else
-    if log then log("[TeleportFavorites] GuiEventBus or register_player_observers not available") end
-  end
-end
-
-local function cleanup_observers_for_player(player_index)
-  if not gui_observer then
-    if log then log("[TeleportFavorites] gui_observer module not available") end
-    return
-  end
-
-  if gui_observer.GuiEventBus and gui_observer.GuiEventBus.cleanup_all then
-    -- For now, clean up all observers since there's no player-specific cleanup
-    gui_observer.GuiEventBus.cleanup_all()
-  else
-    if log then log("[TeleportFavorites] GuiEventBus or cleanup_all not available") end
-  end
-end
+-- Core lifecycle event registration through centralized dispatcher
 
 -- Custom on_init to allow easy toggling of intro cutscene skip
 local function custom_on_init()
   handlers.on_init()
 end
 
--- Core lifecycle and area selection event wiring
-
--- Handle player join or creation events with a common function
-local function handle_player_join_or_create(event)
-  handlers.on_player_created(event)
-  ---@type LuaPlayer?
-  local player = game.get_player(event.player_index)
-  if player and player.valid then
-    setup_observers_for_player(player)
-  end
-end
-
 script.on_init(custom_on_init)
 script.on_load(handlers.on_load)
-script.on_event(defines.events.on_player_created, handle_player_join_or_create)
-script.on_event(defines.events.on_player_changed_surface, handlers.on_player_changed_surface)
-script.on_event(defines.events.on_player_joined_game, handle_player_join_or_create)
-script.on_event("tf-open-tag-editor", handlers.on_open_tag_editor_custom_input)
 
 -- KEEP THIS CODE for development (disabled in production)
 -- Instantly skip any cutscene (including intro) for all players
@@ -106,57 +57,5 @@ script.on_event(defines.events.on_cutscene_started, function(event)
   end
 end)
 
--- Handle mod setting changes
-script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
-  -- Handle changes to the favorites on/off setting
-  if event.setting == "favorites-on" then
-    for _, player in pairs(game.connected_players) do
-      -- Update the favorites bar visibility based on the setting
-      local player_settings = Settings:getPlayerSettings(player)
-      if player_settings.favorites_on then
-        -- Show or rebuild the favorites bar
-        fave_bar.build(player, player.gui.top)
-      else
-        -- Hide the favorites bar
-        fave_bar.destroy(player)
-      end
-    end
-    return
-  end
-
-  -- Handle changes to the teleport radius
-  if event.setting == "teleport-radius" then
-    -- No UI needs updating, but we could log the change
-    if log then log("[TeleportFavorites] Teleport radius setting changed for player " .. event.player_index) end
-    return
-  end
-
-  -- Handle changes to the destination message setting
-  if event.setting == "destination-msg-on" then
-    -- This setting affects messaging only, no UI changes required
-    if log then log("[TeleportFavorites] Destination message setting changed for player " .. event.player_index) end
-    return
-  end
-end)
-
--- Register data viewer hotkey and GUI events
-control_data_viewer.register(script)
-
--- Register the shared GUI event handler for all GUIs
--- Pass both script and defines so gui_event_dispatcher can register the dispatcher
-gui_event_dispatcher.register_gui_handlers(script)
-
--- Register custom input (keyboard shortcut) handlers
-custom_input_dispatcher.register_default_inputs(script)
-
--- Register on_gui_closed handler for ESC key/modal close support
-script.on_event(defines.events.on_gui_closed, on_gui_closed_handler.on_gui_closed)
-
--- Register terrain watcher to handle chart tags when the terrain changes beneath them
-tag_terrain_watcher.register(script)
-
--- Clean up observers when players leave
-script.on_event(defines.events.on_player_left_game, function(event)
-  -- WorkingCommandManager cleanup removed - command pattern not implemented
-  cleanup_observers_for_player(event.player_index)
-end)
+-- Register all mod events through centralized dispatcher
+event_registration_dispatcher.register_all_events(script)

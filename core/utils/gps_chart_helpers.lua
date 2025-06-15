@@ -14,14 +14,20 @@ local Helpers = require("core.utils.helpers_suite")
 local ErrorHandler = require("core.utils.error_handler")
 local GPSCore = require("core.utils.gps_core")
 local basic_helpers = require("core.utils.basic_helpers")
+local ValidationHelpers = require("core.utils.validation_helpers")
 
 ---@class GPSChartHelpers
 local GPSChartHelpers = {}
 
--- Local function to check if a position can be tagged (moved from position_helpers to break circular dependency)
+-- Local function to check if a position can be tagged using consolidated validation
 local function position_can_be_tagged(player, map_position)
-  if not (player and player.force and player.surface and player.force.is_chunk_charted) then return false end
-  if not map_position then return false end
+  -- Use consolidated validation helper for player check
+  local player_valid, player_error = ValidationHelpers.validate_player_for_position_ops(player)
+  if not player_valid then return false end
+  
+  -- Use consolidated validation helper for position check
+  local pos_valid, pos_error = ValidationHelpers.validate_position_structure(map_position)
+  if not pos_valid then return false end
 
   local chunk = { x = math.floor(map_position.x / 32), y = math.floor(map_position.y / 32) }
   if not player.force.is_chunk_charted(player.surface, chunk) then

@@ -207,6 +207,8 @@ end
 --- Register data viewer event handlers
 --- @param script table The Factorio script object
 function M.register(script)
+  -- NOTE: This registration pattern is deprecated in favor of event_registration_dispatcher
+  -- However, data viewer has specialized event handling needs so it's maintained for now
   -- Only register GUI click handlers here. Do NOT register script.on_event for dv-toggle-data-viewer (handled by dispatcher).
 
     -- Handle close button click in data viewer

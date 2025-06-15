@@ -45,7 +45,6 @@ GuiEventBus:notify("favorite_added", {
 })
 --]]
 
-local Observer = require("core.pattern.observer")
 local ErrorHandler = require("core.utils.error_handler")
 local Helpers = require("core.utils.helpers_suite")
 local Cache = require("core.cache.cache")
