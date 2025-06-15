@@ -13,7 +13,10 @@
       "undefined-global"
     ],
     "enable": true,
-    "globals": [],
+    "globals": [
+      "game", "script", "defines", "settings", "remote", 
+      "commands", "log", "localised_print", "table_size", "serpent"
+    ],
     "globalsRegex": [],
     "severity": {},
     "enables": [],
@@ -42,15 +45,15 @@
     }
   },
   "workspace": {
-    "ignoreDir": [],
-    "ignoreGlobs": [],
+    "ignoreDir": [".git", "notes"],
+    "ignoreGlobs": ["**/*.md", "**/*.tmp"],
     "library": [],
     "workspaceRoots": [],
     "preloadFileSize": 0,
     "encoding": "utf-8",
     "moduleMap": [],
-    "reindexDuration": 5000,
-    "enableReindex": false
+    "reindexDuration": 10000,
+    "enableReindex": true
   },
   "resource": {
     "paths": []

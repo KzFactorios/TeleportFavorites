@@ -28,10 +28,10 @@ local GuiHelpers = require("core.utils.gui_helpers")
 local Helpers = {}
 
 -- Re-export Math helpers
-Helpers.math_round = MathHelpers.math_round
+-- math_round removed - no usage found in codebase
 
 -- Re-export Table helpers
-Helpers.tables_equal = TableHelpers.tables_equal
+-- tables_equal removed - only used internally in table_helpers.lua
 Helpers.deep_copy = TableHelpers.deep_copy
 Helpers.shallow_copy = TableHelpers.shallow_copy
 Helpers.remove_first = TableHelpers.remove_first
@@ -49,9 +49,9 @@ Helpers.process_until_match = TableHelpers.process_until_match
 -- Re-export Functional programming helpers
 Helpers.map = FunctionalHelpers.map
 Helpers.filter = FunctionalHelpers.filter
-Helpers.reduce = FunctionalHelpers.reduce
+-- reduce removed - no usage found in codebase
 Helpers.for_each = FunctionalHelpers.for_each
-Helpers.partition = FunctionalHelpers.partition
+-- partition removed - no usage found in codebase
 
 -- Re-export Game helpers
 Helpers.is_on_space_platform = GameHelpers.is_on_space_platform

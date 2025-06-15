@@ -11,18 +11,16 @@ This module handles:
 - Notifying players about tag relocations due to terrain changes
 ]]
 
-local GPSCore = require("core.utils.gps_core")
-local ErrorHandler = require("core.utils.error_handler")
-local Helpers = require("core.utils.helpers_suite")
 local PositionValidator = require("core.utils.position_validator")
 local Cache = require("core.cache.cache")
 local Lookups = Cache.lookups
 local gps_parser = require("core.utils.gps_helpers")
 local RichTextFormatter = require("__TeleportFavorites__.core.utils.rich_text_formatter")
-local basic_helpers = require("core.utils.basic_helpers")
-local Tag = require("core.tag.tag")
 local GameHelpers = require("core.utils.game_helpers")
 local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
+
+-- Removed unused imports:
+-- GPSCore, ErrorHandler, Helpers, basic_helpers, Tag - no usage found
 
 ---@class TagTerrainManager
 local TagTerrainManager = {}

@@ -1,0 +1,95 @@
+// filepath: v:\Fac2orios\2_Gemini\mods\TeleportFavorites\.github\copilot-instructions.md
+
+# GitHub Copilot Instructions - TeleportFavorites Factorio Mod
+
+**⚠️ MANDATORY - APPLY BEFORE EVERY CODE RESPONSE ⚠️**
+
+## ROLE & COMMITMENT
+You are a specialized Factorio mod development assistant. Apply this checklist rigorously BEFORE every response involving code changes.
+
+## 1. PRE-EDIT VALIDATION
+- [ ] Use `read_file` to see current content BEFORE editing
+- [ ] Understand existing code structure and context
+- [ ] Preserve existing formatting and style
+- [ ] Identify the specific problem and plan discrete steps
+
+## 2. FACTORIO MOD REQUIREMENTS
+- [ ] ALL `require()` statements at file top (NEVER inside functions/handlers)
+- [ ] Use proper Factorio API syntax:
+  - Colon (`:`) for method calls: `surface:get_tile()`, `chart_tag:destroy()`
+  - Dot (`.`) for property access: `player.name`, `chart_tag.position`
+- [ ] Use `GameHelpers.player_print(player, message)` NOT `player.print()`
+- [ ] Handle player validity: `if not player or not player.valid then return end`
+
+## 3. ESTABLISHED CODE PATTERNS (100% CONSISTENCY REQUIRED)
+- [ ] **Chart Tag Creation**: Always use `ChartTagSpecBuilder.build()`
+- [ ] **Position Normalization**: Always use `PositionNormalizer` utilities  
+- [ ] **Error Handling**: Always use `ErrorHandler` for logging and error management
+- [ ] **GUI Creation**: Always use `GuiBase.create_*` utilities vs direct `parent.add()`
+
+## 4. SYNTAX & FORMATTING VALIDATION
+- [ ] No merged comments with code on same line
+- [ ] All statements properly separated with newlines
+- [ ] Multi-line strings properly formatted
+- [ ] All parentheses, brackets, braces balanced
+- [ ] Example: `-- comment  local var = value` → `-- comment\nlocal var = value`
+
+## 5. STRING REPLACEMENT VALIDATION
+- [ ] Include 3-5 lines of context before AND after in `oldString`
+- [ ] `oldString` unique enough to match exactly once
+- [ ] Preserve exact whitespace, indentation, and newlines
+- [ ] NO `...existing code...` comments in `oldString`
+
+## 6. TERMINAL COMMANDS (PowerShell)
+- [ ] Use `;` instead of `&&` for command chaining
+- [ ] Properly quote file paths for Windows
+- [ ] Example: `cd "v:\path"; command` NOT `cd "v:\path" && command`
+
+## 7. POST-EDIT VERIFICATION
+- [ ] Check for compile/syntax errors using `get_errors`
+- [ ] Verify file loads without runtime errors
+- [ ] Validate all function calls and variable references
+
+## 8. SYSTEMATIC PROBLEM SOLVING APPROACH
+- [ ] **BREAK DOWN COMPLEX TASKS**: Split into smaller, focused steps
+- [ ] **ONE THING AT A TIME**: Complete each step fully before next
+- [ ] **VERIFY EACH STEP**: Test/validate each change before proceeding
+- [ ] **AVOID OVERWHELMING SCOPE**: Don't try to fix everything simultaneously
+
+### Systematic Workflow:
+1. **Identify** - What specifically needs to be fixed?
+2. **Plan** - What are the discrete steps?
+3. **Execute** - Make one focused change
+4. **Verify** - Check that it works correctly
+5. **Iterate** - Move to next step only after current is complete
+
+## 9. CODE QUALITY STANDARDS
+- [ ] Functions should have single responsibility (<50 lines preferred)
+- [ ] No unused imports or dead code
+- [ ] Consistent import organization (grouped by category)
+- [ ] Clear, intention-revealing function names
+- [ ] Immutable data flow where possible
+
+## 10. CRITICAL VIOLATIONS TO AVOID
+1. **NEVER**: `cd "path" && command` (bash syntax)
+2. **NEVER**: `require()` inside functions
+3. **NEVER**: `player.print()` or `player:print()` (use GameHelpers.player_print)
+4. **NEVER**: `chart_tag:position` (wrong - use `chart_tag.position`)
+5. **NEVER**: Comments merged with code on same line
+6. **NEVER**: Try to tackle everything at once
+
+## 11. PROJECT ARCHITECTURE PRINCIPLES
+- Maintain 100% consistency in established patterns
+- Use centralized utilities (ChartTagSpecBuilder, PositionNormalizer, ErrorHandler)
+- Follow single responsibility principle
+- Clear module boundaries with explicit dependencies
+- Comprehensive error handling at all levels
+
+## 12. SUCCESS METRICS
+- Functions >50 lines should be decomposed
+- Zero unused imports or dead code
+- 100% consistent pattern usage
+- Clear, self-documenting code structure
+- Reliable error handling throughout
+
+**REMEMBER**: Complete 3 things perfectly rather than attempt 10 and get stuck halfway.

@@ -12,19 +12,26 @@ Complex position normalization logic for GPS coordinates.
 - Validates positions to avoid water/space tiles
 ]]
 
+-- Configuration and Constants
 local Constants = require("constants")
+
+-- Core Utilities
 local ErrorHandler = require("core.utils.error_handler")
+local Settings = require("core.utils.settings_access")
+local GameHelpers = require("core.utils.game_helpers")
+local RichTextFormatter = require("core.utils.rich_text_formatter")
+
+-- GPS and Position Handling
 local GPSCore = require("core.utils.gps_core")
 local gps_parser = require("core.utils.gps_parser")
 local GPSChartHelpers = require("core.utils.gps_chart_helpers")
-local GameHelpers = require("core.utils.game_helpers")
-local tag_destroy_helper = require("core.tag.tag_destroy_helper")
-local Lookups = require("core.cache.lookups")
-local RichTextFormatter = require("core.utils.rich_text_formatter")
 local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 local PositionNormalizer = require("core.utils.position_normalizer")
 local PositionValidator = require("core.utils.position_validator")
-local Settings = require("core.utils.settings_access")
+
+-- Tag and Cache Management
+local tag_destroy_helper = require("core.tag.tag_destroy_helper")
+local Lookups = require("core.cache.lookups")
 
 -- Dev environment detection removed - functionality no longer needed
 
@@ -187,121 +194,112 @@ local function find_nearby_matches(context, callbacks)
   return match_tag, in_area_chart_tag
 end
 
---- Get final position data including player favorites
+--- Finalize position data and check for player favorites
 ---@param context table
----@param adjusted_gps string
----@param tag table?
----@param chart_tag LuaCustomChartTag?
+---@param tag Tag?
+---@param chart_tag LuaCustomChartTag
 ---@param callbacks table
----@return MapPosition?, table?, LuaCustomChartTag?, table?
+---@return Tag?, LuaCustomChartTag?, table?
 local function finalize_position_data(context, tag, chart_tag, callbacks)
-  local adjusted_gps = context.intended_gps
-
-  ErrorHandler.debug_log("Finalizing position data", {
-    adjusted_gps = adjusted_gps,
-    has_tag = tag ~= nil,
-    has_chart_tag = chart_tag ~= nil
-  })
-
-
-  local adjusted_pos = GPSCore.map_position_from_gps(adjusted_gps)
-  if not adjusted_pos then
-    ErrorHandler.debug_log("Could not parse final GPS coordinates", { adjusted_gps = adjusted_gps })
+  if not chart_tag then
     return nil, nil, nil
   end
 
-  -- get player favorite if any
-  local matching_player_favorite = callbacks.is_player_favorite_func and
-      callbacks.is_player_favorite_func(context.player, adjusted_gps)
-  if matching_player_favorite then
-    ErrorHandler.debug_log("Found matching player favorite")
-  end
+  -- Update context with final position if it changed
+  context.landing_position = chart_tag.position
+  context.intended_gps = gps_parser.gps_from_map_position(chart_tag.position)
 
-  ErrorHandler.debug_log("Position normalization completed successfully", {
-    final_position = adjusted_pos,
-    final_gps = adjusted_gps
+  -- Check for player favorites match
+  local matching_player_favorite = callbacks.is_player_favorite_func(context.player, context.intended_gps)
+
+  ErrorHandler.debug_log("Position normalization pipeline completed", {
+    final_position = context.landing_position,
+    final_gps = context.intended_gps,
+    has_tag = tag ~= nil,
+    has_chart_tag = chart_tag ~= nil,
+    has_favorite = matching_player_favorite ~= nil
   })
 
   return tag, chart_tag, matching_player_favorite
 end
 
---- Normalize a landing position; surface may be LuaSurface, string, or index
---- This function now requires Cache functions as parameters to avoid circular dependency
----
---- This function has been broken down into smaller helper functions to reduce complexity
---- and improve maintainability. Each step is now clearly separated with comprehensive
---- debug logging for troubleshooting.
+--- Create chart tag at fallback position if no existing matches found
+---@param context table
+---@param callbacks table
+---@return table?, LuaCustomChartTag?
+local function create_fallback_chart_tag(context, callbacks)
+  ErrorHandler.debug_log("Creating fallback chart tag", {
+    landing_position = context.landing_position,
+    search_radius = context.search_radius
+  })
+
+  local valid_pos = PositionValidator.find_valid_position(context.player, context.landing_position, context.search_radius)
+  if not valid_pos then
+    return nil, nil
+  end
+
+  local chart_tag_spec = ChartTagSpecBuilder.build(valid_pos, nil, context.player)
+  local new_chart_tag, _ = GPSChartHelpers.create_and_validate_chart_tag(context.player, chart_tag_spec)
+  
+  if new_chart_tag then
+    context.landing_position = new_chart_tag.position
+    context.intended_gps = gps_parser.gps_from_map_position(new_chart_tag.position)
+    return nil, new_chart_tag  -- No existing tag, but we have a new chart_tag
+  end
+
+  return nil, nil
+end
+
+--- Normalize a landing position using clean pipeline architecture
 ---@param player LuaPlayer
 ---@param intended_gps string
 ---@param get_tag_by_gps_func function
 ---@param is_player_favorite_func function
 ---@param get_chart_tag_by_gps_func function
----@return Tag|nil, LuaCustomChartTag|nil, table|nil -- adjusted_pos, tag, chart_tag, matching_player_favorite(table)
-local function normalize_landing_position(player, intended_gps, get_tag_by_gps_func, is_player_favorite_func,
-                                          get_chart_tag_by_gps_func)
-  ErrorHandler.debug_log("Starting position normalization", {
+---@return Tag|nil, LuaCustomChartTag|nil, table|nil
+local function normalize_landing_position(player, intended_gps, get_tag_by_gps_func, is_player_favorite_func, get_chart_tag_by_gps_func)
+  ErrorHandler.debug_log("Starting position normalization pipeline", {
     player_name = player and player.name,
     intended_gps = intended_gps
   })
 
-  -- Step 1: Validate and prepare context
+  -- Pipeline Step 1: Validate and prepare context
   local context, result = validate_and_prepare_context(player, intended_gps)
   if not result.success then
-    ErrorHandler.handle_error(result, player, false) -- Don't print to player for validation errors
+    ErrorHandler.handle_error(result, player, false)
     return nil, nil, nil
   end
-  -- Package callbacks for cleaner parameter passing
+
   local callbacks = {
     get_tag_by_gps_func = get_tag_by_gps_func,
     is_player_favorite_func = is_player_favorite_func,
     get_chart_tag_by_gps_func = get_chart_tag_by_gps_func
   }
 
-  -- Step 2: Find exact matches (tag and chart_tag)
-  -- this will remove any tags that do not have a valid chart_tag
+  -- Pipeline Step 2: Find exact matches
   local tag, chart_tag = find_exact_matches(context, callbacks)
 
-  -- Step 3: Find nearby matches if no exact matches found. find any chart tags and the matching tag, if any
+  -- Pipeline Step 3: Find nearby matches if needed
   if not chart_tag then
     tag, chart_tag = find_nearby_matches(context, callbacks)
   end
 
-  -- if the find_nearby_matches has found new position close to our original intention
-  -- context should be updated - gps and landing_position
-  -- but if we still haven't found a match, then ensure we can
-  -- create a chart_tag at the intended position
-  --- Step 4: create a chart_tag at the closest position to our click
+  -- Pipeline Step 4: Create fallback chart tag if needed
   if not chart_tag then
-    -- find a suitable location
-    local valid_pos = PositionValidator.find_valid_position(context.player, context.landing_position,
-      context.search_radius)
-    if valid_pos then
-      local chart_tag_spec = ChartTagSpecBuilder.build(valid_pos, nil, context.player)
-      local new_chart_tag, _ = GPSChartHelpers.create_and_validate_chart_tag(context.player, chart_tag_spec) or nil
-      if new_chart_tag then
-        context.landing_position = new_chart_tag.position
-        context.intended_gps = gps_parser.gps_from_map_position(new_chart_tag.position)
-      end
-    end
+    tag, chart_tag = create_fallback_chart_tag(context, callbacks)
   end
 
-  --- That was our last chance to find a valid landing pos
+  -- Pipeline Step 5: Validate final result
   if not chart_tag then
-    ErrorHandler.debug_log("Could not find a valid position", {
-      player_name = player and player.name,
-      intended_gps = intended_gps,
-      error_message = "Could not find a valid position"
+    ErrorHandler.debug_log("Position normalization failed - no valid position found", {
+      player_name = player.name,
+      intended_gps = intended_gps
     })
     return nil, nil, nil
   end
 
-  -- Step 5: Finalize and return results
-  local tag, chart_tag, matching_player_favorite
-    = finalize_position_data(context, tag, chart_tag, callbacks)
-
-  ErrorHandler.debug_log("Position normalization completed successfully")
-
-  return tag, chart_tag, matching_player_favorite
+  -- Pipeline Step 6: Finalize results
+  return finalize_position_data(context, tag, chart_tag, callbacks)
 end
 
 --- Wrapper function that maintains the old API for backwards compatibility

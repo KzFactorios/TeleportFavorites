@@ -29,17 +29,13 @@ local fave_bar = require("gui.favorites_bar.fave_bar")
 
 -- Optional modules - load safely
 local gui_observer
-local WorkingCommandManager
 
 do
   local success, module = pcall(require, "core.pattern.gui_observer")
   if success then gui_observer = module end
 end
 
-do
-  local success, module = pcall(require, "core.pattern.working_command_manager")
-  if success then WorkingCommandManager = module end
-end
+-- WorkingCommandManager removed - command pattern not implemented
 
 -- Log control.lua loading
 if log then log("[TeleportFavorites] control.lua loaded") end
@@ -159,11 +155,8 @@ script.on_event(defines.events.on_gui_closed, on_gui_closed_handler.on_gui_close
 -- Register terrain watcher to handle chart tags when the terrain changes beneath them
 tag_terrain_watcher.register(script)
 
--- Clean up command history and observers when players leave
+-- Clean up observers when players leave
 script.on_event(defines.events.on_player_left_game, function(event)
-  if WorkingCommandManager then
-    WorkingCommandManager.cleanup_player_history(event.player_index)
-  end
-  
+  -- WorkingCommandManager cleanup removed - command pattern not implemented
   cleanup_observers_for_player(event.player_index)
 end)

@@ -26,30 +26,26 @@ local Lookups = require("core.cache.lookups")
 local Helpers = require("core.utils.helpers_suite")
 local GameHelpers = require("core.utils.game_helpers")
 local Enum = require("prototypes.enums.enum")
+local ErrorHandler = require("core.utils.error_handler")
 
 local data_viewer = {}
 
 -- Shared helpers for data rendering and retrieval
 local function set_label_font(lbl, font_size)
-  local font_name = "tf_font_" .. tostring(font_size)
-  local success, err = pcall(function() lbl.style.font = font_name end)
+  local font_name = "tf_font_" .. tostring(font_size)  local success, err = pcall(function() lbl.style.font = font_name end)
   if not success then
     ErrorHandler.debug_log("Failed to set font", { font_name = font_name, error = err })
   end
-  -- Do NOT set lbl.style.height or any other style property here
 end
 local function render_table_tree(parent, data, indent, visited, font_size, row_index)
   indent = indent or 0
   visited = visited or {}
   font_size = font_size or 12
   row_index = row_index or 1
-  local prefix = string.rep("\t", indent)  local function add_row(parent, caption, font_size, row_index)
-    local style = (row_index % 2 == 1) and "data_viewer_row_odd_label" or "data_viewer_row_even_label"
+  local prefix = string.rep("\t", indent)  local function add_row(parent, caption, font_size, row_index)    local style = (row_index % 2 == 1) and "data_viewer_row_odd_label" or "data_viewer_row_even_label"
     local lbl = GuiBase.create_label(parent, "data_row_" .. (row_index or 1), caption, style)
     set_label_font(lbl, font_size)
-    lbl.style.top_margin = 2
-    lbl.style.font_color = { r = 1, g = 1, b = 1 } -- White for all data rows
-    -- Do NOT set lbl.style.height or any other style property here
+    -- Note: Some style properties like top_margin and font_color may not be settable on all label types
     return lbl
   end
   if type(data) ~= "table" then
@@ -106,7 +102,7 @@ local function build_tabs_row(parent, active_tab)
     local style = (index > 1) and "tf_data_viewer_tab_button_margin" or "tf_data_viewer_tab_button"
     if is_active then style = "tf_data_viewer_tab_button_active" end
     
-    local btn = GuiBase.create_button(tabs_flow, element_name, { caption_key }, style)
+    local btn = GuiBase.create_button(tabs_flow, element_name, caption_key, style)
     btn.enabled = not is_active
     return btn
   end
@@ -200,8 +196,6 @@ local function render_compact_data_rows(parent, data, indent, font_size, row_ind
     local style = (row_index % 2 == 1) and "data_viewer_row_odd_label" or "data_viewer_row_even_label"
     local lbl = GuiBase.create_label(parent, "data_row_" .. (row_index or 1), text, style)
     set_label_font(lbl, font_size)
-    lbl.style.top_margin = 2
-    lbl.style.font_color = { r = 1, g = 1, b = 1 } -- White for all data rows
     return lbl
   end
   if type(data) ~= "table" then
@@ -256,9 +250,11 @@ function data_viewer.build(player, parent, state)
   if not (state and state.data and type(state.data) == "table") then
     return
   end
+
   local n = 0
   for _ in pairs(state.data) do n = n + 1 end
-  -- Ensure data and top_key are defined from state
+  
+    -- Ensure data and top_key are defined from state
   local data = state and state.data
   local top_key = state and state.top_key
 
@@ -274,8 +270,6 @@ function data_viewer.build(player, parent, state)
   -- Tabs row (with tab actions)
   build_tabs_row(inner_flow, state.active_tab)  -- Content area: vertical flow, then table
   local content_flow = GuiBase.create_vflow(inner_flow, "data_viewer_content_flow")
-  content_flow.style.horizontally_stretchable = true
-  content_flow.style.vertically_stretchable = true
 
   -- Table for data rows (single column for compactness)
   local data_table = GuiBase.create_element("table", content_flow, { 
@@ -287,27 +281,26 @@ function data_viewer.build(player, parent, state)
   -- REMOVE DEBUG LABEL: Remove debug_data_str label
   -- data_table.add{type="label", caption=debug_data_str, style="data_viewer_row_even_label"}
   -- Patch: If data is nil or empty, always show top_key = { } and closing brace, never [NO DATA TO DISPLAY]  if data == nil or (type(data) == "table" and next(data) == nil) then
-    if not top_key then top_key = "player_data" end
-    local style = "data_viewer_row_odd_label"
-    local lbl = GuiBase.create_label(data_table, "data_top_key_empty", top_key .. " = {", style)
+    if not top_key then 
+      top_key = "player_data" 
+    end
+    
+    local style = "data_viewer_row_odd_label"    local lbl = GuiBase.create_label(data_table, "data_top_key_empty", top_key .. " = {", style)
     set_label_font(lbl, font_size)
-    lbl.style.font_color = { r = 1, g = 1, b = 1 }
-    lbl.style.top_margin = 2
+    -- Note: font_color and top_margin are not settable on LuaStyle
     local lbl2 = GuiBase.create_label(data_table, "data_closing_brace_empty", "}", "data_viewer_row_even_label")
     set_label_font(lbl2, font_size)
-    lbl2.style.font_color = { r = 1, g = 1, b = 1 }
-    lbl2.style.top_margin = 2
+    -- Note: font_color and top_margin are not settable on LuaStyle
     return frame
   end
 
   -- Defensive: ensure top_key is always set
   if not top_key then top_key = "player_data" end
-  -- Show the top-level key and render the data as a tree under it
+    -- Show the top-level key and render the data as a tree under it
   local style = "data_viewer_row_odd_label"
   local lbl = GuiBase.create_label(data_table, "data_top_key", top_key .. " = {", style)
   set_label_font(lbl, font_size)
-  lbl.style.font_color = { r = 1, g = 1, b = 1 } -- White for top key
-  lbl.style.top_margin = 2
+  -- Note: font_color and top_margin are not settable on LuaStyle
 
   local row_start = 1
   local row_end = 1
@@ -315,28 +308,26 @@ function data_viewer.build(player, parent, state)
     row_end = render_compact_data_rows(data_table, data, 0, font_size, row_start, nil, true)
     if row_end == row_start then
       local no_data_lbl2 = GuiBase.create_label(data_table, "no_data_table", "[NO DATA TO DISPLAY]", "data_viewer_row_even_label")
-      no_data_lbl2.style.font_color = { r = 1, g = 0, b = 0 } -- Bright red for debug
+      -- Note: font_color is not settable on LuaStyle
     end
   else
     local no_data_lbl3 = GuiBase.create_label(data_table, "no_data_other", "[NO DATA TO DISPLAY]", "data_viewer_row_even_label")
-    no_data_lbl3.style.font_color = { r = 1, g = 0, b = 0 } -- Bright red for debug
-  end
-
+    -- Note: font_color is not settable on LuaStyle  end
+  
   local lbl2 = GuiBase.create_label(data_table, "data_closing_brace", "}", "data_viewer_row_even_label")
   set_label_font(lbl2, font_size)
-  lbl2.style.font_color = { r = 1, g = 1, b = 1 } -- White for closing brace
-  lbl2.style.top_margin = 2
-  -- REMOVE TEST LABEL: Remove visible test label for Data Viewer GUI
-  -- caption = "[TEST] Data Viewer GUI is visible!",  -- Always return the frame so the GUI is built
+  -- Note: font_color and top_margin are not settable on LuaStyle
+  
+  -- Always return the frame so the GUI is built
   return frame
 end
 
---- Show a message when data viewer is refreshed
+--- Show notification when data is refreshed
 ---@param player LuaPlayer
-function data_viewer.show_refresh_flying_text(player)
-  if not player or not player.valid then return end
-  
-  GameHelpers.player_print(player, {"tf-gui.data_viewer_refreshed"})
+function data_viewer.show_refresh_notification(player)
+  if player and player.valid then
+    GameHelpers.player_print(player, {"tf-gui.data_refreshed"})
+  end
 end
 
 return data_viewer
