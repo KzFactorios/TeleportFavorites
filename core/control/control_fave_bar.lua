@@ -265,23 +265,24 @@ local function on_fave_bar_gui_click(event)
   local element = event.element
   print("[HANDLER DEBUG] event.element.name:", element and element.name)
   if not element or not element.valid then return end
-
   local player = game.get_player(event.player_index)
-  if not player then return end
+  if not player or not player.valid then return end
 
   if element.name:find("^fave_bar_slot_") then
     local favorites = PlayerFavorites.new(player)
     handle_favorite_slot_click(event, player, favorites)
     return
-  end
-  if element.name == "fave_bar_visible_btns_toggle" then
+  end  if element.name == "fave_bar_visible_btns_toggle" then
     print("[TF DEBUG] fave_bar_visible_btns_toggle clicked by player:", player and player.name)
     print("[TF DEBUG] handle_visible_fave_btns_toggle_click pointer:", tostring(handle_visible_fave_btns_toggle_click))
     print("[TF DEBUG] calling handle_visible_fave_btns_toggle_click")
-    local ok, err = pcall(handle_visible_fave_btns_toggle_click, player)
-    print("[TF DEBUG] after handle_visible_fave_btns_toggle_click, ok=", tostring(ok), "err=", tostring(err))
-    if not ok then
-      print("[TF ERROR] handle_visible_fave_btns_toggle_click failed:", err)
+    local success, err = pcall(handle_visible_fave_btns_toggle_click, player)
+    print("[TF DEBUG] after handle_visible_fave_btns_toggle_click, ok=", tostring(success), "err=", tostring(err))
+    if not success then
+      ErrorHandler.debug_log("Handle visible fave buttons toggle failed", {
+        player = player.name,
+        error = err
+      })
     end
   end
 end

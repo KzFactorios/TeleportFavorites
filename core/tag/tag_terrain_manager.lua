@@ -22,6 +22,7 @@ local RichTextFormatter = require("__TeleportFavorites__.core.utils.rich_text_fo
 local basic_helpers = require("core.utils.basic_helpers")
 local Tag = require("core.tag.tag")
 local GameHelpers = require("core.utils.game_helpers")
+local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 
 ---@class TagTerrainManager
 local TagTerrainManager = {}
@@ -118,19 +119,10 @@ function TagTerrainManager.relocate_chart_tag_from_water(chart_tag, search_radiu
             search_radius = search_radius
         })
         return false
-    end
+    end    -- Create a new chart tag at the valid position using centralized builder
+    local chart_tag_spec = ChartTagSpecBuilder.build(new_position, chart_tag, player)
 
-    -- Create a new chart tag at the valid position
-    local chart_tag_spec = {
-        position = new_position,
-        text = chart_tag.text or "Tag", -- Ensure text is never nil
-        last_user = chart_tag.last_user or player.name
-    }
-
-    -- Only include icon if it's a valid SignalID
-    if chart_tag.icon and type(chart_tag.icon) == "table" and chart_tag.icon.name then
-        chart_tag_spec.icon = chart_tag.icon
-    end -- Create new chart tag at valid position using safe wrapper
+    -- Create new chart tag at valid position using safe wrapper
     local GPSChartHelpers = require("core.utils.gps_chart_helpers")
     local new_chart_tag = GPSChartHelpers.safe_add_chart_tag(player.force, surface, chart_tag_spec)
     if not new_chart_tag or not new_chart_tag.valid then

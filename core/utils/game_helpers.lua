@@ -7,6 +7,7 @@ Extracted from helpers_suite.lua for better organization and maintainability.
 ]]
 
 local Constants = require("constants")
+local ErrorHandler = require("core.utils.error_handler")
 local gps_core = require("core.utils.gps_core")
 local SettingsAccess = require("core.utils.settings_access")
 
@@ -167,7 +168,14 @@ end
 
 function GameHelpers.safe_play_sound(player, sound)
   if player and player.valid and type(player.play_sound) == "function" and type(sound) == "table" then
-    pcall(function() player.play_sound(sound, {}) end)
+    local success, err = pcall(function() player.play_sound(sound, {}) end)
+    if not success then
+      ErrorHandler.debug_log("Failed to play sound", { 
+        player = player.name, 
+        sound = sound.path or "unknown",
+        error = err 
+      })
+    end
   end
 end
 

@@ -116,6 +116,20 @@ function GuiBase.create_textfield(parent, name, text, style)
     return GuiBase.create_element('textfield', parent, opts)
 end
 
+--- Create a button with optional style.
+--- @param parent LuaGuiElement: Parent element
+--- @param name string: Name of the button
+--- @param caption LocalisedString|string: Button text
+--- @param style? string|nil: Optional style name
+--- @return LuaGuiElement: The created button
+function GuiBase.create_button(parent, name, caption, style)
+    local opts = { name = name, caption = caption }
+    if style then
+        opts.style = style
+    end
+    return GuiBase.create_element('button', parent, opts)
+end
+
 --- Create a horizontal flow container.
 --- @param parent LuaGuiElement: Parent element
 --- @param name string: Name of the flow
@@ -132,6 +146,20 @@ end
 --- @return LuaGuiElement: The created flow
 function GuiBase.create_vflow(parent, name, style)
     return GuiBase.create_element('flow', parent, { name = name, direction = 'vertical', style = style })
+end
+
+--- Create a flow container (shorthand for create_hflow/create_vflow).
+--- @param parent LuaGuiElement: Parent element
+--- @param name string: Name of the flow
+--- @param direction string: 'horizontal' or 'vertical' (default: 'horizontal')
+--- @param style? string|nil: Optional style name
+--- @return LuaGuiElement: The created flow
+function GuiBase.create_flow(parent, name, direction, style)
+    return GuiBase.create_element('flow', parent, { 
+        name = name, 
+        direction = direction or 'horizontal', 
+        style = style 
+    })
 end
 
 --- Create a draggable space
@@ -175,6 +203,36 @@ function GuiBase.create_titlebar(parent, name, close_button_name)
         "tf_frame_action_button")
 
     return titlebar, title_label, close_button
+end
+
+--- Create an empty-widget element.
+--- @param parent LuaGuiElement: Parent element
+--- @param name string: Name of the empty-widget
+--- @param style? string|nil: Optional style name
+--- @return LuaGuiElement: The created empty-widget
+function GuiBase.create_empty_widget(parent, name, style)
+    local opts = { name = name }
+    if style then
+        opts.style = style
+    end
+    return GuiBase.create_element('empty-widget', parent, opts)
+end
+
+--- Create a table element.
+--- @param parent LuaGuiElement: Parent element
+--- @param name string: Name of the table
+--- @param column_count? number: Number of columns (default: 1)
+--- @param style? string|nil: Optional style name
+--- @return LuaGuiElement: The created table
+function GuiBase.create_table(parent, name, column_count, style)
+    local opts = { 
+        name = name, 
+        column_count = column_count or 1 
+    }
+    if style then
+        opts.style = style
+    end
+    return GuiBase.create_element('table', parent, opts)
 end
 
 --- Create a text-box with optional icon selector (Factorio 1.1.77+).

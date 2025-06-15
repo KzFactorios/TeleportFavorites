@@ -322,12 +322,11 @@ local function on_tag_editor_gui_click(event, script)
   local element = event.element
   if not element or not element.valid then return end
   -- Only handle clicks on our tag editor GUI elements (must start with or contain 'tag_editor')
-  local name = element.name or ""
-  if not name:find("tag_editor") then
+  local name = element.name or ""  if not name:find("tag_editor") then
     return -- Not our GUI, ignore
   end
   local player = game.get_player(event.player_index)
-  if not player then return end
+  if not player or not player.valid then return end
 
   local tag_data = Cache.get_tag_editor_data(player) or {}
   -- Robust close for all close/cancel buttons
@@ -367,9 +366,8 @@ local function on_tag_editor_gui_text_changed(event)
   if not element or not element.valid then return end
   local name = element.name or ""
   if not name:find("tag_editor") then return end
-
   local player = game.get_player(event.player_index)
-  if not player then return end
+  if not player or not player.valid then return end
   if element.name == "tag_editor_rich_text_input" then
     local tag_data = Cache.get_tag_editor_data(player) or {}
     tag_data.text = (element.text or ""):gsub("%s+$", "")

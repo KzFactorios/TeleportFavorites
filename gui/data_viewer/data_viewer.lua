@@ -32,7 +32,10 @@ local data_viewer = {}
 -- Shared helpers for data rendering and retrieval
 local function set_label_font(lbl, font_size)
   local font_name = "tf_font_" .. tostring(font_size)
-  pcall(function() lbl.style.font = font_name end)
+  local success, err = pcall(function() lbl.style.font = font_name end)
+  if not success then
+    ErrorHandler.debug_log("Failed to set font", { font_name = font_name, error = err })
+  end
   -- Do NOT set lbl.style.height or any other style property here
 end
 local function render_table_tree(parent, data, indent, visited, font_size, row_index)
@@ -40,10 +43,9 @@ local function render_table_tree(parent, data, indent, visited, font_size, row_i
   visited = visited or {}
   font_size = font_size or 12
   row_index = row_index or 1
-  local prefix = string.rep("\t", indent)
-  local function add_row(parent, caption, font_size, row_index)
+  local prefix = string.rep("\t", indent)  local function add_row(parent, caption, font_size, row_index)
     local style = (row_index % 2 == 1) and "data_viewer_row_odd_label" or "data_viewer_row_even_label"
-    local lbl = parent.add { type = "label", caption = caption, style = style }
+    local lbl = GuiBase.create_label(parent, "data_row_" .. (row_index or 1), caption, style)
     set_label_font(lbl, font_size)
     lbl.style.top_margin = 2
     lbl.style.font_color = { r = 1, g = 1, b = 1 } -- White for all data rows
@@ -97,34 +99,27 @@ local function build_tabs_row(parent, active_tab)
     { "data_viewer_lookup_tab",       "tf-gui.tab_lookups",      "lookup" },
     { "data_viewer_all_data_tab",     "tf-gui.tab_all_data",     "all_data" }
   }
-  
-  -- Functional approach to tab creation
+    -- Functional approach to tab creation
   local function create_tab_button(def, index)
     local element_name, caption_key, tab_key = def[1], def[2], def[3]
     local is_active = (tab_key == active_tab)
     local style = (index > 1) and "tf_data_viewer_tab_button_margin" or "tf_data_viewer_tab_button"
     if is_active then style = "tf_data_viewer_tab_button_active" end
     
-    local btn = tabs_flow.add { 
-      type = "button", 
-      name = element_name, 
-      caption = { caption_key }, 
-      style = style 
-    }
+    local btn = GuiBase.create_button(tabs_flow, element_name, { caption_key }, style)
     btn.enabled = not is_active
     return btn
   end
     -- Process each tab definition with the creation function
   for i, def in ipairs(tab_defs) do
     create_tab_button(def, i)
-  end
-  
+  end  
   ---@diagnostic disable-next-line
-  tabs_flow.add { type = "empty-widget", name = "data_viewer_tabs_filler" }
+  GuiBase.create_empty_widget(tabs_flow, "data_viewer_tabs_filler")
   ---@diagnostic disable-next-line
-  local actions_flow = tabs_flow.add { type = "flow", name = "data_viewer_tab_actions_flow", direction = "horizontal", style = "tf_data_viewer_actions_flow" }
+  local actions_flow = GuiBase.create_hflow(tabs_flow, "data_viewer_tab_actions_flow", "tf_data_viewer_actions_flow")
   ---@diagnostic disable-next-line
-  local font_size_flow = actions_flow.add { type = "flow", name = "data_viewer_actions_font_size_flow", direction = "horizontal", style = "tf_data_viewer_font_size_flow" }
+  local font_size_flow = GuiBase.create_hflow(actions_flow, "data_viewer_actions_font_size_flow", "tf_data_viewer_font_size_flow")
   Helpers.create_slot_button(font_size_flow, "data_viewer_actions_font_down_btn", Enum.SpriteEnum.ARROW_DOWN,
     { "tf-gui.font_minus_tooltip" })
   Helpers.create_slot_button(font_size_flow, "data_viewer_actions_font_up_btn", Enum.SpriteEnum.ARROW_UP,
@@ -201,10 +196,9 @@ local function render_compact_data_rows(parent, data, indent, font_size, row_ind
   local MAX_LINE_LEN = 80
   local function is_method(val)
     return type(val) == "function"
-  end
-  local function add_row(parent, text, font_size, row_index)
+  end  local function add_row(parent, text, font_size, row_index)
     local style = (row_index % 2 == 1) and "data_viewer_row_odd_label" or "data_viewer_row_even_label"
-    local lbl = parent.add { type = "label", caption = text, style = style }
+    local lbl = GuiBase.create_label(parent, "data_row_" .. (row_index or 1), text, style)
     set_label_font(lbl, font_size)
     lbl.style.top_margin = 2
     lbl.style.font_color = { r = 1, g = 1, b = 1 } -- White for all data rows
@@ -269,36 +263,37 @@ function data_viewer.build(player, parent, state)
   local top_key = state and state.top_key
 
   local font_size = (state and state.font_size) or 10
-  -- Main dialog frame (resizable)
-  local frame = parent.add { type = "frame", name = Enum.GuiEnum.GUI_FRAME.DATA_VIEWER, style = "tf_data_viewer_frame", direction = "vertical" }
+  -- Main dialog frame (resizable)  local frame = GuiBase.create_frame(parent, Enum.GuiEnum.GUI_FRAME.DATA_VIEWER, "vertical", "tf_data_viewer_frame")
   frame.caption = ""
   -- Remove debug label at the very top
   -- frame.add{type="label", caption="[TF DEBUG] Data Viewer GUI visible for player: "..(player and player.name or "nil"), style="data_viewer_row_odd_label"}
   -- Titlebar
   build_titlebar(frame)
   -- Inner flow (vertical, invisible_frame)
-  local inner_flow = frame.add { type = "frame", name = "data_viewer_inner_flow", style = "invisible_frame", direction = "vertical" }
+  local inner_flow = GuiBase.create_frame(frame, "data_viewer_inner_flow", "vertical", "invisible_frame")
   -- Tabs row (with tab actions)
-  build_tabs_row(inner_flow, state.active_tab)
-  -- Content area: vertical flow, then table
-  local content_flow = inner_flow.add { type = "flow", name = "data_viewer_content_flow", direction = "vertical" }
+  build_tabs_row(inner_flow, state.active_tab)  -- Content area: vertical flow, then table
+  local content_flow = GuiBase.create_vflow(inner_flow, "data_viewer_content_flow")
   content_flow.style.horizontally_stretchable = true
   content_flow.style.vertically_stretchable = true
 
   -- Table for data rows (single column for compactness)
-  local data_table = content_flow.add { type = "table", name = "data_viewer_table", column_count = 1, style = "tf_data_viewer_table" }
+  local data_table = GuiBase.create_element("table", content_flow, { 
+    name = "data_viewer_table", 
+    column_count = 1, 
+    style = "tf_data_viewer_table" 
+  })
 
   -- REMOVE DEBUG LABEL: Remove debug_data_str label
   -- data_table.add{type="label", caption=debug_data_str, style="data_viewer_row_even_label"}
-  -- Patch: If data is nil or empty, always show top_key = { } and closing brace, never [NO DATA TO DISPLAY]
-  if data == nil or (type(data) == "table" and next(data) == nil) then
+  -- Patch: If data is nil or empty, always show top_key = { } and closing brace, never [NO DATA TO DISPLAY]  if data == nil or (type(data) == "table" and next(data) == nil) then
     if not top_key then top_key = "player_data" end
     local style = "data_viewer_row_odd_label"
-    local lbl = data_table.add { type = "label", caption = top_key .. " = {", style = style }
+    local lbl = GuiBase.create_label(data_table, "data_top_key_empty", top_key .. " = {", style)
     set_label_font(lbl, font_size)
     lbl.style.font_color = { r = 1, g = 1, b = 1 }
     lbl.style.top_margin = 2
-    local lbl2 = data_table.add { type = "label", caption = "}", style = "data_viewer_row_even_label" }
+    local lbl2 = GuiBase.create_label(data_table, "data_closing_brace_empty", "}", "data_viewer_row_even_label")
     set_label_font(lbl2, font_size)
     lbl2.style.font_color = { r = 1, g = 1, b = 1 }
     lbl2.style.top_margin = 2
@@ -307,10 +302,9 @@ function data_viewer.build(player, parent, state)
 
   -- Defensive: ensure top_key is always set
   if not top_key then top_key = "player_data" end
-
   -- Show the top-level key and render the data as a tree under it
   local style = "data_viewer_row_odd_label"
-  local lbl = data_table.add { type = "label", caption = top_key .. " = {", style = style }
+  local lbl = GuiBase.create_label(data_table, "data_top_key", top_key .. " = {", style)
   set_label_font(lbl, font_size)
   lbl.style.font_color = { r = 1, g = 1, b = 1 } -- White for top key
   lbl.style.top_margin = 2
@@ -320,15 +314,15 @@ function data_viewer.build(player, parent, state)
   if type(data) == "table" then
     row_end = render_compact_data_rows(data_table, data, 0, font_size, row_start, nil, true)
     if row_end == row_start then
-      local no_data_lbl2 = data_table.add { type = "label", caption = "[NO DATA TO DISPLAY]", style = "data_viewer_row_even_label" }
+      local no_data_lbl2 = GuiBase.create_label(data_table, "no_data_table", "[NO DATA TO DISPLAY]", "data_viewer_row_even_label")
       no_data_lbl2.style.font_color = { r = 1, g = 0, b = 0 } -- Bright red for debug
     end
   else
-    local no_data_lbl3 = data_table.add { type = "label", caption = "[NO DATA TO DISPLAY]", style = "data_viewer_row_even_label" }
+    local no_data_lbl3 = GuiBase.create_label(data_table, "no_data_other", "[NO DATA TO DISPLAY]", "data_viewer_row_even_label")
     no_data_lbl3.style.font_color = { r = 1, g = 0, b = 0 } -- Bright red for debug
   end
 
-  local lbl2 = data_table.add { type = "label", caption = "}", style = "data_viewer_row_even_label" }
+  local lbl2 = GuiBase.create_label(data_table, "data_closing_brace", "}", "data_viewer_row_even_label")
   set_label_font(lbl2, font_size)
   lbl2.style.font_color = { r = 1, g = 1, b = 1 } -- White for closing brace
   lbl2.style.top_margin = 2

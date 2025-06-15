@@ -4,6 +4,7 @@ local SpriteDebugger = {}
 
 -- Import GUI base functionality
 local GuiBase = require("gui.gui_base")
+local ErrorHandler = require("core.utils.error_handler")
 
 --- Create a sprite viewer frame with labeled sections
 ---@param parent LuaGuiElement The parent GUI element to add the sprite viewer to
@@ -217,10 +218,13 @@ function SpriteDebugger.extract_style_data(style_name, game)
         
         return data
     end)
-    
-    if success then
+      if success then
         return result
     else
+        ErrorHandler.debug_log("Error extracting button style data", {
+            style_name = tostring(style and style.name),
+            error = result
+        })
         return { error = "Error extracting style data: " .. tostring(result) }
     end
 end

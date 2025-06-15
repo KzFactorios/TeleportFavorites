@@ -25,6 +25,8 @@ local GameHelpers = require("core.utils.game_helpers")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local Lookups = require("core.cache.lookups")
 local RichTextFormatter = require("core.utils.rich_text_formatter")
+local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
+local PositionNormalizer = require("core.utils.position_normalizer")
 
 -- Dev environment detection removed - functionality no longer needed
 
@@ -99,20 +101,20 @@ local function find_exact_matches(context, callbacks)
   local adjusted_gps = context.intended_gps
   local tag = callbacks.get_tag_by_gps_func and callbacks.get_tag_by_gps_func(adjusted_gps) or nil
   tag = GPSCore.ValidationPatterns.is_valid_tag(tag) or nil
-
   -- is the chart_tag aligned? Yes if it is tag.chart_tag
   local chart_tag = tag and GPSCore.ValidationPatterns.is_valid_chart_tag(tag.chart_tag) and tag.chart_tag or nil
   if not chart_tag or not chart_tag.valid then
     chart_tag = callbacks.get_chart_tag_by_gps_func and callbacks.get_chart_tag_by_gps_func(context.intended_gps) or nil
   end
-  -- ensure a valid chart_tag to match the tag, if we can't get a match, then the tag should be destroyed
+    -- ensure a valid chart_tag to match the tag, if we can't get a match, then the tag should be destroyed
   -- however, it is ok for a chart_tag not to have a matching tag
   if tag and not chart_tag then
-    local chart_tag_spec = {
-      position = gps_parser.map_position_from_gps(adjusted_gps),
-      text = GPSCore.coords_string_from_gps(adjusted_gps),
-      last_user = context.player.name
-  }
+    local chart_tag_spec = ChartTagSpecBuilder.build(
+      gps_parser.map_position_from_gps(adjusted_gps),
+      nil,
+      context.player,
+      GPSCore.coords_string_from_gps(adjusted_gps)
+    )
 
     local new_chart_tag, _ = GPSChartHelpers.create_and_validate_chart_tag(context.player, chart_tag_spec) or nil
 
@@ -150,29 +152,18 @@ local function find_nearby_matches(context, callbacks)
     context.landing_position,
     context.search_radius)
 
-
   if in_area_chart_tag then
     local position = in_area_chart_tag.position
 
-    if not basic_helpers.is_whole_number(position.x) or not basic_helpers.is_whole_number(position.y) then
+    if PositionNormalizer.needs_normalization(position) then
       -- Need to normalize this chart tag to whole numbers
-      local old_position = { x = position.x, y = position.y }
-      local new_position = {
-        x = basic_helpers.normalize_index(position.x),
-        y = basic_helpers.normalize_index(position.y)
-      }
-      -- Create new chart tag at normalized position
-      -- Prepare chart_tag_spec properly
-      local chart_tag_spec = {
-        position = new_position,
-        text = in_area_chart_tag.text or "Tag", -- Ensure text is never nil
-        last_user = in_area_chart_tag.last_user or context.player.name
-      }
-
-      -- Only include icon if it's a valid SignalID
-      if in_area_chart_tag.icon and type(in_area_chart_tag.icon) == "table" and in_area_chart_tag.icon.name then
-        chart_tag_spec.icon = in_area_chart_tag.icon
-      end
+      local position_pair = PositionNormalizer.create_position_pair(position)
+        -- Create new chart tag at normalized position using centralized builder
+      local chart_tag_spec = ChartTagSpecBuilder.build(
+        position_pair.new,
+        in_area_chart_tag,
+        context.player
+      )
 
       local new_chart_tag = GPSChartHelpers.safe_add_chart_tag(context.player.force, context.player.surface,
         chart_tag_spec)
@@ -182,13 +173,12 @@ local function find_nearby_matches(context, callbacks)
         in_area_chart_tag.destroy()
         in_area_chart_tag = new_chart_tag
         -- Refresh the cache to include the new chart tag
-        Lookups.invalidate_surface_chart_tags(context.player.surface)
-        -- Inform the player about the position normalization
+        Lookups.invalidate_surface_chart_tags(context.player.surface)        -- Inform the player about the position normalization
         local notification_msg = RichTextFormatter.position_change_notification(
           context.player,
           new_chart_tag,
-          old_position,
-          new_position,
+          position_pair.old,
+          position_pair.new,
           context.player.surface.index
         )
         GameHelpers.player_print(context.player, notification_msg)
@@ -288,7 +278,6 @@ local function normalize_landing_position(player, intended_gps, get_tag_by_gps_f
 
   -- if the find_nearby_matches has found new position close to our original intention
   -- context should be updated - gps and landing_position
-
   -- but if we still haven't found a match, then ensure we can
   -- create a chart_tag at the intended position
   --- Step 4: create a chart_tag at the closest position to our click
@@ -296,9 +285,8 @@ local function normalize_landing_position(player, intended_gps, get_tag_by_gps_f
     -- find a suitable location
     local valid_pos = PositionValidator.find_valid_position(context.player, context.landing_position,
       context.search_radius)
-    if valid_pos then      local chart_tag_spec = {
-        position = valid_pos
-      }
+    if valid_pos then
+      local chart_tag_spec = ChartTagSpecBuilder.build(valid_pos, nil, context.player)
       local new_chart_tag, _ = GPSChartHelpers.create_and_validate_chart_tag(context.player, chart_tag_spec) or nil
       if new_chart_tag then
         context.landing_position = new_chart_tag.position

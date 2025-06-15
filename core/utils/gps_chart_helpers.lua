@@ -120,17 +120,10 @@ local function align_chart_tag_position(player, chart_tag)
     ErrorHandler.debug_log("Failed to normalize chart tag coordinates")
     return chart_tag -- Return original if normalization fails
   end
-  local new_position = { x = x, y = y }
-  -- Create new chart tag at aligned position
-  local chart_tag_spec = {
-    position = new_position,
-    text = chart_tag.text or "Tag", -- Always provide a default text
-    last_user = chart_tag.last_user or player.name
-  }
-  -- Only include icon if it's a valid SignalID
-  if chart_tag.icon and type(chart_tag.icon) == "table" and chart_tag.icon.name then
-    chart_tag_spec.icon = chart_tag.icon
-  end
+  local new_position = { x = x, y = y }  -- Create new chart tag at aligned position using centralized builder
+  local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
+  local chart_tag_spec = ChartTagSpecBuilder.build(new_position, chart_tag, player)
+  
   -- Use our safe wrapper to create the chart tag
   local new_chart_tag = GPSChartHelpers.safe_add_chart_tag(player.force, player.surface, chart_tag_spec)
 

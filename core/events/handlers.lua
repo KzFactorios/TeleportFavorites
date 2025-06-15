@@ -39,23 +39,25 @@ API:
 -- core/events/handlers.lua
 -- Centralized event handler implementations for TeleportFavorites
 
-local Tag = require("core.tag.tag")
-local tag_destroy_helper = require("core.tag.tag_destroy_helper")
+local basic_helpers = require("core.utils.basic_helpers")
+local Cache = require("core.cache.cache")
+local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 local Constants = require("constants")
 local Enum = require("prototypes.enums.enum")
-local Cache = require("core.cache.cache")
 local fave_bar = require("gui.favorites_bar.fave_bar")
-local tag_editor = require("gui.tag_editor.tag_editor")
-local Settings = require("core.utils.settings_access")
+local GameHelpers = require("core.utils.game_helpers")
 local gps_helpers = require("core.utils.gps_helpers")
 local gps_parser = require("core.utils.gps_parser")
-local basic_helpers = require("core.utils.basic_helpers")
+local GPSChartHelpers = require("core.utils.gps_chart_helpers")
 local GPSCore = require("core.utils.gps_core")
 local Lookups = require("core.cache.lookups")
-local RichTextFormatter = require("__TeleportFavorites__.core.utils.rich_text_formatter")
-local GPSChartHelpers = require("core.utils.gps_chart_helpers")
-local GameHelpers = require("core.utils.game_helpers")
+local PositionNormalizer = require("core.utils.position_normalizer")
 local PositionValidator = require("core.utils.position_validator")
+local RichTextFormatter = require("__TeleportFavorites__.core.utils.rich_text_formatter")
+local Settings = require("core.utils.settings_access")
+local Tag = require("core.tag.tag")
+local tag_destroy_helper = require("core.tag.tag_destroy_helper")
+local tag_editor = require("gui.tag_editor.tag_editor")
 
 local handlers = {}
 
@@ -178,7 +180,7 @@ function handlers.on_chart_tag_added(event)
   if not event or not event.tag or not event.tag.valid then return end
   
   local chart_tag = event.tag
-  local player = event.player_index and game.get_player(event.player_index) or nil
+  local player = game.get_player(event.player_index)
   if not player or not player.valid then return end
   
   -- Check if the chart tag coordinates need normalization
@@ -187,24 +189,14 @@ function handlers.on_chart_tag_added(event)
   
   local surface_index = chart_tag.surface and chart_tag.surface.index or 1
   
-  if not basic_helpers.is_whole_number(position.x) or not basic_helpers.is_whole_number(position.y) then
-    -- Need to normalize this chart tag to whole numbers
-    local old_position = {x = position.x, y = position.y}
-    local new_position = {
-      x = basic_helpers.normalize_index(position.x),
-      y = basic_helpers.normalize_index(position.y)
-    }
-      -- Create new chart tag at normalized position
-    -- Prepare chart_tag_spec properly
-    local chart_tag_spec = {
-      position = new_position,
-      text = chart_tag.text or "Tag", -- Ensure text is never nil
-      last_user = chart_tag.last_user or player.name
-    }
-    -- Only include icon if it's a valid SignalID
-    if chart_tag.icon and type(chart_tag.icon) == "table" and chart_tag.icon.name then
-      chart_tag_spec.icon = chart_tag.icon
-    end
+  if not basic_helpers.is_whole_number(position.x) or not basic_helpers.is_whole_number(position.y) then    -- Need to normalize this chart tag to whole numbers
+    local position_pair = PositionNormalizer.create_position_pair(position)
+      -- Create new chart tag at normalized position using centralized builder
+    local chart_tag_spec = ChartTagSpecBuilder.build(
+      position_pair.new,
+      chart_tag,
+      player
+    )
     
     local new_chart_tag = GPSChartHelpers.safe_add_chart_tag(player.force, chart_tag.surface, chart_tag_spec)
     
@@ -216,8 +208,8 @@ function handlers.on_chart_tag_added(event)
       local notification_msg = RichTextFormatter.position_change_notification(
         player,
         new_chart_tag,
-        old_position,
-        new_position, 
+        position_pair.old,
+        position_pair.new, 
         surface_index
       )
       GameHelpers.player_print(player, notification_msg)
@@ -368,8 +360,9 @@ end
 --- Handle chart tag modification events
 ---@param event table Chart tag modification event data
 function handlers.on_chart_tag_modified(event)
-  ---@diagnostic disable-next-line: param-type-mismatch
-  local player = event.player_index and game.get_player(event.player_index) or nil
+  local player = game.get_player(event.player_index)
+  if not player or not player.valid then return end
+  
   if not is_valid_tag_modification(event, player) then return end
   
   local new_gps, old_gps = extract_gps(event, player)
@@ -379,27 +372,18 @@ function handlers.on_chart_tag_modified(event)
   ---@cast player LuaPlayer
   if chart_tag and chart_tag.valid and chart_tag.position and player and player.valid then
     local position = chart_tag.position
-    
-    -- Ensure coordinates are whole numbers
-    if not basic_helpers.is_whole_number(position.x) or not basic_helpers.is_whole_number(position.y) then
-      local old_position = {x = position.x, y = position.y}
-      local new_position = {
-        x = basic_helpers.normalize_index(position.x),
-        y = basic_helpers.normalize_index(position.y)
-      }
+      -- Ensure coordinates are whole numbers
+    if PositionNormalizer.needs_normalization(position) then
+      local position_pair = PositionNormalizer.create_position_pair(position)
       
       -- Create new chart tag with normalized position
       local surface = chart_tag.surface
-      
-      -- Prepare chart_tag_spec properly
-      local chart_tag_spec = {
-        position = new_position,
-        text = chart_tag.text or "Tag", -- Ensure text is never nil
-        last_user = chart_tag.last_user or player.name
-      }      -- Only include icon if it's a valid SignalID
-      if chart_tag.icon and type(chart_tag.icon) == "table" and chart_tag.icon.name then
-        chart_tag_spec.icon = chart_tag.icon
-      end
+        -- Create chart tag spec using centralized builder
+      local chart_tag_spec = ChartTagSpecBuilder.build(
+        position_pair.new,
+        chart_tag,
+        player
+      )
       
       local new_chart_tag = GPSChartHelpers.safe_add_chart_tag(player.force, surface, chart_tag_spec)
       
@@ -445,7 +429,7 @@ function handlers.on_chart_tag_removed(event)
   local surface_index = (chart_tag.surface and chart_tag.surface.index) or 1
   local gps = gps_parser.gps_from_map_position(chart_tag.position, surface_index)
   local tag = Cache.get_tag_by_gps(gps)  -- Get the player who is removing the chart tag
-  local player = event.player_index and game.get_player(event.player_index) or nil
+  local player = game.get_player(event.player_index)
   -- Check if this tag has favorites from other players
   if tag and tag.faved_by_players and #tag.faved_by_players > 0 then
     if not player or not player.valid then
@@ -466,19 +450,9 @@ function handlers.on_chart_tag_removed(event)
       end
     end
       -- If other players have favorited this tag, prevent deletion
-    if has_other_players_favorites and player.name == owner and player.force then
-      -- Recreate the chart tag since it was already removed by the event
-      
-      -- Prepare chart_tag_spec properly
-      local chart_tag_spec = {
-        position = chart_tag.position,
-        text = chart_tag.text or "Tag", -- Ensure text is never nil
-        last_user = owner
-      }
-      -- Only include icon if it's a valid SignalID
-      if chart_tag.icon and type(chart_tag.icon) == "table" and chart_tag.icon.name then
-        chart_tag_spec.icon = chart_tag.icon
-      end
+    if has_other_players_favorites and player.name == owner and player.force then      -- Recreate the chart tag since it was already removed by the event
+        -- Create chart tag spec using centralized builder
+      local chart_tag_spec = ChartTagSpecBuilder.build(chart_tag.position, chart_tag, player)
       
       local new_chart_tag = GPSChartHelpers.safe_add_chart_tag(player.force, chart_tag.surface, chart_tag_spec)
       

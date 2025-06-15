@@ -45,6 +45,7 @@ local Cache = require("core.cache.cache")
 local gps_parser = require("core.utils.gps_parser")
 local Lookups = Cache.lookups
 local ErrorHandler = require("core.utils.error_handler")
+local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 
 ---@class TagSync
 local TagSync = {}
@@ -149,22 +150,15 @@ function TagSync.add_new_chart_tag(player, normal_pos, text, icon)
     ErrorHandler.warn_log("Cannot create chart tag: invalid player")
     return nil
   end
-  
-  ErrorHandler.debug_log("Creating new chart tag", {
+    ErrorHandler.debug_log("Creating new chart tag", {
     player = player.name,
     position = normal_pos,
     text = text
   })
+  
   local success, result = pcall(function()
-    -- Prepare chart_tag_spec properly
-    local chart_tag_spec = {
-      position = normal_pos,
-      text = text or "Tag", -- Ensure text is never nil
-      last_user = player.name
-    }    -- Only include icon if it's a valid SignalID
-    if icon and type(icon) == "table" and icon.name then
-      chart_tag_spec.icon = icon
-    end
+    -- Create chart tag spec using centralized builder
+    local chart_tag_spec = ChartTagSpecBuilder.build(normal_pos, nil, player, text)
     
     local GPSChartHelpers = require("core.utils.gps_chart_helpers")
     return GPSChartHelpers.safe_add_chart_tag(game.forces["player"], player.surface, chart_tag_spec)

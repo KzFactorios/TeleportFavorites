@@ -406,10 +406,15 @@ function Cache.validate_player_data(player)
       end
       favorites[i].gps = favorites[i].gps or ""
       favorites[i].locked = favorites[i].locked or false
-    end
-
-    return true
+    end    return true
   end)
+
+  if not success then
+    ErrorHandler.debug_log("Player data validation failed", {
+      player = player and player.name,
+      error = result
+    })
+  end
 
   return success
 end

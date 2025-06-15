@@ -107,7 +107,7 @@ M.get_or_create_gui_flow_from_gui_top = get_or_create_gui_flow_from_gui_top
 
 function M.on_toggle_data_viewer(event)
   local player = game.get_player(event.player_index)
-  if not player then return end
+  if not player or not player.valid then return end
   local main_flow = get_or_create_gui_flow_from_gui_top(player)
   local frame = helpers.find_child_by_name(main_flow, "data_viewer_frame")
   local pdata = Cache.get_player_data(player)
@@ -126,7 +126,7 @@ function M.on_data_viewer_tab_click(event)
   local element = event.element
   if not element or not element.valid then return end
   local player = game.get_player(event.player_index)
-  if not player then return end
+  if not player or not player.valid then return end
   local main_flow = get_or_create_gui_flow_from_gui_top(player)
   local pdata = Cache.get_player_data(player)
   pdata.data_viewer_settings = pdata.data_viewer_settings or {}
@@ -161,7 +161,7 @@ function M.on_data_viewer_gui_click(event)
   if not element or not element.valid then return end
 
   local player = game.get_player(event.player_index)
-  if not player then return end
+  if not player or not player.valid then return end
 
   local main_flow = get_or_create_gui_flow_from_gui_top(player)
 
@@ -209,25 +209,30 @@ end
 function M.register(script)
   -- Only register GUI click handlers here. Do NOT register script.on_event for dv-toggle-data-viewer (handled by dispatcher).
 
-  -- Handle close button click in data viewer
+    -- Handle close button click in data viewer
   script.on_event(defines.events.on_gui_click, function(event)
     local element = event.element
     if not element or not element.valid then return end
     local player = game.get_player(event.player_index)
-    if not player then return end
+    if not player or not player.valid then return end
     local main_flow = get_or_create_gui_flow_from_gui_top(player)
     local pdata = Cache.get_player_data(player)
-    pdata.data_viewer_settings = pdata.data_viewer_settings or {}    -- Font size up/down buttons for Data Viewer
+    pdata.data_viewer_settings = pdata.data_viewer_settings or {}
+    
+    -- Font size up/down buttons for Data Viewer
     if element.name == "data_viewer_actions_font_up_btn" or element.name == "data_viewer_actions_font_down_btn" then
       local delta = (element.name == "data_viewer_actions_font_up_btn") and 2 or -2
       update_font_size(player, main_flow, delta)
       return
     end
+    
     -- Handle close button click in data viewer
     if element.name == "titlebar_close_btn" then
       safe_destroy_frame(main_flow, "data_viewer_frame")
       return
-    end    -- Handle refresh button click in data viewer
+    end
+    
+    -- Handle refresh button click in data viewer
     if element.name == "data_viewer_tab_actions_refresh_data_btn" then
       print("[DataViewer DEBUG] Refresh button clicked by player:", player.name)
       local frame = helpers.find_child_by_name(main_flow, "data_viewer_frame")
@@ -236,7 +241,10 @@ function M.register(script)
       local active_tab = find_active_tab_from_gui(main_flow)
       rebuild_data_viewer(player, main_flow, active_tab, nil, true)
       return
-    end-- Handle tab button clicks (robust: always use element.tags.tab_key if present)    -- Handle opacity up/down
+    end
+    
+    -- Handle tab button clicks (robust: always use element.tags.tab_key if present)
+    -- Handle opacity up/down
     if element.name == "data_viewer_actions_opacity_up_btn" or element.name == "data_viewer_actions_opacity_down_btn" then
       local frame = helpers.find_child_by_name(main_flow, "data_viewer_frame")
       if not (frame and frame.valid) then return end

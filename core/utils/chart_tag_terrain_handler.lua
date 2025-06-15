@@ -7,6 +7,7 @@ local Cache = require("__TeleportFavorites__.core.cache.cache")
 local Lookups = require("__TeleportFavorites__.core.cache.lookups")
 local gps_parser = require("__TeleportFavorites__.core.gps.gps_parser")
 local RichTextFormatter = require("__TeleportFavorites__.core.utils.rich_text_formatter")
+local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 
 -- Local module table
 local chart_tag_terrain_handler = {}
@@ -173,18 +174,8 @@ local function relocate_chart_tag_from_water(chart_tag, player)
   end
   
   if not force then return false end
-  
-  -- Create new chart tag spec
-  local chart_tag_spec = {
-    position = new_position,
-    text = chart_tag.text or "Tag", -- Ensure text is never nil
-    last_user = chart_tag.last_user or (player and player.name or "")
-  }
-  
-  -- Only include icon if it's a valid SignalID
-  if chart_tag.icon and type(chart_tag.icon) == "table" and chart_tag.icon.name then
-    chart_tag_spec.icon = chart_tag.icon
-  end
+  -- Create new chart tag spec using centralized builder
+  local chart_tag_spec = ChartTagSpecBuilder.build(new_position, chart_tag, player)
 
   -- Store original chart tag data before destruction
   local chart_tag_surface = chart_tag.surface

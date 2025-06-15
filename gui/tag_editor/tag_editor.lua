@@ -26,12 +26,12 @@ Main Functions:
 - setup_tag_editor_ui(refs, tag_data, player):
     Sets state, tooltips, and styles for all controls after construction.
 --]]
-local GuiBase = require("gui.gui_base")
-local Helpers = require("core.utils.helpers_suite")
 local BasicHelpers = require("core.utils.basic_helpers")
+local Cache = require("core.cache.cache")
 local Enum = require("prototypes.enums.enum")
 local gps_core = require("core.utils.gps_core")
-local Cache = require("core.cache.cache")
+local GuiBase = require("gui.gui_base")
+local Helpers = require("core.utils.helpers_suite")
 
 local tag_editor = {}
 
@@ -229,7 +229,7 @@ end
 ---
 --- @param player LuaPlayer
 function tag_editor.build(player)
-    if not player then return end    --- current_structure 050610
+    if not player or not player.valid then return end
     --- if we were given data then fine, otherwise get from storage
     local tag_data = Cache.get_player_data(player).tag_editor_data or Cache.create_tag_editor_data()
     if not tag_data.gps or tag_data.gps == "" then

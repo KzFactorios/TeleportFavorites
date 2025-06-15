@@ -20,6 +20,7 @@ local Lookups = require("__TeleportFavorites__.core.cache.lookups")
 local Cache = require("core.cache.cache")
 local ErrorHandler = require("core.utils.error_handler")
 local TeleportStrategies = require("core.pattern.teleport_strategy")
+local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 
 ---@class Tag
 ---@field gps string # The GPS string (serves as the index)
@@ -308,16 +309,9 @@ end
 ---@return LuaCustomChartTag?, string?
 local function create_new_chart_tag(player, destination_pos, chart_tag)
   ErrorHandler.debug_log("Creating new chart tag", { destination_pos = destination_pos })
-
-  local chart_tag_spec = {
-    position = destination_pos,
-    text = chart_tag and chart_tag.text or "Tag",
-    last_user = (chart_tag and chart_tag.last_user) or player.name
-  }
-  -- Only include icon if it's a valid SignalID
-  if chart_tag and chart_tag.icon and type(chart_tag.icon) == "table" and chart_tag.icon.name then
-    chart_tag_spec.icon = chart_tag.icon
-  end -- Create chart tag using our safe wrapper
+  local chart_tag_spec = ChartTagSpecBuilder.build(destination_pos, chart_tag, player)
+  
+  -- Create chart tag using our safe wrapper
   local GPSChartHelpers = require("core.utils.gps_chart_helpers")
   local new_chart_tag = GPSChartHelpers.safe_add_chart_tag(player.force, player.surface, chart_tag_spec)
   if not new_chart_tag or not new_chart_tag.valid then

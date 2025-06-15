@@ -8,6 +8,7 @@ Extracted from helpers_suite.lua for better organization and maintainability.
 
 ---@diagnostic disable: undefined-global
 
+local GuiBase = require("gui.gui_base")
 local Enum = require("prototypes.enums.enum")
 
 ---@class GuiHelpers
@@ -49,9 +50,7 @@ end
 -- Error label/message handling
 function GuiHelpers.show_error_label(parent, message)
   if not parent or not message then return end
-  local label = parent.error_row_error_message or parent.add {
-    type = "label", name = "error_row_error_message", caption = "", style = "bold_label"
-  }
+  local label = parent.error_row_error_message or GuiBase.create_label(parent, "error_row_error_message", "", "bold_label")
   label.caption = message or ""
   label.style.font_color = { r = 1, g = 0.2, b = 0.2 }
   label.visible = (message and message ~= "")
@@ -116,21 +115,13 @@ function GuiHelpers.create_slot_button(parent, name, icon, tooltip, opts)
     end
   else
     sprite = nil -- treat empty string as no icon
-  end
-  local btn = parent.add {
-    type = "sprite-button",
-    name = name,
-    sprite = sprite,
-    tooltip = tooltip,
-    style = opts.style or "tf_slot_button"
-  }
+  end  local btn = GuiBase.create_icon_button(parent, name, sprite, tooltip, opts.style or "tf_slot_button", opts.enabled)
   btn.style.width = opts.width or 36
   btn.style.height = opts.height or 36
   btn.style.font = opts.font or "default-small"
-  if opts.enabled ~= nil then btn.enabled = opts.enabled end
   if opts.locked then
     local lock_sprite = (Enum.SpriteEnum and Enum.SpriteEnum["LOCK"]) or "utility/lock"
-    local lock_icon = btn.add { type = "sprite", sprite = lock_sprite, name = "lock_overlay" }
+    local lock_icon = GuiBase.create_element("sprite", btn, { sprite = lock_sprite, name = "lock_overlay" })
     lock_icon.style.width, lock_icon.style.height = 16, 16
     lock_icon.style.left_margin, lock_icon.style.top_margin = 0, 0
     lock_icon.ignored_by_interaction = true

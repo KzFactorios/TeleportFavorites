@@ -42,8 +42,11 @@ end
 ---@param game table
 function Positionhelpers.on_raise_teleported(event, game)
   if not (event and event.player_index and game and type(game.get_player) == "function") then return end
+  
   local player = game.get_player(event.player_index)
-  if not player then return end  local pos = player.position or { x = 0, y = 0 }
+  if not player or not player.valid then return end
+  
+  local pos = player.position or { x = 0, y = 0 }
   if type(player.print) == "function" then
     local gps_string = gps_helpers.gps_from_map_position(pos, player.surface.index)
     GameHelpers.player_print(player, { "teleported-to", player.name, gps_string })
