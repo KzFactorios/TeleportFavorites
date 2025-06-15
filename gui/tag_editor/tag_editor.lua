@@ -26,12 +26,12 @@ Main Functions:
 - setup_tag_editor_ui(refs, tag_data, player):
     Sets state, tooltips, and styles for all controls after construction.
 --]]
-local BasicHelpers = require("core.utils.basic_helpers")
+local Utils = require("core.utils.utils")
 local Cache = require("core.cache.cache")
 local Enum = require("prototypes.enums.enum")
-local gps_core = require("core.utils.gps_core")
+local GPSUtils = require("core.utils.gps_utils")
 local GuiBase = require("gui.gui_base")
-local Helpers = require("core.utils.helpers_suite")
+local GuiUtils = require("core.utils.gui_utils")
 
 local tag_editor = {}
 

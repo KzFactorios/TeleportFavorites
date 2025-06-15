@@ -5,8 +5,10 @@
 
 local data_viewer = require("gui.data_viewer.data_viewer")
 local Cache = require("core.cache.cache")
-local helpers = require("core.utils.helpers_suite")
-local safe_destroy_frame = helpers.safe_destroy_frame
+local Utils = require("core.utils.utils")
+local GuiUtils = require("core.utils.gui_utils")
+local CollectionUtils = require("core.utils.collection_utils")
+local safe_destroy_frame = GuiUtils.safe_destroy_frame
 local Lookups = require("core.cache.lookups")
 
 local M = {}
@@ -44,7 +46,7 @@ end
 ---@param show_flying_text boolean?
 local function rebuild_data_viewer(player, main_flow, active_tab, font_size, show_flying_text)
   local state = load_tab_data(player, active_tab, font_size)
-  helpers.safe_destroy_frame(main_flow, "data_viewer_frame")
+  safe_destroy_frame(main_flow, "data_viewer_frame")
   data_viewer.build(player, main_flow, state)
   
   if show_flying_text then
@@ -71,7 +73,7 @@ end
 ---@param main_flow LuaGuiElement
 ---@return string active_tab
 local function find_active_tab_from_gui(main_flow)
-  local frame = helpers.find_child_by_name(main_flow, "data_viewer_frame")
+  local frame = GuiUtils.find_child_by_name(main_flow, "data_viewer_frame")
   if not (frame and frame.valid) then return "player_data" end
   
   local tabs_flow = frame.data_viewer_inner_flow and frame.data_viewer_inner_flow.data_viewer_tabs_flow
@@ -107,16 +109,14 @@ M.get_or_create_gui_flow_from_gui_top = get_or_create_gui_flow_from_gui_top
 
 function M.on_toggle_data_viewer(event)
   local player = game.get_player(event.player_index)
-  if not player or not player.valid then return end
-  local main_flow = get_or_create_gui_flow_from_gui_top(player)
-  local frame = helpers.find_child_by_name(main_flow, "data_viewer_frame")
+  if not player or not player.valid then return end  local main_flow = get_or_create_gui_flow_from_gui_top(player)
+  local frame = GuiUtils.find_child_by_name(main_flow, "data_viewer_frame")
   local pdata = Cache.get_player_data(player)
   pdata.data_viewer_settings = pdata.data_viewer_settings or {}
-  local active_tab = pdata.data_viewer_settings.active_tab or "player_data"
-  local font_size = pdata.data_viewer_settings.font_size or 12
+  local active_tab = pdata.data_viewer_settings.active_tab or "player_data"  local font_size = pdata.data_viewer_settings.font_size or 12
   
   if frame and frame.valid ~= false then
-    helpers.safe_destroy_frame(main_flow, "data_viewer_frame")
+    safe_destroy_frame(main_flow, "data_viewer_frame")
   else
     rebuild_data_viewer(player, main_flow, active_tab, font_size)
   end
@@ -144,7 +144,7 @@ function M.on_data_viewer_tab_click(event)
     local function extract_key(_, key)
       return tostring(key)
     end
-    local keys = helpers.map(state.data, extract_key)
+    local keys = CollectionUtils.map(state.data, extract_key)
     dkeys = table.concat(keys, ", ")
   else
     dkeys = tostring(state.data)
@@ -164,10 +164,9 @@ function M.on_data_viewer_gui_click(event)
   if not player or not player.valid then return end
 
   local main_flow = get_or_create_gui_flow_from_gui_top(player)
-
   -- Close button
   if element.name == "data_viewer_close_btn" then
-    helpers.safe_destroy_frame(main_flow, "data_viewer_frame")
+    safe_destroy_frame(main_flow, "data_viewer_frame")
     return
   end
 
@@ -229,13 +228,13 @@ function M.register(script)
     end
     
     -- Handle close button click in data viewer
-    if element.name == "titlebar_close_btn" then
-      safe_destroy_frame(main_flow, "data_viewer_frame")
+    if element.name == "titlebar_close_btn" then      safe_destroy_frame(main_flow, "data_viewer_frame")
       return
     end
-      -- Handle refresh button click in data viewer
+    
+    -- Handle refresh button click in data viewer
     if element.name == "data_viewer_tab_actions_refresh_data_btn" then
-      local frame = helpers.find_child_by_name(main_flow, "data_viewer_frame")
+      local frame = GuiUtils.find_child_by_name(main_flow, "data_viewer_frame")
       if not (frame and frame.valid) then return end
       
       local active_tab = find_active_tab_from_gui(main_flow)
@@ -246,7 +245,7 @@ function M.register(script)
     -- Handle tab button clicks (robust: always use element.tags.tab_key if present)
     -- Handle opacity up/down
     if element.name == "data_viewer_actions_opacity_up_btn" or element.name == "data_viewer_actions_opacity_down_btn" then
-      local frame = helpers.find_child_by_name(main_flow, "data_viewer_frame")
+      local frame = GuiUtils.find_child_by_name(main_flow, "data_viewer_frame")
       if not (frame and frame.valid) then return end
       local pdata = Cache.get_player_data(player)
       local cur_opacity = tonumber(pdata.data_viewer_opacity) or 1.0
@@ -267,7 +266,7 @@ function M.register(script)
     local player = game.get_player(event.player_index)
     if not player then return end
     local main_flow = get_or_create_gui_flow_from_gui_top(player)
-    local frame = helpers.find_child_by_name(main_flow, "data_viewer_frame")
+    local frame = GuiUtils.find_child_by_name(main_flow, "data_viewer_frame")
     local tabs_flow = frame and frame.data_viewer_inner_flow and frame.data_viewer_inner_flow.data_viewer_tabs_flow
     if not tabs_flow then return end
     local children = tabs_flow.children
@@ -288,7 +287,7 @@ function M.register(script)
     local player = game.get_player(event.player_index)
     if not player then return end
     local main_flow = get_or_create_gui_flow_from_gui_top(player)
-    local frame = helpers.find_child_by_name(main_flow, "data_viewer_frame")
+    local frame = GuiUtils.find_child_by_name(main_flow, "data_viewer_frame")
     local tabs_flow = frame and frame.data_viewer_inner_flow and frame.data_viewer_inner_flow.data_viewer_tabs_flow
     if not tabs_flow then return end
     local children = tabs_flow.children

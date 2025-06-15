@@ -41,7 +41,7 @@ Event handling for slot clicks and drag is managed externally (see control.lua).
 local GuiBase = require("gui.gui_base")
 local Constants = require("constants")
 local FavoriteUtils = require("core.favorite.favorite")
-local Helpers = require("core.utils.helpers_suite")
+local Utils = require("core.utils.utils")
 local Settings = require("core.utils.settings_access")
 local Cache = require("core.cache.cache")
 local Enum = require("prototypes.enums.enum")

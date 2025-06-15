@@ -13,6 +13,7 @@ local Lookups = require("__TeleportFavorites__.core.cache.lookups")
 local gps_parser = require("__TeleportFavorites__.core.utils.gps_parser")
 local RichTextFormatter = require("__TeleportFavorites__.core.utils.rich_text_formatter")
 local GameHelpers = require("__TeleportFavorites__.core.utils.game_helpers")
+local TerrainValidator = require("core.utils.terrain_validator")
 
 local tag_terrain_watcher = {}
 
@@ -24,23 +25,8 @@ local MAX_SEARCH_RADIUS = 10
 ---@param position MapPosition The position to check
 ---@return boolean isWater True if the position is on water
 local function is_position_on_water(surface, position)
-  if not surface or not surface.valid then return false end
-    -- Get the tile at the position
-  local tile = surface.get_tile(position.x, position.y)
-  if not tile or not tile.valid then return false end
-  
-  -- Check if the tile is water by name (same approach as GameHelpers.is_water_tile)
-  local tile_name = tile.name
-  if tile_name then
-    local name = tile_name:lower()
-    -- Check for various water tile naming patterns
-    if name:find("water") or name:find("deepwater") or name:find("shallow%-water") or 
-       name == "water" or name == "deepwater" or name == "shallow-water" then
-      return true  -- Water tiles
-    end
-  end
-  
-  return false  -- Non-water tiles
+  -- Delegate to consolidated terrain validator
+  return TerrainValidator.is_water_tile(surface, position)
 end
 
 -- Find nearest valid land position for a chart tag
@@ -48,30 +34,8 @@ end
 ---@param position MapPosition The original position
 ---@return MapPosition|nil newPosition The new valid position, or nil if none found
 local function find_nearest_valid_land(surface, position)
-  if not surface or not surface.valid then return nil end
-  
-  -- Check the original position first - might not be water anymore
-  if not is_position_on_water(surface, position) then
-    return position
-  end
-  
-  -- Search in an expanding spiral pattern
-  for radius = 1, MAX_SEARCH_RADIUS do
-    for x = -radius, radius do
-      for y = -radius, radius do
-        -- Only check positions at the current radius (outline of the square)
-        if math.abs(x) == radius or math.abs(y) == radius then
-          local check_pos = {x = position.x + x, y = position.y + y}
-          if not is_position_on_water(surface, check_pos) then
-            return check_pos
-          end
-        end
-      end
-    end
-  end
-  
-  -- If no valid position found after searching
-  return nil
+  -- Delegate to consolidated terrain validator
+  return TerrainValidator.find_nearest_walkable_position(surface, position, MAX_SEARCH_RADIUS)
 end
 
 -- Relocate a chart tag if it's on water

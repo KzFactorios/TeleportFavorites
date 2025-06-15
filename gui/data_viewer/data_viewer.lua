@@ -23,7 +23,7 @@ Functions:
 local GuiBase = require("gui.gui_base")
 local Cache = require("core.cache.cache")
 local Lookups = require("core.cache.lookups")
-local Helpers = require("core.utils.helpers_suite")
+local Utils = require("core.utils.utils")
 local GameHelpers = require("core.utils.game_helpers")
 local Enum = require("prototypes.enums.enum")
 local ErrorHandler = require("core.utils.error_handler")

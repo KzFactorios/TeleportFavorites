@@ -5,19 +5,19 @@
 
 local tag_editor = require("gui.tag_editor.tag_editor")
 local Cache = require("core.cache.cache")
-local Helpers = require("core.utils.helpers_suite")
-local game_helpers = require("core.utils.game_helpers")
-local safe_destroy_frame = Helpers.safe_destroy_frame
+local Utils = require("core.utils.utils")
+local GuiUtils = require("core.utils.gui_utils")
+local GameHelpers = require("core.utils.game_helpers")
+local safe_destroy_frame = GuiUtils.safe_destroy_frame
 local PlayerFavorites = require("core.favorite.player_favorites")
-local gps_parser = require("core.utils.gps_parser")
+local GPSUtils = require("core.utils.gps_utils")
 local Constants = require("constants")
 local Enum = require("prototypes.enums.enum")
-local PositionValidator = require("core.utils.position_validator")
+local PositionUtils = require("core.utils.position_utils")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 
 -- Observer Pattern Integration
 local GuiObserver = require("core.pattern.gui_observer")
-local gps_helpers = require("core.utils.gps_helpers")
 local GuiEventBus = GuiObserver.GuiEventBus
 
 local M = {}
@@ -124,10 +124,8 @@ local function handle_move_btn(player, tag_data, script)
     if not pos then
       return show_tag_editor_error(player, tag_data,
         "The aether rejects this location. Please select a valid destination.")
-    end
-
-    -- Store the new position in move_gps first
-    local new_gps = gps_parser.gps_from_map_position(pos, player.surface.index)
+    end    -- Store the new position in move_gps first
+    local new_gps = GPSUtils.gps_from_map_position(pos, player.surface.index)
     tag_data.move_gps = new_gps
 
     local tag = tag_data.tag or {}
@@ -181,10 +179,8 @@ local function handle_move_btn(player, tag_data, script)
 
     -- Get player settings for search radius
     local player_settings = Cache.get_player_data(player)
-    local search_radius = player_settings.teleport_radius or Constants.settings.TELEPORT_RADIUS_DEFAULT
-
-    -- Validate and move the tag to the selected position
-    local success = PositionValidator.move_tag_to_selected_position(
+    local search_radius = player_settings.teleport_radius or Constants.settings.TELEPORT_RADIUS_DEFAULT    -- Validate and move the tag to the selected position
+    local success = PositionUtils.move_tag_to_selected_position(
       player, tag, chart_tag, pos, search_radius, position_validation_callback
     )
 

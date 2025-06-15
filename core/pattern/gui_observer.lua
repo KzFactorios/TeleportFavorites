@@ -46,7 +46,7 @@ GuiEventBus:notify("favorite_added", {
 --]]
 
 local ErrorHandler = require("core.utils.error_handler")
-local Helpers = require("core.utils.helpers_suite")
+local Utils = require("core.utils.utils")
 local Cache = require("core.cache.cache")
 
 ---@class GuiEventBus

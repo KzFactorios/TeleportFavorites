@@ -25,7 +25,7 @@ API:
 Each function is annotated with argument and return value details.
 --]]
 local GuiBase = {}
-local Helpers = require("core.utils.helpers_suite")
+local Utils = require("core.utils.utils")
 local Enum = require("prototypes.enums.enum")
 
 --- NOTE: All requires MUST be at the top of the file. Do NOT move requires inside functions to avoid circular dependencies.

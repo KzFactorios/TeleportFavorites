@@ -107,11 +107,8 @@ function EventRegistrationDispatcher.register_core_events(script)
     ErrorHandler.warn_log("Invalid script object for core events registration")
     return false
   end
-    -- Check if already registered to avoid double registration
-  if rawget(_registration_state, "core_events") then
-    ErrorHandler.debug_log("Core events already registered")
-    return true
-  end
+  
+  ErrorHandler.debug_log("Registering core lifecycle events")
   
   local registration_count = 0
   local error_count = 0
@@ -218,9 +215,7 @@ function EventRegistrationDispatcher.register_core_events(script)
         error = err
       })
     end
-  end
-  
-  _registration_state.core_events = true
+  end  
   ErrorHandler.debug_log("Core events registration complete", {
     registered = registration_count,
     errors = error_count
@@ -238,10 +233,7 @@ function EventRegistrationDispatcher.register_gui_events(script)
     return false
   end
   
-  if _registration_state.gui_events then
-    ErrorHandler.debug_log("GUI events already registered")
-    return true
-  end
+  ErrorHandler.debug_log("Registering GUI events")
   
   local success = true
   
@@ -266,9 +258,7 @@ function EventRegistrationDispatcher.register_gui_events(script)
   if not closed_success then
     ErrorHandler.warn_log("Failed to register on_gui_closed handler")
     success = false
-  end
-  
-  _registration_state.gui_events = true
+  end  
   ErrorHandler.debug_log("GUI events registration complete", { success = success })
   
   return success
@@ -283,10 +273,7 @@ function EventRegistrationDispatcher.register_custom_input_events(script)
     return false
   end
   
-  if _registration_state.custom_input_events then
-    ErrorHandler.debug_log("Custom input events already registered")
-    return true
-  end
+  ErrorHandler.debug_log("Registering custom input events")
   
   local success = true
   
@@ -311,9 +298,7 @@ function EventRegistrationDispatcher.register_custom_input_events(script)
   if not tag_editor_success then
     ErrorHandler.warn_log("Failed to register tag editor custom input")
     success = false
-  end
-  
-  _registration_state.custom_input_events = true
+  end  
   ErrorHandler.debug_log("Custom input events registration complete", { success = success })
   
   return success
@@ -328,10 +313,7 @@ function EventRegistrationDispatcher.register_terrain_events(script)
     return false
   end
   
-  if _registration_state.terrain_events then
-    ErrorHandler.debug_log("Terrain events already registered")
-    return true
-  end
+  ErrorHandler.debug_log("Registering terrain events")
   
   local success = true
   
@@ -340,9 +322,7 @@ function EventRegistrationDispatcher.register_terrain_events(script)
   if not terrain_success then
     ErrorHandler.warn_log("Failed to register terrain events through tag_terrain_watcher")
     success = false
-  end
-  
-  _registration_state.terrain_events = true
+  end  
   ErrorHandler.debug_log("Terrain events registration complete", { success = success })
   
   return success
@@ -357,15 +337,6 @@ function EventRegistrationDispatcher.register_observer_events(script)
     return false
   end
   
-  if _registration_state.observer_events then
-    ErrorHandler.debug_log("Observer events already registered")
-    return true
-  end
-  
-  -- Observer events are handled as part of core events
-  -- This function exists for consistency and future extension
-  
-  _registration_state.observer_events = true
   ErrorHandler.debug_log("Observer events registration complete")
   
   return true
@@ -428,23 +399,12 @@ function EventRegistrationDispatcher.register_all_events(script)
   return overall_success
 end
 
---- Get current registration state for debugging
+--- Get current registration state for debugging (simplified)
 ---@return table registration_state
 function EventRegistrationDispatcher.get_registration_state()
   return {
-    core_events = _registration_state.core_events,
-    gui_events = _registration_state.gui_events,
-    custom_input_events = _registration_state.custom_input_events,
-    terrain_events = _registration_state.terrain_events,
-    observer_events = _registration_state.observer_events
+    message = "Registration state tracking simplified for static analysis compatibility"
   }
-end
-
---- Reset registration state (for testing)
-function EventRegistrationDispatcher.reset_registration_state()
-  for key, _ in pairs(_registration_state) do
-    _registration_state[key] = false
-  end
 end
 
 return EventRegistrationDispatcher

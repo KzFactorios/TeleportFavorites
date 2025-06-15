@@ -46,7 +46,7 @@ new conditional branches in the main handler function.
 
 local control_tag_editor = require("core.control.control_tag_editor")
 local Cache = require("core.cache.cache")
-local Helpers = require("core.utils.helpers_suite")
+local Utils = require("core.utils.utils")
 local Enum = require("prototypes.enums.enum")
 
 --- Handle on_gui_closed events for TeleportFavorites modal GUIs

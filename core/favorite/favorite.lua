@@ -18,8 +18,8 @@ Notes:
 ]]
 
 local Constants = require("constants")
-local TableHelpers = require("core.utils.table_helpers")
-local gps_core = require("core.utils.gps_core")
+local CollectionUtils = require("core.utils.collection_utils")
+local GPSUtils = require("core.utils.gps_utils")
 
 ---@class Favorite
 ---@field gps string GPS coordinates in 'xxx.yyy.s' format
@@ -27,7 +27,7 @@ local gps_core = require("core.utils.gps_core")
 ---@field tag table? Optional tag table for tooltip formatting and richer UI
 
 -- Use centralized coordinate string function instead of local duplication
-local coords_string_from_gps = gps_core.coords_string_from_gps
+local coords_string_from_gps = GPSUtils.coords_string_from_gps
 
 
 local FavoriteUtils = {}
@@ -80,7 +80,7 @@ end
 ---@return Favorite?
 function FavoriteUtils.copy(fav)
   if type(fav) ~= "table" then return nil end
-  local copy = FavoriteUtils.new(fav.gps, fav.locked, fav.tag and TableHelpers.deep_copy(fav.tag) or nil)
+  local copy = FavoriteUtils.new(fav.gps, fav.locked, fav.tag and CollectionUtils.deep_copy(fav.tag) or nil)
   for k, v in pairs(fav) do
     if copy[k] == nil then copy[k] = v end
   end

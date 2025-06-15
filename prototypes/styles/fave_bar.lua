@@ -71,12 +71,12 @@ if not gui_style.tf_fave_slots_row then
     }
 end
 
--- Use consolidated style helpers instead of duplicating style creation logic
-local StyleHelpers = require("core.utils.style_helpers")
+-- Use consolidated GUI utilities instead of separate style helpers
+local GuiUtils = require("core.utils.gui_utils")
 
 -- Small font button style
 if not gui_style.tf_slot_button_smallfont then
-    gui_style.tf_slot_button_smallfont = StyleHelpers.extend_style(gui_style.slot_button, {
+    gui_style.tf_slot_button_smallfont = GuiUtils.extend_style(gui_style.slot_button, {
         type = "button_style",
         font = "default-small",
         horizontal_align = "center",
@@ -92,8 +92,8 @@ if not gui_style.tf_slot_button_smallfont then
     })
 end
 
--- Create tinted button variants using consolidated style helper
-StyleHelpers.create_tinted_button_styles(gui_style.slot_button, {
+-- Create tinted button variants using consolidated GUI utilities
+GuiUtils.create_tinted_button_styles(gui_style.slot_button, {
   {
     name = "tf_slot_button_dragged",
     tint = { r = 0.2, g = 0.7, b = 1, a = 1 } -- blue

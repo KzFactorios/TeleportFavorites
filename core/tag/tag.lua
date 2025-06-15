@@ -12,9 +12,9 @@ Tag model and utilities for managing teleportation tags, chart tags, and player 
 
 local Constants = require("constants")
 local settings_access = require("core.utils.settings_access")
-local helpers = require("core.utils.helpers_suite")
+local utils = require("core.utils.utils")
 local basic_helpers = require("core.utils.basic_helpers")
-local gps_parser = require("core.utils.gps_parser")
+local GPSUtils = require("core.utils.gps_utils")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local Lookups = require("__TeleportFavorites__.core.cache.lookups")
 local Cache = require("core.cache.cache")
@@ -93,7 +93,7 @@ function Tag:add_faved_by_player(player_index)
     return idx == player_index
   end
 
-  if not helpers.find_first_match(self.faved_by_players, player_exists) then
+  if not utils.find_first_match(self.faved_by_players, player_exists) then
     table.insert(self.faved_by_players, player_index)
     ErrorHandler.debug_log("Player added to favorites", {
       player_index = player_index,
@@ -113,7 +113,7 @@ function Tag:remove_faved_by_player(player_index)
   })
 
   local initial_count = #self.faved_by_players
-  helpers.table_remove_value(self.faved_by_players, player_index)
+  utils.table_remove_value(self.faved_by_players, player_index)
   local final_count = #self.faved_by_players
 
   if initial_count > final_count then
@@ -385,13 +385,13 @@ function Tag.rehome_chart_tag(player, chart_tag, destination_gps)
     ErrorHandler.debug_log("Rehome failed: Invalid destination GPS")
     return nil
   end
-  local current_gps = gps_parser.gps_from_map_position(chart_tag.position, player.surface.index)
+  local current_gps = GPSUtils.gps_from_map_position(chart_tag.position, player.surface.index)
   if current_gps == destination_gps then
     ErrorHandler.debug_log("Current and destination GPS are identical, no action needed")
     return chart_tag
   end
 
-  local destination_pos = gps_parser.map_position_from_gps(destination_gps)
+  local destination_pos = GPSUtils.map_position_from_gps(destination_gps)
   if not destination_pos then
     ErrorHandler.debug_log("Failed to parse destination GPS", { destination_gps = destination_gps })
     return nil
@@ -413,7 +413,7 @@ function Tag.rehome_chart_tag(player, chart_tag, destination_gps)
     ErrorHandler.debug_log("Chart tag creation failed", { error = create_error })
     return nil
   end -- Step 4: Update GPS coordinates in all favorites
-  local final_gps = gps_parser.gps_from_map_position(new_chart_tag.position, player.surface.index)
+  local final_gps = GPSUtils.gps_from_map_position(new_chart_tag.position, player.surface.index)
   update_favorites_gps(all_fave_tags, final_gps)
   -- Step 5: Update matching tag GPS
   local matching_tag = Cache.get_tag_by_gps(current_gps)
