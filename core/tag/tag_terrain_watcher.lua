@@ -9,7 +9,7 @@ using polling mechanisms like on_tick.
 ]]
 
 local Cache = require("__TeleportFavorites__.core.cache.cache")
-local GPSChartHelpers = require("core.utils.gps_chart_helpers")
+local ChartTagUtils = require("core.utils.chart_tag_utils")
 local Lookups = require("__TeleportFavorites__.core.cache.lookups")
 local gps_parser = require("__TeleportFavorites__.core.utils.gps_parser")
 local RichTextFormatter = require("__TeleportFavorites__.core.utils.rich_text_formatter")
@@ -74,8 +74,7 @@ local function relocate_tag_if_on_water(chart_tag)
   -- Get the force that the chart tag belongs to
   local force = chart_tag.force
   if not force or not force.valid then return false end
-  
-  -- Create a new chart tag at the valid position
+    -- Create a new chart tag at the valid position
   local chart_tag_spec = {
     position = new_position,
     text = chart_tag.text or "Tag",
@@ -85,8 +84,10 @@ local function relocate_tag_if_on_water(chart_tag)
   -- Only include icon if it's a valid SignalID
   if chart_tag.icon and type(chart_tag.icon) == "table" and chart_tag.icon.name then
     chart_tag_spec.icon = chart_tag.icon
-  end  -- Add the new chart tag using safe wrapper
-  local new_chart_tag = GPSChartHelpers.safe_add_chart_tag(force, surface, chart_tag_spec)
+  end
+  
+  -- Add the new chart tag using safe wrapper
+  local new_chart_tag = ChartTagUtils.safe_add_chart_tag(force, surface, chart_tag_spec)
   
   -- Only proceed if creation was successful
   if not new_chart_tag or not new_chart_tag.valid then return false end

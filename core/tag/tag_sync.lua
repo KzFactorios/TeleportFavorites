@@ -40,7 +40,6 @@ Notes:
 local Cache = require("core.cache.cache")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
 local ErrorHandler = require("core.utils.error_handler")
-local GPSChartHelpers = require("core.utils.gps_chart_helpers")
 local gps_helpers = require("core.utils.gps_helpers")
 local gps_parser = require("core.utils.gps_parser")
 local Helpers = require("core.utils.basic_helpers")
@@ -144,11 +143,10 @@ function TagSync.add_new_chart_tag(player, normal_pos, text, icon)
     position = normal_pos,
     text = text
   })
-  
-  local success, result = pcall(function()    -- Create chart tag spec using centralized builder
+    local success, result = pcall(function()    -- Create chart tag spec using centralized builder
     local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(normal_pos, nil, player, text)
     
-    return GPSChartHelpers.safe_add_chart_tag(game.forces["player"], player.surface, chart_tag_spec)
+    return ChartTagUtils.safe_add_chart_tag(game.forces["player"], player.surface, chart_tag_spec)
   end)
     if not success then
     ErrorHandler.warn_log("Chart tag creation failed", {

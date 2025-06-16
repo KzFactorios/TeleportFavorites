@@ -256,8 +256,9 @@ function GuiBase.create_textbox(parent, name, text, style, icon_selector)
     -- Remove nil values
     for k, v in pairs(opts) do
         if v == nil then opts[k] = nil end
-    end
-    return GuiBase.create_element('text-box', parent, opts)
+    end    return GuiBase.create_element('text-box', parent, opts)
 end
+
+-- Removed: get_or_create_gui_flow_from_gui_top - moved to GuiUtils
 
 return GuiBase

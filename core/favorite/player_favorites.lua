@@ -5,20 +5,30 @@ TeleportFavorites Factorio Mod
 -----------------------------
 PlayerFavorites class: manages a collection of favorites for a specific player.
 
-- Provides a comprehensive interface for favorite collection operations
+- Provides essential interface for favorite collection operations
 - Handles slot management, lookup, persistence, and favorite manipulation
 - All persistent data is managed via the Cache module and is surface-aware
 - Used for favorites bar, tag editor, and all player favorite operations
 
-Features:
----------
+Core Features:
+--------------
 - Add/remove favorites with automatic slot management
 - Reorder favorites with drag-and-drop support
 - Lock/unlock favorites to prevent accidental changes
-- Find favorites by GPS or slot index
-- Swap and move operations for slot organization
+- Find favorites by GPS string
 - Automatic tag synchronization and cleanup
-- Comprehensive validation and error handling
+- GPS coordinate updates across all players
+
+Methods:
+--------
+- new(player) - Constructor
+- get_favorite_by_gps(gps) - Find favorite by GPS string
+- add_favorite(gps) - Add new favorite
+- remove_favorite(gps) - Remove favorite by GPS
+- move_favorite(from_slot, to_slot) - Reorder favorites
+- toggle_favorite_lock(slot_idx) - Lock/unlock favorite
+- update_gps_coordinates(old_gps, new_gps) - Update GPS for this player
+- update_gps_for_all_players(old_gps, new_gps, acting_player_index) - Static GPS update
 
 Notes:
 ------
@@ -69,7 +79,7 @@ local function sync_to_storage(self)
   if not storage.players[self.player_index].surfaces then storage.players[self.player_index].surfaces = {} end
 
   storage.players[self.player_index].surfaces[self.surface_index] =
-      storage.players[self.player_index].surfaces[self.surface_index] or {}
+  storage.players[self.player_index].surfaces[self.surface_index] or {}
   storage.players[self.player_index].surfaces[self.surface_index].favorites = self.favorites
 end
 
@@ -131,7 +141,7 @@ function PlayerFavorites.new(player)
     if not storage.players[obj.player_index].surfaces then storage.players[obj.player_index].surfaces = {} end
 
     storage.players[obj.player_index].surfaces[obj.surface_index] =
-        storage.players[obj.player_index].surfaces[obj.surface_index] or {}
+    storage.players[obj.player_index].surfaces[obj.surface_index] or {}
     storage.players[obj.player_index].surfaces[obj.surface_index].favorites = obj.favorites
   end
 
@@ -152,44 +162,7 @@ function PlayerFavorites:get_favorite_by_gps(gps)
   return nil, nil
 end
 
---- Get a favorite by slot index
----@param slot_idx number
----@return Favorite|nil
-function PlayerFavorites:get_favorite_by_slot(slot_idx)
-  if not is_valid_slot(slot_idx) then return nil end
-  return self.favorites[slot_idx]
-end
-
---- Get all favorites as a copy
----@return Favorite[]
-function PlayerFavorites:get_all_favorites()
-  local copy = {}
-  for i, fav in ipairs(self.favorites) do
-    copy[i] = fav
-  end
-  return copy
-end
-
---- Set the entire favorites collection
----@param new_favorites Favorite[]
----@return boolean success
-function PlayerFavorites:set_favorites(new_favorites)
-  if type(new_favorites) ~= "table" then return false end
-
-  -- Validate and pad array to correct size
-  local validated_favorites = {}
-  for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
-    if new_favorites[i] and type(new_favorites[i]) == "table" then
-      validated_favorites[i] = new_favorites[i]
-    else
-      validated_favorites[i] = FavoriteUtils.get_blank_favorite()
-    end
-  end
-
-  self.favorites = validated_favorites
-  sync_to_storage(self)
-  return true
-end
+-- Removed unused methods: get_favorite_by_slot, get_all_favorites, set_favorites
 
 --- Add a favorite to the first available slot
 ---@param gps string
@@ -275,219 +248,118 @@ function PlayerFavorites:remove_favorite(gps)
   return true, nil
 end
 
---- Remove a favorite by slot index
----@param slot_idx number
----@return boolean success, string|nil error_message
-function PlayerFavorites:remove_favorite_by_slot(slot_idx)
-  if not is_valid_slot(slot_idx) then
-    return false, "Invalid slot index"
-  end
-  local fav = self.favorites[slot_idx]
-  if not fav or FavoriteUtils.is_blank_favorite(fav) then
-    -- Already blank
-    return true, nil
-  end
-
-  return self:remove_favorite(fav.gps)
-end
-
---- Generic slot operation method to consolidate similar operations
----@param operation_type string Type of operation: "swap", "move", "remove", "toggle_lock"
----@param ... any Variable arguments based on operation type
----@return boolean success, string|nil error_message
-function PlayerFavorites:modify_slot(operation_type, ...)
-  local args = {...}
-  
-  if operation_type == "swap" then
-    local slot_a, slot_b = args[1], args[2]
-    if not is_valid_slot(slot_a) or not is_valid_slot(slot_b) then
-      return false, "Invalid slot indices"
-    end
-    if slot_a == slot_b then return true, nil end
-    
-    local fav_a = self.favorites[slot_a]
-    local fav_b = self.favorites[slot_b]
-    
-    if (fav_a and fav_a.locked) or (fav_b and fav_b.locked) then
-      return false, "Cannot swap locked favorites"
-    end
-    
-    self.favorites[slot_a] = fav_b
-    self.favorites[slot_b] = fav_a
-    sync_to_storage(self)
-    return true, nil
-    
-  elseif operation_type == "move" then
-    local from_slot, to_slot = args[1], args[2]
-    if not is_valid_slot(from_slot) or not is_valid_slot(to_slot) then
-      return false, "Invalid slot indices"
-    end
-    if from_slot == to_slot then return true, nil end
-    
-    local fav = self.favorites[from_slot]
-    if FavoriteUtils.is_blank_favorite(fav) then
-      return false, "Cannot move blank favorite"
-    end
-    if fav and fav.locked then
-      return false, "Cannot move locked favorite"
-    end
-    
-    local moved_fav = table.remove(self.favorites, math.floor(from_slot))
-    table.insert(self.favorites, math.floor(to_slot), moved_fav)
-    
-    -- Ensure array stays correct size
-    while #self.favorites < Constants.settings.MAX_FAVORITE_SLOTS do
-      table.insert(self.favorites, FavoriteUtils.get_blank_favorite())
-    end
-    while #self.favorites > Constants.settings.MAX_FAVORITE_SLOTS do
-      table.remove(self.favorites)
-    end
-    
-    sync_to_storage(self)
-    return true, nil
-    
-  elseif operation_type == "remove" then
-    local slot_idx = args[1]
-    if not is_valid_slot(slot_idx) then
-      return false, "Invalid slot index"
-    end
-    
-    local fav = self.favorites[slot_idx]    if not fav or FavoriteUtils.is_blank_favorite(fav) then
-      -- Already blank
-      return true, nil
-    end
-    
-    return self:remove_favorite(fav.gps)
-    
-  elseif operation_type == "toggle_lock" then
-    local slot_idx = args[1]
-    if not is_valid_slot(slot_idx) then
-      return false, "Invalid slot index"
-    end
-    
-    local fav = self.favorites[slot_idx]
-    if not fav or FavoriteUtils.is_blank_favorite(fav) then
-      return false, "Cannot lock blank favorite"
-    end
-    
-    FavoriteUtils.toggle_locked(fav)
-    sync_to_storage(self)
-    return true, nil
-  end
-  
-  return false, "Unknown operation type: " .. tostring(operation_type)
-end
-
---- Swap two favorites by slot indices
----@param slot_a number
----@param slot_b number
----@return boolean success, string|nil error_message
-function PlayerFavorites:swap_slots(slot_a, slot_b)
-  return self:modify_slot("swap", slot_a, slot_b)
-end
+-- Removed unused methods: remove_favorite_by_slot, modify_slot, swap_slots
 
 --- Move a favorite from one slot to another
 ---@param from_slot number
 ---@param to_slot number
 ---@return boolean success, string|nil error_message
 function PlayerFavorites:move_favorite(from_slot, to_slot)
-  return self:modify_slot("move", from_slot, to_slot)
+  if not is_valid_slot(from_slot) or not is_valid_slot(to_slot) then
+    return false, "Invalid slot indices"
+  end
+  if from_slot == to_slot then return true, nil end
+  
+  local fav = self.favorites[from_slot]
+  if FavoriteUtils.is_blank_favorite(fav) then
+    return false, "Cannot move blank favorite"
+  end
+  if fav and fav.locked then
+    return false, "Cannot move locked favorite"
+  end
+  
+  local moved_fav = table.remove(self.favorites, math.floor(from_slot))
+  table.insert(self.favorites, math.floor(to_slot), moved_fav)
+  
+  -- Ensure array stays correct size
+  while #self.favorites < Constants.settings.MAX_FAVORITE_SLOTS do
+    table.insert(self.favorites, FavoriteUtils.get_blank_favorite())
+  end
+  while #self.favorites > Constants.settings.MAX_FAVORITE_SLOTS do
+    table.remove(self.favorites)
+  end
+  
+  sync_to_storage(self)
+  return true, nil
 end
 
 --- Toggle the locked state of a favorite
 ---@param slot_idx number
 ---@return boolean success, string|nil error_message
 function PlayerFavorites:toggle_favorite_lock(slot_idx)
-  return self:modify_slot("toggle_lock", slot_idx)
-end
-
---- Check if favorites collection is full
----@return boolean
-function PlayerFavorites:is_full()
-  for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
-    if FavoriteUtils.is_blank_favorite(self.favorites[i]) then
-      return false
-    end
+  if not is_valid_slot(slot_idx) then
+    return false, "Invalid slot index"
   end
-  return true
-end
-
---- Get count of non-blank favorites
----@return number
-function PlayerFavorites:get_favorite_count()
-  local count = 0
-  for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
-    if not FavoriteUtils.is_blank_favorite(self.favorites[i]) then
-      count = count + 1
-    end
+  
+  local fav = self.favorites[slot_idx]
+  if not fav or FavoriteUtils.is_blank_favorite(fav) then
+    return false, "Cannot lock blank favorite"
   end
-  return count
+  
+  FavoriteUtils.toggle_locked(fav)
+  sync_to_storage(self)
+  return true, nil
 end
 
---- Get first available slot index
----@return number|nil
-function PlayerFavorites:get_first_empty_slot()
-  for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
-    if FavoriteUtils.is_blank_favorite(self.favorites[i]) then
-      return i
-    end
+-- Removed unused utility methods: is_full, get_favorite_count, get_first_empty_slot, compact, validate
+
+--- Update GPS coordinates for all favorites that match the old GPS
+---@param old_gps string Original GPS coordinate string
+---@param new_gps string New GPS coordinate string
+---@return boolean any_updated True if any favorites were updated
+function PlayerFavorites:update_gps_coordinates(old_gps, new_gps)
+  if not old_gps or not new_gps or old_gps == new_gps then
+    return false
   end
-  return nil
-end
-
---- Compact favorites by removing gaps (blank slots)
----@return boolean success
-function PlayerFavorites:compact()
-  local compacted = {}
-  local index = 1
-
-  -- Collect all non-blank favorites
+  
+  local any_updated = false
+  
   for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
     local fav = self.favorites[i]
-    if not FavoriteUtils.is_blank_favorite(fav) then
-      compacted[index] = fav
-      index = index + 1
+    if fav and not FavoriteUtils.is_blank_favorite(fav) and fav.gps == old_gps then
+      fav.gps = new_gps
+      any_updated = true
     end
   end
-
-  -- Fill remaining slots with blanks
-  for i = index, Constants.settings.MAX_FAVORITE_SLOTS do
-    compacted[i] = FavoriteUtils.get_blank_favorite()
+  
+  if any_updated then
+    sync_to_storage(self)
+    
+    -- Notify observers of GPS update
+    notify_observers_safe("favorites_gps_updated", {
+      player_index = self.player_index,
+      old_gps = old_gps,
+      new_gps = new_gps
+    })
   end
-
-  self.favorites = compacted
-  sync_to_storage(self)
-  return true
+  
+  return any_updated
 end
 
---- Validate the integrity of the favorites collection
----@return boolean is_valid, string[] issues
-function PlayerFavorites:validate()
-  local issues = {}
-  local is_valid = true
-
-  -- Check array size
-  if #self.favorites ~= Constants.settings.MAX_FAVORITE_SLOTS then
-    table.insert(issues,
-      "Favorites array has incorrect size: " ..
-      #self.favorites .. " (expected " .. Constants.settings.MAX_FAVORITE_SLOTS .. ")")
-    is_valid = false
+--- Update GPS coordinates across all players and return list of affected players
+---@param old_gps string Original GPS coordinate string  
+---@param new_gps string New GPS coordinate string
+---@param acting_player_index uint? Player index who initiated the change (excluded from results)
+---@return LuaPlayer[] affected_players List of players whose favorites were updated
+function PlayerFavorites.update_gps_for_all_players(old_gps, new_gps, acting_player_index)
+  if not old_gps or not new_gps or old_gps == new_gps then
+    return {}
   end
-
-  -- Check for duplicate GPS
-  local seen_gps = {}
-  for i, fav in ipairs(self.favorites) do
-    if fav and not FavoriteUtils.is_blank_favorite(fav) then
-      if seen_gps[fav.gps] then
-        table.insert(issues, "Duplicate GPS found at slots " .. seen_gps[fav.gps] .. " and " .. i .. ": " .. fav.gps)
-        is_valid = false
-      else
-        seen_gps[fav.gps] = i
+  
+  local affected_players = {}
+  
+  for _, player in pairs(game.players) do
+    if player and player.valid and player.index ~= acting_player_index then
+      local favorites = PlayerFavorites.new(player)
+      local was_updated = favorites:update_gps_coordinates(old_gps, new_gps)
+      
+      if was_updated then
+        table.insert(affected_players, player)
       end
     end
   end
-
-  return is_valid, issues
+  
+  return affected_players
 end
 
 return PlayerFavorites

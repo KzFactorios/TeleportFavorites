@@ -47,7 +47,6 @@ gui_event_dispatcher.register_gui_handlers(script)
 local control_fave_bar = require("core.control.control_fave_bar")
 local control_tag_editor = require("core.control.control_tag_editor")
 local Constants = require("constants")
-local Utils = require("core.utils.utils")
 local Enum = require("prototypes.enums.enum")
 local ErrorHandler = require("core.utils.error_handler")
 local control_data_viewer = require("core.control.control_data_viewer")
@@ -59,13 +58,11 @@ local M = {}
 ---@type boolean Global guard to prevent GUI event recursion
 local _tf_gui_click_guard = false
 
-local FAVE_BAR_SLOT_PREFIX = Constants.settings.FAVE_BAR_SLOT_PREFIX
-
 --- Returns true if the element is a favorite bar slot button
 local function is_fave_bar_slot_button(element)
   if not element or not element.name then return false end
   local name = tostring(element.name)
-  local prefix = tostring(FAVE_BAR_SLOT_PREFIX)
+  local prefix = tostring(Constants.settings.FAVE_BAR_SLOT_PREFIX)
   return name:find(prefix, 1, true) ~= nil
 end
 
@@ -100,22 +97,19 @@ function M.register_gui_handlers(script)
       local parent_gui = GuiUtils.get_gui_frame_by_element(element)
       if not parent_gui then
         error("Element: " .. element.name .. ", parent GUI not found")
-      end
-      
-      -- Dispatch based on parent_gui
+      end      -- Dispatch based on parent_gui
       if parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
         control_tag_editor.on_tag_editor_gui_click(event, script)
         return true
-      elseif parent_gui.name == Enum.GuiEnum.GUI_FRAME.FAVE_BAR then
-        control_fave_bar.on_fave_bar_gui_click(event)
-        return true
       elseif parent_gui.name == Enum.GuiEnum.GUI_FRAME.DATA_VIEWER then
         control_data_viewer.on_data_viewer_gui_click(event)
-        return true      else
+        return true
+      else
         ErrorHandler.debug_log("Unknown parent GUI", {
           parent_gui_name = tostring(parent_gui.name)
         })
-      end    end, function(e)
+      end
+    end, function(e)
       _tf_gui_click_guard = false
       ErrorHandler.warn_log("GUI event error", {
         error = tostring(e),

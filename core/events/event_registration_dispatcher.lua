@@ -185,10 +185,22 @@ function EventRegistrationDispatcher.register_core_events(script)
           ErrorHandler.debug_log("Destination message setting changed", {
             player_index = event.player_index
           })
-          return
-        end
+          return        end
       end,
       name = "on_runtime_mod_setting_changed"
+    },
+    -- Chart tag events - Critical: These were missing!
+    [defines.events.on_chart_tag_added] = {
+      handler = handlers.on_chart_tag_added,
+      name = "on_chart_tag_added"
+    },
+    [defines.events.on_chart_tag_modified] = {
+      handler = handlers.on_chart_tag_modified,
+      name = "on_chart_tag_modified"
+    },
+    [defines.events.on_chart_tag_removed] = {
+      handler = handlers.on_chart_tag_removed,
+      name = "on_chart_tag_removed"
     }
   }
   
@@ -394,14 +406,6 @@ function EventRegistrationDispatcher.register_all_events(script)
   })
   
   return overall_success
-end
-
---- Get current registration state for debugging (simplified)
----@return table registration_state
-function EventRegistrationDispatcher.get_registration_state()
-  return {
-    message = "Registration state tracking simplified for static analysis compatibility"
-  }
 end
 
 return EventRegistrationDispatcher

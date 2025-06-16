@@ -12,6 +12,7 @@ local Constants = require("constants")
 local Enum = require("prototypes.enums.enum")
 local PositionUtils = require("core.utils.position_utils")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
+local PlayerFavorites = require("core.favorite.player_favorites")
 
 -- Observer Pattern Integration
 local GuiObserver = require("core.pattern.gui_observer")
@@ -31,13 +32,26 @@ local function show_tag_editor_error(player, tag_data, message)
 end
 
 local function update_favorite_state(player, tag, is_favorite)
-  -- Notify observers of favorite change
-  GuiEventBus.notify(is_favorite and "favorite_added" or "favorite_removed", {
-    player = player,
-    gps = tag.gps,
-    tag = tag,
-    type = is_favorite and "favorite_added" or "favorite_removed"
-  })
+  local player_favorites = PlayerFavorites.new(player)
+  
+  if is_favorite then
+    -- Add favorite
+    local favorite, error_msg = player_favorites:add_favorite(tag.gps)
+    if not favorite then
+      GameHelpers.player_print(player, "Failed to add favorite: " .. (error_msg or "Unknown error"))
+      return
+    end
+  else
+    -- Remove favorite
+    local success, error_msg = player_favorites:remove_favorite(tag.gps)
+    if not success then
+      GameHelpers.player_print(player, "Failed to remove favorite: " .. (error_msg or "Unknown error"))
+      return
+    end
+  end
+  
+  -- Observer notifications are now sent from PlayerFavorites methods
+  -- No need to send them here as they're already handled in add_favorite/remove_favorite
 end
 
 local function update_tag_chart_fields(tag, text, icon, player)
@@ -215,19 +229,42 @@ local function handle_favorite_btn(player, tag_data)
   local old_state = tag_data.is_favorite
   tag_data.is_favorite = not tag_data.is_favorite
 
+  -- Actually create or remove the favorite from storage
+  local player_favorites = PlayerFavorites.new(player)
+  local gps = tag_data.tag and tag_data.tag.gps or tag_data.gps
+  
+  if gps then
+    if tag_data.is_favorite then
+      -- Add favorite
+      local favorite, error_msg = player_favorites:add_favorite(gps)
+      if not favorite then
+        GameHelpers.player_print(player, "Failed to add favorite: " .. (error_msg or "Unknown error"))
+        -- Revert state
+        tag_data.is_favorite = old_state
+        Cache.set_tag_editor_data(player, tag_data)
+        refresh_tag_editor(player, tag_data)
+        return
+      end
+    else
+      -- Remove favorite
+      local success, error_msg = player_favorites:remove_favorite(gps)
+      if not success then
+        GameHelpers.player_print(player, "Failed to remove favorite: " .. (error_msg or "Unknown error"))
+        -- Revert state
+        tag_data.is_favorite = old_state
+        Cache.set_tag_editor_data(player, tag_data)
+        refresh_tag_editor(player, tag_data)
+        return
+      end
+    end
+  end
+
   -- Update the tag_data and refresh the UI
   Cache.set_tag_editor_data(player, tag_data)
   refresh_tag_editor(player, tag_data)
 
-  -- Notify observers of favorite toggle
-  if tag_data.tag then
-    GuiEventBus.notify(tag_data.is_favorite and "favorite_added" or "favorite_removed", {
-      player = player,
-      gps = tag_data.tag.gps or tag_data.gps,
-      tag = tag_data.tag,
-      type = tag_data.is_favorite and "favorite_added" or "favorite_removed"
-    })
-  end
+  -- Observer notifications are now sent from PlayerFavorites methods
+  -- No need to send them here as they're already handled in add_favorite/remove_favorite
 end
 
 local function handle_delete_btn(player, tag_data, element)
@@ -346,8 +383,10 @@ local function on_tag_editor_gui_text_changed(event)
   if not element or not element.valid then return end
   local name = element.name or ""
   if not name:find("tag_editor") then return end
+
   local player = game.get_player(event.player_index)
   if not player or not player.valid then return end
+
   if element.name == "tag_editor_rich_text_input" then
     local tag_data = Cache.get_tag_editor_data(player) or {}
     tag_data.text = (element.text or ""):gsub("%s+$", "")
@@ -360,10 +399,5 @@ end
 M.close_tag_editor = close_tag_editor
 M.on_tag_editor_gui_click = on_tag_editor_gui_click
 M.on_tag_editor_gui_text_changed = on_tag_editor_gui_text_changed
-
---- Register tag editor event handlers (deprecated: use shared dispatcher)
-function M.register(script)
-  -- Deprecated: do not register directly. Use shared dispatcher in gui_base.lua
-end
 
 return M

@@ -626,8 +626,26 @@ function GuiUtils.add_accessibility_attributes(element, role, description)
   if current_tooltip ~= "" then
     enhanced_tooltip = enhanced_tooltip .. " - " .. tostring(current_tooltip)
   end
-  
-  element.tooltip = enhanced_tooltip
+    element.tooltip = enhanced_tooltip
+end
+
+--- Get or create the main GUI flow in player's top GUI
+--- This is the shared parent container for all TeleportFavorites GUI elements
+---@param player LuaPlayer The player whose GUI to access
+---@return LuaGuiElement The main GUI flow element
+function GuiUtils.get_or_create_gui_flow_from_gui_top(player)
+  local top = player.gui.top
+  local flow = top and top.tf_main_gui_flow
+  if not (flow and flow.valid) then
+    flow = top.add {
+      type = "flow",
+      name = "tf_main_gui_flow",
+      direction = "vertical", 
+      style = "vertical_flow" -- vanilla style, stretches to fit children, not scrollable
+    }
+    -- Do NOT set .style fields at runtime for flows; use style at creation only
+  end
+  return flow
 end
 
 return GuiUtils

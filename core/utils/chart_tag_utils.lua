@@ -18,7 +18,6 @@ local basic_helpers = require("core.utils.basic_helpers")
 local GPSUtils = require("core.utils.gps_utils")
 local PositionUtils = require("core.utils.position_utils")
 local Cache = require("core.cache.cache")
-local GPSChartHelpers = require("core.utils.gps_chart_helpers")
 local RichTextFormatter = require("core.utils.rich_text_formatter")
 local GameHelpers = require("core.utils.game_helpers")
 local Constants = require("constants")
@@ -448,15 +447,75 @@ function ChartTagUtils.register_terrain_events(script)
 
   -- Register for tile built/removed events
   script.on_event(defines.events.on_player_built_tile, ChartTagUtils.on_tile_built)
-  script.on_event(defines.events.on_robot_built_tile, ChartTagUtils.on_tile_built)
-  script.on_event(defines.events.on_player_mined_tile, ChartTagUtils.on_tile_built)
+  script.on_event(defines.events.on_robot_built_tile, ChartTagUtils.on_tile_built)  script.on_event(defines.events.on_player_mined_tile, ChartTagUtils.on_tile_built)
   script.on_event(defines.events.on_robot_mined_tile, ChartTagUtils.on_tile_built)
-    -- Script-caused terrain changes
+  
+  -- Script-caused terrain changes
   script.on_event(defines.events.script_raised_set_tiles, function(event)
     if not event or not event.tiles or #event.tiles == 0 then return end
     -- Script changes don't have a specific player, so pass nil
     ChartTagUtils.process_terrain_changes_with_protection(event.tiles, event.surface, nil)
   end)
+end
+
+-- ========================================
+-- CHART TAG CREATION WRAPPER
+-- ========================================
+
+--- Safe wrapper for chart tag creation with comprehensive error handling
+---@param force LuaForce The force that will own the chart tag
+---@param surface LuaSurface The surface where the tag will be placed
+---@param spec table Chart tag specification table (position, text, etc.)
+---@return LuaCustomChartTag|nil chart_tag The created chart tag or nil if failed
+function ChartTagUtils.safe_add_chart_tag(force, surface, spec)
+  -- Input validation
+  if not force or not surface or not spec then
+    ErrorHandler.debug_log("Invalid arguments to safe_add_chart_tag", {
+      has_force = force ~= nil,
+      has_surface = surface ~= nil,
+      has_spec = spec ~= nil
+    })
+    return nil
+  end
+
+  -- Validate position
+  if not spec.position or type(spec.position.x) ~= "number" or type(spec.position.y) ~= "number" then
+    ErrorHandler.debug_log("Invalid position in chart tag spec", {
+      position = spec.position
+    })
+    return nil
+  end  -- Use protected call to catch any errors
+  local success, result = pcall(function()
+    return force:add_chart_tag(surface, spec)
+  end)
+
+  -- Check if creation was successful
+  if not success then
+    ErrorHandler.debug_log("Chart tag creation failed with error", {
+      error = result,
+      position = spec.position
+    })
+    return nil
+  end
+
+  -- Cast result to ensure proper typing after successful pcall
+  ---@cast result LuaCustomChartTag
+  
+  -- Validate the created chart tag
+  if not result or not result.valid then
+    ErrorHandler.debug_log("Chart tag created but is invalid", {
+      chart_tag_exists = result ~= nil,
+      position = spec.position
+    })
+    return nil
+  end
+
+  ErrorHandler.debug_log("Chart tag created successfully", {
+    position = result.position,
+    text = result.text
+  })
+
+  return result
 end
 
 return ChartTagUtils

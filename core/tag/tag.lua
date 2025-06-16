@@ -21,7 +21,6 @@ local Cache = require("core.cache.cache")
 local ErrorHandler = require("core.utils.error_handler")
 local TeleportStrategies = require("core.pattern.teleport_strategy")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
-local GPSChartHelpers = require("core.utils.gps_chart_helpers")
 
 ---@class Tag
 ---@field gps string # The GPS string (serves as the index)
@@ -309,10 +308,9 @@ end
 ---@param chart_tag LuaCustomChartTag
 ---@return LuaCustomChartTag?, string?
 local function create_new_chart_tag(player, destination_pos, chart_tag)
-  ErrorHandler.debug_log("Creating new chart tag", { destination_pos = destination_pos })
-  local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(destination_pos, chart_tag, player)
+  ErrorHandler.debug_log("Creating new chart tag", { destination_pos = destination_pos })  local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(destination_pos, chart_tag, player)
     -- Create chart tag using our safe wrapper
-  local new_chart_tag = GPSChartHelpers.safe_add_chart_tag(player.force, player.surface, chart_tag_spec)
+  local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, player.surface, chart_tag_spec)
   if not new_chart_tag or not new_chart_tag.valid then
     ErrorHandler.debug_log("Chart tag creation failed")
     return nil, "The destination is not available for landing"

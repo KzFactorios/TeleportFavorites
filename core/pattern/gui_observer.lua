@@ -51,7 +51,7 @@ local Enum = require("prototypes.enums.enum")
 local ErrorHandler = require("core.utils.error_handler")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local tag_editor = require("gui.tag_editor.tag_editor")
-local Utils = require("core.utils.utils")
+local gui_utils = require("core.utils.gui_utils")
 
 ---@class GuiEventBus
 local GuiEventBus = {}
@@ -271,7 +271,7 @@ function TagObserver:update(event_data)
     gps = event_data.gps
   })
     -- Refresh tag editor if it's open
-  local tag_editor_frame = Helpers.find_child_by_name(
+  local tag_editor_frame = gui_utils.find_child_by_name(
     self.player.gui.screen, 
     Enum.GuiEnum.GUI_FRAME.TAG_EDITOR
   )
@@ -321,11 +321,11 @@ function DataObserver:update(event_data)
     player = self.player.name,
     event_type = event_data.type or "unknown"
   })
+    -- Refresh data viewer if it's open
+  local main_flow = gui_utils.get_or_create_gui_flow_from_gui_top(self.player)
   
-  -- Refresh data viewer if it's open
-  local main_flow = Helpers.get_or_create_gui_flow_from_gui_top(self.player)
-  local data_viewer_frame = Helpers.find_child_by_name(main_flow, "data_viewer_frame")
-    if data_viewer_frame and data_viewer_frame.valid then
+  local data_viewer_frame = gui_utils.find_child_by_name(main_flow, "data_viewer_frame")
+  if data_viewer_frame and data_viewer_frame.valid then
     local success, err = pcall(function()
       local pdata = Cache.get_player_data(self.player)
       local active_tab = pdata.data_viewer_settings and pdata.data_viewer_settings.active_tab or "player_data"

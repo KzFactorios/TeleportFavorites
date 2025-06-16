@@ -95,20 +95,9 @@ local function find_active_tab_from_gui(main_flow)
 end
 
 local function get_or_create_gui_flow_from_gui_top(player)
-  local top = player.gui.top
-  local flow = top and top.tf_main_gui_flow
-  if not (flow and flow.valid) then
-    flow = top.add {
-      type = "flow",
-      name = "tf_main_gui_flow",
-      direction = "vertical",
-      style = "vertical_flow" -- vanilla style, stretches to fit children, not scrollable
-    }
-    -- Do NOT set .style fields at runtime for flows; use style at creation only
-  end
-  return flow
+  return GuiUtils.get_or_create_gui_flow_from_gui_top(player)
 end
-M.get_or_create_gui_flow_from_gui_top = get_or_create_gui_flow_from_gui_top
+-- Removed: M.get_or_create_gui_flow_from_gui_top (now using GuiUtils)
 
 function M.on_toggle_data_viewer(event)
   local player = game.get_player(event.player_index)

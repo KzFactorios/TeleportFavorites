@@ -41,7 +41,6 @@ local GameHelpers = require("core.utils.game_helpers")
 local ErrorHandler = require("core.utils.error_handler")
 
 
-
 ---@class CustomInputDispatcher
 local M = {}
 
@@ -170,33 +169,6 @@ function M.get_default_handlers()
     copy[name] = handler
   end
   return copy
-end
-
---- Add a new handler to the default set (for dynamic registration)
----@param input_name string Name of the custom input
----@param handler function Handler function
----@return boolean success Whether the handler was added successfully
-function M.add_default_handler(input_name, handler)
-  if type(input_name) ~= "string" or input_name == "" then
-    ErrorHandler.warn_log("Invalid input name for add_default_handler", {
-      input_name = tostring(input_name)
-    })
-    return false
-  end
-  
-  if type(handler) ~= "function" then
-    ErrorHandler.warn_log("Invalid handler type for add_default_handler", {
-      input_name = input_name,
-      handler_type = type(handler)
-    })
-    return false
-  end
-  
-  default_custom_input_handlers[input_name] = handler
-  ErrorHandler.debug_log("Added default handler", {
-    input_name = input_name
-  })
-  return true
 end
 
 return M

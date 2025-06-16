@@ -8,10 +8,10 @@ local FavoriteUtils = require("core.favorite.favorite")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local Cache = require("core.cache.cache")
 local tag_editor = require("gui.tag_editor.tag_editor")
-local gps_helpers = require("core.utils.gps_helpers")
 local gps_core = require("core.utils.gps_utils")
-local PositionValidator = require("core.utils.position_validator")
 local GameHelpers = require("core.utils.game_helpers")
+local GuiUtils = require("core.utils.gui_utils")
+local ErrorHandler = require("core.utils.error_handler")
 
 -- Observer Pattern Integration
 local GuiObserver = require("core.pattern.gui_observer")
@@ -40,51 +40,31 @@ local function start_drag(player, fav, slot)
 end
 
 local function reorder_favorites(player, favorites, drag_index, slot)
-  local favs = favorites.favorites
-  local valid_drag = type(favs) == "table"
-      and type(drag_index) == "number"
-      and drag_index > 0
-      and drag_index <= #favs
-  if valid_drag then
-    local drag_fav = favs[drag_index]    if is_locked_favorite(drag_fav) then
-      GameHelpers.player_print(player, lstr("tf-gui.fave_bar_locked_move"))
-      clear_drag_state(player)
-      -- handled
-      return true
-    end
-    local moved = table.remove(favs, drag_index)
-    table.insert(favs, slot, moved)
-    favorites:set_favorites(favs)
-
-    -- Notify observers of favorites reorder
-    GuiEventBus.notify("favorites_reordered", {
-      player = player,
-      from_slot = drag_index,
-      to_slot = slot,
-      type = "favorites_reordered"
-    })
-
-    -- Efficiently update only the slot row, not the whole bar
-    local parent = player.gui.top
-    local bar_frame = parent and parent.fave_bar_frame
-    local bar_flow = bar_frame and bar_frame.fave_bar_flow
-    if bar_flow then
-      fave_bar.update_slot_row(player, bar_flow)
-    end    
-    GameHelpers.player_print(player, lstr("tf-gui.fave_bar_reordered", drag_index, slot))
+  -- Use PlayerFavorites move_favorite method instead of manual array manipulation
+  local success, error_msg = favorites:move_favorite(drag_index, slot)
+  if not success then
+    GameHelpers.player_print(player, "Failed to reorder favorite: " .. (error_msg or "Unknown error"))
     clear_drag_state(player)
-    -- handled
-    return true
+    return false
   end
+
+  -- Efficiently update only the slot row, not the whole bar
+  local parent = player.gui.top
+  local bar_frame = parent and parent.fave_bar_frame
+  local bar_flow = bar_frame and bar_frame.fave_bar_flow
+  if bar_flow then
+    fave_bar.update_slot_row(player, bar_flow)
+  end
+  GameHelpers.player_print(player, lstr("tf-gui.fave_bar_reordered", drag_index, slot))
   clear_drag_state(player)
-  return false
+  return true
 end
 
 local function open_tag_editor_from_favorite(player, favorite)
   local tag_data = {}
   if favorite then
     -- Create initial tag data from favorite
-    tag_data = Cache.create_tag_editor_data({
+    local tag_data = Cache.create_tag_editor_data({
       gps = favorite.gps,
       locked = favorite.locked,
       is_favorite = Cache.is_player_favorite(player, favorite.gps),
@@ -94,55 +74,10 @@ local function open_tag_editor_from_favorite(player, favorite)
       chart_tag = favorite.chart_tag
     })
 
-    -- Get position from GPS
-    local position = gps_helpers.map_position_from_gps(favorite.gps)
-    if position then
-      -- Check if the position is valid (not water or space)
-      if not PositionValidator.is_valid_tag_position(player, position, true) then
-        -- Show dialog to handle invalid position
-        PositionValidator.show_invalid_position_dialog(player, tag_data, function(action, updated_tag_data)          if action == "delete" then
-            -- Delete the tag if player owns it and no other favorites are attached
-            if tag_data.tag and tag_data.tag.player.name == player.name then
-              if not tag_data.tag.faved_by_players or #tag_data.tag.faved_by_players == 0 then
-                -- Delete the tag and chart tag
-                if tag_data.chart_tag and tag_data.chart_tag.valid then
-                  tag_data.chart_tag.destroy()
-                end
-                -- Remove from storage
-                Cache.remove_stored_tag(tag_data.tag.gps)
-                GameHelpers.player_print(player, "[TeleportFavorites] Tag deleted")
-              else
-                GameHelpers.player_print(player, "[TeleportFavorites] Cannot delete tag as other players have favorited it")
-              end
-            end
-          elseif action == "move" then
-            -- Move tag to valid position
-            local new_position = gps_helpers.map_position_from_gps(updated_tag_data.gps)
-            if new_position and tag_data.tag and tag_data.chart_tag then              local success = PositionValidator.move_tag_to_valid_position(
-                player,
-                tag_data.tag,
-                tag_data.chart_tag,
-                new_position
-              )
-              if success then
-                GameHelpers.player_print(player, "[TeleportFavorites] Tag moved to valid position: " .. updated_tag_data.gps)
-                -- Continue with opening tag editor with updated position
-                Cache.set_tag_editor_data(player, updated_tag_data)
-                tag_editor.build(player)
-              end
-            end
-          end        end)
-        -- Don't continue with normal tag editor opening
-        return
-      end
-    end
-  else
-    tag_data = Cache.create_tag_editor_data()
+    -- Persist gps in tag_editor_data
+    Cache.set_tag_editor_data(player, tag_data)
+    tag_editor.build(player)
   end
-
-  -- Persist gps in tag_editor_data
-  Cache.set_tag_editor_data(player, tag_data)
-  tag_editor.build(player)
 end
 
 local function can_start_drag(fav)
@@ -178,7 +113,8 @@ local function handle_teleport(event, player, fav, slot, did_drag)
 end
 
 local function handle_tag_editor(event, player, fav, slot)
-  if event.button == defines.mouse_button_type.right then    if fav and not FavoriteUtils.is_blank_favorite(fav) then
+  if event.button == defines.mouse_button_type.right then
+    if fav and not FavoriteUtils.is_blank_favorite(fav) then
       -- removed extra gps argument
       open_tag_editor_from_favorite(player, fav)
       return true
@@ -187,7 +123,29 @@ local function handle_tag_editor(event, player, fav, slot)
   return false
 end
 
-local function handle_favorite_slot_click(event, player, favorites)  local element = event.element
+local function handle_toggle_lock(event, player, fav, slot, favorites)
+  if event.button == defines.mouse_button_type.left and event.control then
+    local success, error_msg = favorites:toggle_favorite_lock(slot)
+    if not success then
+      GameHelpers.player_print(player, "Failed to toggle lock: " .. (error_msg or "Unknown error"))
+      return false
+    end    -- Update the slot row to reflect lock state change
+    local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
+    local bar_frame = GuiUtils.find_child_by_name(main_flow, "fave_bar_frame")
+    local bar_flow = bar_frame and GuiUtils.find_child_by_name(bar_frame, "fave_bar_flow")
+    if bar_flow then
+      fave_bar.update_slot_row(player, bar_flow)
+    end
+    
+    local lock_state = fav.locked and "locked" or "unlocked"
+    GameHelpers.player_print(player, lstr("tf-gui.fave_bar_lock_toggled", slot, lock_state))
+    return true
+  end
+  return false
+end
+
+local function handle_favorite_slot_click(event, player, favorites)
+  local element = event.element
   local slot = tonumber(element.name:match("fave_bar_slot_(%d+)"))
   if not slot then return end
   local fav = favorites.favorites[slot]
@@ -197,34 +155,39 @@ local function handle_favorite_slot_click(event, player, favorites)  local eleme
   if FavoriteUtils.is_blank_favorite(fav) then
     return
   end
+
   local pdata = Cache.get_player_data(player)
   local drag_index = pdata.drag_favorite_index
   local did_drag = false
+
   if not drag_index then
     did_drag = handle_drag_start(event, player, fav, slot)
   else
     did_drag = handle_reorder(event, player, favorites, drag_index, slot)
     if did_drag then return end
   end
+
+  -- Handle Ctrl+click to toggle lock state
+  if handle_toggle_lock(event, player, fav, slot, favorites) then return end
+
   if handle_teleport(event, player, fav, slot, did_drag) then return end
-  handle_tag_editor(event, player, fav, slot)
-  -- Always update the slot row after any favorite action to ensure button is visible
-  local main_flow = fave_bar.get_or_create_gui_flow_from_gui_top(player.gui.top)
-  local bar_frame = main_flow and main_flow.fave_bar_frame
-  local bar_flow = bar_frame and bar_frame.fave_bar_flow
+
+  handle_tag_editor(event, player, fav, slot)  -- Always update the slot row after any favorite action to ensure button is visible
+  local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
+  local bar_frame = GuiUtils.find_child_by_name(main_flow, "fave_bar_frame")
+  local bar_flow = bar_frame and GuiUtils.find_child_by_name(bar_frame, "fave_bar_flow")
   if bar_flow then
     fave_bar.update_slot_row(player, bar_flow)
   else
     -- If bar_flow is missing, rebuild the entire favorites bar
-    if main_flow then
-      fave_bar.build(player, main_flow)
-    end
+    fave_bar.build(player, main_flow)
   end
 end
 
 local function handle_visible_fave_btns_toggle_click(player)
-  local main_flow = fave_bar.get_or_create_gui_flow_from_gui_top(player.gui.top)  if not main_flow or not main_flow.valid then return end
-  local slots_row = Helpers.find_child_by_name(main_flow, "fave_bar_slots_flow")
+  local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
+  if not main_flow or not main_flow.valid then return end
+  local slots_row = GuiUtils.find_child_by_name(main_flow, "fave_bar_slots_flow")
   if not slots_row or not slots_row.valid then
     return
   end
