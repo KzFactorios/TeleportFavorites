@@ -215,7 +215,7 @@ FavoriteObserver.__index = FavoriteObserver
 ---@param player LuaPlayer
 ---@return FavoriteObserver
 function FavoriteObserver:new(player)
-  local obj = BaseGuiObserver:new(player, "favorite")
+  local obj = BaseGuiObserver.new(self, player, "favorite")
   setmetatable(obj, self)
   return obj
 end

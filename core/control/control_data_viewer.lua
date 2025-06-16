@@ -44,11 +44,10 @@ end
 ---@param show_flying_text boolean?
 local function rebuild_data_viewer(player, main_flow, active_tab, font_size, show_flying_text)
   local state = load_tab_data(player, active_tab, font_size)
-  GuiUtils.safe_destroy_frame(main_flow, "data_viewer_frame")
-  data_viewer.build(player, main_flow, state)
+  GuiUtils.safe_destroy_frame(main_flow, "data_viewer_frame")  data_viewer.build(player, main_flow, state)
   
   if show_flying_text then
-    data_viewer.show_refresh_flying_text(player)
+    data_viewer.show_refresh_notification(player)
   end
 end
 
@@ -139,14 +138,23 @@ function M.on_data_viewer_gui_click(event)
     GuiUtils.safe_destroy_frame(main_flow, "data_viewer_frame")
     return
   end
-  
-  -- Handle refresh button click in data viewer
+    -- Handle refresh button click in data viewer
   if element.name == "data_viewer_tab_actions_refresh_data_btn" then
     local frame = GuiUtils.find_child_by_name(main_flow, "data_viewer_frame")
     if not (frame and frame.valid) then return end
     
     local active_tab = find_active_tab_from_gui(main_flow)
     rebuild_data_viewer(player, main_flow, active_tab, nil, true)
+    
+    -- Notify observers of data refresh
+    local success, gui_observer = pcall(require, "core.pattern.gui_observer")
+    if success and gui_observer.GuiEventBus then
+      gui_observer.GuiEventBus.notify("data_refreshed", {
+        player = player,
+        type = "data_refreshed",
+        tab = active_tab
+      })
+    end
     return
   end
 end
