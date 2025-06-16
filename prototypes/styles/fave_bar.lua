@@ -3,9 +3,6 @@
 Custom styles for the Favorites Bar GUI (fave_bar)
 ]]
 
--- Use consolidated GUI utilities instead of separate style helpers
-local GuiUtils = require("core.utils.gui_utils")
-
 -- 'data' is a global provided by Factorio during mod loading
 ---@diagnostic disable-next-line: undefined-global
 local gui_style = data.raw["gui-style"].default
@@ -32,8 +29,7 @@ if not gui_style.tf_fave_bar_draggable then
         parent = "draggable_space_header",
         horizontally_stretchable = "on",
         width = 16,
-        height = 0,
-        maximal_height = 100
+        height = 0
     }
 end
 
@@ -54,7 +50,8 @@ if not gui_style.tf_fave_toggle_button then
         type = "button_style",
         parent = "tf_slot_button",
         margin = 2,
-        width = 40,        height = 40,
+        width = 40,
+        height = 40,
         default_graphical_set = {
             -- orange tint: { r = 0.98, g = 0.66, b = 0.22, a = 1 }
             base = { position = { 34, 17 }, corner_size = 8 }
@@ -76,39 +73,48 @@ end
 
 -- Small font button style
 if not gui_style.tf_slot_button_smallfont then
-    gui_style.tf_slot_button_smallfont = GuiUtils.extend_style(gui_style.slot_button, {
+    gui_style.tf_slot_button_smallfont = {
         type = "button_style",
+        parent = "slot_button",
         font = "default-small",
         horizontal_align = "center",
         vertical_align = "bottom",
-        selected_font_color = nil,
-        hovered_font_color = nil,
-        clicked_font_color = nil,
-        disabled_font_color = nil,
         font_color = { r = 1, g = 0.647, b = 0, a = 1 }, -- Factorio orange #ffa500
         top_padding = 0,
         bottom_padding = 2,
         size = { 40, 40 }
-    })
+    }
 end
 
--- Create tinted button variants using consolidated GUI utilities
-GuiUtils.create_tinted_button_styles(gui_style.slot_button, {
-  {
-    name = "tf_slot_button_dragged",
-    -- blue
-    tint = { r = 0.2, g = 0.7, b = 1, a = 1 }
-  },
-  {
-    name = "tf_slot_button_locked", 
-    -- orange
-    tint = { r = 1, g = 0.5, b = 0, a = 1 }
-  },
-  {
-    name = "tf_slot_button_drag_target",
-    -- yellow
-    tint = { r = 1, g = 1, b = 0.2, a = 1 }
-  }
-}, gui_style)
+-- Create tinted button variants manually (can't use GuiUtils during data stage)
+if not gui_style.tf_slot_button_dragged then
+    gui_style.tf_slot_button_dragged = {
+        type = "button_style",
+        parent = "slot_button",
+        default_graphical_set = {
+            base = { position = { 0, 0 }, corner_size = 8, tint = { r = 0.2, g = 0.7, b = 1, a = 1 } }
+        }
+    }
+end
+
+if not gui_style.tf_slot_button_locked then
+    gui_style.tf_slot_button_locked = {
+        type = "button_style", 
+        parent = "slot_button",
+        default_graphical_set = {
+            base = { position = { 0, 0 }, corner_size = 8, tint = { r = 1, g = 0.5, b = 0, a = 1 } }
+        }
+    }
+end
+
+if not gui_style.tf_slot_button_drag_target then
+    gui_style.tf_slot_button_drag_target = {
+        type = "button_style",
+        parent = "slot_button", 
+        default_graphical_set = {
+            base = { position = { 0, 0 }, corner_size = 8, tint = { r = 1, g = 1, b = 0.2, a = 1 } }
+        }
+    }
+end
 
 return true

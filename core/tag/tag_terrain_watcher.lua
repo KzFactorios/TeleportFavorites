@@ -8,13 +8,13 @@ This is event-driven, responding to terrain change events in Factorio rather tha
 using polling mechanisms like on_tick.
 ]]
 
-local Cache = require("__TeleportFavorites__.core.cache.cache")
+local Cache = require("core.cache.cache")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
-local Lookups = require("__TeleportFavorites__.core.cache.lookups")
-local gps_parser = require("__TeleportFavorites__.core.utils.gps_parser")
-local RichTextFormatter = require("__TeleportFavorites__.core.utils.rich_text_formatter")
-local GameHelpers = require("__TeleportFavorites__.core.utils.game_helpers")
-local TerrainValidator = require("core.utils.terrain_validator")
+local Lookups = require("core.cache.lookups")
+local GPSUtils = require("core.utils.gps_utils")
+local RichTextFormatter = require("core.utils.rich_text_formatter")
+local GameHelpers = require("core.utils.game_helpers")
+local PositionUtils = require("core.utils.position_utils")
 
 local tag_terrain_watcher = {}
 
@@ -26,8 +26,8 @@ local MAX_SEARCH_RADIUS = 10
 ---@param position MapPosition The position to check
 ---@return boolean isWater True if the position is on water
 local function is_position_on_water(surface, position)
-  -- Delegate to consolidated terrain validator
-  return TerrainValidator.is_water_tile(surface, position)
+  -- Delegate to consolidated position utils
+  return PositionUtils.is_water_tile(surface, position)
 end
 
 -- Find nearest valid land position for a chart tag
@@ -35,8 +35,8 @@ end
 ---@param position MapPosition The original position
 ---@return MapPosition|nil newPosition The new valid position, or nil if none found
 local function find_nearest_valid_land(surface, position)
-  -- Delegate to consolidated terrain validator
-  return TerrainValidator.find_nearest_walkable_position(surface, position, MAX_SEARCH_RADIUS)
+  -- Delegate to consolidated position utils
+  return PositionUtils.find_nearest_walkable_position(surface, position, MAX_SEARCH_RADIUS)
 end
 
 -- Relocate a chart tag if it's on water
@@ -59,13 +59,11 @@ local function relocate_tag_if_on_water(chart_tag)
     -- No valid land found nearby
     return false
   end
-  
-  -- Remember the old position for reporting
+    -- Remember the old position for reporting
   local old_position = {x = chart_tag.position.x, y = chart_tag.position.y}
   local surface_index = surface.index
-  
-  -- Find the linked tag in our system
-  local old_gps = gps_parser.gps_from_map_position(old_position, surface_index)
+    -- Find the linked tag in our system
+  local old_gps = GPSUtils.gps_from_map_position(old_position, tonumber(surface_index) or 1)
   local tag = Cache.get_tag_by_gps(old_gps)
   
   -- Only proceed if this chart tag is linked to one of our tags
@@ -88,12 +86,10 @@ local function relocate_tag_if_on_water(chart_tag)
   
   -- Add the new chart tag using safe wrapper
   local new_chart_tag = ChartTagUtils.safe_add_chart_tag(force, surface, chart_tag_spec)
-  
-  -- Only proceed if creation was successful
+    -- Only proceed if creation was successful
   if not new_chart_tag or not new_chart_tag.valid then return false end
-  
-  -- Update the GPS reference in our system
-  local new_gps = gps_parser.gps_from_map_position(new_position, surface_index)
+    -- Update the GPS reference in our system
+  local new_gps = GPSUtils.gps_from_map_position(new_position, tonumber(surface_index) or 1)
   
   -- Update tag's chart_tag reference and GPS
   tag.chart_tag = new_chart_tag

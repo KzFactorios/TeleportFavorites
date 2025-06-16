@@ -11,13 +11,13 @@ This module handles:
 - Notifying players about tag relocations due to terrain changes
 ]]
 
-local PositionValidator = require("core.utils.position_validator")
 local Cache = require("core.cache.cache")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
 local GameHelpers = require("core.utils.game_helpers")
 local Lookups = Cache.lookups
-local gps_parser = require("core.utils.gps_helpers")
-local RichTextFormatter = require("__TeleportFavorites__.core.utils.rich_text_formatter")
+local GPSUtils = require("core.utils.gps_utils")
+local PositionUtils = require("core.utils.position_utils")
+local RichTextFormatter = require("core.utils.rich_text_formatter")
 
 -- Removed unused imports:
 -- GPSCore, ErrorHandler, Helpers, basic_helpers, Tag - no usage found
@@ -77,8 +77,8 @@ local function find_valid_position_near_chart_tag(chart_tag, search_radius, play
     -- Get surface from chart tag
     local surface = chart_tag.surface
     if not surface or not surface.valid then return nil end
-    -- Use position validator to find valid position
-    return PositionValidator.find_valid_position(player, chart_tag.position, search_radius)
+    -- Use position utils to find valid position
+    return PositionUtils.find_valid_position(surface, chart_tag.position, search_radius, player)
 end
 
 --- Relocate a chart tag from water to nearby valid land
@@ -92,7 +92,7 @@ function TagTerrainManager.relocate_chart_tag_from_water(chart_tag, search_radiu
     -- Get the tag and a player context
     local surface = chart_tag.surface
     local surface_index = surface and surface.index or 1
-    local gps = gps_parser.gps_from_map_position(chart_tag.position, surface_index)
+    local gps = GPSUtils.gps_from_map_position(chart_tag.position, tonumber(surface_index) or 1)
     local tag = Cache.get_tag_by_gps(gps)
     local player = find_tag_owner(tag, chart_tag)
 
@@ -131,7 +131,7 @@ function TagTerrainManager.relocate_chart_tag_from_water(chart_tag, search_radiu
 
     -- Update the tag with the new chart tag reference
     local old_gps = gps
-    local new_gps = gps_parser.gps_from_map_position(new_position, surface_index)
+    local new_gps = GPSUtils.gps_from_map_position(new_position, tonumber(surface_index) or 1)
 
     -- If there's a tag, update its GPS and references
     if tag then
@@ -162,12 +162,10 @@ function TagTerrainManager.relocate_chart_tag_from_water(chart_tag, search_radiu
     chart_tag.destroy()
 
     -- Refresh cache
-    Lookups.invalidate_surface_chart_tags(surface_index)
-
-    -- Notify affected players if requested
+    Lookups.invalidate_surface_chart_tags(surface_index)    -- Notify affected players if requested
     if notify_players and tag and tag.faved_by_players and #tag.faved_by_players > 0 then
         local message = RichTextFormatter.position_change_notification_terrain(
-            player, new_chart_tag, old_position, new_position, surface_index
+            new_chart_tag, old_position, new_position, tonumber(surface_index) or 1
         )
         for _, player_index in ipairs(tag.faved_by_players) do
             local fav_player = game.get_player(player_index)

@@ -27,7 +27,8 @@ API:
 ]]
 
 local settings_access = require("core.utils.settings_access")
-local gps_helpers = require("core.utils.gps_helpers")
+local GPSUtils = require("core.utils.gps_utils")
+local ChartTagUtils = require("core.utils.chart_tag_utils")
 local Cache = require("core.cache.cache")
 local ErrorHandler = require("core.utils.error_handler")
 local Enum = require("prototypes.enums.enum")
@@ -101,11 +102,19 @@ end
 ---@param gps string
 ---@return MapPosition? position, string error_message
 function BaseTeleportStrategy:get_landing_position(player, gps)
-  local _nrm_tag, nrm_chart_tag, _nrm_favorite = gps_helpers.normalize_landing_position_with_cache(player, gps, Cache)
-  if not nrm_chart_tag then
+  -- Simple approach: get position from GPS and validate
+  local position = GPSUtils.map_position_from_gps(gps)
+  if not position then
+    return nil, LocaleUtils.get_error_string(player, "invalid_gps_format")
+  end
+  
+  -- Find chart tag at this position to validate it exists
+  local chart_tag = ChartTagUtils.find_chart_tag_at_position(player, position)
+  if not chart_tag then
     return nil, LocaleUtils.get_error_string(player, "position_normalization_failed")
   end
-  return nrm_chart_tag.position, ""
+  
+  return chart_tag.position, ""
 end
 
 --- Standard Teleportation Strategy

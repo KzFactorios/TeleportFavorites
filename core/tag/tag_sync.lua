@@ -40,13 +40,13 @@ Notes:
 local Cache = require("core.cache.cache")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
 local ErrorHandler = require("core.utils.error_handler")
-local gps_helpers = require("core.utils.gps_helpers")
-local gps_parser = require("core.utils.gps_parser")
+local GPSUtils = require("core.utils.gps_utils")
+local GPSUtils = require("core.utils.gps_utils")
 local Helpers = require("core.utils.basic_helpers")
 local Lookups = Cache.lookups
 local PlayerFavorites = require("core.favorite.player_favorites")
 local Tag = require("core.tag.tag")
-local ValidationHelpers = require("core.utils.validation_helpers")
+local ValidationUtils = require("core.utils.validation_utils")
 
 ---@class TagSync
 local TagSync = {}
@@ -76,7 +76,7 @@ end
 ---@return string[] issues
 local function validate_sync_inputs(player, tag, new_gps)
   -- Use consolidated validation helper
-  return ValidationHelpers.validate_sync_inputs(player, tag, new_gps)
+  return ValidationUtils.validate_sync_inputs(player, tag, new_gps)
 end
 
 --- Safely extract chart tag properties with nil checks

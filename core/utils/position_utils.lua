@@ -17,7 +17,6 @@ Provides a unified API for all position-related operations throughout the mod.
 local basic_helpers = require("core.utils.basic_helpers")
 local Constants = require("constants")
 local ErrorHandler = require("core.utils.error_handler")
-local gps_helpers = require("core.utils.gps_helpers")
 local GPSUtils = require("core.utils.gps_utils")
 local LocaleUtils = require("core.utils.locale_utils")
 local ValidationUtils = require("core.utils.validation_utils")
@@ -357,10 +356,9 @@ end
 ---@param player LuaPlayer
 ---@param map_position table
 ---@return boolean
-function PositionUtils.position_can_be_tagged(player, map_position)
-  -- Use consolidated validation helper for player and position checks
+function PositionUtils.position_can_be_tagged(player, map_position)  -- Use consolidated validation helper for player and position checks
   local valid, position, error_msg = ValidationUtils.validate_position_operation(player, 
-    gps_helpers.gps_from_map_position(map_position, player and player.surface and player.surface.index or 1))
+    GPSUtils.gps_from_map_position(map_position, player and player.surface and player.surface.index or 1))
   if not valid then
     if error_msg then
       safe_player_print(player, "[TeleportFavorites] " .. error_msg)
@@ -381,9 +379,8 @@ end
 ---@param gps string The GPS string of the destination
 function PositionUtils.print_teleport_event_message(player, gps)
   if not player or not player.valid then return end
-  
-  local surface_index = GPSCore.get_surface_index_from_gps(gps) or 1
-  local coords = GPSCore.coords_string_from_gps(gps)  -- Always show coords if available, otherwise fallback to GPS string
+    local surface_index = GPSUtils.get_surface_index_from_gps(gps) or 1
+  local coords = GPSUtils.coords_string_from_gps(gps)-- Always show coords if available, otherwise fallback to GPS string
   if coords and coords ~= "" then
     safe_player_print(player, LocaleUtils.get_gui_string(player, "teleported_to_surface", {coords, tostring(surface_index)}))
   else

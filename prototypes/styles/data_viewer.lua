@@ -21,8 +21,6 @@ if not gui_style.tf_data_viewer_frame then
     maximal_width = 2000,
     minimal_height = 200,
     maximal_height = 1200,
-    resize_row = true,    -- allow resizing
-    resize_column = true, -- allow resizing
     padding = 0,
     top_margin = 16,
     left_margin = 4,
@@ -67,9 +65,7 @@ gui_style.tf_data_viewer_table = {
   top_padding = 8,
   bottom_padding = 16,
   left_padding = 8,
-  right_padding = 12,
-  width = 1000,
-  maximal_width = 1000
+  right_padding = 12
 }
 
 -- Frame style for data_viewer_frame (make resizable)
@@ -84,8 +80,6 @@ if not gui_style.data_viewer_frame then
     maximal_width = 2000,
     minimal_height = 200,
     maximal_height = 1200,
-    resize_row = true,    -- allow resizing
-    resize_column = true, -- allow resizing
     padding = 0,
     top_margin = 16,
     left_margin = 4,

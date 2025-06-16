@@ -49,7 +49,6 @@ local FavoriteUtils = require("core.favorite.favorite")
 local Constants = require("constants")
 local GPSUtils = require("core.utils.gps_utils")
 local PositionUtils = require("core.utils.position_utils")
-local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local ErrorHandler = require("core.utils.error_handler")
 
 -- Observer Pattern Integration
@@ -278,12 +277,13 @@ function Cache.get_tag_by_gps(gps)
   local uint_surface_index = surface_index --[[@as uint]]
   local tag_cache = Cache.get_surface_tags(uint_surface_index)
   local match_tag = tag_cache[gps] or nil
+  
+  -- Return the tag if it exists and is valid, otherwise return nil
+  -- Let the caller handle destruction of invalid tags to avoid circular dependencies
   if match_tag and PositionUtils.is_walkable_position(surface, match_tag.gps) then
     return match_tag
   end
-  if match_tag then
-    tag_destroy_helper.destroy_tag_and_chart_tag(match_tag, match_tag.chart_tag)
-  end
+  
   return nil
 end
 

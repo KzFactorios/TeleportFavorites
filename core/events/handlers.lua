@@ -54,15 +54,11 @@ local Enum = require("prototypes.enums.enum")
 local ErrorHandler = require("core.utils.error_handler")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local GameHelpers = require("core.utils.game_helpers")
-local gps_helpers = require("core.utils.gps_helpers")
 local basic_helpers = require("core.utils.basic_helpers")
-local gps_parser = require("core.utils.gps_parser")
 local GPSUtils = require("core.utils.gps_utils")
 local Lookups = require("core.cache.lookups")
-local PositionNormalizer = require("core.utils.position_normalizer")
-local PositionValidator = require("core.utils.position_validator")
 local PositionUtils = require("core.utils.position_utils")
-local RichTextFormatter = require("__TeleportFavorites__.core.utils.rich_text_formatter")
+local RichTextFormatter = require("core.utils.rich_text_formatter")
 local Settings = require("core.utils.settings_access")
 local Tag = require("core.tag.tag")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
@@ -125,20 +121,28 @@ function handlers.on_open_tag_editor_custom_input(event)
   local cursor_position = event.cursor_position
   if not cursor_position or not (cursor_position.x and cursor_position.y) then
     return
-  end
-
-  -- Normalize the clicked position and convert to GPS string
-  local normalized_gps = gps_parser.gps_from_map_position(cursor_position, player.surface.index)
-  local nrm_tag, nrm_chart_tag, nrm_favorite = gps_helpers.normalize_landing_position_with_cache(player, normalized_gps,
-    Cache)
-  if not nrm_chart_tag then
+  end  -- Normalize the clicked position and convert to GPS string
+  local normalized_gps = GPSUtils.gps_from_map_position(cursor_position, player.surface.index)
+    -- Simple validation - check if position is valid for tagging
+  if not PositionUtils.is_valid_tag_position(player, cursor_position) then
     -- Play error sound to indicate invalid position
     GameHelpers.safe_play_sound(player, { path = "utility/cannot_build" })
     return
   end
-  local gps = gps_helpers.gps_from_map_position(nrm_chart_tag.position, surface_id)
-
-  -- Get player's teleport radius setting for use in tag editor
+  
+  -- Get normalized position for chart tag creation
+  local normalized_pos = PositionUtils.normalize_position(cursor_position)
+  local surface_index = player.surface.index
+  local gps = GPSUtils.gps_from_map_position(normalized_pos, surface_index)
+  
+  -- Try to find existing chart tag at this position
+  local nrm_chart_tag = ChartTagUtils.find_chart_tag_at_position(player, normalized_pos)
+  
+  -- Get existing tag from cache if available
+  local nrm_tag = Cache.get_tag_by_gps(gps)
+  
+  -- Check if this is a player favorite
+  local nrm_favorite = Cache.is_player_favorite(player, gps)  -- Get player's teleport radius setting for use in tag editor
   local player_settings = Settings:getPlayerSettings(player)
   local search_radius = player_settings.teleport_radius or Constants.settings.TELEPORT_RADIUS_DEFAULT
 
@@ -171,10 +175,9 @@ function handlers.on_chart_tag_added(event)
   -- Check if the chart tag coordinates need normalization
   local position = chart_tag.position
   if not position then return end
-
   if not basic_helpers.is_whole_number(position.x) or not basic_helpers.is_whole_number(position.y) then
     -- Need to normalize this chart tag to whole numbers
-    local position_pair = PositionNormalizer.create_position_pair(position)
+    local position_pair = PositionUtils.create_position_pair(position)
     -- Create new chart tag at normalized position using centralized builder
     local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(
       position_pair.new,
@@ -237,15 +240,14 @@ end
 local function extract_gps(event, player)
   local new_gps = nil
   local old_gps = nil
-
   if event.tag and event.tag.position and player then
     local surface_index = (event.tag.surface and event.tag.surface.index) or player.surface.index
-    new_gps = gps_parser.gps_from_map_position(event.tag.position, surface_index)
+    new_gps = GPSUtils.gps_from_map_position(event.tag.position, surface_index)
   end
 
   if event.old_position and player then
     local surface_index = (event.old_surface and event.old_surface.index) or player.surface.index
-    old_gps = gps_parser.gps_from_map_position(event.old_position, surface_index)
+    old_gps = GPSUtils.gps_from_map_position(event.old_position, surface_index)
   end
 
   return new_gps, old_gps
@@ -348,10 +350,9 @@ function handlers.on_chart_tag_modified(event)
   local chart_tag = event.tag
   ---@cast player LuaPlayer
   if chart_tag and chart_tag.valid and chart_tag.position and player and player.valid then
-    local position = chart_tag.position
-    -- Ensure coordinates are whole numbers
-    if PositionNormalizer.needs_normalization(position) then
-      local position_pair = PositionNormalizer.create_position_pair(position)
+    local position = chart_tag.position    -- Ensure coordinates are whole numbers
+    if PositionUtils.needs_normalization(position) then
+      local position_pair = PositionUtils.create_position_pair(position)
       -- Create new chart tag with normalized position
       local surface = chart_tag.surface
       -- Create chart tag spec using centralized builder
@@ -371,10 +372,8 @@ function handlers.on_chart_tag_modified(event)
 
         -- Use the position_pair for consistent position references
         local old_position = position_pair.old
-        local new_position = position_pair.new
-
-        -- Create new GPS from normalized position
-        new_gps = gps_parser.gps_from_map_position(new_position, surface_index)
+        local new_position = position_pair.new        -- Create new GPS from normalized position
+        new_gps = GPSUtils.gps_from_map_position(new_position, surface_index)
 
         -- Refresh the cache
         Lookups.invalidate_surface_chart_tags(surface_index)
@@ -406,10 +405,9 @@ end
 --- Handle chart tag removal events
 ---@param event table Chart tag removal event data
 function handlers.on_chart_tag_removed(event)
-  if not event or not event.tag or not event.tag.valid then return end
-  local chart_tag = event.tag
+  if not event or not event.tag or not event.tag.valid then return end  local chart_tag = event.tag
   local surface_index = (chart_tag.surface and chart_tag.surface.index) or 1
-  local gps = gps_parser.gps_from_map_position(chart_tag.position, surface_index)
+  local gps = GPSUtils.gps_from_map_position(chart_tag.position, surface_index)
 
   -- Get the player who is removing the chart tag
   local tag = Cache.get_tag_by_gps(gps)
@@ -548,10 +546,9 @@ function handlers.on_debug_tile_info_custom_input(event)
   else
     table.insert(debug_info, "Pathfinding result: No valid position found")
   end
-
   -- Test position validation
   -- skip notification
-  local is_valid_pos = PositionValidator.is_valid_tag_position(player, pos, true)
+  local is_valid_pos = PositionUtils.is_valid_tag_position(player, pos, true)
   table.insert(debug_info, "Valid for tagging: " .. tostring(is_valid_pos))
 
   -- Check for nearby chart tags

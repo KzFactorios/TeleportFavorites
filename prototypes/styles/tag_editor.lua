@@ -21,7 +21,8 @@ if not gui_style.tf_tag_editor_outer_frame then  gui_style.tf_tag_editor_outer_f
     bottom_padding = 8, -- Base vanilla: 8 (16 ÷ 2)
     left_padding = 8,   -- Base vanilla: 8 (16 ÷ 2)
     horizontally_stretchable = "on",
-    vertically_stretchable = "on",    minimal_width = 342,  -- Reduced by 16px from 358    natural_width = 342,  -- Set natural width to match
+    vertically_stretchable = "on",
+    minimal_width = 342,  -- Reduced by 16px from 358
     -- Base vanilla: 1080 (2160 ÷ 2)
     maximal_height = 1080
     -- Remove maximal_width constraint to allow stretching
@@ -72,8 +73,6 @@ if not gui_style.tf_tag_editor_owner_label then
     font = "default-bold",
     font_color = { r = 1, g = .9, b = .75, a = 1 },
     horizontally_stretchable = "on",    
-    minimal_width = 200,    
-    natural_width = 264, -- Reduced proportionally for 342px dialog
     width = 264,         -- Reduced proportionally for 342px dialog
     single_line = true,
     horizontal_align = "left",
@@ -144,11 +143,9 @@ if not gui_style.tf_teleport_button then
   gui_style.tf_teleport_button = {
     type = "button_style",
     parent = "tf_orange_button",
-    width = 0,
-    maximal_width = 400,
     height = 36,                     -- exact height
     horizontally_stretchable = "on", 
-    vertically_stretchable = "off",  
+    vertically_stretchable = "off",
     top_margin = 3,
     right_margin = 3,
     left_margin = 9,
@@ -244,9 +241,7 @@ if not gui_style.tf_tag_editor_error_row_frame then
     bottom_margin = 0,
     left_margin = 0,
 
-    height = 0,
     minimal_height = 60, -- Increased minimum height for wrapped text
-    width = 0,    
     minimal_width = 304, 
     maximal_width = 314,
     background_graphical_set = {
@@ -268,15 +263,7 @@ if not gui_style.tf_tag_editor_error_label then
     vertically_stretchable = "on",
     single_line = false,
     minimal_width = 264,
-    minimal_height = 54, -- Increased minimum height for wrapped text
-    top_padding = 0,
-    right_padding = 0,
-    bottom_padding = 0,
-    left_padding = 0,
-    top_margin = 0,
-    right_margin = 0,
-    bottom_margin = 0,
-    left_margin = 0
+    minimal_height = 54 -- Increased minimum height for wrapped text
   }
 end
 
