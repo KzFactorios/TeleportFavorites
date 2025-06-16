@@ -14,9 +14,12 @@ Features:
 ]]
 
 -- Import controllers for various mod components
-local control_fave_bar = require("core.control.control_fave_bar")       -- Required for favorites bar functionality
-local control_tag_editor = require("core.control.control_tag_editor")   -- Required for tag editor functionality
-local control_data_viewer = require("core.control.control_data_viewer") -- Used for data viewer registration
+-- Required for favorites bar functionality
+local control_fave_bar = require("core.control.control_fave_bar")
+-- Required for tag editor functionality
+local control_tag_editor = require("core.control.control_tag_editor")
+-- Used for data viewer registration
+local control_data_viewer = require("core.control.control_data_viewer")
 
 -- Import event handling components
 local event_registration_dispatcher = require("core.events.event_registration_dispatcher")

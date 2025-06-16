@@ -37,15 +37,16 @@ Notes:
 - Follows established ErrorHandler patterns from other refactored modules
 --]]
 ---@diagnostic disable: undefined-global
-local Tag = require("core.tag.tag")
-local gps_helpers = require("core.utils.gps_helpers")
-local PlayerFavorites = require("core.favorite.player_favorites")
-local Helpers = require("core.utils.basic_helpers")
 local Cache = require("core.cache.cache")
-local gps_parser = require("core.utils.gps_parser")
-local Lookups = Cache.lookups
+local ChartTagUtils = require("core.utils.chart_tag_utils")
 local ErrorHandler = require("core.utils.error_handler")
-local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
+local GPSChartHelpers = require("core.utils.gps_chart_helpers")
+local gps_helpers = require("core.utils.gps_helpers")
+local gps_parser = require("core.utils.gps_parser")
+local Helpers = require("core.utils.basic_helpers")
+local Lookups = Cache.lookups
+local PlayerFavorites = require("core.favorite.player_favorites")
+local Tag = require("core.tag.tag")
 local ValidationHelpers = require("core.utils.validation_helpers")
 
 ---@class TagSync
@@ -144,11 +145,9 @@ function TagSync.add_new_chart_tag(player, normal_pos, text, icon)
     text = text
   })
   
-  local success, result = pcall(function()
-    -- Create chart tag spec using centralized builder
-    local chart_tag_spec = ChartTagSpecBuilder.build(normal_pos, nil, player, text)
+  local success, result = pcall(function()    -- Create chart tag spec using centralized builder
+    local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(normal_pos, nil, player, text)
     
-    local GPSChartHelpers = require("core.utils.gps_chart_helpers")
     return GPSChartHelpers.safe_add_chart_tag(game.forces["player"], player.surface, chart_tag_spec)
   end)
     if not success then

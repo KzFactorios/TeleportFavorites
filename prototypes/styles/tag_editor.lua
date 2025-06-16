@@ -21,9 +21,9 @@ if not gui_style.tf_tag_editor_outer_frame then  gui_style.tf_tag_editor_outer_f
     bottom_padding = 8, -- Base vanilla: 8 (16 ÷ 2)
     left_padding = 8,   -- Base vanilla: 8 (16 ÷ 2)
     horizontally_stretchable = "on",
-    vertically_stretchable = "on",    minimal_width = 342,  -- Reduced by 16px from 358
-    natural_width = 342,  -- Set natural width to match
-    maximal_height = 1080 -- Base vanilla: 1080 (2160 ÷ 2)
+    vertically_stretchable = "on",    minimal_width = 342,  -- Reduced by 16px from 358    natural_width = 342,  -- Set natural width to match
+    -- Base vanilla: 1080 (2160 ÷ 2)
+    maximal_height = 1080
     -- Remove maximal_width constraint to allow stretching
   }
 end
@@ -190,7 +190,9 @@ if not gui_style.tf_tag_editor_last_row then
     horizontally_stretchable = "on",
     vertically_stretchable = "on",
     top_margin = 4,
-    -- Allow vertical stretching for child elements    top_padding = 0,     -- Remove padding to let draggable fill completely
+    -- Allow vertical stretching for child elements
+    top_padding = 0,
+    -- Remove padding to let draggable fill completely
     bottom_padding = 0,  -- Remove padding to let draggable fill completely
     left_padding = 0,    -- Keep horizontal padding for button spacing
     right_padding = 0,   -- Keep horizontal padding for button spacing

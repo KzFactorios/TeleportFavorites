@@ -53,6 +53,10 @@ EventRegistrationDispatcher.register_terrain_events(script)
 --]]
 
 local ErrorHandler = require("core.utils.error_handler")
+local GameHelpers = require("core.utils.game_helpers")
+local Settings = require("core.utils.settings_access")
+local fave_bar = require("gui.favorites_bar.fave_bar")
+local ChartTagUtils = require("core.utils.chart_tag_utils")
 
 ---@class EventRegistrationDispatcher
 local EventRegistrationDispatcher = {}
@@ -61,7 +65,6 @@ local EventRegistrationDispatcher = {}
 local gui_event_dispatcher = require("core.events.gui_event_dispatcher")
 local custom_input_dispatcher = require("core.events.custom_input_dispatcher")
 local on_gui_closed_handler = require("core.events.on_gui_closed_handler")
-local tag_terrain_watcher = require("core.tag.tag_terrain_watcher")
 local handlers = require("core.events.handlers")
 local control_data_viewer = require("core.control.control_data_viewer")
 
@@ -86,11 +89,9 @@ local function create_safe_event_handler(handler, handler_name, event_type)
       
       -- Show player message for user-facing errors if applicable
       if event and event.player_index then
-        local player = game.get_player(event.player_index)
-        if player and player.valid then
+        local player = game.get_player(event.player_index)        if player and player.valid then
           -- Only show generic error message for critical failures
           if event_type:find("gui") or event_type:find("input") then
-            local GameHelpers = require("core.utils.game_helpers")
             GameHelpers.player_print(player, {"tf-error.event_handler_error"})
           end
         end
@@ -158,12 +159,8 @@ function EventRegistrationDispatcher.register_core_events(script)
         end
       end,
       name = "on_player_left_game"
-    },
-    [defines.events.on_runtime_mod_setting_changed] = {
-      handler = function(event)
-        local Settings = require("core.utils.settings_access")
-        local fave_bar = require("gui.favorites_bar.fave_bar")
-        
+    },    [defines.events.on_runtime_mod_setting_changed] = {
+      handler = function(event)        
         -- Handle changes to the favorites on/off setting
         if event.setting == "favorites-on" then
           for _, player in pairs(game.connected_players) do
@@ -175,17 +172,19 @@ function EventRegistrationDispatcher.register_core_events(script)
             end
           end
           return
-        end
-
-        -- Handle changes to the teleport radius
+        end        -- Handle changes to the teleport radius
         if event.setting == "teleport-radius" then
-          if log then log("[TeleportFavorites] Teleport radius setting changed for player " .. event.player_index) end
+          ErrorHandler.debug_log("Teleport radius setting changed", {
+            player_index = event.player_index
+          })
           return
         end
 
         -- Handle changes to the destination message setting
         if event.setting == "destination-msg-on" then
-          if log then log("[TeleportFavorites] Destination message setting changed for player " .. event.player_index) end
+          ErrorHandler.debug_log("Destination message setting changed", {
+            player_index = event.player_index
+          })
           return
         end
       end,
@@ -312,17 +311,15 @@ function EventRegistrationDispatcher.register_terrain_events(script)
     ErrorHandler.warn_log("Invalid script object for terrain events registration")
     return false
   end
+    ErrorHandler.debug_log("Registering terrain events")
+    local success = true
   
-  ErrorHandler.debug_log("Registering terrain events")
-  
-  local success = true
-  
-  -- Register terrain watcher events
-  local terrain_success = pcall(tag_terrain_watcher.register, script)
+  -- Register chart tag terrain protection events (replaces old relocation system)
+  local terrain_success = pcall(ChartTagUtils.register_terrain_events, script)
   if not terrain_success then
-    ErrorHandler.warn_log("Failed to register terrain events through tag_terrain_watcher")
+    ErrorHandler.warn_log("Failed to register terrain protection events through ChartTagUtils")
     success = false
-  end  
+  end
   ErrorHandler.debug_log("Terrain events registration complete", { success = success })
   
   return success

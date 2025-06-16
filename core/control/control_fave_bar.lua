@@ -7,7 +7,6 @@ local PlayerFavorites = require("core.favorite.player_favorites")
 local FavoriteUtils = require("core.favorite.favorite")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local Cache = require("core.cache.cache")
-local Utils = require("core.utils.utils")
 local tag_editor = require("gui.tag_editor.tag_editor")
 local gps_helpers = require("core.utils.gps_helpers")
 local gps_core = require("core.utils.gps_utils")
@@ -56,11 +55,11 @@ local function reorder_favorites(player, favorites, drag_index, slot)
       and drag_index > 0
       and drag_index <= #favs
   if valid_drag then
-    local drag_fav = favs[drag_index]
-    if is_locked_favorite(drag_fav) then
+    local drag_fav = favs[drag_index]    if is_locked_favorite(drag_fav) then
       Helpers.player_print(player, lstr("tf-gui.fave_bar_locked_move"))
       clear_drag_state(player)
-      return true -- handled
+      -- handled
+      return true
     end
     local moved = table.remove(favs, drag_index)
     table.insert(favs, slot, moved)
@@ -80,10 +79,10 @@ local function reorder_favorites(player, favorites, drag_index, slot)
     local bar_flow = bar_frame and bar_frame.fave_bar_flow
     if bar_flow then
       fave_bar.update_slot_row(player, bar_flow)
-    end
-    Helpers.player_print(player, lstr("tf-gui.fave_bar_reordered", drag_index, slot))
+    end    Helpers.player_print(player, lstr("tf-gui.fave_bar_reordered", drag_index, slot))
     clear_drag_state(player)
-    return true -- handled
+    -- handled
+    return true
   end
   clear_drag_state(player)
   return false
@@ -91,9 +90,10 @@ end
 
 ---@param player LuaPlayer
 ---@param fav Favorite
-local function teleport_to_favorite(player, fav) -- Check if we need to add nil check annotation
+-- Check if we need to add nil check annotation
+local function teleport_to_favorite(player, fav)
   if not fav or not fav.gps then return end
-  Helpers.safe_teleport(player, gps_core.map_position_from_gps(fav.gps))
+  GameHelpers.safe_teleport(player, gps_core.map_position_from_gps(fav.gps))
 end
 
 local function open_tag_editor_from_favorite(player, favorite)
@@ -147,9 +147,9 @@ local function open_tag_editor_from_favorite(player, favorite)
                 tag_editor.build(player)
               end
             end
-          end
-        end)
-        return -- Don't continue with normal tag editor opening
+          end        end)
+        -- Don't continue with normal tag editor opening
+        return
       end
     end
   else
@@ -194,9 +194,9 @@ local function handle_teleport(event, player, fav, slot, did_drag)
 end
 
 local function handle_tag_editor(event, player, fav, slot)
-  if event.button == defines.mouse_button_type.right then
-    if fav and not FavoriteUtils.is_blank_favorite(fav) then
-      open_tag_editor_from_favorite(player, fav) -- removed extra gps argument
+  if event.button == defines.mouse_button_type.right then    if fav and not FavoriteUtils.is_blank_favorite(fav) then
+      -- removed extra gps argument
+      open_tag_editor_from_favorite(player, fav)
       return true
     end
   end

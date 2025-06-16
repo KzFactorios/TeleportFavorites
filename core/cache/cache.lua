@@ -45,12 +45,12 @@ storage = {
 
 local mod_version = require("core.utils.version")
 local Lookups = require("__TeleportFavorites__.core.cache.lookups")
-local basic_helpers = require("core.utils.basic_helpers")
 local FavoriteUtils = require("core.favorite.favorite")
 local Constants = require("constants")
-local GPSParser = require("core.utils.gps_parser")
-local game_helpers = require("core.utils.game_helpers")
+local GPSUtils = require("core.utils.gps_utils")
+local PositionUtils = require("core.utils.position_utils")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
+local ErrorHandler = require("core.utils.error_handler")
 
 -- Observer Pattern Integration
 local function notify_observers_safe(event_type, data)
@@ -195,7 +195,8 @@ function Cache.get_player_data(player)
 end
 
 ---@param player LuaPlayer
----@return table[] -- Returns the player's favorites array, or an empty table if not found.
+-- Returns the player's favorites array, or an empty table if not found.
+---@return table[]
 function Cache.get_player_favorites(player)
   local player_data = Cache.get_player_data(player)
   local favorites = player_data.surfaces[player.surface.index].favorites or {}
@@ -253,7 +254,9 @@ function Cache.remove_stored_tag(gps)
   local surface_index = get_surface_index_from_gps(gps)
   if not surface_index or surface_index < 1 then return end
 
-  local tag_cache = Cache.get_surface_tags(surface_index)
+  local safe_surface_index = tonumber(surface_index) and math.floor(surface_index) or nil
+  if not safe_surface_index or safe_surface_index < 1 then return end
+  local tag_cache = Cache.get_surface_tags(safe_surface_index)
   if not tag_cache[gps] then return end
 
   tag_cache[gps] = nil
@@ -265,14 +268,14 @@ end
 --- @return Tag|nil
 function Cache.get_tag_by_gps(gps)
   if not gps or gps == "" then return nil end
-  local surface_index = GPSParser.get_surface_index_from_gps(gps)
+  local surface_index = GPSUtils.get_surface_index_from_gps(gps)
   if not surface_index or surface_index < 1 then return nil end
   local surface = game.surfaces[surface_index]
   if not surface then return nil end
 
   local tag_cache = Cache.get_surface_tags(surface_index)
   local match_tag = tag_cache[gps] or nil
-  if match_tag and game_helpers.is_walkable_position(surface, match_tag.gps) then
+  if match_tag and PositionUtils.is_walkable_position(surface, match_tag.gps) then
     return match_tag
   end
   if match_tag then
@@ -432,9 +435,9 @@ function Cache.create_tag_editor_data(options)
     icon = "",
     text = "",
     tag = nil,
-    chart_tag = nil,
-    error_message = "",
-    search_radius = nil -- Will be set from player settings if not provided
+    chart_tag = nil,    error_message = "",
+    -- Will be set from player settings if not provided
+    search_radius = nil
   }
 
   if not options or type(options) ~= "table" then

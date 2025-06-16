@@ -71,19 +71,28 @@ local function setup_tag_editor_ui(refs, tag_data, player)
         -- Move button only enabled if player is owner AND in chart mode
         -- Disabled if: not owner, or not in chart mode
         local in_chart_mode = (player.render_mode == defines.render_mode.chart or player.render_mode == defines.render_mode.chart_zoomed_in)
-        local can_move = is_owner and in_chart_mode
-        Helpers.set_button_state(refs.move_btn, can_move)
-    end    if refs.delete_btn then Helpers.set_button_state(refs.delete_btn, can_delete) end    -- Confirm button enabled only if text input has content or icon is selected
+        local can_move = is_owner and in_chart_mode        Helpers.set_button_state(refs.move_btn, can_move)
+    end
+    
+    if refs.delete_btn then 
+        Helpers.set_button_state(refs.delete_btn, can_delete) 
+    end
+    
+    -- Confirm button enabled only if text input has content or icon is selected
     local has_text = tag_data.text and tag_data.text ~= ""
     local function has_valid_icon(icon)
         if not icon or icon == "" then return false end
         if type(icon) == "string" then return true end
         if type(icon) == "table" then return icon.name or icon.type end
         return false
-    end
-    local has_icon = has_valid_icon(tag_data.icon)
+    end    local has_icon = has_valid_icon(tag_data.icon)
     local can_confirm = has_text or has_icon
-    if refs.confirm_btn then Helpers.set_button_state(refs.confirm_btn, can_confirm) end    -- Button style/tooltips
+    
+    if refs.confirm_btn then 
+        Helpers.set_button_state(refs.confirm_btn, can_confirm) 
+    end
+    
+    -- Button style/tooltips
     if refs.icon_btn then refs.icon_btn.tooltip = { "tf-gui.icon_tooltip" } end
     if refs.move_btn then refs.move_btn.tooltip = { "tf-gui.move_tooltip" } end
     if refs.delete_btn then refs.delete_btn.tooltip = { "tf-gui.delete_tooltip" } end
@@ -131,20 +140,25 @@ local function build_titlebar(parent)
     local titlebar, title_label, _cb = GuiBase.create_titlebar(parent, "tag_editor_titlebar",
         "tag_editor_title_row_close")
     ---@diagnostic disable-next-line: assign-type-mismatch
-    title_label.caption = { "tf-gui.tag_editor_title" } -- Set caption on the label, not the titlebar flow
+    -- Set caption on the label, not the titlebar flow
+    title_label.caption = { "tf-gui.tag_editor_title" }
     return titlebar, title_label
 end
 
 local function build_owner_row(parent, tag_data)
     -- Create a frame with a fixed height for the owner row
-    local row_frame = GuiBase.create_frame(parent, "tag_editor_owner_row_frame", "horizontal", "tf_owner_row_frame") -- Create a horizontal flow for the label - this will take up all available space
-    local label_flow = GuiBase.create_hflow(row_frame, "tag_editor_label_flow")                                      -- Create the label within the flow - it will stretch with its container
+    -- Create a horizontal flow for the label - this will take up all available space
+    local row_frame = GuiBase.create_frame(parent, "tag_editor_owner_row_frame", "horizontal", "tf_owner_row_frame")
+    -- Create the label within the flow - it will stretch with its container
+    local label_flow = GuiBase.create_hflow(row_frame, "tag_editor_label_flow")
+    -- Create a flow for the buttons
     local label = GuiBase.create_label(label_flow, "tag_editor_owner_label",
-        "", "tf_tag_editor_owner_label")                                                                             -- Create a flow for the buttons
+        "", "tf_tag_editor_owner_label")
     ---@diagnostic disable-next-line: assign-type-mismatch
     label.caption = { "tf-gui.tag_editor_title" }
 
-    local button_flow = GuiBase.create_hflow(row_frame, "tag_editor_button_flow") -- Add buttons to the button flow
+    -- Add buttons to the button flow
+    local button_flow = GuiBase.create_hflow(row_frame, "tag_editor_button_flow")
     local move_button = GuiBase.create_icon_button(button_flow, "tag_editor_move_button", Enum.SpriteEnum.MOVE,
         nil, "tf_move_button")
     local delete_button = GuiBase.create_icon_button(button_flow, "tag_editor_delete_button", Enum.SpriteEnum.TRASH,
@@ -164,11 +178,10 @@ local function build_teleport_favorite_row(parent, tag_data)
     local fave_style = tag_data.is_favorite and "slot_orange_favorite_on" or "slot_orange_favorite_off"
 
     local favorite_btn = GuiBase.create_icon_button(row, "tag_editor_is_favorite_button", star_state,
-        nil, fave_style)
-
-    local teleport_btn = GuiBase.create_icon_button(row, "tag_editor_teleport_button", "",
+        nil, fave_style)    local teleport_btn = GuiBase.create_icon_button(row, "tag_editor_teleport_button", "",
         nil,
-        "tf_teleport_button") -- Use gps for caption, fallback to move_gps if in move mode, else fallback
+        -- Use gps for caption, fallback to move_gps if in move mode, else fallback
+        "tf_teleport_button")
     local coords = gps_core.coords_string_from_gps(tag_data.gps) or "no destination"
     ---@diagnostic disable-next-line: assign-type-mismatch
     teleport_btn.caption = { "tf-gui.teleport_to", coords }
@@ -177,14 +190,14 @@ end
 
 local function build_rich_text_row(parent, tag_data)
     local row = GuiBase.create_hflow(parent, "tag_editor_rich_text_row")
-    local icon_btn = GuiBase.create_element("choose-elem-button", row,
-        {
+    local icon_btn = GuiBase.create_element("choose-elem-button", row,        {
             name = "tag_editor_icon_button",
             tooltip = { "tf-gui.icon_tooltip" },
             style = "tf_slot_button",
             elem_type = "signal",
             signal = tag_data.icon or ""
-        }) -- Create textbox and set value from storage (tag_data)
+        })
+    -- Create textbox and set value from storage (tag_data)
     local text_input = GuiBase.create_textbox(row, "tag_editor_rich_text_input",
         tag_data.text or "", "tf_tag_editor_text_input", true)
     return row, icon_btn, text_input

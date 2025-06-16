@@ -8,6 +8,7 @@ local Cache = require("core.cache.cache")
 local Utils = require("core.utils.utils")
 local GuiUtils = require("core.utils.gui_utils")
 local CollectionUtils = require("core.utils.collection_utils")
+local ErrorHandler = require("core.utils.error_handler")
 local safe_destroy_frame = GuiUtils.safe_destroy_frame
 local Lookups = require("core.cache.lookups")
 
@@ -147,11 +148,14 @@ function M.on_data_viewer_tab_click(event)
     local keys = CollectionUtils.map(state.data, extract_key)
     dkeys = table.concat(keys, ", ")
   else
-    dkeys = tostring(state.data)
-  end
-  log("[TF DataViewer] Data type for tab '" .. tab_key .. "': " .. dtype .. ", keys: " .. dkeys)
-  log("[TF DataViewer] State passed to data_viewer.build: active_tab=" ..
-    tostring(state.active_tab) .. ", font_size=" .. tostring(font_size))
+    dkeys = tostring(state.data)  end
+  ErrorHandler.debug_log("Data viewer state", {
+    tab_key = tab_key,
+    data_type = dtype,
+    data_keys = dkeys,
+    active_tab = tostring(state.active_tab),
+    font_size = tostring(font_size)
+  })
   
   rebuild_data_viewer(player, main_flow, tab_key, font_size)
 end

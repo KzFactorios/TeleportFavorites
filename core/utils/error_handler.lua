@@ -8,7 +8,9 @@ Provides consistent error reporting and logging patterns.
 ]]
 
 local Constants = require("constants")
-local GameHelpers = require("core.utils.game_helpers")
+
+-- Prevent infinite recursion in error handling
+local _in_error_handler = false
 
 ---@class ErrorResult
 ---@field success boolean
@@ -62,20 +64,32 @@ function ErrorHandler.handle_error(result, player, should_print)
     return false
   end
   
-  should_print = should_print ~= false -- default to true
-  
-  -- Log error for debugging
-  if result.context then
-    log("[TeleportFavorites] Error: " .. result.error_type .. " - " .. result.message .. 
-        " Context: " .. serpent.line(result.context))
-  else
-    log("[TeleportFavorites] Error: " .. result.error_type .. " - " .. result.message)
+  -- Prevent infinite recursion
+  if _in_error_handler then
+    return true
   end
-    -- Show message to player if requested
-  if should_print and player and player.valid then
-    GameHelpers.player_print(player, "[TeleportFavorites] " .. result.message)
+  _in_error_handler = true
+  
+  -- default to true
+  should_print = should_print ~= false
+  
+  -- Simple logging to prevent recursion issues
+  pcall(function()
+    if result.context then
+      log("[TeleportFavorites] Error: " .. (result.error_type or "unknown") .. " - " .. (result.message or "no message"))
+    else
+      log("[TeleportFavorites] Error: " .. (result.error_type or "unknown") .. " - " .. (result.message or "no message"))
+    end
+  end)
+  
+  -- Show message to player if requested
+  if should_print and player and player.valid and type(player.print) == "function" then
+    pcall(function()
+      player.print("[TeleportFavorites] " .. (result.message or "Unknown error"))
+    end)
   end
   
+  _in_error_handler = false
   return true
 end
 
@@ -83,22 +97,36 @@ end
 ---@param message string
 ---@param context table?
 function ErrorHandler.debug_log(message, context)
-  if context then
-    log("[TeleportFavorites] DEBUG: " .. message .. " - " .. serpent.line(context))
-  else
-    log("[TeleportFavorites] DEBUG: " .. message)
-  end
+  if _in_error_handler then return end
+  _in_error_handler = true
+  
+  pcall(function()
+    if context then
+      log("[TeleportFavorites] DEBUG: " .. message)
+    else
+      log("[TeleportFavorites] DEBUG: " .. message)
+    end
+  end)
+  
+  _in_error_handler = false
 end
 
 --- Warning logging helper  
 ---@param message string
 ---@param context table?
 function ErrorHandler.warn_log(message, context)
-  if context then
-    log("[TeleportFavorites] WARNING: " .. message .. " - " .. serpent.line(context))
-  else
-    log("[TeleportFavorites] WARNING: " .. message)
-  end
+  if _in_error_handler then return end
+  _in_error_handler = true
+  
+  pcall(function()
+    if context then
+      log("[TeleportFavorites] WARNING: " .. message)
+    else
+      log("[TeleportFavorites] WARNING: " .. message)
+    end
+  end)
+  
+  _in_error_handler = false
 end
 
 return ErrorHandler

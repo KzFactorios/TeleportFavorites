@@ -17,6 +17,7 @@ Provides a unified API for all GUI operations throughout the mod.
 local ErrorHandler = require("core.utils.error_handler")
 local basic_helpers = require("core.utils.basic_helpers")
 local GuiBase = require("gui.gui_base")
+local GameHelpers = require("core.utils.game_helpers")
 
 ---@class GuiUtils
 local GuiUtils = {}
@@ -34,15 +35,14 @@ function GuiUtils.handle_error(player, message, level, log_to_console)
   level = level or 'error'
   log_to_console = log_to_console ~= false
   local msg = (type(message) == 'table' and table.concat(message, ' ')) or tostring(message)
-  
-  -- Notify player if available
-  if player and player.valid and type(player.print) == 'function' then
+    -- Notify player if available
+  if player and player.valid then
     if level == 'error' then
-      player.print({ '', '[color=red][ERROR] ', msg, '[/color]' }, { r = 1, g = 0.2, b = 0.2 })
+      GameHelpers.player_print(player, { '', '[color=red][ERROR] ', msg, '[/color]' })
     elseif level == 'warn' then
-      player.print({ '', '[color=orange][WARN] ', msg, '[/color]' }, { r = 1, g = 0.5, b = 0 })
+      GameHelpers.player_print(player, { '', '[color=orange][WARN] ', msg, '[/color]' })
     else
-      player.print({ '', '[color=white][INFO] ', msg, '[/color]' }, { r = 1, g = 1, b = 1 })
+      GameHelpers.player_print(player, { '', '[color=white][INFO] ', msg, '[/color]' })
     end
   end
   

@@ -5,11 +5,8 @@
 
 local tag_editor = require("gui.tag_editor.tag_editor")
 local Cache = require("core.cache.cache")
-local Utils = require("core.utils.utils")
 local GuiUtils = require("core.utils.gui_utils")
 local GameHelpers = require("core.utils.game_helpers")
-local safe_destroy_frame = GuiUtils.safe_destroy_frame
-local PlayerFavorites = require("core.favorite.player_favorites")
 local GPSUtils = require("core.utils.gps_utils")
 local Constants = require("constants")
 local Enum = require("prototypes.enums.enum")
@@ -24,7 +21,7 @@ local M = {}
 
 local function refresh_tag_editor(player, tag_data)
   Cache.set_tag_editor_data(player, tag_data)
-  Helpers.safe_destroy_frame(player.gui.screen, "tag_editor_frame")
+  GuiUtils.safe_destroy_frame(player.gui.screen, "tag_editor_frame")
   tag_editor.build(player)
 end
 
@@ -34,8 +31,6 @@ local function show_tag_editor_error(player, tag_data, message)
 end
 
 local function update_favorite_state(player, tag, is_favorite)
-  Helpers.update_favorite_state(player, tag, is_favorite, PlayerFavorites)
-
   -- Notify observers of favorite change
   GuiEventBus.notify(is_favorite and "favorite_added" or "favorite_removed", {
     player = player,
@@ -46,8 +41,6 @@ local function update_favorite_state(player, tag, is_favorite)
 end
 
 local function update_tag_chart_fields(tag, text, icon, player)
-  Helpers.update_tag_chart_fields(tag, text, icon, player)
-
   -- Notify observers of tag modification
   GuiEventBus.notify("tag_modified", {
     player = player,
@@ -64,8 +57,8 @@ end
 local function close_tag_editor(player)
   -- Always clear tag_editor_data and close all tag editor frames
   Cache.set_tag_editor_data(player, {})
-  Helpers.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
-  Helpers.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
+  GuiUtils.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+  GuiUtils.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
   player.opened = nil
 end
 
@@ -105,12 +98,11 @@ local function handle_confirm_btn(player, element, tag_data)
   })
 
   close_tag_editor(player)
-  Helpers.player_print(player, { "tf-gui.tag_editor_confirmed" })
+  GameHelpers.player_print(player, { "tf-gui.tag_editor_confirmed" })
 end
 
 local function unregister_move_handlers(script)
   -- Restore the original handlers instead of setting to nil
-  local handlers = require("core.events.handlers")
   script.on_event(defines.events.on_player_alt_selected_area, nil)
 end
 
@@ -122,9 +114,9 @@ local function handle_move_btn(player, tag_data, script)
     if event.player_index ~= player.index then return end
     local pos = event.area and event.area.left_top or nil
     if not pos then
-      return show_tag_editor_error(player, tag_data,
-        "The aether rejects this location. Please select a valid destination.")
-    end    -- Store the new position in move_gps first
+      return show_tag_editor_error(player, tag_data,        "The aether rejects this location. Please select a valid destination.")
+    end
+    -- Store the new position in move_gps first
     local new_gps = GPSUtils.gps_from_map_position(pos, player.surface.index)
     tag_data.move_gps = new_gps
 
@@ -150,7 +142,7 @@ local function handle_move_btn(player, tag_data, script)
         tag_data.error_message = nil
         tag_data.move_gps = "" -- Clear move_gps since move is complete
         Cache.set_tag_editor_data(player, nil)
-        player_print(player,
+        GameHelpers.player_print(player,
           { "tf-gui.tag_editor_move_success", "The tag's essence has been relocated through the veil!" })
         refresh_tag_editor(player, tag_data)
       elseif action == "delete" then
@@ -166,8 +158,8 @@ local function handle_move_btn(player, tag_data, script)
         -- Close tag editor
         tag_data.move_mode = false
         Cache.set_tag_editor_data(player, nil)
-        safe_destroy_frame(player.gui.screen, "tag_editor_frame")
-        player_print(player, { "tf-gui.tag_editor_delete_success", "The tag has been removed from existence!" })
+        GuiUtils.safe_destroy_frame(player.gui.screen, "tag_editor_frame")
+        GameHelpers.player_print(player, { "tf-gui.tag_editor_delete_success", "The tag has been removed from existence!" })
       else
         -- Action was canceled, reset move mode
         tag_data.move_mode = false
@@ -178,8 +170,9 @@ local function handle_move_btn(player, tag_data, script)
     end
 
     -- Get player settings for search radius
-    local player_settings = Cache.get_player_data(player)
-    local search_radius = player_settings.teleport_radius or Constants.settings.TELEPORT_RADIUS_DEFAULT    -- Validate and move the tag to the selected position
+  local player_settings = Cache.get_player_data(player)
+    local search_radius = player_settings.teleport_radius or Constants.settings.TELEPORT_RADIUS_DEFAULT
+    -- Validate and move the tag to the selected position
     local success = PositionUtils.move_tag_to_selected_position(
       player, tag, chart_tag, pos, search_radius, position_validation_callback
     )
@@ -191,7 +184,7 @@ local function handle_move_btn(player, tag_data, script)
       tag_data.error_message = nil
       tag_data.move_gps = "" -- Clear move_gps since move is complete
       Cache.set_tag_editor_data(player, nil)
-      player_print(player, { "tf-gui.tag_editor_move_success", "The tag's essence has been relocated through the veil!" })
+      GameHelpers.player_print(player, { "tf-gui.tag_editor_move_success", "The tag's essence has been relocated through the veil!" })
       refresh_tag_editor(player, tag_data)
     end
 
@@ -249,7 +242,7 @@ local function handle_delete_confirm(player, tag_data)
   local tag = tag_data.tag
   if not tag then
     -- Close both confirmation dialog and tag editor
-    Helpers.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
+    GuiUtils.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
     close_tag_editor(player)
     return
   end
@@ -265,7 +258,7 @@ local function handle_delete_confirm(player, tag_data)
     can_delete = true
   end
   if not can_delete then
-    Helpers.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
+    GuiUtils.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
     show_tag_editor_error(player, tag_data,
       "The spirits whisper: others claim this place, or you lack dominion.")
     return
@@ -286,21 +279,21 @@ local function handle_delete_confirm(player, tag_data)
   })
 
   -- Close both dialogs
-  Helpers.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
+  GuiUtils.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
   close_tag_editor(player)
-  Helpers.player_print(player, { "tf-gui.tag_deleted" })
+  GameHelpers.player_print(player, { "tf-gui.tag_deleted" })
 end
 
 local function handle_delete_cancel(player, tag_data)
   -- User cancelled deletion - close confirmation dialog and return to tag editor
-  Helpers.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
-  player.opened = Helpers.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+  GuiUtils.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
+  player.opened = GuiUtils.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
 end
 
 local function handle_teleport_btn(player, map_position)
   if not player or not map_position then return end
 
-  Helpers.safe_teleport(player, map_position)
+  GameHelpers.safe_teleport(player, map_position)
   close_tag_editor(player)
 end
 
@@ -313,12 +306,13 @@ local update_tag_data_and_refresh = function(player, tag_data, updates)
 end
 
 --- Tag editor GUI click handler for shared dispatcher
-local function on_tag_editor_gui_click(event, script)
-  local element = event.element
+local function on_tag_editor_gui_click(event, script)  local element = event.element
   if not element or not element.valid then return end
   -- Only handle clicks on our tag editor GUI elements (must start with or contain 'tag_editor')
-  local name = element.name or ""  if not name:find("tag_editor") then
-    return -- Not our GUI, ignore
+  local name = element.name or ""
+  if not name:find("tag_editor") then
+    -- Not our GUI, ignore
+    return
   end
   local player = game.get_player(event.player_index)
   if not player or not player.valid then return end
@@ -337,7 +331,7 @@ local function on_tag_editor_gui_click(event, script)
   elseif element.name == "tag_editor_is_favorite_button" then
     return handle_favorite_btn(player, tag_data)
   elseif element.name == "tag_editor_teleport_button" then
-    local tele_pos = gps_helpers.map_position_from_gps(tag_data.gps)
+    local tele_pos = GPSUtils.map_position_from_gps(tag_data.gps)
     return handle_teleport_btn(player, tele_pos)
   elseif element.name == "tag_editor_icon_button" then
     -- Icon selection changed - immediately save to storage

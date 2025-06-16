@@ -22,15 +22,24 @@ Architecture:
 
 API:
 -----
-- handlers.on_init()                              -- Mod initialization logic
-- handlers.on_load()                              -- Runtime-only structure re-initialization
-- handlers.on_player_created(event)               -- New player initialization
-- handlers.on_player_changed_surface(event)      -- Ensures surface cache for player after surface change
-- handlers.on_open_tag_editor_custom_input(event) -- Handles right-click chart tag editor opening
-- handlers.on_teleport_to_favorite(event, i)     -- Teleports player to favorite location
-- handlers.on_chart_tag_added(event)             -- Handles chart tag creation (stub)
-- handlers.on_chart_tag_modified(event)          -- Handles chart tag modification, GPS and favorite updates
-- handlers.on_chart_tag_removed(event)           -- Handles chart tag removal and cleanup
+-- Mod initialization logic
+- handlers.on_init()
+-- Runtime-only structure re-initialization
+- handlers.on_load()
+-- New player initialization
+- handlers.on_player_created(event)
+-- Ensures surface cache for player after surface change
+- handlers.on_player_changed_surface(event)
+-- Handles right-click chart tag editor opening
+- handlers.on_open_tag_editor_custom_input(event)
+-- Teleports player to favorite location
+- handlers.on_teleport_to_favorite(event, i)
+-- Handles chart tag creation (stub)
+- handlers.on_chart_tag_added(event)
+-- Handles chart tag modification, GPS and favorite updates
+- handlers.on_chart_tag_modified(event)
+-- Handles chart tag removal and cleanup
+- handlers.on_chart_tag_removed(event)
 
 --]]
 
@@ -40,7 +49,7 @@ API:
 -- Centralized event handler implementations for TeleportFavorites
 
 local Cache = require("core.cache.cache")
-local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
+local ChartTagUtils = require("core.utils.chart_tag_utils")
 local Constants = require("constants")
 local Enum = require("prototypes.enums.enum")
 local fave_bar = require("gui.favorites_bar.fave_bar")
@@ -51,6 +60,7 @@ local GPSChartHelpers = require("core.utils.gps_chart_helpers")
 local Lookups = require("core.cache.lookups")
 local PositionNormalizer = require("core.utils.position_normalizer")
 local PositionValidator = require("core.utils.position_validator")
+local PositionUtils = require("core.utils.position_utils")
 local RichTextFormatter = require("__TeleportFavorites__.core.utils.rich_text_formatter")
 local Settings = require("core.utils.settings_access")
 local Tag = require("core.tag.tag")
@@ -100,10 +110,10 @@ function handlers.on_open_tag_editor_custom_input(event)
     return 
   end
 
-  -- Check if tag editor is already open - if so, ignore right-click events
-  local tag_editor_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TAG_EDITOR]
+  -- Check if tag editor is already open - if so, ignore right-click events  local tag_editor_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TAG_EDITOR]
   if tag_editor_frame and tag_editor_frame.valid then
-    return -- Tag editor is open, ignore right-click
+    -- Tag editor is open, ignore right-click
+    return
   end
 
   local surface = player.surface
@@ -115,7 +125,8 @@ function handlers.on_open_tag_editor_custom_input(event)
     return
   end
   
-  -- Normalize the clicked position and convert to GPS string  local normalized_gps = gps_parser.gps_from_map_position(cursor_position, player.surface.index)
+  -- Normalize the clicked position and convert to GPS string
+  local normalized_gps = gps_parser.gps_from_map_position(cursor_position, player.surface.index)
   local nrm_tag, nrm_chart_tag, nrm_favorite = gps_helpers.normalize_landing_position_with_cache(player, normalized_gps, Cache)
   if not nrm_chart_tag then
     -- Play error sound to indicate invalid position
@@ -184,25 +195,28 @@ function handlers.on_chart_tag_added(event)
   -- Check if the chart tag coordinates need normalization
   local position = chart_tag.position
   if not position then return end
+    local surface_index = chart_tag.surface and chart_tag.surface.index or 1
   
-  local surface_index = chart_tag.surface and chart_tag.surface.index or 1
-  
-  if not basic_helpers.is_whole_number(position.x) or not basic_helpers.is_whole_number(position.y) then    -- Need to normalize this chart tag to whole numbers
+  if not basic_helpers.is_whole_number(position.x) or not basic_helpers.is_whole_number(position.y) then
+    -- Need to normalize this chart tag to whole numbers
     local position_pair = PositionNormalizer.create_position_pair(position)
-      -- Create new chart tag at normalized position using centralized builder
-    local chart_tag_spec = ChartTagSpecBuilder.build(
+    
+    -- Create new chart tag at normalized position using centralized builder
+    local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(
       position_pair.new,
       chart_tag,
       player
     )
     
     local new_chart_tag = GPSChartHelpers.safe_add_chart_tag(player.force, chart_tag.surface, chart_tag_spec)
-    
-    if new_chart_tag and new_chart_tag.valid then
+      if new_chart_tag and new_chart_tag.valid then
       -- Destroy the old chart tag with fractional coordinates
       chart_tag.destroy()
-        -- Refresh the cache to include the new chart tag
-      Lookups.invalidate_surface_chart_tags(surface_index)      -- Inform the player about the position normalization
+      
+      -- Refresh the cache to include the new chart tag
+      Lookups.invalidate_surface_chart_tags(surface_index)
+      
+      -- Inform the player about the position normalization
       local notification_msg = RichTextFormatter.position_change_notification(
         player,
         new_chart_tag,
@@ -373,11 +387,11 @@ function handlers.on_chart_tag_modified(event)
       -- Ensure coordinates are whole numbers
     if PositionNormalizer.needs_normalization(position) then
       local position_pair = PositionNormalizer.create_position_pair(position)
-      
-      -- Create new chart tag with normalized position
+        -- Create new chart tag with normalized position
       local surface = chart_tag.surface
-        -- Create chart tag spec using centralized builder
-      local chart_tag_spec = ChartTagSpecBuilder.build(
+      
+      -- Create chart tag spec using centralized builder
+      local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(
         position_pair.new,
         chart_tag,
         player
@@ -388,16 +402,19 @@ function handlers.on_chart_tag_modified(event)
       if new_chart_tag and new_chart_tag.valid then
         -- Destroy the old chart tag with fractional coordinates
         chart_tag.destroy()
+          -- Update the tag and gps
+        local surface_index = surface and surface.index or 1
         
-        -- Update the tag and gps
-        local surface_index = surface and surface.index or 1        -- Cast new_position to ensure it's a MapPosition
+        -- Cast new_position to ensure it's a MapPosition
         local map_position = {x = math.floor(new_position.x or 0), y = math.floor(new_position.y or 0)}
         new_gps = gps_parser.gps_from_map_position(map_position, surface_index)
         
-        -- Refresh the cache
-        Lookups.invalidate_surface_chart_tags(surface_index)
-          -- Update chart_tag reference for future operations
-        chart_tag = new_chart_tag        -- Notify the player about the normalization
+        -- Refresh the cache        Lookups.invalidate_surface_chart_tags(surface_index)
+        
+        -- Update chart_tag reference for future operations
+        chart_tag = new_chart_tag
+        
+        -- Notify the player about the normalization
         local notification_msg = RichTextFormatter.position_change_notification(
           player, 
           new_chart_tag,
@@ -422,11 +439,12 @@ end
 ---@param event table Chart tag removal event data
 function handlers.on_chart_tag_removed(event)
   if not event or not event.tag or not event.tag.valid then return end
-  
-  local chart_tag = event.tag
+    local chart_tag = event.tag
   local surface_index = (chart_tag.surface and chart_tag.surface.index) or 1
   local gps = gps_parser.gps_from_map_position(chart_tag.position, surface_index)
-  local tag = Cache.get_tag_by_gps(gps)  -- Get the player who is removing the chart tag
+  
+  -- Get the player who is removing the chart tag
+  local tag = Cache.get_tag_by_gps(gps)
   local player = game.get_player(event.player_index)
   -- Check if this tag has favorites from other players
   if tag and tag.faved_by_players and #tag.faved_by_players > 0 then
@@ -445,21 +463,21 @@ function handlers.on_chart_tag_removed(event)
       if fav_player and fav_player.valid and fav_player.name ~= player.name then
         has_other_players_favorites = true
         break
-      end
-    end
-      -- If other players have favorited this tag, prevent deletion
-    if has_other_players_favorites and player.name == owner and player.force then      -- Recreate the chart tag since it was already removed by the event
+      end    end
+    -- If other players have favorited this tag, prevent deletion
+    if has_other_players_favorites and player.name == owner and player.force then
+        -- Recreate the chart tag since it was already removed by the event
         -- Create chart tag spec using centralized builder
-      local chart_tag_spec = ChartTagSpecBuilder.build(chart_tag.position, chart_tag, player)
+      local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(chart_tag.position, chart_tag, player)
       
       local new_chart_tag = GPSChartHelpers.safe_add_chart_tag(player.force, chart_tag.surface, chart_tag_spec)
       
       if new_chart_tag and new_chart_tag.valid then
         -- Update the tag with the new chart tag reference
         tag.chart_tag = new_chart_tag
-        
-        -- Refresh the cache
-        Lookups.invalidate_surface_chart_tags(surface_index)        -- Notify the player
+          -- Refresh the cache
+        Lookups.invalidate_surface_chart_tags(surface_index)
+        -- Notify the player
         local deletion_msg = RichTextFormatter.deletion_prevention_notification(new_chart_tag)
         GameHelpers.player_print(player, deletion_msg)
         return
@@ -476,25 +494,31 @@ end
 --- Handles Ctrl+Shift+Right-click to display tile debugging information
 ---@param event table Event data containing player_index and cursor_position
 function handlers.on_debug_tile_info_custom_input(event)
-  -- Debug logging
-  log("[TF Debug] Handler called with event: " .. serpent.line(event))
-    local player = game.get_player(event.player_index)
+  -- Debug logging using ErrorHandler
+  ErrorHandler.debug_log("Debug tile info handler called", {
+    player_index = event.player_index,
+    has_cursor_position = event.cursor_position ~= nil
+  })
+  
+  local player = game.get_player(event.player_index)
   if not player or not player.valid then 
-    log("[TF Debug] Invalid player: " .. tostring(event.player_index))
+    ErrorHandler.debug_log("Invalid player in debug tile info", {
+      player_index = event.player_index
+    })
     return 
   end
   
   -- Check if cursor position is available
   if not event.cursor_position then
     GameHelpers.player_print(player, "[TF Debug] No cursor position available")
-    log("[TF Debug] No cursor position in event")
+    ErrorHandler.debug_log("No cursor position in debug tile info event")
     return
   end
-  local pos = event.cursor_position
+    local pos = event.cursor_position
   local surface = player.surface
   
   -- Get tile at position
-  local tile = surface.get_tile(pos.x, pos.y)
+  local tile = surface:get_tile(pos.x, pos.y)
   if not tile then
     GameHelpers.player_print(player, "[TF Debug] No tile found at position")
     return
@@ -534,18 +558,17 @@ function handlers.on_debug_tile_info_custom_input(event)
     end
   end
     -- Test walkability using our enhanced function
-  local is_walkable = GameHelpers.is_walkable_position(surface, pos)
+  local is_walkable = PositionUtils.is_walkable_position(surface, pos)
   table.insert(debug_info, "Is walkable (comprehensive): " .. tostring(is_walkable))
   
   -- Test individual checks
-  local is_water = GameHelpers.is_water_tile(surface, pos)
+  local is_water = PositionUtils.is_water_tile(surface, pos)
   table.insert(debug_info, "Is water tile: " .. tostring(is_water))
   
-  local is_space = GameHelpers.is_space_tile(surface, pos)
+  local is_space = PositionUtils.is_space_tile(surface, pos)
   table.insert(debug_info, "Is space tile: " .. tostring(is_space))
-  
-  -- Test pathfinding
-  local pathfind_pos = surface.find_non_colliding_position("character", pos, 0, 0.1)
+    -- Test pathfinding
+  local pathfind_pos = surface:find_non_colliding_position("character", pos, 0, 0.1)
   if pathfind_pos then
     local dx = math.abs(pathfind_pos.x - pos.x)
     local dy = math.abs(pathfind_pos.y - pos.y)
@@ -558,7 +581,8 @@ function handlers.on_debug_tile_info_custom_input(event)
   end
   
   -- Test position validation
-  local is_valid_pos = PositionValidator.is_valid_tag_position(player, pos, true) -- skip notification
+  -- skip notification
+  local is_valid_pos = PositionValidator.is_valid_tag_position(player, pos, true)
   table.insert(debug_info, "Valid for tagging: " .. tostring(is_valid_pos))
   
   -- Check for nearby chart tags

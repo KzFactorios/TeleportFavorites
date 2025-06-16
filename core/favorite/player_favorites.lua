@@ -91,9 +91,9 @@ local function update_tag_favorites(tag, player_index, action)
 
   if action == "add" then
     if not found_index then
-      table.insert(tag.faved_by_players, player_index)
-    end
-  else -- action == "remove"
+      table.insert(tag.faved_by_players, player_index)    end
+  else
+    -- action == "remove"
     if found_index then
       table.remove(tag.faved_by_players, found_index)
     end
@@ -282,10 +282,10 @@ function PlayerFavorites:remove_favorite_by_slot(slot_idx)
   if not is_valid_slot(slot_idx) then
     return false, "Invalid slot index"
   end
-
   local fav = self.favorites[slot_idx]
   if not fav or FavoriteUtils.is_blank_favorite(fav) then
-    return true, nil -- Already blank
+    -- Already blank
+    return true, nil
   end
 
   return self:remove_favorite(fav.gps)
@@ -352,9 +352,9 @@ function PlayerFavorites:modify_slot(operation_type, ...)
       return false, "Invalid slot index"
     end
     
-    local fav = self.favorites[slot_idx]
-    if not fav or FavoriteUtils.is_blank_favorite(fav) then
-      return true, nil -- Already blank
+    local fav = self.favorites[slot_idx]    if not fav or FavoriteUtils.is_blank_favorite(fav) then
+      -- Already blank
+      return true, nil
     end
     
     return self:remove_favorite(fav.gps)

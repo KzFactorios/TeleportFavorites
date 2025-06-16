@@ -119,7 +119,8 @@ Utils.partition = CollectionUtils.partition
 Utils.math_round = CollectionUtils.math_round
 
 --- Legacy terrain_validator.lua compatibility
-Utils.terrain = PositionUtils  -- Full terrain module access
+-- Full terrain module access
+Utils.terrain = PositionUtils
 Utils.find_nearest_walkable_position = PositionUtils.find_nearest_walkable_position
 Utils.find_valid_position_in_box = PositionUtils.find_valid_position_in_box
 

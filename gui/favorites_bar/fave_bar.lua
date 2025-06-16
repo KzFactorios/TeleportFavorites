@@ -41,7 +41,7 @@ Event handling for slot clicks and drag is managed externally (see control.lua).
 local GuiBase = require("gui.gui_base")
 local Constants = require("constants")
 local FavoriteUtils = require("core.favorite.favorite")
-local Utils = require("core.utils.utils")
+local GuiUtils = require("core.utils.gui_utils")
 local Settings = require("core.utils.settings_access")
 local Cache = require("core.cache.cache")
 local Enum = require("prototypes.enums.enum")
@@ -73,7 +73,8 @@ local function get_or_create_gui_flow_from_gui_top(parent)
 end
 
 -- Build the favorites bar to visually match the quickbar top row
-function fave_bar.build_quickbar_style(player, parent)  -- Add a horizontal flow to contain the toggle and slots row
+function fave_bar.build_quickbar_style(player, parent)
+  -- Add a horizontal flow to contain the toggle and slots row
   local bar_flow = GuiBase.create_hflow(parent, "fave_bar_flow")
   -- Add a thin dark background frame for the toggle button
   local toggle_container = GuiBase.create_frame(bar_flow, "fave_bar_toggle_container", "vertical", "tf_fave_toggle_container")
@@ -113,10 +114,11 @@ function fave_bar.build(player, force_show)
       return
     end
 
-    -- Use shared vertical flow
-    local main_flow = get_or_create_gui_flow_from_gui_top(player.gui.top)
+    -- Use shared vertical flow    local main_flow = get_or_create_gui_flow_from_gui_top(player.gui.top)
 
-    Helpers.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)    -- add the fave bar frame
+    GuiUtils.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
+    
+    -- add the fave bar frame
     -- Outer frame for the bar (matches quickbar background)
     local fave_bar_frame = GuiBase.create_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR, "horizontal", "tf_fave_bar_frame")
 
@@ -164,9 +166,9 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
     local tooltip = { "tf-gui.fave_slot_tooltip", i }
     local style = "tf_slot_button_smallfont"if fav and not FavoriteUtils.is_blank_favorite(fav) then
       if fav.icon and fav.icon ~= "" then
-        icon = fav.icon
-      else
-        icon = Enum.SpriteEnum.PIN  -- Use PIN as default icon for non-blank favorites
+        icon = fav.icon      else
+        -- Use PIN as default icon for non-blank favorites
+        icon = Enum.SpriteEnum.PIN
       end
       tooltip = Helpers.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }
       if fav.locked then style = "tf_slot_button_locked" end

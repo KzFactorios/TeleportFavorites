@@ -25,8 +25,8 @@ global["Lookups"] = {
 --]]
 
 local basic_helpers = require("core.utils.basic_helpers")
-local GameHelpers = require("core.utils.game_helpers")
-local GPSParser = require("core.utils.gps_parser")
+local PositionUtils = require("core.utils.position_utils")
+local GPSUtils = require("core.utils.gps_utils")
 
 
 ---@diagnostic disable: undefined-global
@@ -83,7 +83,7 @@ local function ensure_surface_cache(surface_index)
       if chart_tag and chart_tag.valid and chart_tag.position and surface_idx then
         -- Ensure surface_idx is properly typed as uint
         local surface_index_uint = tonumber(surface_idx) --[[@as uint]]
-        local gps = GPSParser.gps_from_map_position(chart_tag.position, surface_index_uint)
+        local gps = GPSUtils.gps_from_map_position(chart_tag.position, surface_index_uint)
         if gps and gps ~= "" then
           gps_map[gps] = chart_tag
         end
@@ -135,12 +135,12 @@ end
 ---@return LuaCustomChartTag|nil
 local function get_chart_tag_by_gps(gps)
   if not gps or gps == "" then return nil end
-  local surface_index = GPSParser.get_surface_index_from_gps(gps)
+  local surface_index = GPSUtils.get_surface_index_from_gps(gps)
   local surface_cache = ensure_surface_cache(surface_index)
   if not surface_cache then return nil end
   local match_chart_tag = surface_cache.chart_tags_mapped_by_gps[gps] or nil
   if (match_chart_tag and not match_chart_tag.valid) or
-      (match_chart_tag and not GameHelpers.is_walkable_position(surface_index, match_chart_tag.position)) then
+      (match_chart_tag and not PositionUtils.is_walkable_position(surface_index, match_chart_tag.position)) then
     match_chart_tag = nil
   end
   return match_chart_tag
@@ -154,9 +154,10 @@ local function remove_chart_tag_from_cache_by_gps(gps)
   if not gps or gps == "" then return end
   local chart_tag = get_chart_tag_by_gps(gps)
   if not chart_tag then return end
-  -- destroy the matching chart_tag object  chart_tag.destroy()
+  -- destroy the matching chart_tag object
+  chart_tag.destroy()
   --reset the surface_cache_chart_tags
-  local surface_index = GPSParser.get_surface_index_from_gps(gps)
+  local surface_index = GPSUtils.get_surface_index_from_gps(gps)
   clear_surface_cache_chart_tags(surface_index)
 end
 

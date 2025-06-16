@@ -38,6 +38,7 @@ local control_data_viewer = require("core.control.control_data_viewer")
 local on_gui_closed_handler = require("core.events.on_gui_closed_handler")
 local handlers = require("core.events.handlers")
 local GameHelpers = require("core.utils.game_helpers")
+local ErrorHandler = require("core.utils.error_handler")
 
 
 
@@ -53,8 +54,12 @@ local M = {}
 local function create_safe_handler(handler, handler_name)
   return function(event)
     local success, err = pcall(handler, event)
-    if not success then      
-      log("[TeleportFavorites] Error in custom input handler '" .. handler_name .. "': " .. tostring(err))
+    if not success then
+      ErrorHandler.warn_log("Custom input handler failed", {
+        handler_name = handler_name,
+        error = tostring(err),
+        player_index = event.player_index 
+      })
       -- Could also show player message for user-facing errors
       if event.player_index then
         ---@diagnostic disable-next-line: undefined-field
@@ -109,14 +114,18 @@ function M.register_custom_inputs(script, handlers)
   
   local registration_count = 0
   local error_count = 0
-  
-  -- Register each handler with validation
+    -- Register each handler with validation
   for input_name, handler in pairs(handlers) do
     if type(input_name) ~= "string" or input_name == "" then
-      log("[TeleportFavorites] Invalid input name: " .. tostring(input_name))
+      ErrorHandler.warn_log("Invalid custom input name", {
+        input_name = tostring(input_name)
+      })
       error_count = error_count + 1
     elseif type(handler) ~= "function" then
-      log("[TeleportFavorites] Handler for '" .. input_name .. "' must be a function, got " .. type(handler))
+      ErrorHandler.warn_log("Invalid custom input handler", {
+        input_name = input_name,
+        handler_type = type(handler)
+      })
       error_count = error_count + 1
     else
       -- Wrap handler in safety wrapper and register
@@ -124,18 +133,24 @@ function M.register_custom_inputs(script, handlers)
       local success, err = pcall(function()
         script.on_event(input_name, safe_handler)
       end)
-      
-      if success then
+        if success then
         registration_count = registration_count + 1
-        log("[TeleportFavorites] Registered custom input: " .. input_name)
+        ErrorHandler.debug_log("Registered custom input", {
+          input_name = input_name
+        })
       else
-        log("[TeleportFavorites] Failed to register custom input '" .. input_name .. "': " .. tostring(err))
+        ErrorHandler.warn_log("Failed to register custom input", {
+          input_name = input_name,
+          error = tostring(err)
+        })
         error_count = error_count + 1
       end
-    end
-  end
+    end  end
   
-  log("[TeleportFavorites] Custom input registration complete: " .. registration_count .. " registered, " .. error_count .. " errors")
+  ErrorHandler.debug_log("Custom input registration complete", {
+    registered_count = registration_count,
+    error_count = error_count
+  })
   return error_count == 0
 end
 
@@ -143,7 +158,7 @@ end
 ---@param script table The Factorio script object
 ---@return boolean success Whether registration completed successfully
 function M.register_default_inputs(script)
-  log("[TeleportFavorites] Registering default custom inputs...")
+  ErrorHandler.debug_log("Registering default custom inputs")
   return M.register_custom_inputs(script, default_custom_input_handlers)
 end
 
@@ -163,17 +178,24 @@ end
 ---@return boolean success Whether the handler was added successfully
 function M.add_default_handler(input_name, handler)
   if type(input_name) ~= "string" or input_name == "" then
-    log("[TeleportFavorites] Invalid input name for add_default_handler: " .. tostring(input_name))
+    ErrorHandler.warn_log("Invalid input name for add_default_handler", {
+      input_name = tostring(input_name)
+    })
     return false
   end
   
   if type(handler) ~= "function" then
-    log("[TeleportFavorites] Handler for add_default_handler must be a function, got " .. type(handler))
+    ErrorHandler.warn_log("Invalid handler type for add_default_handler", {
+      input_name = input_name,
+      handler_type = type(handler)
+    })
     return false
   end
   
   default_custom_input_handlers[input_name] = handler
-  log("[TeleportFavorites] Added default handler for: " .. input_name)
+  ErrorHandler.debug_log("Added default handler", {
+    input_name = input_name
+  })
   return true
 end
 

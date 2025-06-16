@@ -20,7 +20,8 @@ Enum.CoreEnums = CoreEnums
 -- Backward compatibility - maintain old structure
 Enum.SpriteEnum = UIEnums.Sprites
 Enum.ColorEnum = UIEnums.Colors
-Enum.GuiEnum = UIEnums.GuiEnum -- Uses compatibility alias from ui_enums
+-- Uses compatibility alias from ui_enums
+Enum.GuiEnum = UIEnums.GuiEnum
 Enum.ReturnStateEnum = CoreEnums.ReturnStates
 Enum.EventEnum = CoreEnums.Events
 

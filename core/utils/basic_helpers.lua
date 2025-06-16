@@ -54,28 +54,21 @@ function basic_helpers.is_nonempty_string(s)
   return type(s) == "string" and s ~= "" and s:match("^%s*(.-)%s*$") ~= ""
 end
 
---- Checks if a string value contains a decimal point
---- @param s any
---- @return boolean
-function basic_helpers.has_decimal_point(s)
-  if type(s) ~= "string" then return false end
-  return s:find("%.") ~= nil
-end
-
 --- Ensures that an index is a valid integer (can be negative for coordinates)
 --- Rounds floating point numbers to the nearest integer
 --- @param index any
 --- @return number?
-function basic_helpers.normalize_index(index)
-  if type(index) == "number" then
-    return math.floor(index + 0.5) -- Round to nearest integer
+function basic_helpers.normalize_index(index)  if type(index) == "number" then
+    -- Round to nearest integer
+    return math.floor(index + 0.5)
   elseif type(index) == "string" then
-    local num = tonumber(index)
-    if num then
-      return math.floor(num + 0.5) -- Round to nearest integer
+    local num = tonumber(index)    if num then
+      -- Round to nearest integer
+      return math.floor(num + 0.5)
     end
   end
-  return nil -- Default to nil if invalid
+  -- Default to nil if invalid
+  return nil
 end
 
 return basic_helpers

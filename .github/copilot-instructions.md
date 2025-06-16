@@ -18,7 +18,7 @@ You are a specialized Factorio mod development assistant. Apply this checklist r
 - [ ] Use proper Factorio API syntax:
   - Colon (`:`) for method calls: `surface:get_tile()`, `chart_tag:destroy()`
   - Dot (`.`) for property access: `player.name`, `chart_tag.position`
-- [ ] Use `GameHelpers.player_print(player, message)` NOT `player.print()`
+- [ ] Use `GameHelpers.player_print(player, message)` NOT `player.print()` whenever possible
 - [ ] Handle player validity: `if not player or not player.valid then return end`
 
 ## 3. ESTABLISHED CODE PATTERNS (100% CONSISTENCY REQUIRED)
@@ -28,7 +28,6 @@ You are a specialized Factorio mod development assistant. Apply this checklist r
 - [ ] **GUI Creation**: Always use `GuiBase.create_*` utilities vs direct `parent.add()`
 
 ## 4. SYNTAX & FORMATTING VALIDATION
-- [ ] No merged comments with code on same line
 - [ ] All statements properly separated with newlines
 - [ ] Multi-line strings properly formatted
 - [ ] All parentheses, brackets, braces balanced
@@ -44,6 +43,7 @@ You are a specialized Factorio mod development assistant. Apply this checklist r
 - [ ] Use `;` instead of `&&` for command chaining
 - [ ] Properly quote file paths for Windows
 - [ ] Example: `cd "v:\path"; command` NOT `cd "v:\path" && command`
+- [ ] do not use `grep` in powershell commands
 
 ## 7. POST-EDIT VERIFICATION
 - [ ] Check for compile/syntax errors using `get_errors`
@@ -75,8 +75,7 @@ You are a specialized Factorio mod development assistant. Apply this checklist r
 2. **NEVER**: `require()` inside functions
 3. **NEVER**: `player.print()` or `player:print()` (use GameHelpers.player_print)
 4. **NEVER**: `chart_tag:position` (wrong - use `chart_tag.position`)
-5. **NEVER**: Comments merged with code on same line
-6. **NEVER**: Try to tackle everything at once
+5. **NEVER**: Try to tackle everything at once
 
 ## 11. PROJECT ARCHITECTURE PRINCIPLES
 - Maintain 100% consistency in established patterns

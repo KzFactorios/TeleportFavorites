@@ -93,9 +93,9 @@ if not gui_style.tf_titlebar_flow then
     right_padding = 8, -- Internal padding for content
     left_margin = -8,  -- Extend into parent's left padding (base: 8px)
     right_margin = -8, -- Extend into parent's right padding (base: 8px)
-    height = 32,
-    use_header_filler = true,
-    horizontal_spacing = 0 -- No spacing between elements to maximize fill
+    height = 32,    use_header_filler = true,
+    -- No spacing between elements to maximize fill
+    horizontal_spacing = 0
   }
 end
 
@@ -269,9 +269,9 @@ if not gui_style.tf_titlebar_draggable then
     type = "empty_widget_style",
     parent = "draggable_space_header",
     horizontally_stretchable = "on",
-    minimal_width = 8,   -- Reduced minimum to allow more expansion
-    width = 0,           -- Let it expand naturally
-    maximal_width = 9999 -- Allow maximum expansion to fill space
+    minimal_width = 8,   -- Reduced minimum to allow more expansion    width = 0,           -- Let it expand naturally
+    -- Allow maximum expansion to fill space
+    maximal_width = 9999
   }
 end
 

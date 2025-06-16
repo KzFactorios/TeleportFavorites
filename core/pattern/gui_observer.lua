@@ -45,9 +45,13 @@ GuiEventBus:notify("favorite_added", {
 })
 --]]
 
-local ErrorHandler = require("core.utils.error_handler")
-local Utils = require("core.utils.utils")
 local Cache = require("core.cache.cache")
+local control_data_viewer = require("core.control.control_data_viewer")
+local Enum = require("prototypes.enums.enum")
+local ErrorHandler = require("core.utils.error_handler")
+local fave_bar = require("gui.favorites_bar.fave_bar")
+local tag_editor = require("gui.tag_editor.tag_editor")
+local Utils = require("core.utils.utils")
 
 ---@class GuiEventBus
 local GuiEventBus = {}
@@ -230,9 +234,7 @@ function FavoriteObserver:update(event_data)
     player = self.player.name,
     event_type = event_data.type or "unknown"
   })
-  
-  -- Refresh favorites bar
-  local fave_bar = require("gui.favorites_bar.fave_bar")
+    -- Refresh favorites bar
   local success, err = pcall(function()
     fave_bar.build(self.player, self.player.gui.top)
   end)
@@ -268,15 +270,13 @@ function TagObserver:update(event_data)
     event_type = event_data.type or "unknown",
     gps = event_data.gps
   })
-  
-  -- Refresh tag editor if it's open
+    -- Refresh tag editor if it's open
   local tag_editor_frame = Helpers.find_child_by_name(
     self.player.gui.screen, 
-    require("prototypes.enums.enum").GuiEnum.GUI_FRAME.TAG_EDITOR
+    Enum.GuiEnum.GUI_FRAME.TAG_EDITOR
   )
   
   if tag_editor_frame and tag_editor_frame.valid then
-    local tag_editor = require("gui.tag_editor.tag_editor")
     local success, err = pcall(function()
       -- Get current tag data and refresh
       local tag_data = Cache.get_tag_editor_data(self.player)
@@ -325,9 +325,7 @@ function DataObserver:update(event_data)
   -- Refresh data viewer if it's open
   local main_flow = Helpers.get_or_create_gui_flow_from_gui_top(self.player)
   local data_viewer_frame = Helpers.find_child_by_name(main_flow, "data_viewer_frame")
-  
-  if data_viewer_frame and data_viewer_frame.valid then
-    local control_data_viewer = require("core.control.control_data_viewer")
+    if data_viewer_frame and data_viewer_frame.valid then
     local success, err = pcall(function()
       local pdata = Cache.get_player_data(self.player)
       local active_tab = pdata.data_viewer_settings and pdata.data_viewer_settings.active_tab or "player_data"

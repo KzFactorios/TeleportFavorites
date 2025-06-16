@@ -20,7 +20,8 @@ local Lookups = require("__TeleportFavorites__.core.cache.lookups")
 local Cache = require("core.cache.cache")
 local ErrorHandler = require("core.utils.error_handler")
 local TeleportStrategies = require("core.pattern.teleport_strategy")
-local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
+local ChartTagUtils = require("core.utils.chart_tag_utils")
+local GPSChartHelpers = require("core.utils.gps_chart_helpers")
 
 ---@class Tag
 ---@field gps string # The GPS string (serves as the index)
@@ -309,10 +310,8 @@ end
 ---@return LuaCustomChartTag?, string?
 local function create_new_chart_tag(player, destination_pos, chart_tag)
   ErrorHandler.debug_log("Creating new chart tag", { destination_pos = destination_pos })
-  local chart_tag_spec = ChartTagSpecBuilder.build(destination_pos, chart_tag, player)
-  
-  -- Create chart tag using our safe wrapper
-  local GPSChartHelpers = require("core.utils.gps_chart_helpers")
+  local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(destination_pos, chart_tag, player)
+    -- Create chart tag using our safe wrapper
   local new_chart_tag = GPSChartHelpers.safe_add_chart_tag(player.force, player.surface, chart_tag_spec)
   if not new_chart_tag or not new_chart_tag.valid then
     ErrorHandler.debug_log("Chart tag creation failed")
@@ -380,12 +379,12 @@ function Tag.rehome_chart_tag(player, chart_tag, destination_gps)
     ErrorHandler.debug_log("Rehome failed: Invalid chart tag")
     return nil
   end
-
   if not destination_gps or destination_gps == "" then
     ErrorHandler.debug_log("Rehome failed: Invalid destination GPS")
     return nil
   end
-  local current_gps = GPSUtils.gps_from_map_position(chart_tag.position, player.surface.index)
+  local surface_index = tonumber(player.surface.index) or 1
+  local current_gps = GPSUtils.gps_from_map_position(chart_tag.position, surface_index)
   if current_gps == destination_gps then
     ErrorHandler.debug_log("Current and destination GPS are identical, no action needed")
     return chart_tag
@@ -406,14 +405,16 @@ function Tag.rehome_chart_tag(player, chart_tag, destination_gps)
     ErrorHandler.debug_log("Destination validation failed", { error = error_msg })
     return nil
   end
-
   -- Step 3: Create new chart tag at destination
   local new_chart_tag, create_error = create_new_chart_tag(player, normalized_pos, chart_tag)
   if not new_chart_tag then
     ErrorHandler.debug_log("Chart tag creation failed", { error = create_error })
     return nil
-  end -- Step 4: Update GPS coordinates in all favorites
-  local final_gps = GPSUtils.gps_from_map_position(new_chart_tag.position, player.surface.index)
+  end
+  
+  -- Step 4: Update GPS coordinates in all favorites
+  local surface_index = tonumber(player.surface.index) or 1
+  local final_gps = GPSUtils.gps_from_map_position(new_chart_tag.position, surface_index)
   update_favorites_gps(all_fave_tags, final_gps)
   -- Step 5: Update matching tag GPS
   local matching_tag = Cache.get_tag_by_gps(current_gps)

@@ -3,6 +3,9 @@
 Custom styles for the Favorites Bar GUI (fave_bar)
 ]]
 
+-- Use consolidated GUI utilities instead of separate style helpers
+local GuiUtils = require("core.utils.gui_utils")
+
 -- 'data' is a global provided by Factorio during mod loading
 ---@diagnostic disable-next-line: undefined-global
 local gui_style = data.raw["gui-style"].default
@@ -51,10 +54,10 @@ if not gui_style.tf_fave_toggle_button then
         type = "button_style",
         parent = "tf_slot_button",
         margin = 2,
-        width = 40,
-        height = 40,
+        width = 40,        height = 40,
         default_graphical_set = {
-            base = { position = { 34, 17 }, corner_size = 8 } --tint = { r = 0.98, g = 0.66, b = 0.22, a = 1 } } -- orange tint
+            -- orange tint: { r = 0.98, g = 0.66, b = 0.22, a = 1 }
+            base = { position = { 34, 17 }, corner_size = 8 }
         }
     }
 end
@@ -70,9 +73,6 @@ if not gui_style.tf_fave_slots_row then
         margin = 0
     }
 end
-
--- Use consolidated GUI utilities instead of separate style helpers
-local GuiUtils = require("core.utils.gui_utils")
 
 -- Small font button style
 if not gui_style.tf_slot_button_smallfont then
@@ -96,15 +96,18 @@ end
 GuiUtils.create_tinted_button_styles(gui_style.slot_button, {
   {
     name = "tf_slot_button_dragged",
-    tint = { r = 0.2, g = 0.7, b = 1, a = 1 } -- blue
+    -- blue
+    tint = { r = 0.2, g = 0.7, b = 1, a = 1 }
   },
   {
     name = "tf_slot_button_locked", 
-    tint = { r = 1, g = 0.5, b = 0, a = 1 } -- orange
+    -- orange
+    tint = { r = 1, g = 0.5, b = 0, a = 1 }
   },
   {
     name = "tf_slot_button_drag_target",
-    tint = { r = 1, g = 1, b = 0.2, a = 1 } -- yellow
+    -- yellow
+    tint = { r = 1, g = 1, b = 0.2, a = 1 }
   }
 }, gui_style)
 

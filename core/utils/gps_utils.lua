@@ -141,9 +141,9 @@ function GPSUtils.validate_gps_format(gps)
   if type(gps) ~= "string" then
     return false, "GPS must be a string"
   end
-  
-  if gps == BLANK_GPS then
-    return true  -- Blank GPS is considered valid
+    if gps == BLANK_GPS then
+    -- Blank GPS is considered valid
+    return true
   end
   
   local parsed = GPSUtils.parse_gps_string(gps)
@@ -174,9 +174,9 @@ function GPSUtils.validate_map_position(map_position)
   if type(map_position.y) ~= "number" then
     return false, "Position.y must be a number"
   end
-  
-  -- Check for reasonable coordinate bounds (Factorio world limits)
-  local max_coord = 2000000  -- Factorio's practical world limit
+    -- Check for reasonable coordinate bounds (Factorio world limits)
+  -- Factorio's practical world limit
+  local max_coord = 2000000
   if math.abs(map_position.x) > max_coord or math.abs(map_position.y) > max_coord then
     return false, "Position coordinates are outside reasonable world bounds"
   end
@@ -258,9 +258,9 @@ end
 ---@param text string Tag text
 ---@param icon SignalID? Optional icon
 ---@return LuaCustomChartTag? chart_tag Created chart tag or nil if failed
-function GPSUtils.create_and_validate_chart_tag(player, map_position, text, icon)
-  local spec = GPSUtils.create_chart_tag_spec(player, map_position, text, icon)
-  if not spec then return nil end  -- Try to create the chart tag
+function GPSUtils.create_and_validate_chart_tag(player, map_position, text, icon)  local spec = GPSUtils.create_chart_tag_spec(player, map_position, text, icon)
+  if not spec then return nil end
+  -- Try to create the chart tag
   local success, result = pcall(function()
     return player.force:add_chart_tag(player.surface, spec)
   end)

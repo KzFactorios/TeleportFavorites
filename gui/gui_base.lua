@@ -24,6 +24,8 @@ API:
 
 Each function is annotated with argument and return value details.
 --]]
+
+local ErrorHandler = require("core.utils.error_handler")
 local GuiBase = {}
 local Utils = require("core.utils.utils")
 local Enum = require("prototypes.enums.enum")
@@ -41,14 +43,17 @@ function GuiBase.create_element(element_type, parent, opts)
     if (type(parent) ~= "table" and type(parent) ~= "userdata") or type(parent.add) ~= "function" then
         error("GuiBase.create_element: parent is not a valid LuaGuiElement")
     end
-    if opts.type then opts.type = nil end --- Prevent accidental overwrite
-    local params = { type = element_type }
-    for k, v in pairs(opts) do params[k] = v end    -- Defensive: ensure name is a string
+    if opts.type then opts.type = nil end --- Prevent accidental overwrite    local params = { type = element_type }
+    for k, v in pairs(opts) do params[k] = v end
+      -- Defensive: ensure name is a string
     if params.name == nil or type(params.name) ~= "string" or params.name == "" then
         -- Use deterministic naming based on element type and current tick for reproducibility
         local fallback_id = (game and game.tick) or os.time() or 0
         params.name = element_type .. "_unnamed_" .. tostring(fallback_id)
-        log("[TF DEBUG] unnamed element for " .. element_type .. " assigned name: " .. params.name)
+        ErrorHandler.debug_log("Unnamed element assigned name", {
+          element_type = element_type,
+          assigned_name = params.name
+        })
     end---@diagnostic disable-next-line
     local elem = parent.add(params)
     -- Handle style assignment: if it's a string, we can't assign it directly to elem.style

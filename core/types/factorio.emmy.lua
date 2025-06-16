@@ -37,25 +37,25 @@
 
 ---@class LocalisedString: string|{[1]: string, [2]: any, [3]: any, [4]: any, [5]: any, [6]: any, [7]: any, [8]: any}
 
----@class Color table  -- {r: number, g: number, b: number, a?: number}
+---@class Color table  
 
 ---@class CollisionMask: table
 
 ---@class SimpleItemStack
----@field name string   -- The item prototype name.
----@field count uint    -- The number of items.
----@field health? float -- Optional: health value (0.0 - 1.0).
----@field ammo? uint    -- Optional: ammo count.
----@field durability? double -- Optional: durability value.
+---@field name string   
+---@field count uint    
+---@field health? float 
+---@field ammo? uint    
+---@field durability? double 
 
 ---@class ChartTagSpec
 ---@field position MapPosition
 ---@field text string
----@field icon? SignalID[] # Optional: array of SignalID for tag icons
----@field last_user string # Player name of last user to edit
----@field surface LuaSurface # Surface where the tag is placed
----@field color? Color # Optional: color of the tag
----@field tag_id? uint # Optional: unique identifier for the tag
+---@field icon? SignalID[] 
+---@field last_user string 
+---@field surface LuaSurface 
+---@field color? Color 
+---@field tag_id? uint 
 
 ---@class ScriptArea
 ---@field area BoundingBox
@@ -63,12 +63,12 @@
 ---@field surface LuaSurface
 ---@field id uint
 ---@field color? Color
----@field players? uint[]  -- Optional: list of player indices
----@field tags? table<string, any>  -- Optional: custom tags
+---@field players? uint[]  
+---@field tags? table<string, any>  
 
 ---@class SignalID
----@field type string   # "item", "fluid", "virtual"
----@field name string  # Name of the item/fluid/virtual-signal prototype
+---@field type string   
+---@field name string  
 
 ---@class MapPosition
 ---@field x number
@@ -105,14 +105,14 @@
 ---@class LuaChunkIterator
 
 ---@class LuaCircuitNetwork
----@field entity LuaEntity                -- The entity this circuit network belongs to.
----@field circuit_connector_id defines.circuit_connector_id -- The connector ID.
----@field network_id uint                -- The unique network ID.
----@field signals table<SignalID, {signal: SignalID, count: int}>? -- Table of all signals on the network, or nil if none.
----@field wires table<defines.wire_type, LuaCircuitNetwork> -- Connected networks by wire type.
----@field valid boolean                  -- Is this circuit network valid?
----@field get_signal fun(self: LuaCircuitNetwork, signal: SignalID): int -- Gets the value of a specific signal.
----@field get_circuit_network fun(self: LuaCircuitNetwork, wire: defines.wire_type): LuaCircuitNetwork? -- Gets the connected network for a given wire type.
+---@field entity LuaEntity                
+---@field circuit_connector_id defines.circuit_connector_id 
+---@field network_id uint                
+---@field signals table<SignalID, {signal: SignalID, count: int}>? 
+---@field wires table<defines.wire_type, LuaCircuitNetwork> 
+---@field valid boolean                  
+---@field get_signal fun(self: LuaCircuitNetwork, signal: SignalID): int
+---@field get_circuit_network fun(self: LuaCircuitNetwork, wire: defines.wire_type): LuaCircuitNetwork?
 
 ---@class LuaCliff
 ---@class LuaCliffPrototype
@@ -565,18 +565,18 @@
 ---@class LuaTechnologyPrototype
 
 ---@class LuaTile
----@field name string                 -- The prototype name of the tile (e.g., "grass-1", "water").
----@field position MapPosition        -- The position of the tile (top-left corner).
----@field valid boolean              -- Is this tile valid?
----@field surface LuaSurface         -- The surface this tile belongs to.
----@field hidden boolean             -- Is this tile hidden?
----@field prototype LuaTilePrototype -- The tile prototype.
----@field has_hidden_tile boolean    -- Does this tile have a hidden tile?
----@field mineable_properties table  -- Mining properties for this tile.
----@field pollution double           -- The pollution on this tile.
----@field decorative_names string[]  -- Names of decoratives on this tile.
----@field entities LuaEntity[]       -- Entities on this tile.
----@field collides_with fun(self: LuaTile, mask: string): boolean -- Checks if the tile collides with a collision mask.
+---@field name string                 
+---@field position MapPosition        
+---@field valid boolean              
+---@field surface LuaSurface         
+---@field hidden boolean             
+---@field prototype LuaTilePrototype 
+---@field has_hidden_tile boolean    
+---@field mineable_properties table  
+---@field pollution double           
+---@field decorative_names string[]  
+---@field entities LuaEntity[]       
+---@field collides_with fun(self: LuaTile, mask: string): boolean 
 
 ---@class LuaTilePrototype
 ---@field name string
@@ -586,54 +586,54 @@
 ---@field collision_mask CollisionMask
 
 ---@class LuaForce
----@field name string                                 -- The name of the force (e.g., "player", "enemy").
----@field index uint                                  -- The unique index of the force.
----@field evolution_factor double                     -- The current evolution factor for this force.
----@field evolution_factor_by_pollution double        -- Evolution from pollution.
----@field evolution_factor_by_time double             -- Evolution from time.
----@field evolution_factor_by_killing_spawners double -- Evolution from killing spawners.
----@field manual_mining_speed_modifier double         -- Modifier for manual mining speed.
----@field manual_crafting_speed_modifier double       -- Modifier for manual crafting speed.
----@field laboratory_speed_modifier double            -- Modifier for lab research speed.
----@field stack_inserter_capacity_bonus uint          -- Stack inserter capacity bonus.
----@field character_logistic_slot_count uint          -- Character logistic slot count.
----@field character_trash_slot_count uint             -- Character trash slot count.
----@field ghost_time_to_live uint                     -- Time ghosts remain before expiring.
----@field item_production_statistics LuaFlowStatistics -- Production statistics.
----@field kill_count_statistics LuaFlowStatistics     -- Kill count statistics.
----@field item_launched_statistics LuaFlowStatistics  -- Item launched statistics.
----@field fluid_production_statistics LuaFlowStatistics -- Fluid production statistics.
----@field technologies table<string, LuaTechnology>   -- Technologies for this force.
----@field players LuaPlayer[]                        -- Players belonging to this force.
----@field friends LuaForce[]                         -- Forces set as friends.
----@field enemies LuaForce[]                         -- Forces set as enemies.
----@field research_enabled boolean                   -- Whether research is enabled.
----@field current_research? LuaTechnology            -- The technology currently being researched.
----@field research_progress double                   -- Progress of current research.
----@field research_queue_enabled boolean             -- Whether the research queue is enabled.
----@field research_queue LuaTechnology[]             -- The research queue.
----@field valid boolean                              -- Is this force valid?
----@field connected_players LuaPlayer[]              -- Currently connected players.
+---@field name string                                 
+---@field index uint                                  
+---@field evolution_factor double                     
+---@field evolution_factor_by_pollution double        
+---@field evolution_factor_by_time double             
+---@field evolution_factor_by_killing_spawners double 
+---@field manual_mining_speed_modifier double         
+---@field manual_crafting_speed_modifier double       
+---@field laboratory_speed_modifier double            
+---@field stack_inserter_capacity_bonus uint          
+---@field character_logistic_slot_count uint          
+---@field character_trash_slot_count uint             
+---@field ghost_time_to_live uint                     
+---@field item_production_statistics LuaFlowStatistics 
+---@field kill_count_statistics LuaFlowStatistics     
+---@field item_launched_statistics LuaFlowStatistics  
+---@field fluid_production_statistics LuaFlowStatistics
+---@field technologies table<string, LuaTechnology>   
+---@field players LuaPlayer[]                        
+---@field friends LuaForce[]                         
+---@field enemies LuaForce[]                         
+---@field research_enabled boolean                   
+---@field current_research? LuaTechnology            
+---@field research_progress double                   
+---@field research_queue_enabled boolean             
+---@field research_queue LuaTechnology[]             
+---@field valid boolean                              
+---@field connected_players LuaPlayer[]              
 ---@field add_chart_tag fun(self: LuaForce, surface: LuaSurface, spec: table): LuaCustomChartTag
----@field is_chunk_charted fun(self: LuaForce, surface: LuaSurface, chunk_position: ChunkPosition): boolean -- Checks if a chunk is charted for this force.
----@field chart fun(self: LuaForce, surface: LuaSurface, area: BoundingBox) -- Charts an area for this force.
----@field chart_all fun(self: LuaForce, surface: LuaSurface) -- Charts the entire surface for this force.
----@field clear_chart fun(self: LuaForce, surface: LuaSurface) -- Clears charted map for this force.
----@field cancel_current_research fun(self: LuaForce) -- Cancels current research.
----@field reset_technology_effects fun(self: LuaForce) -- Resets technology effects.
----@field enable_all_recipes fun(self: LuaForce) -- Enables all recipes.
----@field disable_all_recipes fun(self: LuaForce) -- Disables all recipes.
----@field reset_recipes fun(self: LuaForce) -- Resets all recipes.
----@field reset_technologies fun(self: LuaForce) -- Resets all technologies.
----@field get_friend fun(self: LuaForce, other: LuaForce): boolean -- Checks if another force is a friend.
----@field set_friend fun(self: LuaForce, other: LuaForce, friend: boolean) -- Sets another force as friend/enemy.
----@field get_cease_fire fun(self: LuaForce, other: LuaForce): boolean -- Checks cease fire status.
----@field set_cease_fire fun(self: LuaForce, other: LuaForce, cease_fire: boolean) -- Sets cease fire status.
----@field get_spawn_position fun(self: LuaForce, surface: LuaSurface): MapPosition -- Gets the spawn position.
----@field set_spawn_position fun(self: LuaForce, position: MapPosition, surface: LuaSurface) -- Sets the spawn position.
----@field get_saved_technology_progress fun(self: LuaForce, technology: string): double -- Gets saved tech progress.
----@field set_saved_technology_progress fun(self: LuaForce, technology: string, progress: double) -- Sets saved tech progress.
----@field print fun(self: LuaForce, message: LocalisedString) -- Prints a message to all players in the force.
+---@field is_chunk_charted fun(self: LuaForce, surface: LuaSurface, chunk_position: ChunkPosition): boolean 
+---@field chart fun(self: LuaForce, surface: LuaSurface, area: BoundingBox) 
+---@field chart_all fun(self: LuaForce, surface: LuaSurface) 
+---@field clear_chart fun(self: LuaForce, surface: LuaSurface)
+---@field cancel_current_research fun(self: LuaForce) 
+---@field reset_technology_effects fun(self: LuaForce)
+---@field enable_all_recipes fun(self: LuaForce) 
+---@field disable_all_recipes fun(self: LuaForce)
+---@field reset_recipes fun(self: LuaForce) 
+---@field reset_technologies fun(self: LuaForce)
+---@field get_friend fun(self: LuaForce, other: LuaForce): boolean 
+---@field set_friend fun(self: LuaForce, other: LuaForce, friend: boolean) 
+---@field get_cease_fire fun(self: LuaForce, other: LuaForce): boolean 
+---@field set_cease_fire fun(self: LuaForce, other: LuaForce, cease_fire: boolean)
+---@field get_spawn_position fun(self: LuaForce, surface: LuaSurface): MapPosition 
+---@field set_spawn_position fun(self: LuaForce, position: MapPosition, surface: LuaSurface) 
+---@field get_saved_technology_progress fun(self: LuaForce, technology: string): double 
+---@field set_saved_technology_progress fun(self: LuaForce, technology: string, progress: double) 
+---@field print fun(self: LuaForce, message: LocalisedString) 
 ---@field find_chart_tags fun(surface: LuaSurface|string|uint, area?: BoundingBox): LuaCustomChartTag[]
 ---@overload fun(self: LuaForce, surface: LuaSurface|string|uint, area?: BoundingBox): LuaCustomChartTag[]
 -- (Add more fields and methods as needed from the API)

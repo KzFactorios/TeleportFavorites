@@ -121,11 +121,12 @@ function PositionUtils.is_space_tile(surface, position)
 end
 
 --- Check if a position is walkable (comprehensive validation)
---- Consolidates logic from GameHelpers.is_walkable_position and other implementations
+--- Consolidates logic from PositionUtils.is_walkable_position and other implementations
 ---@param surface LuaSurface
 ---@param position MapPosition
+---@param player LuaPlayer? Optional player context for space platform detection
 ---@return boolean is_walkable
-function PositionUtils.is_walkable_position(surface, position)
+function PositionUtils.is_walkable_position(surface, position, player)
   if not surface or not position then return false end
   
   -- Get the tile at the position
@@ -136,14 +137,20 @@ function PositionUtils.is_walkable_position(surface, position)
   if PositionUtils.is_water_tile(surface, position) then
     return false
   end
-  
-  -- Check for other non-walkable tile types
+    -- Space tile validation with space platform context
   if PositionUtils.is_space_tile(surface, position) then
+    -- If player is provided and is on a space platform, space tiles are walkable
+    if player and PositionUtils.is_on_space_platform(player) then
+      return true
+    end
+    
+    -- For non-space platform surfaces, space tiles are not walkable
     return false
   end
   
   -- Use simpler walkability check based on tile properties
-  return true  -- If not water or space, consider it walkable
+  -- If not water or space, consider it walkable
+  return true
 end
 
 -- ========================================
@@ -155,41 +162,41 @@ end
 ---@param surface LuaSurface
 ---@param center_position MapPosition
 ---@param max_radius number Maximum search radius (default: 20)
+---@param player LuaPlayer? Optional player context for space platform detection
 ---@return MapPosition? valid_position
-function PositionUtils.find_nearest_walkable_position(surface, center_position, max_radius)
+function PositionUtils.find_nearest_walkable_position(surface, center_position, max_radius, player)
   if not surface or not surface.valid or not center_position then return nil end
   
   max_radius = max_radius or 20
-  
-  -- Check the original position first - might already be valid
-  if PositionUtils.is_walkable_position(surface, center_position) then
+    -- Check the original position first - might already be valid
+  if PositionUtils.is_walkable_position(surface, center_position, player) then
     return center_position
   end
   
   -- Search in expanding spiral pattern (more efficient than square pattern)
   local directions = {
-    {x = 1, y = 0},  -- right
-    {x = 0, y = 1},  -- down
+    {x = 1, y = 0},  -- right    {x = 0, y = 1},  -- down
     {x = -1, y = 0}, -- left
-    {x = 0, y = -1}  -- up
+    -- up
+    {x = 0, y = -1}
   }
   
   local x, y = center_position.x, center_position.y
   local dir_index = 1
   local steps = 1
-  
-  for radius = 1, max_radius do
-    for _ = 1, 2 do  -- Two segments per radius level
+    for radius = 1, max_radius do
+    -- Two segments per radius level
+    for _ = 1, 2 do
       for _ = 1, steps do
         -- Ensure dir_index is within bounds
         if dir_index > #directions then
           dir_index = 1
         end
         
-        -- Get current direction safely
-        local current_dir = directions[dir_index]
+        -- Get current direction safely        local current_dir = directions[dir_index]
         if not current_dir then
-          break  -- Safety break if directions array is malformed
+          -- Safety break if directions array is malformed
+          break
         end
         
         -- Move in the current direction
@@ -197,9 +204,8 @@ function PositionUtils.find_nearest_walkable_position(surface, center_position, 
         y = y + current_dir.y
         
         local check_pos = {x = x, y = y}
-        
-        -- Check if this position is walkable
-        if PositionUtils.is_walkable_position(surface, check_pos) then
+          -- Check if this position is walkable
+        if PositionUtils.is_walkable_position(surface, check_pos, player) then
           return check_pos
         end
       end
@@ -208,7 +214,8 @@ function PositionUtils.find_nearest_walkable_position(surface, center_position, 
       dir_index = (dir_index % 4) + 1
     end
     
-    steps = steps + 1  -- Increase step count for next radius
+    -- Increase step count for next radius
+    steps = steps + 1
   end
   
   -- No valid position found within search radius
@@ -220,8 +227,9 @@ end
 ---@param surface LuaSurface
 ---@param center_position MapPosition
 ---@param tolerance number? Bounding box tolerance (default: 4)
+---@param player LuaPlayer? Optional player context for space platform detection
 ---@return MapPosition? valid_position
-function PositionUtils.find_valid_position_in_box(surface, center_position, tolerance)
+function PositionUtils.find_valid_position_in_box(surface, center_position, tolerance, player)
   if not surface or not surface.valid or not center_position then return nil end
   
   local box_tolerance = tolerance or 4
@@ -231,9 +239,8 @@ function PositionUtils.find_valid_position_in_box(surface, center_position, tole
   
   -- Normalize the center position first
   local normalized_pos = PositionUtils.normalize_position(center_position)
-  
-  -- Check if normalized position is already valid
-  if PositionUtils.is_walkable_position(surface, normalized_pos) then
+    -- Check if normalized position is already valid
+  if PositionUtils.is_walkable_position(surface, normalized_pos, player) then
     return normalized_pos
   end
   
@@ -251,12 +258,11 @@ function PositionUtils.find_valid_position_in_box(surface, center_position, tole
   
   -- Try Factorio's pathfinding using bounding box method
   local pathfinding_pos = surface:find_non_colliding_position_in_box("character", bounding_box, 1.0)
-  
-  if pathfinding_pos and PositionUtils.is_walkable_position(surface, pathfinding_pos) then
+    if pathfinding_pos and PositionUtils.is_walkable_position(surface, pathfinding_pos, player) then
     -- Normalize the pathfinding result and verify it's still valid
     local normalized_path_pos = PositionUtils.normalize_position(pathfinding_pos)
     
-    if PositionUtils.is_walkable_position(surface, normalized_path_pos) then
+    if PositionUtils.is_walkable_position(surface, normalized_path_pos, player) then
       return normalized_path_pos
     end
   end
@@ -269,8 +275,9 @@ end
 ---@param surface LuaSurface
 ---@param center_position MapPosition
 ---@param search_radius number? Optional search radius (default: 50)
+---@param player LuaPlayer? Optional player context for space platform detection
 ---@return MapPosition? valid_position
-function PositionUtils.find_valid_position(surface, center_position, search_radius)
+function PositionUtils.find_valid_position(surface, center_position, search_radius, player)
   if not surface or not surface.valid or not center_position then return nil end
   
   -- Ensure coordinates are numbers
@@ -279,21 +286,21 @@ function PositionUtils.find_valid_position(surface, center_position, search_radi
   end
   
   search_radius = search_radius or 50
-  
-  -- Strategy 1: Try bounding box method first (faster, more precise)
-  local box_result = PositionUtils.find_valid_position_in_box(surface, center_position)
+    -- Strategy 1: Try bounding box method first (faster, more precise)
+  local box_result = PositionUtils.find_valid_position_in_box(surface, center_position, nil, player)
   if box_result then
     return box_result
   end
-  
-  -- Strategy 2: Fall back to spiral search for wider coverage
-  local spiral_radius = math.min(search_radius, 20)  -- Limit spiral search to reasonable size
-  local spiral_result = PositionUtils.find_nearest_walkable_position(surface, center_position, spiral_radius)
+    -- Strategy 2: Fall back to spiral search for wider coverage
+  -- Limit spiral search to reasonable size
+  local spiral_radius = math.min(search_radius, 20)
+  local spiral_result = PositionUtils.find_nearest_walkable_position(surface, center_position, spiral_radius, player)
   if spiral_result then
     return spiral_result
   end
   
-  return nil  -- No valid position found with any method
+  -- No valid position found with any method
+  return nil
 end
 
 -- ========================================
@@ -322,12 +329,18 @@ function PositionUtils.is_valid_tag_position(player, map_position, skip_notifica
     end
     return false
   end
-  
+    -- Space tile validation with space platform context
   if PositionUtils.is_space_tile(player.surface, map_position) then
-    if not skip_notification then
-      game_helpers.player_print(player, "[TeleportFavorites] Cannot tag space tiles")
+    if PositionUtils.is_on_space_platform(player) then
+      -- Space tiles are valid on space platforms
+      return true
+    else
+      -- Space tiles are invalid on regular surfaces
+      if not skip_notification then
+        game_helpers.player_print(player, "[TeleportFavorites] Cannot tag space tiles")
+      end
+      return false
     end
-    return false
   end
   
   return true
@@ -447,6 +460,20 @@ function PositionUtils.move_tag_to_selected_position(player, tag, chart_tag, new
   })
   
   return true
+end
+
+-- ========================================
+-- SURFACE AND PLATFORM DETECTION
+-- ========================================
+
+--- Check if a player is currently on a space platform
+--- Used for space tile validation - space tiles are walkable on space platforms
+---@param player LuaPlayer Player to check
+---@return boolean is_on_space_platform
+function PositionUtils.is_on_space_platform(player)
+  if not player or not player.surface or not player.surface.name then return false end
+  local name = player.surface.name:lower()
+  return name:find("space") ~= nil or name == "space-platform"
 end
 
 return PositionUtils

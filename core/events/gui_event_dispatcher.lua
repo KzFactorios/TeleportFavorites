@@ -49,6 +49,7 @@ local control_tag_editor = require("core.control.control_tag_editor")
 local Constants = require("constants")
 local Utils = require("core.utils.utils")
 local Enum = require("prototypes.enums.enum")
+local ErrorHandler = require("core.utils.error_handler")
 local control_data_viewer = require("core.control.control_data_viewer")
 local Cache = require("core.cache.cache")
 
@@ -111,17 +112,20 @@ function M.register_gui_handlers(script)
         return true
       elseif parent_gui.name == Enum.GuiEnum.GUI_FRAME.DATA_VIEWER then
         control_data_viewer.on_data_viewer_gui_click(event)
-        return true
-      else
-        if log then log("[TeleportFavorites] Unknown parent GUI: " .. tostring(parent_gui.name)) end
-      end
-    end, function(e)
+        return true      else
+        ErrorHandler.debug_log("Unknown parent GUI", {
+          parent_gui_name = tostring(parent_gui.name)
+        })
+      end    end, function(e)
       _tf_gui_click_guard = false
-      local err_str = "[TeleportFavorites] GUI event error: " .. tostring(e)
-      if log then log(err_str) end
-      print(err_str)
+      ErrorHandler.warn_log("GUI event error", {
+        error = tostring(e),
+        event_player_index = event and event.player_index
+      })
       local tb = debug and debug.traceback and debug.traceback() or "<no traceback>"
-      if log then log("[TeleportFavorites] Traceback:\n" .. tb) end
+      ErrorHandler.debug_log("GUI event error traceback", {
+        traceback = tb
+      })
       if log then
         local el = event and event.element
         local ename, etype = "<no element>", "<no type>"
@@ -139,21 +143,27 @@ function M.register_gui_handlers(script)
               etype = "<invalid element>"
             end
           end)
-        end
-        log("[TeleportFavorites] Event element: name=" .. tostring(ename) .. ", type=" .. tostring(etype))
-        log("[TeleportFavorites] Event.player_index: " .. tostring(event and event.player_index))
+        end        ErrorHandler.debug_log("GUI event debug info", {
+          element_name = tostring(ename),
+          element_type = tostring(etype),
+          player_index = event and event.player_index
+        })
         for k, v in pairs(event or {}) do
           if type(v) ~= "table" and type(v) ~= "userdata" then
-            log("[TeleportFavorites] event[" .. tostring(k) .. "] = " .. tostring(v))
-          end        end
+            ErrorHandler.debug_log("GUI event property", {
+              property = tostring(k),
+              value = tostring(v)
+            })
+          end        
+        end
       end
     end)
-    _tf_gui_click_guard = false
-    if not ok then
+    _tf_gui_click_guard = false    if not ok then
       -- Log the error but don't re-throw it to prevent cascading errors
-      local err_msg = "[TeleportFavorites] GUI click handler failed: " .. tostring(result)
-      if log then log(err_msg) end
-      print(err_msg)
+      ErrorHandler.warn_log("GUI click handler failed", {
+        error = tostring(result),
+        event_player_index = event and event.player_index
+      })
     end
   end
   

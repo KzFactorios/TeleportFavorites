@@ -15,6 +15,13 @@ Provides a unified API for all chart tag operations throughout the mod.
 
 local ErrorHandler = require("core.utils.error_handler")
 local basic_helpers = require("core.utils.basic_helpers")
+local GPSUtils = require("core.utils.gps_utils")
+local PositionUtils = require("core.utils.position_utils")
+local Cache = require("core.cache.cache")
+local GPSChartHelpers = require("core.utils.gps_chart_helpers")
+local RichTextFormatter = require("core.utils.rich_text_formatter")
+local GameHelpers = require("core.utils.game_helpers")
+local Constants = require("constants")
 
 ---@class ChartTagUtils
 local ChartTagUtils = {}
@@ -44,30 +51,6 @@ function ChartTagUtils.build_chart_tag_spec(position, source_chart_tag, player, 
     spec.icon = icon
   end
 
-  return spec
-end
-
---- Build chart tag spec from GPS and player context
----@param gps string GPS coordinate string
----@param player LuaPlayer Player context
----@param text string? Optional text override
----@param icon table? Optional icon override
----@return table? chart_tag_spec Chart tag specification or nil if invalid GPS
-function ChartTagUtils.build_spec_from_gps(gps, player, text, icon)
-  local GPSUtils = require("core.utils.gps_utils")
-  local position = GPSUtils.map_position_from_gps(gps)
-  if not position then return nil end
-  
-  local spec = {
-    position = position,
-    text = text or "Tag",
-    last_user = player and player.valid and player.name or "System"
-  }
-  
-  if icon and type(icon) == "table" and icon.name then
-    spec.icon = icon
-  end
-  
   return spec
 end
 
@@ -141,10 +124,8 @@ function ChartTagUtils.handle_map_click(event)
   
   -- Store last clicked tag for this player
   last_clicked_chart_tags[player.index] = clicked_chart_tag
-  
-  -- Log the click if a tag was found
+    -- Log the click if a tag was found
   if clicked_chart_tag and clicked_chart_tag.valid then
-    local GPSUtils = require("core.utils.gps_utils")
     local gps = GPSUtils.gps_from_map_position(clicked_chart_tag.position, player.surface.index)
     
     ErrorHandler.debug_log("Player clicked chart tag", {
@@ -157,13 +138,6 @@ function ChartTagUtils.handle_map_click(event)
   return clicked_chart_tag
 end
 
---- Get the last clicked chart tag for a player
----@param player_index number Player index
----@return LuaCustomChartTag? last_clicked The last clicked chart tag or nil
-function ChartTagUtils.get_last_clicked_chart_tag(player_index)
-  return last_clicked_chart_tags[player_index]
-end
-
 -- ========================================
 -- CHART TAG TERRAIN HANDLING
 -- ========================================
@@ -174,11 +148,9 @@ end
 ---@return boolean is_on_water
 function ChartTagUtils.is_chart_tag_on_water(chart_tag, surface)
   if not chart_tag or not chart_tag.valid then return false end
-  
-  surface = surface or chart_tag.surface
+    surface = surface or chart_tag.surface
   if not surface or not surface.valid then return false end
   
-  local PositionUtils = require("core.utils.position_utils")
   return PositionUtils.is_water_tile(surface, chart_tag.position)
 end
 
@@ -188,11 +160,9 @@ end
 ---@return boolean is_on_space
 function ChartTagUtils.is_chart_tag_on_space(chart_tag, surface)
   if not chart_tag or not chart_tag.valid then return false end
-  
-  surface = surface or chart_tag.surface
+    surface = surface or chart_tag.surface
   if not surface or not surface.valid then return false end
   
-  local PositionUtils = require("core.utils.position_utils")
   return PositionUtils.is_space_tile(surface, chart_tag.position)
 end
 
@@ -203,192 +173,249 @@ end
 ---@return MapPosition? valid_position
 function ChartTagUtils.find_valid_position_near_chart_tag(chart_tag, search_radius, player)
   if not chart_tag or not chart_tag.valid then return nil end
-  
-  local surface = chart_tag.surface
+    local surface = chart_tag.surface
   if not surface or not surface.valid then return nil end
-    local PositionUtils = require("core.utils.position_utils")
+    
   return PositionUtils.find_valid_position(surface, chart_tag.position, search_radius or 20)
 end
 
---- Relocate a chart tag from water/space to nearby valid land
----@param chart_tag LuaCustomChartTag Chart tag to relocate
----@param search_radius number? Search radius (default: 20)
----@param notify_players boolean? Whether to notify affected players (default: true)
----@return boolean success True if relocation was successful
-function ChartTagUtils.relocate_chart_tag_from_water(chart_tag, search_radius, notify_players)
-  if not chart_tag or not chart_tag.valid then return false end
+-- ========================================
+-- TERRAIN PROTECTION SYSTEM
+-- ========================================
+
+--- Calculate the protected area around a chart tag position based on player settings
+---@param position MapPosition Chart tag position
+---@param player LuaPlayer? Player to get settings from (uses default if nil)
+---@return BoundingBox? protected_area The protected bounding box
+function ChartTagUtils.calculate_protected_area(position, player)
+  if not position then return nil end
   
-  search_radius = search_radius or 20
-  notify_players = notify_players ~= false -- Default to true
-  
-  local surface = chart_tag.surface
-  if not surface or not surface.valid then return false end
-  
-  -- Check if relocation is needed
-  if not (ChartTagUtils.is_chart_tag_on_water(chart_tag, surface) or 
-          ChartTagUtils.is_chart_tag_on_space(chart_tag, surface)) then
-    return false -- No relocation needed
-  end
-  
-  -- Find valid position
-  local new_position = ChartTagUtils.find_valid_position_near_chart_tag(chart_tag, search_radius)
-  if not new_position then
-    ErrorHandler.debug_log("No valid position found for chart tag relocation", {
-      chart_tag_position = chart_tag.position,
-      search_radius = search_radius
-    })
-    return false
-  end
-  -- Store old position for notifications
-  local old_position = { x = chart_tag.position.x, y = chart_tag.position.y }
-  local surface_index = tonumber(surface.index) or 1
-  
-  -- Get associated tag data
-  local Cache = require("core.cache.cache")
-  local GPSUtils = require("core.utils.gps_utils")
-  local old_gps = GPSUtils.gps_from_map_position(old_position, surface_index)
-  local tag = Cache.get_tag_by_gps(old_gps)
-  
-  -- Find a player context for chart tag creation
-  local player = nil
-  if tag and tag.faved_by_players and #tag.faved_by_players > 0 then
-    for _, player_index in ipairs(tag.faved_by_players) do
-      local p = game.get_player(player_index)
-      if p and p.valid then
-        player = p
-        break
+  -- Get protection radius from player settings or use default
+  local protection_radius = Constants.settings.TERRAIN_PROTECTION_DEFAULT
+  if player and player.valid then
+    local player_settings = settings.get_player_settings(player)
+    local setting = player_settings["terrain-protection-radius"]
+    if setting and setting.value then
+      -- Ensure we get a number value
+      local value = tonumber(setting.value)
+      if value then
+        protection_radius = value
       end
     end
   end
   
-  -- Fallback to chart tag's last user
-  if not player and chart_tag.last_user then
-    for _, p in pairs(game.players) do
-      if p.valid and p.name == chart_tag.last_user then
-        player = p
-        break
+  -- Create protection area based on radius
+  return {
+    left_top = { x = math.floor(position.x) - protection_radius, y = math.floor(position.y) - protection_radius },
+    right_bottom = { x = math.floor(position.x) + protection_radius, y = math.floor(position.y) + protection_radius }
+  }
+end
+
+--- Check if a position is within the protected area of any chart tag
+---@param surface LuaSurface Surface to check on 
+---@param position MapPosition Position to check
+---@param requesting_player LuaPlayer? Player making the request (for ownership checks)
+---@return boolean is_protected True if position is protected
+---@return LuaCustomChartTag? protecting_tag The chart tag that protects this area
+---@return boolean is_owner True if the requesting player owns the protecting tag
+function ChartTagUtils.is_position_protected(surface, position, requesting_player)
+  if not surface or not surface.valid or not position then 
+    return false, nil, false 
+  end
+    -- Get all chart tags on this surface
+  local surface_index = surface.index
+  local chart_tags = Cache.lookups.get_surface_chart_tags(surface_index)
+  if not chart_tags or #chart_tags == 0 then 
+    return false, nil, false 
+  end
+  
+  -- Check each chart tag for protection overlap
+  for _, chart_tag in pairs(chart_tags) do
+    if chart_tag and chart_tag.valid then
+      -- Determine ownership first
+      local is_owner = false
+      if requesting_player and requesting_player.valid and chart_tag.last_user then
+        is_owner = (chart_tag.last_user == requesting_player.name)
       end
-    end
-  end
-  
-  if not player then
-    ErrorHandler.debug_log("No valid player context for chart tag relocation")
-    return false
-  end
-  
-  -- Create new chart tag at valid position
-  local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(new_position, chart_tag, player)
-  
-  local GPSChartHelpers = require("core.utils.gps_chart_helpers")
-  local new_chart_tag = GPSChartHelpers.safe_add_chart_tag(player.force, surface, chart_tag_spec)
-  if not new_chart_tag or not new_chart_tag.valid then
-    ErrorHandler.debug_log("Failed to create new chart tag during relocation")
-    return false
-  end
-  
-  -- Update tag data if it exists
-  local new_gps = GPSUtils.gps_from_map_position(new_position, surface_index)
-  if tag then
-    tag.chart_tag = new_chart_tag
-    tag.gps = new_gps
-    
-    -- Update favorites that reference this tag
-    if tag.faved_by_players and #tag.faved_by_players > 0 then
-      for _, player_index in ipairs(tag.faved_by_players) do
-        local fav_player = game.get_player(player_index)
-        if fav_player and fav_player.valid then
-          local favorites = Cache.get_player_favorites(fav_player)
-          for i = 1, #favorites do
-            local favorite = favorites[i]
-            if favorite and favorite.gps == old_gps then
-              favorite.gps = new_gps
-            end
+        -- Get the requesting player's protection setting
+      local requesting_player_radius = Constants.settings.TERRAIN_PROTECTION_DEFAULT
+      if requesting_player and requesting_player.valid then
+        local player_settings = settings.get_player_settings(requesting_player)
+        local setting = player_settings["terrain-protection-radius"]
+        if setting and setting.value then
+          local value = tonumber(setting.value)
+          if value then
+            requesting_player_radius = value
           end
         end
       end
-    end
-  end
-  
-  -- Destroy old chart tag
-  chart_tag:destroy()
-  
-  -- Refresh cache
-  local Lookups = Cache.lookups
-  Lookups.invalidate_surface_chart_tags(surface_index)
-  
-  -- Notify affected players
-  if notify_players and tag and tag.faved_by_players and #tag.faved_by_players > 0 then
-    local RichTextFormatter = require("core.utils.rich_text_formatter")
-    local GameHelpers = require("core.utils.game_helpers")
-    
-    local message = RichTextFormatter.tag_relocated_notification(new_chart_tag, old_position, new_position)
-    for _, player_index in ipairs(tag.faved_by_players) do
-      local fav_player = game.get_player(player_index)
-      if fav_player and fav_player.valid then
-        GameHelpers.player_print(fav_player, message)
-      end
-    end
-  end
-  
-  ErrorHandler.debug_log("Chart tag successfully relocated", {
-    old_position = old_position,
-    new_position = new_position,
-    old_gps = old_gps,
-    new_gps = new_gps
-  })
-  
-  return true
-end
-
---- Process changed tiles and relocate affected chart tags
----@param tiles table Array of changed tiles
----@param surface LuaSurface Surface where tiles changed
----@param search_radius number? Search radius for relocation (default: 20)
----@param notify_players boolean? Whether to notify players (default: true)
----@return number relocated_count Number of chart tags relocated
-function ChartTagUtils.process_terrain_changes(tiles, surface, search_radius, notify_players)
-  if not tiles or #tiles == 0 or not surface or not surface.valid then return 0 end
-  
-  search_radius = search_radius or 20
-  notify_players = notify_players ~= false
-  
-  -- Get all chart tags on this surface
-  local Lookups = require("core.cache.cache").lookups
-  local surface_index = surface.index
-  local chart_tags = Lookups.get_surface_chart_tags(surface_index)
-  if not chart_tags or #chart_tags == 0 then return 0 end
-  
-  -- Create a set of changed positions for quick lookup
-  local changed_positions = {}
-  for _, tile_data in ipairs(tiles) do
-    if tile_data.position then
-      local x = math.floor(tile_data.position.x)
-      local y = math.floor(tile_data.position.y)
-      changed_positions[x .. "," .. y] = true
-    end
-  end
-  
-  local relocated_count = 0
-  
-  -- Check each chart tag to see if its position was affected
-  for _, chart_tag in pairs(chart_tags) do
-    if chart_tag and chart_tag.valid then
-      local pos = chart_tag.position
-      local x = math.floor(pos.x)
-      local y = math.floor(pos.y)
       
-      -- Check if this position was changed
-      local pos_key = x .. "," .. y
-      if changed_positions[pos_key] then
-        -- Check if relocation is needed and attempt it
-        if ChartTagUtils.relocate_chart_tag_from_water(chart_tag, search_radius, notify_players) then
-          relocated_count = relocated_count + 1
+      -- Special logic for radius 0: if requesting player has radius 0 and is owner, allow change
+      if requesting_player_radius == 0 and is_owner then
+        -- Owner with radius 0 can modify their own tags - skip protection check for this tag
+        goto continue
+      end
+        -- For non-owners or when requesting player has radius > 0, use chart tag owner's settings or default
+      local protection_radius = Constants.settings.TERRAIN_PROTECTION_DEFAULT
+      if chart_tag.last_user then
+        -- Try to find the chart tag owner to get their protection settings
+        for _, player in pairs(game.players) do
+          if player.valid and player.name == chart_tag.last_user then
+            local owner_settings = settings.get_player_settings(player)
+            local owner_setting = owner_settings["terrain-protection-radius"]
+            if owner_setting and owner_setting.value then
+              local value = tonumber(owner_setting.value)
+              if value then                protection_radius = value
+                -- Special case: if tag owner has radius 0 but requesting player is not owner,
+                -- use default protection to prevent griefing
+                if protection_radius == 0 and not is_owner then
+                  protection_radius = Constants.settings.TERRAIN_PROTECTION_DEFAULT
+                end
+              end
+            end
+            break
+          end
         end
       end
+      
+      -- Calculate protection area based on determined radius
+      local protected_area = {
+        left_top = { x = math.floor(chart_tag.position.x) - protection_radius, y = math.floor(chart_tag.position.y) - protection_radius },
+        right_bottom = { x = math.floor(chart_tag.position.x) + protection_radius, y = math.floor(chart_tag.position.y) + protection_radius }
+      }
+      
+      -- Check if position is within protected area
+      if position.x >= protected_area.left_top.x and 
+         position.x <= protected_area.right_bottom.x and
+         position.y >= protected_area.left_top.y and 
+         position.y <= protected_area.right_bottom.y then
+        
+        return true, chart_tag, is_owner
+      end
+      
+      ::continue::
     end
   end
   
-  return relocated_count
+  return false, nil, false
+end
+
+--- Filter tiles to remove those in protected areas (unless owner allows it)
+---@param tiles table Array of tile changes to filter
+---@param surface LuaSurface Surface where tiles will be changed
+---@param requesting_player LuaPlayer? Player making the changes
+---@return table filtered_tiles Tiles that are allowed to be changed
+---@return table blocked_tiles Tiles that were blocked due to protection
+function ChartTagUtils.filter_protected_tiles(tiles, surface, requesting_player)
+  if not tiles or #tiles == 0 or not surface or not surface.valid then 
+    return tiles or {}, {} 
+  end
+  
+  local filtered_tiles = {}
+  local blocked_tiles = {}
+  
+  for _, tile_data in ipairs(tiles) do
+    if tile_data.position then
+      local is_protected, protecting_tag, is_owner = ChartTagUtils.is_position_protected(
+        surface, tile_data.position, requesting_player
+      )
+      
+      if is_protected and not is_owner then
+        -- Tile is protected and player doesn't own the tag
+        table.insert(blocked_tiles, {
+          tile = tile_data,
+          protecting_tag = protecting_tag
+        })
+      else
+        -- Tile is not protected or player owns the protecting tag
+        table.insert(filtered_tiles, tile_data)
+      end
+    else
+      -- No position data, allow the tile change
+      table.insert(filtered_tiles, tile_data)
+    end
+  end
+  
+  return filtered_tiles, blocked_tiles
+end
+
+--- Notify player about blocked terrain changes due to chart tag protection
+---@param player LuaPlayer Player to notify
+---@param blocked_tiles table Array of blocked tile changes
+function ChartTagUtils.notify_terrain_protection(player, blocked_tiles)  if not player or not player.valid or not blocked_tiles or #blocked_tiles == 0 then 
+    return 
+  end
+  
+  -- Group blocked tiles by protecting tag
+  local blocks_by_tag = {}
+  for _, block_data in ipairs(blocked_tiles) do
+    local tag = block_data.protecting_tag
+    if tag and tag.valid then
+      local tag_key = tag.position.x .. "," .. tag.position.y
+      if not blocks_by_tag[tag_key] then
+        blocks_by_tag[tag_key] = {
+          tag = tag,
+          blocked_count = 0
+        }
+      end
+      blocks_by_tag[tag_key].blocked_count = blocks_by_tag[tag_key].blocked_count + 1
+    end
+  end
+  
+  -- Send notifications for each protecting tag
+  for _, block_info in pairs(blocks_by_tag) do
+    local tag = block_info.tag
+    local surface_index = tag.surface and tag.surface.index or 1
+    local gps = GPSUtils.gps_from_map_position(tag.position, surface_index)
+    
+    local message = string.format(
+      "[TeleportFavorites] %d tile changes blocked by chart tag protection at %s. Delete the tag first to modify this area.",
+      block_info.blocked_count,
+      gps
+    )
+    
+    GameHelpers.player_print(player, message)
+  end
+end
+
+--- Process terrain changes with protection system - prevent changes in protected areas
+---@param tiles table Array of tile changes to process  
+---@param surface LuaSurface Surface where tiles will be changed
+---@param requesting_player LuaPlayer? Player making the terrain changes
+---@return number blocked_count Number of tile changes blocked by protection
+function ChartTagUtils.process_terrain_changes_with_protection(tiles, surface, requesting_player)
+  if not tiles or #tiles == 0 or not surface or not surface.valid then return 0 end
+  
+  -- Filter tiles based on chart tag protection
+  local filtered_tiles, blocked_tiles = ChartTagUtils.filter_protected_tiles(tiles, surface, requesting_player)
+  
+  -- If any tiles were blocked, we need to revert them since the event fires after changes
+  if #blocked_tiles > 0 then
+    -- Revert blocked tile changes by restoring their original state
+    local revert_tiles = {}
+    for _, block_data in ipairs(blocked_tiles) do
+      local tile_data = block_data.tile
+      if tile_data.position and tile_data.old_tile_name then
+        -- Revert to the original tile type
+        table.insert(revert_tiles, {
+          name = tile_data.old_tile_name,
+          position = tile_data.position
+        })
+      end
+    end
+    
+    -- Apply the reverted tiles if we have any
+    if #revert_tiles > 0 then
+      surface:set_tiles(revert_tiles)
+    end
+    
+    -- Notify player about blocked changes
+    if requesting_player and requesting_player.valid then
+      ChartTagUtils.notify_terrain_protection(requesting_player, blocked_tiles)
+    end
+  end
+  
+  return #blocked_tiles
 end
 
 
@@ -404,7 +431,14 @@ function ChartTagUtils.on_tile_built(event)
   local surface = event.surface
   if not surface or not surface.valid then return end
   
-  ChartTagUtils.process_terrain_changes(event.tiles, surface)
+  -- Get the player who made the change (if applicable)
+  local requesting_player = nil
+  if event.player_index then
+    requesting_player = game.get_player(event.player_index)
+  end
+  
+  -- Use the new protection system instead of relocation
+  ChartTagUtils.process_terrain_changes_with_protection(event.tiles, surface, requesting_player)
 end
 
 --- Register event handlers for chart tag terrain management
@@ -417,21 +451,12 @@ function ChartTagUtils.register_terrain_events(script)
   script.on_event(defines.events.on_robot_built_tile, ChartTagUtils.on_tile_built)
   script.on_event(defines.events.on_player_mined_tile, ChartTagUtils.on_tile_built)
   script.on_event(defines.events.on_robot_mined_tile, ChartTagUtils.on_tile_built)
-  
-  -- Script-caused terrain changes
+    -- Script-caused terrain changes
   script.on_event(defines.events.script_raised_set_tiles, function(event)
     if not event or not event.tiles or #event.tiles == 0 then return end
-    ChartTagUtils.process_terrain_changes(event.tiles, event.surface)
+    -- Script changes don't have a specific player, so pass nil
+    ChartTagUtils.process_terrain_changes_with_protection(event.tiles, event.surface, nil)
   end)
-end
-
---- Register click detection events
----@param script table The global script object
-function ChartTagUtils.register_click_events(script)
-  if not script then return end
-  
-  -- Register the custom input handler for map clicks
-  script.on_event("tf-map-left-click", ChartTagUtils.handle_map_click)
 end
 
 return ChartTagUtils

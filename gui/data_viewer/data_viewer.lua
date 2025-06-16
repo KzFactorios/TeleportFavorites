@@ -147,25 +147,27 @@ local function rowline_parser(key, value, indent, max_line_len)
     return line, false
   end
   -- If table is empty
-  local n = 0; for _ in pairs(value) do n = n + 1 end
-  if n == 0 then
+  local n = 0; for _ in pairs(value) do n = n + 1 end  if n == 0 then
     return prefix .. tostring(key) .. " = {}", true
-  end  -- If table is shallow and all scalars, combine onto one line
+  end
+  
+  -- If table is shallow and all scalars, combine onto one line
   local parts = {}
   local all_scalar = true
-  
-  -- Process each table entry to build compact representation
+    -- Process each table entry to build compact representation
   local function process_table_entry(v, k)
     if type(v) == "table" or type(v) == "function" then
       all_scalar = false
-      return false -- Stop processing
+      -- Stop processing
+      return false
     end
     local valstr = tostring(v)
     if type(v) ~= "string" and type(v) ~= "number" then 
       valstr = valstr .. " [" .. type(v) .. "]" 
     end
     table.insert(parts, tostring(k) .. " = " .. valstr)
-    return true -- Continue processing
+    -- Continue processing
+    return true
   end
   
   -- Process entries until we find a non-scalar or finish all
@@ -259,16 +261,19 @@ function data_viewer.build(player, parent, state)
   local top_key = state and state.top_key
 
   local font_size = (state and state.font_size) or 10
-  -- Main dialog frame (resizable)  local frame = GuiBase.create_frame(parent, Enum.GuiEnum.GUI_FRAME.DATA_VIEWER, "vertical", "tf_data_viewer_frame")
+  -- Main dialog frame (resizable)
+  local frame = GuiBase.create_frame(parent, Enum.GuiEnum.GUI_FRAME.DATA_VIEWER, "vertical", "tf_data_viewer_frame")
   frame.caption = ""
   -- Remove debug label at the very top
   -- frame.add{type="label", caption="[TF DEBUG] Data Viewer GUI visible for player: "..(player and player.name or "nil"), style="data_viewer_row_odd_label"}
   -- Titlebar
   build_titlebar(frame)
   -- Inner flow (vertical, invisible_frame)
-  local inner_flow = GuiBase.create_frame(frame, "data_viewer_inner_flow", "vertical", "invisible_frame")
   -- Tabs row (with tab actions)
-  build_tabs_row(inner_flow, state.active_tab)  -- Content area: vertical flow, then table
+  local inner_flow = GuiBase.create_frame(frame, "data_viewer_inner_flow", "vertical", "invisible_frame")
+  build_tabs_row(inner_flow, state.active_tab)
+  
+  -- Content area: vertical flow, then table
   local content_flow = GuiBase.create_vflow(inner_flow, "data_viewer_content_flow")
 
   -- Table for data rows (single column for compactness)
@@ -280,7 +285,8 @@ function data_viewer.build(player, parent, state)
 
   -- REMOVE DEBUG LABEL: Remove debug_data_str label
   -- data_table.add{type="label", caption=debug_data_str, style="data_viewer_row_even_label"}
-  -- Patch: If data is nil or empty, always show top_key = { } and closing brace, never [NO DATA TO DISPLAY]  if data == nil or (type(data) == "table" and next(data) == nil) then
+  -- Patch: If data is nil or empty, always show top_key = { } and closing brace, never [NO DATA TO DISPLAY]
+  if data == nil or (type(data) == "table" and next(data) == nil) then
     if not top_key then 
       top_key = "player_data" 
     end
@@ -310,9 +316,9 @@ function data_viewer.build(player, parent, state)
       local no_data_lbl2 = GuiBase.create_label(data_table, "no_data_table", "[NO DATA TO DISPLAY]", "data_viewer_row_even_label")
       -- Note: font_color is not settable on LuaStyle
     end
-  else
-    local no_data_lbl3 = GuiBase.create_label(data_table, "no_data_other", "[NO DATA TO DISPLAY]", "data_viewer_row_even_label")
-    -- Note: font_color is not settable on LuaStyle  end
+  else    local no_data_lbl3 = GuiBase.create_label(data_table, "no_data_other", "[NO DATA TO DISPLAY]", "data_viewer_row_even_label")
+    -- Note: font_color is not settable on LuaStyle
+  end
   
   local lbl2 = GuiBase.create_label(data_table, "data_closing_brace", "}", "data_viewer_row_even_label")
   set_label_font(lbl2, font_size)

@@ -372,7 +372,7 @@ The tag editor implements several command handlers for button interactions:
   4. Notifies observers of change (not persisted until confirm)
 
 - `handle_teleport_btn`: Teleports player to tag location
-  1. Uses `Helpers.safe_teleport(player, tag_data.pos)`
+  1. Uses `GaameHelpers.safe_teleport(player, tag_data.pos)`
   2. Closes tag editor on success
   3. Shows error message on failure
 

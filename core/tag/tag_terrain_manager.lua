@@ -13,11 +13,12 @@ This module handles:
 
 local PositionValidator = require("core.utils.position_validator")
 local Cache = require("core.cache.cache")
+local ChartTagUtils = require("core.utils.chart_tag_utils")
+local GameHelpers = require("core.utils.game_helpers")
+local GPSChartHelpers = require("core.utils.gps_chart_helpers")
 local Lookups = Cache.lookups
 local gps_parser = require("core.utils.gps_helpers")
 local RichTextFormatter = require("__TeleportFavorites__.core.utils.rich_text_formatter")
-local GameHelpers = require("core.utils.game_helpers")
-local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 
 -- Removed unused imports:
 -- GPSCore, ErrorHandler, Helpers, basic_helpers, Tag - no usage found
@@ -118,10 +119,7 @@ function TagTerrainManager.relocate_chart_tag_from_water(chart_tag, search_radiu
         })
         return false
     end    -- Create a new chart tag at the valid position using centralized builder
-    local chart_tag_spec = ChartTagSpecBuilder.build(new_position, chart_tag, player)
-
-    -- Create new chart tag at valid position using safe wrapper
-    local GPSChartHelpers = require("core.utils.gps_chart_helpers")
+    local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(new_position, chart_tag, player)    -- Create new chart tag at valid position using safe wrapper
     local new_chart_tag = GPSChartHelpers.safe_add_chart_tag(player.force, surface, chart_tag_spec)
     if not new_chart_tag or not new_chart_tag.valid then
         ErrorHandler.debug_log("Failed to create new chart tag during relocation", {

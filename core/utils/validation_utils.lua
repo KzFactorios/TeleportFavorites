@@ -15,6 +15,7 @@ Provides a unified API for all validation operations throughout the mod.
 
 local ErrorHandler = require("core.utils.error_handler")
 local basic_helpers = require("core.utils.basic_helpers")
+local GPSUtils = require("core.utils.gps_utils")
 
 ---@class ValidationUtils
 local ValidationUtils = {}
@@ -49,6 +50,9 @@ function ValidationUtils.validate_player_for_position_ops(player)
     return false, basic_error
   end
   
+  -- player is guaranteed to be valid at this point
+  assert(player, "Player should not be nil after validation")
+  
   if not player.force or not player.surface then
     return false, "Player missing force or surface"
   end
@@ -69,6 +73,9 @@ function ValidationUtils.validate_player_for_gui(player)
   if not basic_valid then
     return false, basic_error
   end
+  
+  -- player is guaranteed to be valid at this point
+  assert(player, "Player should not be nil after validation")
   
   if not player.gui then
     return false, "Player GUI is not available"
@@ -93,9 +100,7 @@ function ValidationUtils.validate_gps_string(gps)
   if basic_helpers.trim(gps) == "" then
     return false, "GPS string cannot be empty"
   end
-  
-  -- Use GPSUtils for actual parsing validation
-  local GPSUtils = require("core.utils.gps_utils")
+    -- Use GPSUtils for actual parsing validation
   local parsed = GPSUtils.parse_gps_string(gps)
   if not parsed then
     return false, "Invalid GPS format"
@@ -114,9 +119,7 @@ function ValidationUtils.validate_and_parse_gps(gps)
   if not valid then
     return false, nil, error_msg
   end
-  
-  -- gps is guaranteed to be a string at this point due to validation above
-  local GPSUtils = require("core.utils.gps_utils")
+    -- gps is guaranteed to be a string at this point due to validation above
   local position = GPSUtils.map_position_from_gps(gps --[[@as string]])
   if not position then
     return false, nil, "Failed to extract position from GPS"
@@ -151,7 +154,8 @@ end
 ---@return boolean is_valid
 ---@return string? error_message
 function ValidationUtils.validate_position_range(position, max_distance)
-  max_distance = max_distance or 2000000 -- Factorio's practical world limit
+  -- Factorio's practical world limit
+  max_distance = max_distance or 2000000
   
   if math.abs(position.x) > max_distance or math.abs(position.y) > max_distance then
     return false, "Position is outside reasonable world bounds"
@@ -216,6 +220,9 @@ function ValidationUtils.validate_chart_tag_with_position(chart_tag)
     return false, error_msg
   end
   
+  -- chart_tag is guaranteed to be valid at this point
+  assert(chart_tag, "Chart tag should not be nil after validation")
+  
   if not chart_tag.position then
     return false, "Chart tag missing position"
   end
@@ -262,6 +269,9 @@ function ValidationUtils.validate_tag_with_gps(tag)
     return false, error_msg
   end
   
+  -- tag is guaranteed to be valid at this point
+  assert(tag, "Tag should not be nil after validation")
+  
   local gps_valid, gps_error = ValidationUtils.validate_gps_string(tag.gps)
   if not gps_valid then
     return false, "Tag has invalid GPS: " .. (gps_error or "unknown error")
@@ -300,7 +310,8 @@ end
 ---@return string? error_message
 function ValidationUtils.validate_chart_tag_icon(icon)
   if not icon then
-    return true, nil -- Icons are optional
+    -- Icons are optional
+    return true, nil
   end
   
   return ValidationUtils.validate_signal_structure(icon)
@@ -382,7 +393,8 @@ function ValidationUtils.validate_position_operation(player, gps)
     return false, nil, player_error
   end
   
-  -- Validate and parse GPS  local gps_valid, position, gps_error = ValidationUtils.validate_and_parse_gps(gps)
+  -- Validate and parse GPS
+  local gps_valid, position, gps_error = ValidationUtils.validate_and_parse_gps(gps)
   if not gps_valid then
     return false, nil, gps_error
   end
