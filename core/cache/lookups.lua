@@ -76,14 +76,15 @@ local function ensure_surface_cache(surface_index)
   local chart_tags = cache.surfaces[surface_idx].chart_tags
   local gps_map = cache.surfaces[surface_idx].chart_tags_mapped_by_gps
   local map_count = 0
-  for _ in pairs(gps_map) do map_count = map_count + 1 end
-  if #chart_tags > 0 and map_count == 0 then
+  for _ in pairs(gps_map) do map_count = map_count + 1 end  if #chart_tags > 0 and map_count == 0 then
     -- Rebuild the GPS mapping using functional approach
     local function build_gps_mapping(chart_tag)
       if chart_tag and chart_tag.valid and chart_tag.position and surface_idx then
         -- Ensure surface_idx is properly typed as uint
         local surface_index_uint = tonumber(surface_idx) --[[@as uint]]
-        local gps = GPSUtils.gps_from_map_position(chart_tag.position, surface_index_uint)
+        -- Cast to number for gps_from_map_position function
+        local surface_index_number = surface_index_uint --[[@as number]]
+        local gps = GPSUtils.gps_from_map_position(chart_tag.position, surface_index_number)
         if gps and gps ~= "" then
           gps_map[gps] = chart_tag
         end
@@ -140,7 +141,7 @@ local function get_chart_tag_by_gps(gps)
   if not surface_cache then return nil end
   local match_chart_tag = surface_cache.chart_tags_mapped_by_gps[gps] or nil
   if (match_chart_tag and not match_chart_tag.valid) or
-      (match_chart_tag and not PositionUtils.is_walkable_position(surface_index, match_chart_tag.position)) then
+      (match_chart_tag and match_chart_tag.surface and not PositionUtils.is_walkable_position(match_chart_tag.surface, match_chart_tag.position)) then
     match_chart_tag = nil
   end
   return match_chart_tag

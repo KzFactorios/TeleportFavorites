@@ -292,17 +292,8 @@ end
 
 local function handle_teleport_btn(player, map_position)
   if not player or not map_position then return end
-
   GameHelpers.safe_teleport(player, map_position)
   close_tag_editor(player)
-end
-
-local update_tag_data_and_refresh = function(player, tag_data, updates)
-  for k, v in pairs(updates) do
-    tag_data[k] = v
-  end
-  Cache.set_tag_editor_data(player, tag_data)
-  refresh_tag_editor(player, tag_data)
 end
 
 --- Tag editor GUI click handler for shared dispatcher
@@ -366,7 +357,6 @@ local function on_tag_editor_gui_text_changed(event)
   end
 end
 
-M.update_tag_data_and_refresh = update_tag_data_and_refresh
 M.close_tag_editor = close_tag_editor
 M.on_tag_editor_gui_click = on_tag_editor_gui_click
 M.on_tag_editor_gui_text_changed = on_tag_editor_gui_text_changed

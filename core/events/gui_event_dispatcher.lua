@@ -52,6 +52,7 @@ local Enum = require("prototypes.enums.enum")
 local ErrorHandler = require("core.utils.error_handler")
 local control_data_viewer = require("core.control.control_data_viewer")
 local Cache = require("core.cache.cache")
+local GuiUtils = require("core.utils.gui_utils")
 
 local M = {}
 
@@ -88,9 +89,7 @@ function M.register_gui_handlers(script)
     if _tf_gui_click_guard then return end
     _tf_gui_click_guard = true    local ok, result = xpcall(function()
       local element = event.element
-      if not element or not element.valid then return end
-
-      -- Global/utility buttons (not tied to a specific GUI)
+      if not element or not element.valid then return end      -- Global/utility buttons (not tied to a specific GUI)
       -- Ignore clicks on blank/empty favorite slots
       if is_blank_fave_bar_slot_button(element) then return end
       if element.name == "fave_bar_visible_btns_toggle" or is_fave_bar_slot_button(element) then
@@ -98,7 +97,7 @@ function M.register_gui_handlers(script)
         return true
       end
 
-      local parent_gui = Helpers.get_gui_frame_by_element(element)
+      local parent_gui = GuiUtils.get_gui_frame_by_element(element)
       if not parent_gui then
         error("Element: " .. element.name .. ", parent GUI not found")
       end
@@ -175,13 +174,13 @@ function M.register_gui_handlers(script)
     control_tag_editor.on_tag_editor_gui_text_changed(event)
   end
   script.on_event(defines.events.on_gui_text_changed, shared_on_gui_text_changed)
-
   -- Register elem changed handler for immediate storage saving (for icon picker)
   local function shared_on_gui_elem_changed(event)
     if not event or not event.element then return end
     -- Handle icon picker changes in tag editor
     local element = event.element
-    if element.name and element.name:find("tag_editor") then
+    local parent_gui = GuiUtils.get_gui_frame_by_element(element)
+    if parent_gui and parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
       control_tag_editor.on_tag_editor_gui_click(event, script)
     end
   end
@@ -192,7 +191,8 @@ function M.register_gui_handlers(script)
     if not event or not event.element then return end
     -- Handle confirmation dialog events in tag editor
     local element = event.element
-    if element.name and element.name:find("tag_editor") then
+    local parent_gui = GuiUtils.get_gui_frame_by_element(element)
+    if parent_gui and parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
       control_tag_editor.on_tag_editor_gui_click(event, script)
     end
   end

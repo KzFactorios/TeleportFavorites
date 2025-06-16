@@ -18,7 +18,6 @@ local GuiObserver = require("core.pattern.gui_observer")
 local GuiEventBus = GuiObserver.GuiEventBus
 
 local M = {}
-local script = script
 
 local function lstr(key, ...)
   return { key, ... }
@@ -37,15 +36,7 @@ end
 local function start_drag(player, fav, slot)
   local pdata = Cache.get_player_data(player)
   pdata.drag_favorite_index = slot
-  Helpers.player_print(player, lstr("tf-gui.fave_bar_drag_start", slot))
-end
-
-local function find_favorite_buttons_container(bar_flow)
-  if not (bar_flow and bar_flow.valid and bar_flow.children) then return nil end
-  for _, child in pairs(bar_flow.children) do
-    if child.name == "fave_bar_slots_flow" then return child end
-  end
-  return nil
+  GameHelpers.player_print(player, lstr("tf-gui.fave_bar_drag_start", slot))
 end
 
 local function reorder_favorites(player, favorites, drag_index, slot)
@@ -56,7 +47,7 @@ local function reorder_favorites(player, favorites, drag_index, slot)
       and drag_index <= #favs
   if valid_drag then
     local drag_fav = favs[drag_index]    if is_locked_favorite(drag_fav) then
-      Helpers.player_print(player, lstr("tf-gui.fave_bar_locked_move"))
+      GameHelpers.player_print(player, lstr("tf-gui.fave_bar_locked_move"))
       clear_drag_state(player)
       -- handled
       return true
@@ -79,21 +70,14 @@ local function reorder_favorites(player, favorites, drag_index, slot)
     local bar_flow = bar_frame and bar_frame.fave_bar_flow
     if bar_flow then
       fave_bar.update_slot_row(player, bar_flow)
-    end    Helpers.player_print(player, lstr("tf-gui.fave_bar_reordered", drag_index, slot))
+    end    
+    GameHelpers.player_print(player, lstr("tf-gui.fave_bar_reordered", drag_index, slot))
     clear_drag_state(player)
     -- handled
     return true
   end
   clear_drag_state(player)
   return false
-end
-
----@param player LuaPlayer
----@param fav Favorite
--- Check if we need to add nil check annotation
-local function teleport_to_favorite(player, fav)
-  if not fav or not fav.gps then return end
-  GameHelpers.safe_teleport(player, gps_core.map_position_from_gps(fav.gps))
 end
 
 local function open_tag_editor_from_favorite(player, favorite)
@@ -186,7 +170,7 @@ end
 local function handle_teleport(event, player, fav, slot, did_drag)
   if event.button == defines.mouse_button_type.left and not event.control and not did_drag then
     if fav and not FavoriteUtils.is_blank_favorite(fav) then
-      teleport_to_favorite(player, fav)
+      GameHelpers.safe_teleport(player, gps_core.map_position_from_gps(fav.gps))
       return true
     end
   end

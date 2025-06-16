@@ -44,7 +44,7 @@ storage = {
 
 
 local mod_version = require("core.utils.version")
-local Lookups = require("__TeleportFavorites__.core.cache.lookups")
+local Lookups = require("core.cache.lookups")
 local FavoriteUtils = require("core.favorite.favorite")
 local Constants = require("constants")
 local GPSUtils = require("core.utils.gps_utils")
@@ -251,12 +251,14 @@ end
 function Cache.remove_stored_tag(gps)
   if not gps or type(gps) ~= "string" or gps == "" then return end
 
-  local surface_index = get_surface_index_from_gps(gps)
+  local surface_index = GPSUtils.get_surface_index_from_gps(gps)
   if not surface_index or surface_index < 1 then return end
 
   local safe_surface_index = tonumber(surface_index) and math.floor(surface_index) or nil
   if not safe_surface_index or safe_surface_index < 1 then return end
-  local tag_cache = Cache.get_surface_tags(safe_surface_index)
+  local uint_surface_index = safe_surface_index --[[@as uint]]
+  if not uint_surface_index then return end
+  local tag_cache = Cache.get_surface_tags(uint_surface_index)
   if not tag_cache[gps] then return end
 
   tag_cache[gps] = nil
@@ -273,7 +275,8 @@ function Cache.get_tag_by_gps(gps)
   local surface = game.surfaces[surface_index]
   if not surface then return nil end
 
-  local tag_cache = Cache.get_surface_tags(surface_index)
+  local uint_surface_index = surface_index --[[@as uint]]
+  local tag_cache = Cache.get_surface_tags(uint_surface_index)
   local match_tag = tag_cache[gps] or nil
   if match_tag and PositionUtils.is_walkable_position(surface, match_tag.gps) then
     return match_tag
@@ -315,111 +318,6 @@ function Cache.set_tag_editor_data(player, data)
   end
 
   return pdata.tag_editor_data
-end
-
---- Set all favorites for a player on their current surface (batch operation)
----@param player LuaPlayer
----@param favorites table[] Array of Favorite objects
-function Cache.set_player_favorites(player, favorites)
-  if not player or not favorites then return end
-  local player_data = Cache.get_player_data(player)
-  player_data.surfaces[player.surface.index].favorites = favorites
-
-  -- Notify observers of favorites data change
-  notify_observers_safe("data_refreshed", {
-    player_index = player.index,
-    type = "favorites_updated",
-    surface_index = player.surface.index,
-    favorites_count = #favorites
-  })
-end
-
---- Get cache statistics for debugging and monitoring
----@return table Statistics about cache usage
-function Cache.get_stats()
-  Cache.init()
-  local stats = {
-    mod_version = storage.mod_version,
-    players_count = 0,
-    surfaces_count = 0,
-    total_favorites = 0,
-    total_tags = 0
-  }
-
-  -- Count players
-  if storage.players then
-    for _ in pairs(storage.players) do
-      stats.players_count = stats.players_count + 1
-    end
-  end
-
-  -- Count surfaces and tags
-  if storage.surfaces then
-    for surface_index, surface_data in pairs(storage.surfaces) do
-      stats.surfaces_count = stats.surfaces_count + 1
-      if surface_data.tags then
-        for _ in pairs(surface_data.tags) do
-          stats.total_tags = stats.total_tags + 1
-        end
-      end
-    end
-  end
-
-  -- Count total favorites across all players and surfaces
-  if storage.players then
-    for _, player_data in pairs(storage.players) do
-      if player_data.surfaces then
-        for _, surface_data in pairs(player_data.surfaces) do
-          if surface_data.favorites then
-            stats.total_favorites = stats.total_favorites + #surface_data.favorites
-          end
-        end
-      end
-    end
-  end
-
-  return stats
-end
-
---- Validate and repair player data structure
----@param player LuaPlayer
----@return boolean True if data was valid or successfully repaired
-function Cache.validate_player_data(player)
-  if not player or not player.valid then return false end
-
-  local success, result = pcall(function()
-    local player_data = Cache.get_player_data(player)
-
-    -- Ensure required fields exist
-    player_data.player_name = player_data.player_name or player.name or "Unknown"
-    player_data.render_mode = player_data.render_mode or player.render_mode
-    player_data.surfaces = player_data.surfaces or {}
-    player_data.tag_editor_data = player_data.tag_editor_data or Cache.create_tag_editor_data()
-
-    -- Ensure surface data exists for current surface
-    local surface_index = player.surface.index
-    player_data.surfaces[surface_index] = player_data.surfaces[surface_index] or {}
-    player_data.surfaces[surface_index].favorites = player_data.surfaces[surface_index].favorites or {}
-
-    -- Validate favorites array
-    local favorites = player_data.surfaces[surface_index].favorites
-    for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
-      if not favorites[i] or type(favorites[i]) ~= "table" then
-        favorites[i] = FavoriteUtils.get_blank_favorite()
-      end
-      favorites[i].gps = favorites[i].gps or ""
-      favorites[i].locked = favorites[i].locked or false
-    end    return true
-  end)
-
-  if not success then
-    ErrorHandler.debug_log("Player data validation failed", {
-      player = player and player.name,
-      error = result
-    })
-  end
-
-  return success
 end
 
 --- Create a new tag_editor_data structure with default values
