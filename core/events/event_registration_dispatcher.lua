@@ -80,16 +80,16 @@ local function create_safe_event_handler(handler, handler_name, event_type)
   return function(event)
     local success, err = pcall(handler, event)
     if not success then
-      ErrorHandler.warn_log("Event handler failed", {
+      ErrorHandler.warn_log("Event handler failed: " .. handler_name .. " - " .. tostring(err), {
         handler = handler_name,
         event_type = event_type,
         error = err,
         player_index = event and event.player_index
       })
-      
-      -- Show player message for user-facing errors if applicable
+        -- Show player message for user-facing errors if applicable
       if event and event.player_index then
-        local player = game.get_player(event.player_index)        if player and player.valid then
+        local player = game.get_player(event.player_index)
+        if player and player.valid then
           -- Only show generic error message for critical failures
           if event_type:find("gui") or event_type:find("input") then
             GameHelpers.player_print(player, {"tf-error.event_handler_error"})

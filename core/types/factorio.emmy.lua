@@ -667,7 +667,7 @@
 ---@field drag_target LuaGuiElement?
 ---@field location MapPosition
 ---@field auto_center boolean
----@field destroy fun(self: LuaGuiElement)
+---@field destroy fun()
 ---@field clear fun(self: LuaGuiElement)
 ---@field add fun(self: LuaGuiElement, spec: table): LuaGuiElement
 ---@field remove fun(self: LuaGuiElement)

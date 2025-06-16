@@ -113,24 +113,13 @@ function LocaleUtils.get_string(player, category, key, params)
             game.print("[LocaleUtils] Warning: Unknown category '" .. tostring(category) .. "'")
         end
         return key -- Return the key itself as fallback
-    end
-
-    local locale_key = prefix .. "." .. key
-    local localized_string = player.get_translated_string{locale_key}
+    end    local locale_key = prefix .. "." .. key
     
-    -- Check if translation was found (Factorio returns the key if not found)
-    if localized_string == locale_key then
-        if DEBUG_MISSING_TRANSLATIONS then
-            game.print("[LocaleUtils] Warning: Missing translation for '" .. locale_key .. "'")
-        end
-        localized_string = LocaleUtils.get_fallback_string(category, key, params)
-    end
-
-    -- Apply parameter substitution if provided
-    if params and type(params) == "table" then
-        localized_string = LocaleUtils.substitute_parameters(localized_string, params)
-    end
-
+    -- In Factorio, localized strings are handled via the locale files
+    -- For now, return the fallback string directly since Factorio's localization
+    -- system will handle the actual translation when text is displayed
+    local localized_string = LocaleUtils.get_fallback_string(category, key, params)
+    
     return localized_string
 end
 

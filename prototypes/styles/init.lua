@@ -99,21 +99,7 @@ if not gui_style.tf_titlebar_flow then
   }
 end
 
-if not gui_style.frame_titlebar_flow then
-  gui_style.frame_titlebar_flow = {
-    type = "horizontal_flow_style",
-    parent = "horizontal_flow",
-    horizontally_stretchable = "on",
-    vertically_stretchable = "off",
-    top_padding = 0,
-    bottom_padding = 0,
-    left_padding = 8,
-    right_padding = 4,
-    height = 32,
-    vertical_align = "center",
-    use_header_filler = true
-  }
-end
+-- frame_titlebar_flow style removed as it was unused
 
 if not gui_style.tf_main_gui_flow then
   gui_style.tf_main_gui_flow = {
@@ -134,8 +120,7 @@ end
 if not gui_style.tf_slot_button then
   local base = {}
   for k, v in pairs(gui_style.slot_button) do base[k] = v end
-  base.width = 30
-  base.height = 30
+  -- Note: width/height removed as they're not used by Factorio's style system
   gui_style.tf_slot_button = base
 end
 
@@ -202,12 +187,10 @@ if not gui_style.slot_orange_favorite_on then
       base = { position = { 202, 199 }, corner_size = 8 }, -- Example hover position
       shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT),
       glow = Styles.default_glow(Enum.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
-    },
-    clicked_graphical_set = {
+    },    clicked_graphical_set = {
       -- originally hovered_graphical_set
-      base = { position = { 202, 199 }, corner_size = 8 }, -- Example hover position
-      tint = { r = 1, g = 1, b = 1, a = .2 },
-      shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT),
+      base = { position = { 202, 199 }, corner_size = 8, tint = { r = 1, g = 1, b = 1, a = .2 } }, -- Example hover position
+      shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT)
       --glow = Styles.default_glow(Enum.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
     },
     disabled_graphical_set = {

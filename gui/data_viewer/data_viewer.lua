@@ -21,9 +21,8 @@ Functions:
 --]]
 
 local GuiBase = require("gui.gui_base")
-local Cache = require("core.cache.cache")
 local Lookups = require("core.cache.lookups")
-local Utils = require("core.utils.utils")
+local GuiUtils = require("core.utils.gui_utils")
 local GameHelpers = require("core.utils.game_helpers")
 local Enum = require("prototypes.enums.enum")
 local ErrorHandler = require("core.utils.error_handler")
@@ -37,6 +36,7 @@ local function set_label_font(lbl, font_size)
     ErrorHandler.debug_log("Failed to set font", { font_name = font_name, error = err })
   end
 end
+
 local function render_table_tree(parent, data, indent, visited, font_size, row_index)
   indent = indent or 0
   visited = visited or {}
@@ -75,7 +75,6 @@ local function render_table_tree(parent, data, indent, visited, font_size, row_i
   visited[data] = nil
   return row_index
 end
-
 
 -- Builds the titlebar for the data viewer window
 -- Builds the titlebar for the data viewer window using shared helpers
@@ -116,11 +115,11 @@ local function build_tabs_row(parent, active_tab)
   local actions_flow = GuiBase.create_hflow(tabs_flow, "data_viewer_tab_actions_flow", "tf_data_viewer_actions_flow")
   ---@diagnostic disable-next-line
   local font_size_flow = GuiBase.create_hflow(actions_flow, "data_viewer_actions_font_size_flow", "tf_data_viewer_font_size_flow")
-  Helpers.create_slot_button(font_size_flow, "data_viewer_actions_font_down_btn", Enum.SpriteEnum.ARROW_DOWN,
+  GuiUtils.create_slot_button(font_size_flow, "data_viewer_actions_font_down_btn", Enum.SpriteEnum.ARROW_DOWN,
     { "tf-gui.font_minus_tooltip" })
-  Helpers.create_slot_button(font_size_flow, "data_viewer_actions_font_up_btn", Enum.SpriteEnum.ARROW_UP,
+  GuiUtils.create_slot_button(font_size_flow, "data_viewer_actions_font_up_btn", Enum.SpriteEnum.ARROW_UP,
     { "tf-gui.font_plus_tooltip" })
-  Helpers.create_slot_button(actions_flow, "data_viewer_tab_actions_refresh_data_btn", Enum.SpriteEnum.REFRESH,
+  GuiUtils.create_slot_button(actions_flow, "data_viewer_tab_actions_refresh_data_btn", Enum.SpriteEnum.REFRESH,
     { "tf-gui.refresh_tooltip" })
   return tabs_flow
 end

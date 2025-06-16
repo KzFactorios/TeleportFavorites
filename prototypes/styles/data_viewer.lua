@@ -68,26 +68,6 @@ gui_style.tf_data_viewer_table = {
   right_padding = 12
 }
 
--- Frame style for data_viewer_frame (make resizable)
-if not gui_style.data_viewer_frame then
-  gui_style.data_viewer_frame = {
-    type = "frame_style",
-    parent = "frame",
-    width = 1000,
-    horizontally_stretchable = "on",
-    vertically_stretchable = "on",
-    minimal_width = 600,
-    maximal_width = 2000,
-    minimal_height = 200,
-    maximal_height = 1200,
-    padding = 0,
-    top_margin = 16,
-    left_margin = 4,
-    left_padding = 12,
-    right_padding = 12
-  }
-end
-
 -- Data Viewer tab button style with left margin (for i > 1)
 gui_style.tf_data_viewer_tab_button_margin = {
   type = "button_style",
@@ -120,14 +100,8 @@ gui_style.data_viewer_row_odd_label = {
   padding = 0,
   margin = 0,
   font_color = { r = 1, g = 1, b = 1 }, -- white text
-  single_line = false,
-  graphical_set = {
-    base = {
-      center = { position = { 136, 0 }, size = 1 },
-      draw_type = "outer",
-      tint = { r = 0.92, g = 0.92, b = 0.92, a = 1 }
-    }
-  }
+  single_line = false
+  -- Note: graphical_set removed as Factorio reports it's not being used
 }
 
 gui_style.data_viewer_row_even_label = {
@@ -139,14 +113,8 @@ gui_style.data_viewer_row_even_label = {
   margin = 0,
   font = "default",
   font_color = { r = 1, g = 1, b = 1 }, -- white text
-  single_line = false,
-  graphical_set = {
-    base = {
-      center = { position = { 136, 0 }, size = 1 },
-      draw_type = "outer",
-      tint = { r = 0.82, g = 0.82, b = 0.82, a = 1 }
-    }
-  }
+  single_line = false
+  -- Note: graphical_set removed as Factorio reports it's not being used
 }
 
 return true

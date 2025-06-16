@@ -22,7 +22,7 @@ local GameHelpers = {}
 local function appears_walkable(surface, position)
   if not surface or not surface.get_tile or not position then return false end
   
-  local tile = surface:get_tile(position.x, position.y)
+  local tile = surface.get_tile(position.x, position.y)
   if not tile or not tile.valid then return false end
   
   local tile_name = tile.name:lower()

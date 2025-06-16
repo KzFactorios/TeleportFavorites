@@ -26,9 +26,25 @@ Each function is annotated with argument and return value details.
 --]]
 
 local ErrorHandler = require("core.utils.error_handler")
-local GuiBase = {}
-local Utils = require("core.utils.utils")
 local Enum = require("prototypes.enums.enum")
+
+local GuiBase = {}
+
+--- Local helper function to find frame containing element (avoids circular dependency with GuiUtils)
+--- @param element LuaGuiElement Starting element
+--- @return LuaGuiElement? frame Found frame or nil
+local function get_gui_frame_by_element(element)
+  if not element or not element.valid then return nil end
+  
+  local current = element
+  while current and current.valid do
+    if current.type == "frame" then
+      return current
+    end
+    current = current.parent
+  end
+  return nil
+end
 
 --- NOTE: All requires MUST be at the top of the file. Do NOT move requires inside functions to avoid circular dependencies.
 --- This is a strict project policy. See notes/architecture.md and coding_standards.md for rationale.
@@ -41,9 +57,10 @@ local Enum = require("prototypes.enums.enum")
 --- @return LuaGuiElement: The created element
 function GuiBase.create_element(element_type, parent, opts)
     if (type(parent) ~= "table" and type(parent) ~= "userdata") or type(parent.add) ~= "function" then
-        error("GuiBase.create_element: parent is not a valid LuaGuiElement")
-    end
-    if opts.type then opts.type = nil end --- Prevent accidental overwrite    local params = { type = element_type }
+        error("GuiBase.create_element: parent is not a valid LuaGuiElement")    end
+    if opts.type then opts.type = nil end -- Prevent accidental overwrite
+    
+    local params = { type = element_type }
     for k, v in pairs(opts) do params[k] = v end
       -- Defensive: ensure name is a string
     if params.name == nil or type(params.name) ~= "string" or params.name == "" then
@@ -175,10 +192,11 @@ function GuiBase.create_draggable(parent, name)
         name = "draggable_space"
     end
     ---@diagnostic disable-next-line
-    local dragger = parent.add { type = "empty-widget", name = name, style = "tf_draggable_space_header" }
-    if not dragger or not dragger.valid then
+    local dragger = parent.add { type = "empty-widget", name = name, style = "tf_draggable_space_header" }    if not dragger or not dragger.valid then
         error("GuiBase.create_draggable: failed to create draggable space")
-    end    local drag_target = Helpers.get_gui_frame_by_element(parent) or nil
+    end
+    
+    local drag_target = get_gui_frame_by_element(parent) or nil
 
     -- Set drag target for any screen-based GUI frame (generalized for reusability)
     if drag_target and drag_target.parent and drag_target.parent.name == "screen" then

@@ -107,17 +107,18 @@ data:extend {
     key_sequence = "CONTROL + 0",
     consuming = "game-only",
     order = "cj"  },  {
-    type = "custom-input",
-    name = "dv-toggle-data-viewer",
+    type = "custom-input",    name = "dv-toggle-data-viewer",
     key_sequence = "CONTROL + F12",
     consuming = "game-only",
-    order = "z[data-viewer]"  },{
+    order = "z[data-viewer]"
+  },
+  {
     type = "custom-input",
     name = "tf-open-tag-editor",
     key_sequence = "mouse-button-2",
     consuming = "none",
     order = "ba[tag-editor-1]"
-  },  {
+  },{
     type = "custom-input",
     name = "tf-debug-tile-info",
     key_sequence = "CONTROL + SHIFT + mouse-button-2",

@@ -99,10 +99,13 @@ end
 function ErrorHandler.debug_log(message, context)
   if _in_error_handler then return end
   _in_error_handler = true
-  
   pcall(function()
-    if context then
-      log("[TeleportFavorites] DEBUG: " .. message)
+    if context and type(context) == "table" then
+      local context_str = ""
+      for k, v in pairs(context) do
+        context_str = context_str .. tostring(k) .. "=" .. tostring(v) .. " "
+      end
+      log("[TeleportFavorites] DEBUG: " .. message .. " | Context: " .. context_str)
     else
       log("[TeleportFavorites] DEBUG: " .. message)
     end

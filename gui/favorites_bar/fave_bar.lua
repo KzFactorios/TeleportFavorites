@@ -40,6 +40,7 @@ Event handling for slot clicks and drag is managed externally (see control.lua).
 
 local GuiBase = require("gui.gui_base")
 local Constants = require("constants")
+local ErrorHandler = require("core.utils.error_handler")
 local FavoriteUtils = require("core.favorite.favorite")
 local GuiUtils = require("core.utils.gui_utils")
 local Settings = require("core.utils.settings_access")
@@ -71,21 +72,21 @@ fave_bar_frame (frame)
 function fave_bar.build_quickbar_style(player, parent)
   -- Add a horizontal flow to contain the toggle and slots row
   local bar_flow = GuiBase.create_hflow(parent, "fave_bar_flow")
+  
   -- Add a thin dark background frame for the toggle button
   local toggle_container = GuiBase.create_frame(bar_flow, "fave_bar_toggle_container", "vertical", "tf_fave_toggle_container")
   local toggle_btn = GuiBase.create_icon_button(toggle_container, "fave_bar_visible_btns_toggle", "logo_36", {"tf-gui.toggle_fave_bar"}, "tf_fave_toggle_button")
 
-  -- Add slots frame and return it for visibility toggling
-  local slots_frame = GuiBase.create_frame(parent, "fave_bar_slots_flow", "horizontal", "tf_fave_slots_row")
+  -- Add slots frame to the same flow for proper layout
+  local slots_frame = GuiBase.create_frame(bar_flow, "fave_bar_slots_flow", "horizontal", "tf_fave_slots_row")
 
   return bar_flow, slots_frame, toggle_btn
 end
 
-local function handle_overflow_error(frame, fav_btns, pfaves)
-  if pfaves and #pfaves > Constants.settings.MAX_FAVORITE_SLOTS then
-    Helpers.show_error_label(frame, { "tf-gui.fave_bar_overflow_error" })
+local function handle_overflow_error(frame, fav_btns, pfaves)  if pfaves and #pfaves > Constants.settings.MAX_FAVORITE_SLOTS then
+    GuiUtils.show_error_label(frame, { "tf-gui.fave_bar_overflow_error" })
   else
-    Helpers.clear_error_label(frame)
+    GuiUtils.clear_error_label(frame)
   end
 end
 
@@ -116,19 +117,21 @@ function fave_bar.build(player, force_show)
     
     -- add the fave bar frame
     -- Outer frame for the bar (matches quickbar background)
-    local fave_bar_frame = GuiBase.create_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR, "horizontal", "tf_fave_bar_frame")
-
-    -- Use the new quickbar-style builder for the favorites bar
+    local fave_bar_frame = GuiBase.create_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR, "horizontal", "tf_fave_bar_frame")    -- Use the new quickbar-style builder for the favorites bar
+    ErrorHandler.debug_log("Favorites bar: Building quickbar style")
     local bar_flow, slots_frame, toggle_button = fave_bar.build_quickbar_style(player, fave_bar_frame)
     
     -- Only one toggle button: the one created in build_quickbar_style
+    ErrorHandler.debug_log("Favorites bar: Getting player favorites")
     local pfaves = Cache.get_player_favorites(player)
     local drag_index = Cache.get_player_data(player).drag_favorite_index
 
     -- By default, show the slots row when building the bar
+    ErrorHandler.debug_log("Favorites bar: Setting slot visibility")
     set_slot_row_visibility(slots_frame, true)
 
     -- Build slot buttons
+    ErrorHandler.debug_log("Favorites bar: Building favorite buttons row")
     fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves, drag_index)
 
     -- Do NOT update toggle state in pdata here! Only the event handler should do that.
@@ -136,10 +139,10 @@ function fave_bar.build(player, force_show)
     -- Do NOT set toggle_container.visible here; toggle button always visible unless a future setting overrides it
     handle_overflow_error(fave_bar_frame, slots_frame, pfaves)
 
-    return fave_bar_frame
-  end)
+    return fave_bar_frame  end)
   _fave_bar_building_guard[pid] = nil
   if not success then
+    ErrorHandler.warn_log("Favorites bar build failed for player " .. (player and player.name or "unknown") .. ": " .. tostring(result))
     ErrorHandler.debug_log("Favorites bar build failed", {
       player = player and player.name,
       error = result
@@ -165,12 +168,11 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
         icon = fav.icon      else
         -- Use PIN as default icon for non-blank favorites
         icon = Enum.SpriteEnum.PIN
-      end
-      tooltip = Helpers.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }
+      end      tooltip = GuiUtils.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }
       if fav.locked then style = "tf_slot_button_locked" end
       if drag_index == i then style = "tf_slot_button_dragged" end
     end
-    local btn = Helpers.create_slot_button(parent, "fave_bar_slot_" .. i, icon, tooltip, { style = style })
+    local btn = GuiUtils.create_slot_button(parent, "fave_bar_slot_" .. i, icon, tooltip, { style = style })
     btn.style = style
     btn.caption = tostring(i)
     -- All alignment, font, and padding must be set in the style prototype, not at runtime

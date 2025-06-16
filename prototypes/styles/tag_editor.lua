@@ -123,8 +123,8 @@ if not gui_style.tf_tag_editor_content_inner_frame then
     right_padding = 8,
     bottom_padding = 8,
     left_padding = 8,
-    horizontally_stretchable = "on",
-    vertical_spacing = 8
+    horizontally_stretchable = "on"
+    -- Note: vertical_spacing removed as it's not valid for frame_style
   }
 end
 
@@ -153,17 +153,7 @@ if not gui_style.tf_teleport_button then
   }
 end
 
-if not gui_style.tf_tag_editor_rich_text_row then
-  gui_style.tf_tag_editor_rich_text_row = {
-    type = "frame_style",
-    parent = "invisible_frame",
-    vertical_align = "center",
-    horizontally_stretchable = "on",
-    vertically_stretchable = "on",
-    width = 0,
-    maximal_width = 400
-  }
-end
+-- Tag Editor rich text row style removed as it was unused
 
 if not gui_style.tf_tag_editor_text_input then
   gui_style.tf_tag_editor_text_input = {

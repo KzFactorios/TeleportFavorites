@@ -62,7 +62,6 @@ Utils.debug_log = ErrorHandler.debug_log
 --- Basic helper functions
 Utils.pad = basic_helpers.pad
 Utils.is_whole_number = basic_helpers.is_whole_number
-Utils.trim = basic_helpers.trim
 Utils.normalize_index = basic_helpers.normalize_index
 
 --- Settings access

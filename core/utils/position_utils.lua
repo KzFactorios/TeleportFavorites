@@ -92,7 +92,7 @@ function PositionUtils.is_water_tile(surface, position)
   if not surface or not surface.get_tile then return false end
   
   local x, y = math.floor(position.x), math.floor(position.y)
-  local tile = surface:get_tile(x, y)
+  local tile = surface.get_tile(x, y)
   if not tile or not tile.valid then return false end
   
   -- Check tile name for water patterns - most reliable method
@@ -115,7 +115,7 @@ end
 function PositionUtils.is_space_tile(surface, position)
   if not surface or not surface.get_tile then return false end
   
-  local tile = surface:get_tile(math.floor(position.x), math.floor(position.y))
+  local tile = surface.get_tile(math.floor(position.x), math.floor(position.y))
   if not tile or not tile.valid then return false end
   
   -- Check tile name for space patterns
@@ -139,7 +139,7 @@ function PositionUtils.is_walkable_position(surface, position, player)
   if not surface or not position then return false end
   
   -- Get the tile at the position
-  local tile = surface:get_tile(position.x, position.y)
+  local tile = surface.get_tile(position.x, position.y)
   if not tile or not tile.valid then return false end
   
   -- Primary check: Water tiles are never walkable

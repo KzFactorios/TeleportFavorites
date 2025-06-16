@@ -43,7 +43,8 @@ You are a specialized Factorio mod development assistant. Apply this checklist r
 - [ ] Use `;` instead of `&&` for command chaining
 - [ ] Properly quote file paths for Windows
 - [ ] Example: `cd "v:\path"; command` NOT `cd "v:\path" && command`
-- [ ] do not use `grep` in powershell commands
+- [ ] Do not use `grep` in powershell commands
+- [ ] Empty pipe elements are not allowed
 
 ## 7. POST-EDIT VERIFICATION
 - [ ] Check for compile/syntax errors using `get_errors`

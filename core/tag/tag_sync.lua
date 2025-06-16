@@ -42,7 +42,7 @@ local ChartTagUtils = require("core.utils.chart_tag_utils")
 local ErrorHandler = require("core.utils.error_handler")
 local GPSUtils = require("core.utils.gps_utils")
 local GPSUtils = require("core.utils.gps_utils")
-local Helpers = require("core.utils.basic_helpers")
+local BasicHelpers = require("core.utils.basic_helpers")
 local Lookups = Cache.lookups
 local PlayerFavorites = require("core.favorite.player_favorites")
 local Tag = require("core.tag.tag")
@@ -196,7 +196,7 @@ function TagSync.delete_tag_by_player(player, tag)
   end
   
   -- Check if other players still have this favorited
-  if tag.faved_by_players and Helpers.table_count(tag.faved_by_players) > 0 then
+  if tag.faved_by_players and BasicHelpers.table_count(tag.faved_by_players) > 0 then
     -- Clear last user but keep the tag since others have it favorited
     if tag.chart_tag and tag.chart_tag.valid then
       tag.chart_tag.last_user = nil

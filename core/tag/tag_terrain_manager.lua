@@ -18,9 +18,8 @@ local Lookups = Cache.lookups
 local GPSUtils = require("core.utils.gps_utils")
 local PositionUtils = require("core.utils.position_utils")
 local RichTextFormatter = require("core.utils.rich_text_formatter")
+local ErrorHandler = require("core.utils.error_handler")
 
--- Removed unused imports:
--- GPSCore, ErrorHandler, Helpers, basic_helpers, Tag - no usage found
 
 ---@class TagTerrainManager
 local TagTerrainManager = {}
@@ -37,7 +36,7 @@ function TagTerrainManager.is_chart_tag_on_water(chart_tag, surface)
     if not surface or not surface.valid then return false end
 
     -- Check if position is on water
-    return Helpers.is_water_tile(surface, chart_tag.position)
+    return PositionUtils.is_water_tile(surface, chart_tag.position)
 end
 
 --- Check if a chart tag is on space
@@ -52,7 +51,7 @@ function TagTerrainManager.is_chart_tag_on_space(chart_tag, surface)
     if not surface or not surface.valid then return false end
 
     -- Check if position is on space
-    return Helpers.is_space_tile(surface, chart_tag.position)
+    return PositionUtils.is_space_tile(surface, chart_tag.position)
 end
 
 --- Find the player who owns a tag or who last modified the chart tag
@@ -117,7 +116,9 @@ function TagTerrainManager.relocate_chart_tag_from_water(chart_tag, search_radiu
             search_radius = search_radius
         })
         return false
-    end    -- Create a new chart tag at the valid position using centralized builder    local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(new_position, chart_tag, player)
+    end    
+    -- Create a new chart tag at the valid position using centralized builder    
+    local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(new_position, chart_tag, player)
     
     -- Create new chart tag at valid position using safe wrapper
     local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, surface, chart_tag_spec)

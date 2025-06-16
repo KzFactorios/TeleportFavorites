@@ -19,6 +19,7 @@ local basic_helpers = require("core.utils.basic_helpers")
 local GuiBase = require("gui.gui_base")
 local GameHelpers = require("core.utils.game_helpers")
 local LocaleUtils = require("core.utils.locale_utils")
+local Enum = require("prototypes.enums.enum")
 
 ---@class GuiUtils
 local GuiUtils = {}
@@ -63,7 +64,7 @@ function GuiUtils.safe_destroy_frame(parent, frame_name)
   if not parent or not frame_name then return end
   
   if parent[frame_name] and parent[frame_name].valid and type(parent[frame_name].destroy) == "function" then
-    parent[frame_name]:destroy()
+    parent[frame_name].destroy()
   end
 end
 
@@ -184,7 +185,13 @@ function GuiUtils.get_gui_frame_by_element(element)
   local current = element
   while current and current.valid do
     if current.type == "frame" then
-      return current
+      -- Check if this is a main GUI frame (not a nested content frame)
+      local name = current.name or ""
+      if name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR or 
+         name == Enum.GuiEnum.GUI_FRAME.DATA_VIEWER or 
+         name == Enum.GuiEnum.GUI_FRAME.FAVE_BAR then
+        return current
+      end
     end
     current = current.parent
   end

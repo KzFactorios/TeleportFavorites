@@ -67,9 +67,12 @@ local tag_editor = require("gui.tag_editor.tag_editor")
 local handlers = {}
 
 function handlers.on_init()
+  ErrorHandler.debug_log("Mod initialization started")
   for _, player in pairs(game.players) do
+    ErrorHandler.debug_log("Building favorites bar for player during init", { player = player.name })
     fave_bar.build(player)
   end
+  ErrorHandler.debug_log("Mod initialization completed")
 end
 
 function handlers.on_load()
@@ -77,10 +80,15 @@ function handlers.on_load()
 end
 
 function handlers.on_player_created(event)
+  ErrorHandler.debug_log("New player created", { player_index = event.player_index })
   ---@diagnostic disable-next-line: param-type-mismatch
   local player = game.get_player(event.player_index)
-  if not player or not player.valid then return end
+  if not player or not player.valid then 
+    ErrorHandler.debug_log("Player creation handler: invalid player")
+    return 
+  end
 
+  ErrorHandler.debug_log("Building favorites bar for new player", { player = player.name })
   fave_bar.build(player)
 end
 
@@ -95,12 +103,24 @@ end
 --- Handles right-click on the chart view to open tag editor
 ---@param event table Event data containing player_index and cursor_position
 function handlers.on_open_tag_editor_custom_input(event)
+  ErrorHandler.debug_log("Tag editor custom input handler called", { 
+    player_index = event.player_index,
+    cursor_position = event.cursor_position 
+  })
+  
   ---@diagnostic disable-next-line: param-type-mismatch
   local player = game.get_player(event.player_index)
-  if not player or not player.valid then return end
-
+  if not player or not player.valid then 
+    ErrorHandler.debug_log("Tag editor handler: invalid player")
+    return 
+  end
   -- Only handle chart mode interactions
   if player.render_mode ~= defines.render_mode.chart and player.render_mode ~= defines.render_mode.chart_zoomed_in then
+    ErrorHandler.debug_log("Tag editor handler: wrong render mode", { 
+      render_mode = player.render_mode,
+      chart_mode = defines.render_mode.chart,
+      chart_zoomed = defines.render_mode.chart_zoomed_in
+    })
     return
   end
 
@@ -113,25 +133,45 @@ function handlers.on_open_tag_editor_custom_input(event)
 
   local surface = player.surface
   local surface_id = surface.index
-
   -- Get the position we right-clicked upon
   local cursor_position = event.cursor_position
   if not cursor_position or not (cursor_position.x and cursor_position.y) then
     return
   end  -- Normalize the clicked position and convert to GPS string
-  local normalized_gps = GPSUtils.gps_from_map_position(cursor_position, player.surface.index)
-    -- Simple validation - check if position is valid for tagging
-  if not PositionUtils.is_valid_tag_position(player, cursor_position) then
-    -- Play error sound to indicate invalid position
-    GameHelpers.safe_play_sound(player, { path = "utility/cannot_build" })
+  ErrorHandler.debug_log("Tag editor: Starting GPS conversion", { cursor_position = cursor_position })
+  
+  local gps_success, normalized_gps = pcall(GPSUtils.gps_from_map_position, cursor_position, player.surface.index)
+  if not gps_success then
+    ErrorHandler.warn_log("Tag editor: GPS conversion failed - " .. tostring(normalized_gps))
     return
   end
   
+  -- Simple validation - check if position is valid for tagging
+  ErrorHandler.debug_log("Tag editor: Starting position validation")
+  local pos_valid_success, pos_valid = pcall(PositionUtils.is_valid_tag_position, player, cursor_position)
+  if not pos_valid_success then
+    ErrorHandler.warn_log("Tag editor: Position validation error - " .. tostring(pos_valid))
+    return
+  end
+  
+  if not pos_valid then
+    -- Play error sound to indicate invalid position
+    GameHelpers.safe_play_sound(player, { path = "utility/cannot_build" })
+    ErrorHandler.debug_log("Tag editor: Position validation failed")
+    return
+  end
+    ErrorHandler.debug_log("Tag editor: Position validation passed")
   -- Get normalized position for chart tag creation
-  local normalized_pos = PositionUtils.normalize_position(cursor_position)
+  local norm_success, normalized_pos = pcall(PositionUtils.normalize_position, cursor_position)
+  if not norm_success then
+    ErrorHandler.warn_log("Tag editor: Position normalization failed - " .. tostring(normalized_pos))
+    return
+  end
+  
   local surface_index = player.surface.index
   local gps = GPSUtils.gps_from_map_position(normalized_pos, surface_index)
   
+  ErrorHandler.debug_log("Tag editor: Starting cache operations", { gps = gps })
   -- Try to find existing chart tag at this position
   local nrm_chart_tag = ChartTagUtils.find_chart_tag_at_position(player, normalized_pos)
   
@@ -139,10 +179,13 @@ function handlers.on_open_tag_editor_custom_input(event)
   local nrm_tag = Cache.get_tag_by_gps(gps)
   
   -- Check if this is a player favorite
-  local nrm_favorite = Cache.is_player_favorite(player, gps)  -- Get player's teleport radius setting for use in tag editor
-  local player_settings = Settings:getPlayerSettings(player)
-  local search_radius = player_settings.teleport_radius or Constants.settings.TELEPORT_RADIUS_DEFAULT
+  local nrm_favorite = Cache.is_player_favorite(player, gps)
+  
+  ErrorHandler.debug_log("Tag editor: Starting settings access")
+  -- Get player's teleport radius setting for use in tag editor
+  local player_settings = Settings:getPlayerSettings(player)  local search_radius = player_settings.teleport_radius or Constants.settings.TELEPORT_RADIUS_DEFAULT
 
+  ErrorHandler.debug_log("Tag editor: Creating tag data")
   local tag_data = Cache.create_tag_editor_data({
     gps = gps,
     locked = nrm_favorite and nrm_favorite.locked or false,
@@ -154,9 +197,13 @@ function handlers.on_open_tag_editor_custom_input(event)
     search_radius = search_radius
   })
 
+  ErrorHandler.debug_log("Tag editor: Setting cache data")
   -- Persist GPS in tag_editor_data
   Cache.set_tag_editor_data(player, tag_data)
+  
+  ErrorHandler.debug_log("Tag editor: Building GUI")
   tag_editor.build(player)
+  ErrorHandler.debug_log("Tag editor: Successfully completed")
 end
 
 --- Handle chart tag added events
@@ -472,7 +519,7 @@ function handlers.on_debug_tile_info_custom_input(event)
   local surface = player.surface
 
   -- Get tile at position
-  local tile = surface:get_tile(pos.x, pos.y)
+  local tile = surface.get_tile(pos.x, pos.y)
   if not tile then
     GameHelpers.player_print(player, "[TF Debug] No tile found at position")
     return

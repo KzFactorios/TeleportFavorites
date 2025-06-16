@@ -26,12 +26,14 @@ Main Functions:
 - setup_tag_editor_ui(refs, tag_data, player):
     Sets state, tooltips, and styles for all controls after construction.
 --]]
-local Utils = require("core.utils.utils")
+    
 local Cache = require("core.cache.cache")
 local Enum = require("prototypes.enums.enum")
-local GPSUtils = require("core.utils.gps_utils")
 local GuiBase = require("gui.gui_base")
 local GuiUtils = require("core.utils.gui_utils")
+local GPSUtils = require("core.utils.gps_utils")
+local BasicHelpers = require("core.utils.basic_helpers")
+
 
 local tag_editor = {}
 
@@ -63,19 +65,20 @@ local function setup_tag_editor_ui(refs, tag_data, player)
     end
 
     -- Set button enablement
-    if refs.icon_btn then Helpers.set_button_state(refs.icon_btn, is_owner) end
-    if refs.teleport_btn then Helpers.set_button_state(refs.teleport_btn, true) end
-    if refs.favorite_btn then Helpers.set_button_state(refs.favorite_btn, true) end
-    if refs.rich_text_input then Helpers.set_button_state(refs.rich_text_input, is_owner) end
+    if refs.icon_btn then GuiUtils.set_button_state(refs.icon_btn, is_owner) end
+    if refs.teleport_btn then GuiUtils.set_button_state(refs.teleport_btn, true) end
+    if refs.favorite_btn then GuiUtils.set_button_state(refs.favorite_btn, true) end
+    if refs.rich_text_input then GuiUtils.set_button_state(refs.rich_text_input, is_owner) end
     if refs.move_btn then
         -- Move button only enabled if player is owner AND in chart mode
         -- Disabled if: not owner, or not in chart mode
         local in_chart_mode = (player.render_mode == defines.render_mode.chart or player.render_mode == defines.render_mode.chart_zoomed_in)
-        local can_move = is_owner and in_chart_mode        Helpers.set_button_state(refs.move_btn, can_move)
+        local can_move = is_owner and in_chart_mode       
+        GuiUtils.set_button_state(refs.move_btn, can_move)
     end
     
     if refs.delete_btn then 
-        Helpers.set_button_state(refs.delete_btn, can_delete) 
+        GuiUtils.set_button_state(refs.delete_btn, can_delete) 
     end
     
     -- Confirm button enabled only if text input has content or icon is selected
@@ -89,7 +92,7 @@ local function setup_tag_editor_ui(refs, tag_data, player)
     local can_confirm = has_text or has_icon
     
     if refs.confirm_btn then 
-        Helpers.set_button_state(refs.confirm_btn, can_confirm) 
+        GuiUtils.set_button_state(refs.confirm_btn, can_confirm) 
     end
     
     -- Button style/tooltips
@@ -126,9 +129,9 @@ function tag_editor.build_confirmation_dialog(player, opts)
     GuiBase.create_label(frame, "tag_editor_tf_confirm_dialog_label", opts.message or { "tf-gui.confirm_delete_message" },
         "bold_label")
     local tag_editor_tf_confirm_dialog_btn_row = GuiBase.create_hflow(frame, "tag_editor_tf_confirm_dialog_btn_row")
-    local confirm_btn = Helpers.create_slot_button(tag_editor_tf_confirm_dialog_btn_row, "tf_confirm_dialog_confirm_btn",
+    local confirm_btn = GuiUtils.create_slot_button(tag_editor_tf_confirm_dialog_btn_row, "tf_confirm_dialog_confirm_btn",
         Enum.SpriteEnum.CHECK_MARK, { "tf-gui.confirm_delete_confirm" })
-    local cancel_btn = Helpers.create_slot_button(tag_editor_tf_confirm_dialog_btn_row, "tf_confirm_dialog_cancel_btn",
+    local cancel_btn = GuiUtils.create_slot_button(tag_editor_tf_confirm_dialog_btn_row, "tf_confirm_dialog_cancel_btn",
         Enum.SpriteEnum.CLOSE, { "tf-gui.confirm_delete_cancel" })
     -- Set modal/ESC behavior
     player.opened = frame
@@ -182,7 +185,7 @@ local function build_teleport_favorite_row(parent, tag_data)
         nil,
         -- Use gps for caption, fallback to move_gps if in move mode, else fallback
         "tf_teleport_button")
-    local coords = gps_core.coords_string_from_gps(tag_data.gps) or "no destination"
+    local coords = GPSUtils.coords_string_from_gps(tag_data.gps) or "no destination"
     ---@diagnostic disable-next-line: assign-type-mismatch
     teleport_btn.caption = { "tf-gui.teleport_to", coords }
     return row, favorite_btn, teleport_btn
@@ -223,7 +226,7 @@ local function build_last_row(parent)
     })
 
     -- Set drag target for the draggable space
-    local drag_target = Helpers.get_gui_frame_by_element(parent)
+    local drag_target = GuiUtils.get_gui_frame_by_element(parent)
     if drag_target and drag_target.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
         draggable.drag_target = drag_target
     end
@@ -251,7 +254,7 @@ function tag_editor.build(player)
 
     local gps = tag_data.gps
     local parent = player.gui.screen
-    local outer = Helpers.find_child_by_name(parent, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+    local outer = GuiUtils.find_child_by_name(parent, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
     if outer ~= nil then outer.destroy() end
 
     local tag_editor_outer_frame = GuiBase.create_frame(parent, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR, "vertical",
@@ -308,12 +311,12 @@ function tag_editor.build(player)
 end
 
 local function find_child_by_name(element, name)
-    return Helpers.find_child_by_name(element, name)
+    return GuiUtils.find_child_by_name(element, name)
 end
 
 -- Helper function to update confirm button state based on current tag data
 function tag_editor.update_confirm_button_state(player, tag_data)
-    local confirm_btn = Helpers.find_child_by_name(player.gui.screen, "last_row_confirm_button")
+    local confirm_btn = GuiUtils.find_child_by_name(player.gui.screen, "last_row_confirm_button")
     if not confirm_btn then return end
     
     -- Check if text input has content or icon is selected
@@ -327,7 +330,7 @@ function tag_editor.update_confirm_button_state(player, tag_data)
     local has_icon = has_valid_icon(tag_data.icon)
     local can_confirm = has_text or has_icon
     
-    Helpers.set_button_state(confirm_btn, can_confirm)
+    GuiUtils.set_button_state(confirm_btn, can_confirm)
 end
 
 -- NOTE: The built-in Factorio signal/icon picker (used for icon selection) always requires the user to confirm their selection
