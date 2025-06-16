@@ -18,6 +18,7 @@ local ErrorHandler = require("core.utils.error_handler")
 local basic_helpers = require("core.utils.basic_helpers")
 local GuiBase = require("gui.gui_base")
 local GameHelpers = require("core.utils.game_helpers")
+local LocaleUtils = require("core.utils.locale_utils")
 
 ---@class GuiUtils
 local GuiUtils = {}
@@ -35,14 +36,17 @@ function GuiUtils.handle_error(player, message, level, log_to_console)
   level = level or 'error'
   log_to_console = log_to_console ~= false
   local msg = (type(message) == 'table' and table.concat(message, ' ')) or tostring(message)
-    -- Notify player if available
+  -- Notify player if available
   if player and player.valid then
     if level == 'error' then
-      GameHelpers.player_print(player, { '', '[color=red][ERROR] ', msg, '[/color]' })
+      local prefix = LocaleUtils.get_error_string(player, "error_prefix")
+      GameHelpers.player_print(player, { '', '[color=red]', prefix, ' ', msg, '[/color]' })
     elseif level == 'warn' then
-      GameHelpers.player_print(player, { '', '[color=orange][WARN] ', msg, '[/color]' })
+      local prefix = LocaleUtils.get_error_string(player, "warn_prefix")
+      GameHelpers.player_print(player, { '', '[color=orange]', prefix, ' ', msg, '[/color]' })
     else
-      GameHelpers.player_print(player, { '', '[color=white][INFO] ', msg, '[/color]' })
+      local prefix = LocaleUtils.get_error_string(player, "info_prefix")
+      GameHelpers.player_print(player, { '', '[color=white]', prefix, ' ', msg, '[/color]' })
     end
   end
   
@@ -397,7 +401,7 @@ local MOD_NAME = "TeleportFavorites"
 ---@param gps_string string GPS string to format
 ---@return string formatted_gps Rich text formatted GPS string
 function GuiUtils.format_gps(gps_string)
-  if not gps_string then return "[invalid GPS]" end
+  if not gps_string then return LocaleUtils.get_error_string(nil, "invalid_gps_fallback") end
   return string.format("[gps=%s]", gps_string)
 end
 
@@ -407,7 +411,7 @@ end
 ---@return string formatted_tag Rich text string representation
 function GuiUtils.format_chart_tag(chart_tag, label)
   if not chart_tag or not chart_tag.valid then
-    return "[invalid chart tag]"
+    return LocaleUtils.get_error_string(nil, "invalid_chart_tag_fallback")
   end
   
   local text = label or chart_tag.text or ""
@@ -438,7 +442,7 @@ end
 ---@return string notification_message Formatted notification message
 function GuiUtils.position_change_notification(player, chart_tag, old_position, new_position, surface_index)
   if not player or not player.valid or not old_position or not new_position or not surface_index then
-    return "[Invalid position change data]"
+    return LocaleUtils.get_error_string(player, "invalid_position_change_fallback")
   end
   
   local old_gps = string.format("[gps=%d,%d,%d]", 
@@ -453,8 +457,7 @@ function GuiUtils.position_change_notification(player, chart_tag, old_position, 
   
   local tag_text = ""
   local icon_str = ""
-  
-  if chart_tag and chart_tag.valid then
+    if chart_tag and chart_tag.valid then
     tag_text = chart_tag.text or ""
     
     if chart_tag.icon and chart_tag.icon.type and chart_tag.icon.name then
@@ -462,8 +465,7 @@ function GuiUtils.position_change_notification(player, chart_tag, old_position, 
     end
   end
   
-  return string.format("[%s] %sLocation %s changed from %s to %s", 
-    MOD_NAME, icon_str, tag_text, old_gps, new_gps)
+  return LocaleUtils.get_error_string(player, "location_changed", {icon_str .. tag_text, old_gps, new_gps})
 end
 
 --- Format a deletion prevention message
@@ -471,7 +473,7 @@ end
 ---@return string deletion_message Formatted message explaining why deletion failed
 function GuiUtils.deletion_prevention_notification(chart_tag)
   if not chart_tag or not chart_tag.valid then
-    return "[Invalid chart tag data]"
+    return LocaleUtils.get_error_string(nil, "invalid_chart_tag_fallback")
   end
   
   local tag_text = chart_tag.text or ""
@@ -480,8 +482,7 @@ function GuiUtils.deletion_prevention_notification(chart_tag)
   if chart_tag.icon and chart_tag.icon.type and chart_tag.icon.name then
     icon_str = string.format("[img=%s/%s] ", chart_tag.icon.type, chart_tag.icon.name)
   end
-  
-  local position_str = ""
+    local position_str = ""
   if chart_tag.position then
     position_str = string.format("[gps=%d,%d,%d]", 
       math.floor(chart_tag.position.x), 
@@ -489,8 +490,7 @@ function GuiUtils.deletion_prevention_notification(chart_tag)
       chart_tag.surface.index)
   end
   
-  return string.format("[%s] %s%s %s cannot be deleted because it is favorited by other players", 
-    MOD_NAME, icon_str, tag_text, position_str)
+  return LocaleUtils.get_error_string(nil, "tag_deletion_prevented", {icon_str .. tag_text .. " " .. position_str})
 end
 
 --- Generate a tag relocation notification message for terrain changes
@@ -500,7 +500,7 @@ end
 ---@return string relocation_message Formatted relocation message
 function GuiUtils.tag_relocated_notification(chart_tag, old_position, new_position)
   if not chart_tag or not chart_tag.valid or not old_position or not new_position then
-    return "[Invalid relocation data]"
+    return LocaleUtils.get_error_string(nil, "invalid_relocation_data_fallback")
   end
   
   local surface_index = chart_tag.surface and chart_tag.surface.index or 1
@@ -516,8 +516,7 @@ function GuiUtils.tag_relocated_notification(chart_tag, old_position, new_positi
   local new_position_str = string.format("[gps=%d,%d,%d]", 
     math.floor(new_position.x), math.floor(new_position.y), surface_index)
   
-  return string.format("[%s] %s%s has been relocated from %s to %s due to terrain changes", 
-    MOD_NAME, icon_str, tag_text, old_position_str, new_position_str)
+  return LocaleUtils.get_error_string(nil, "tag_relocated_terrain", {icon_str .. tag_text, old_position_str, new_position_str})
 end
 
 -- ========================================

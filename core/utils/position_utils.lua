@@ -1,4 +1,4 @@
----@diagnostic disable: undefined-global
+---@diagnostic disable: undefined-global, param-type-mismatch
 --[[
 core/utils/position_utils.lua
 TeleportFavorites Factorio Mod
@@ -17,13 +17,23 @@ Provides a unified API for all position-related operations throughout the mod.
 local basic_helpers = require("core.utils.basic_helpers")
 local Constants = require("constants")
 local ErrorHandler = require("core.utils.error_handler")
-local game_helpers = require("core.utils.game_helpers")
 local gps_helpers = require("core.utils.gps_helpers")
 local GPSUtils = require("core.utils.gps_utils")
+local LocaleUtils = require("core.utils.locale_utils")
 local ValidationUtils = require("core.utils.validation_utils")
 
 ---@class PositionUtils
 local PositionUtils = {}
+
+--- Local player print function to avoid circular dependencies
+--- @param player LuaPlayer Player to print message to
+--- @param message string Message to print
+local function safe_player_print(player, message)
+  if player and player.valid and type(player.print) == "function" then
+    ---@diagnostic disable-next-line: param-type-mismatch, missing-parameter, assign-type-mismatch
+    player.print(message)
+  end
+end
 
 -- ========================================
 -- POSITION NORMALIZATION
@@ -320,12 +330,10 @@ function PositionUtils.is_valid_tag_position(player, map_position, skip_notifica
       ErrorHandler.warn_log("Position validation failed: " .. (player_error or "Invalid player"))
     end
     return false
-  end
-  
-  -- Check if position is on water or space
+  end  -- Check if position is on water or space
   if PositionUtils.is_water_tile(player.surface, map_position) then
     if not skip_notification then
-      game_helpers.player_print(player, "[TeleportFavorites] Cannot tag water tiles")
+      safe_player_print(player, "[TeleportFavorites] Cannot tag water tiles")
     end
     return false
   end
@@ -334,10 +342,9 @@ function PositionUtils.is_valid_tag_position(player, map_position, skip_notifica
     if PositionUtils.is_on_space_platform(player) then
       -- Space tiles are valid on space platforms
       return true
-    else
-      -- Space tiles are invalid on regular surfaces
+    else      -- Space tiles are invalid on regular surfaces
       if not skip_notification then
-        game_helpers.player_print(player, "[TeleportFavorites] Cannot tag space tiles")
+        safe_player_print(player, "[TeleportFavorites] Cannot tag space tiles")
       end
       return false
     end
@@ -354,17 +361,15 @@ function PositionUtils.position_can_be_tagged(player, map_position)
   -- Use consolidated validation helper for player and position checks
   local valid, position, error_msg = ValidationUtils.validate_position_operation(player, 
     gps_helpers.gps_from_map_position(map_position, player and player.surface and player.surface.index or 1))
-    
   if not valid then
     if error_msg then
-      game_helpers.player_print(player, "[TeleportFavorites] " .. error_msg)
+      safe_player_print(player, "[TeleportFavorites] " .. error_msg)
     end
     return false
   end
-
   -- Check if the position is valid for tagging - handle nil position
   if not position then
-    game_helpers.player_print(player, "[TeleportFavorites] Invalid position")
+    safe_player_print(player, LocaleUtils.get_error_string(player, "invalid_position"))
     return false
   end
   
@@ -378,13 +383,11 @@ function PositionUtils.print_teleport_event_message(player, gps)
   if not player or not player.valid then return end
   
   local surface_index = GPSCore.get_surface_index_from_gps(gps) or 1
-  local coords = GPSCore.coords_string_from_gps(gps)
-  
-  -- Always show coords if available, otherwise fallback to GPS string
+  local coords = GPSCore.coords_string_from_gps(gps)  -- Always show coords if available, otherwise fallback to GPS string
   if coords and coords ~= "" then
-    game_helpers.player_print(player, {"", "[TeleportFavorites] Teleported to ", coords, " on surface ", tostring(surface_index)})
+    safe_player_print(player, LocaleUtils.get_gui_string(player, "teleported_to_surface", {coords, tostring(surface_index)}))
   else
-    game_helpers.player_print(player, "[TeleportFavorites] Teleported to " .. gps)
+    safe_player_print(player, LocaleUtils.get_gui_string(player, "teleported_to_gps", {gps}))
   end
 end
 

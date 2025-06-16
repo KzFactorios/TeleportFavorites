@@ -13,6 +13,7 @@ local Enum = require("prototypes.enums.enum")
 local PositionUtils = require("core.utils.position_utils")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local PlayerFavorites = require("core.favorite.player_favorites")
+local LocaleUtils = require("core.utils.locale_utils")
 
 -- Observer Pattern Integration
 local GuiObserver = require("core.pattern.gui_observer")
@@ -35,17 +36,16 @@ local function update_favorite_state(player, tag, is_favorite)
   local player_favorites = PlayerFavorites.new(player)
   
   if is_favorite then
-    -- Add favorite
-    local favorite, error_msg = player_favorites:add_favorite(tag.gps)
+    -- Add favorite    local favorite, error_msg = player_favorites:add_favorite(tag.gps)
     if not favorite then
-      GameHelpers.player_print(player, "Failed to add favorite: " .. (error_msg or "Unknown error"))
+      GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "failed_add_favorite", {error_msg or LocaleUtils.get_error_string(player, "unknown_error")}))
       return
     end
   else
     -- Remove favorite
     local success, error_msg = player_favorites:remove_favorite(tag.gps)
     if not success then
-      GameHelpers.player_print(player, "Failed to remove favorite: " .. (error_msg or "Unknown error"))
+      GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "failed_remove_favorite", {error_msg or LocaleUtils.get_error_string(player, "unknown_error")}))
       return
     end
   end
@@ -80,15 +80,14 @@ local function handle_confirm_btn(player, element, tag_data)
   -- Get values directly from storage (tag_data), not from UI elements
   local text = (tag_data.text or ""):gsub("%s+$", "")
   local icon = tag_data.icon or ""
-  local is_favorite = tag_data.is_favorite
-  local max_len = Constants.settings.TAG_TEXT_MAX_LENGTH
+  local is_favorite = tag_data.is_favorite  local max_len = Constants.settings.TAG_TEXT_MAX_LENGTH
   if #text > max_len then
     return show_tag_editor_error(player, tag_data,
-      "The ancient glyphs exceed the permitted length (" .. max_len .. " runes).")
+      LocaleUtils.get_error_string(player, "tag_text_length_exceeded", {tostring(max_len)}))
   end
   if text == "" and (not icon or icon == "") then
     return show_tag_editor_error(player, tag_data,
-      "A tag must bear a symbol or inscription to be remembered by the ether.")
+      LocaleUtils.get_error_string(player, "tag_requires_icon_or_text"))
   end
 
   local surface_index = player.surface.index
@@ -123,12 +122,11 @@ end
 local function handle_move_btn(player, tag_data, script)
   tag_data.move_mode = true
   show_tag_editor_error(player, tag_data,
-    "The aether shimmers... Select a new destination for this tag, or right-click to cancel.")
+    LocaleUtils.get_error_string(player, "move_mode_select_destination"))
   local function on_move(event)
-    if event.player_index ~= player.index then return end
-    local pos = event.area and event.area.left_top or nil
+    if event.player_index ~= player.index then return end    local pos = event.area and event.area.left_top or nil
     if not pos then
-      return show_tag_editor_error(player, tag_data,        "The aether rejects this location. Please select a valid destination.")
+      return show_tag_editor_error(player, tag_data, LocaleUtils.get_error_string(player, "invalid_location_chosen"))
     end
     -- Store the new position in move_gps first
     local new_gps = GPSUtils.gps_from_map_position(pos, player.surface.index)
@@ -156,8 +154,7 @@ local function handle_move_btn(player, tag_data, script)
         tag_data.error_message = nil
         tag_data.move_gps = "" -- Clear move_gps since move is complete
         Cache.set_tag_editor_data(player, nil)
-        GameHelpers.player_print(player,
-          { "tf-gui.tag_editor_move_success", "The tag's essence has been relocated through the veil!" })
+        GameHelpers.player_print(player, { "tf-gui.tag_editor_move_success", "The tag has been relocated" })
         refresh_tag_editor(player, tag_data)
       elseif action == "delete" then
         -- Delete the tag
@@ -173,7 +170,6 @@ local function handle_move_btn(player, tag_data, script)
         tag_data.move_mode = false
         Cache.set_tag_editor_data(player, nil)
         GuiUtils.safe_destroy_frame(player.gui.screen, "tag_editor_frame")
-        GameHelpers.player_print(player, { "tf-gui.tag_editor_delete_success", "The tag has been removed from existence!" })
       else
         -- Action was canceled, reset move mode
         tag_data.move_mode = false
@@ -198,19 +194,17 @@ local function handle_move_btn(player, tag_data, script)
       tag_data.error_message = nil
       tag_data.move_gps = "" -- Clear move_gps since move is complete
       Cache.set_tag_editor_data(player, nil)
-      GameHelpers.player_print(player, { "tf-gui.tag_editor_move_success", "The tag's essence has been relocated through the veil!" })
       refresh_tag_editor(player, tag_data)
     end
 
     -- Always unregister handlers when done processing the move event
     unregister_move_handlers(script)
   end
-
   local function on_cancel(event)
     if event.player_index ~= player.index then return end
     tag_data.move_mode = false
     tag_data.move_gps = "" -- Clear move_gps on cancel
-    show_tag_editor_error(player, tag_data, "The spirits sigh. Move mode cancelled.")
+    show_tag_editor_error(player, tag_data, LocaleUtils.get_error_string(player, "tag_move_cancelled"))
     unregister_move_handlers(script)
   end
 
@@ -235,10 +229,9 @@ local function handle_favorite_btn(player, tag_data)
   
   if gps then
     if tag_data.is_favorite then
-      -- Add favorite
-      local favorite, error_msg = player_favorites:add_favorite(gps)
+      -- Add favorite      local favorite, error_msg = player_favorites:add_favorite(gps)
       if not favorite then
-        GameHelpers.player_print(player, "Failed to add favorite: " .. (error_msg or "Unknown error"))
+        GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "failed_add_favorite", {error_msg or LocaleUtils.get_error_string(player, "unknown_error")}))
         -- Revert state
         tag_data.is_favorite = old_state
         Cache.set_tag_editor_data(player, tag_data)
@@ -249,7 +242,7 @@ local function handle_favorite_btn(player, tag_data)
       -- Remove favorite
       local success, error_msg = player_favorites:remove_favorite(gps)
       if not success then
-        GameHelpers.player_print(player, "Failed to remove favorite: " .. (error_msg or "Unknown error"))
+        GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "failed_remove_favorite", {error_msg or LocaleUtils.get_error_string(player, "unknown_error")}))
         -- Revert state
         tag_data.is_favorite = old_state
         Cache.set_tag_editor_data(player, tag_data)
@@ -293,11 +286,10 @@ local function handle_delete_confirm(player, tag_data)
     can_delete = is_owner and not has_other_favorites
   else
     can_delete = true
-  end
-  if not can_delete then
+  end  if not can_delete then
     GuiUtils.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
     show_tag_editor_error(player, tag_data,
-      "The spirits whisper: others claim this place, or you lack dominion.")
+      LocaleUtils.get_error_string(player, "tag_deletion_forbidden"))
     return
   end
 

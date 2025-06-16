@@ -9,11 +9,30 @@ Extracted from helpers_suite.lua for better organization and maintainability.
 local Constants = require("constants")
 local GPSUtils = require("core.utils.gps_utils")
 local SettingsAccess = require("core.utils.settings_access")
-local PositionUtils = require("core.utils.position_utils")
 local ErrorHandler = require("core.utils.error_handler")
 
 ---@class GameHelpers
 local GameHelpers = {}
+
+--- Simple local check if a position appears walkable (not water/space)
+--- This is a simplified version to avoid circular dependencies
+---@param surface LuaSurface
+---@param position MapPosition
+---@return boolean appears_walkable
+local function appears_walkable(surface, position)
+  if not surface or not surface.get_tile or not position then return false end
+  
+  local tile = surface:get_tile(position.x, position.y)
+  if not tile or not tile.valid then return false end
+  
+  local tile_name = tile.name:lower()
+  -- Simple check for obviously non-walkable tiles
+  if tile_name:find("water") or tile_name:find("space") or tile_name:find("void") then
+    return false
+  end
+  
+  return true
+end
 
 
 --- Finds the nearest walkable chart tag to a clicked position within a specified radius
@@ -46,9 +65,8 @@ function GameHelpers.get_nearest_chart_tag_to_click_position(player, map_positio
   if colliding_tags and #colliding_tags > 0 then
     local closest_chart_tag = nil
     local min_distance = math.huge
-    
-    for _, ct in pairs(colliding_tags) do
-      if ct and ct.valid and ct.position and PositionUtils.is_walkable_position(player.surface, ct.position, player) then
+      for _, ct in pairs(colliding_tags) do
+      if ct and ct.valid and ct.position and appears_walkable(player.surface, ct.position) then
         local dx = ct.position.x - map_position.x
         local dy = ct.position.y - map_position.y
         -- Square distance is sufficient for comparison

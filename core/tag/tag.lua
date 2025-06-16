@@ -19,6 +19,7 @@ local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local Lookups = require("__TeleportFavorites__.core.cache.lookups")
 local Cache = require("core.cache.cache")
 local ErrorHandler = require("core.utils.error_handler")
+local LocaleUtils = require("core.utils.locale_utils")
 local TeleportStrategies = require("core.pattern.teleport_strategy")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
 
@@ -274,23 +275,21 @@ local function validate_destination_position(player, destination_pos)
     non_collide_position = player.surface:find_non_colliding_position("character", destination_pos,
       safety_radius, fine_precision)
   end)
-
   if not success then
     ErrorHandler.debug_log("Error finding non-colliding position", { error = error_msg })
-    return nil, "Failed to find safe landing position"
+    return nil, LocaleUtils.get_error_string(nil, "failed_find_safe_position")
   end
 
   if not non_collide_position then
     ErrorHandler.debug_log("No non-colliding position found")
-    return nil, "The destination is not available for landing"
-  end -- normalize the landing position
+    return nil, LocaleUtils.get_error_string(nil, "destination_not_available")
+  end-- normalize the landing position
   local x = basic_helpers.normalize_index(non_collide_position.x or 0)
   local y = basic_helpers.normalize_index(non_collide_position.y or 0)
-
   -- Ensure we have valid numbers
   if not x or not y then
     ErrorHandler.debug_log("Failed to normalize position coordinates")
-    return nil, "Invalid position coordinates"
+    return nil, LocaleUtils.get_error_string(nil, "invalid_position_coordinates")
   end
 
   local normalized_pos = { x = x, y = y }
@@ -309,11 +308,10 @@ end
 ---@return LuaCustomChartTag?, string?
 local function create_new_chart_tag(player, destination_pos, chart_tag)
   ErrorHandler.debug_log("Creating new chart tag", { destination_pos = destination_pos })  local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(destination_pos, chart_tag, player)
-    -- Create chart tag using our safe wrapper
-  local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, player.surface, chart_tag_spec)
+    -- Create chart tag using our safe wrapper  local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, player.surface, chart_tag_spec)
   if not new_chart_tag or not new_chart_tag.valid then
     ErrorHandler.debug_log("Chart tag creation failed")
-    return nil, "The destination is not available for landing"
+    return nil, LocaleUtils.get_error_string(nil, "destination_not_available")
   end
 
   ErrorHandler.debug_log("Chart tag created successfully")

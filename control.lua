@@ -55,9 +55,7 @@ script.on_event(defines.events.on_cutscene_started, function(event)
   -- Cutscene skipping disabled due to API compatibility issues
   -- If needed in development, uncomment and implement for faster testing
   local player = game.players[event.player_index]
-  if player then
-    player.exit_cutscene()
-  end
+  player.exit_cutscene()
 end)
 
 -- Register all mod events through centralized dispatcher

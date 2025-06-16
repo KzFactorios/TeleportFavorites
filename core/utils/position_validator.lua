@@ -17,6 +17,7 @@ local game_helpers = require("core.utils.game_helpers")
 local PositionUtils = require("core.utils.position_utils")
 local ValidationHelpers = require("core.utils.validation_helpers")
 local TerrainValidator = require("core.utils.terrain_validator")
+local LocaleUtils = require("core.utils.locale_utils")
 
 ---@class PositionValidator
 local PositionValidator = {}
@@ -43,7 +44,7 @@ function PositionValidator.is_valid_tag_position(player, map_position, skip_noti
       -- Debug output for non-walkable position detection
       local surface_index = tonumber(player.surface.index) or 1
       local location_gps = GPSCore.gps_from_map_position(map_position, surface_index)
-      game_helpers.player_print(player, "[TeleportFavorites] Cannot tag non-walkable location: " .. location_gps)
+      game_helpers.player_print(player, LocaleUtils.get_error_string(player, "cannot_tag_nonwalkable", {location_gps}))
     end
     return false
   end

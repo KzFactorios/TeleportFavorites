@@ -12,6 +12,7 @@ local gps_core = require("core.utils.gps_utils")
 local GameHelpers = require("core.utils.game_helpers")
 local GuiUtils = require("core.utils.gui_utils")
 local ErrorHandler = require("core.utils.error_handler")
+local LocaleUtils = require("core.utils.locale_utils")
 
 -- Observer Pattern Integration
 local GuiObserver = require("core.pattern.gui_observer")
@@ -40,10 +41,9 @@ local function start_drag(player, fav, slot)
 end
 
 local function reorder_favorites(player, favorites, drag_index, slot)
-  -- Use PlayerFavorites move_favorite method instead of manual array manipulation
-  local success, error_msg = favorites:move_favorite(drag_index, slot)
+  -- Use PlayerFavorites move_favorite method instead of manual array manipulation  local success, error_msg = favorites:move_favorite(drag_index, slot)
   if not success then
-    GameHelpers.player_print(player, "Failed to reorder favorite: " .. (error_msg or "Unknown error"))
+    GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "failed_reorder_favorite", {error_msg or LocaleUtils.get_error_string(player, "unknown_error")}))
     clear_drag_state(player)
     return false
   end
@@ -124,12 +124,11 @@ local function handle_tag_editor(event, player, fav, slot)
 end
 
 local function handle_toggle_lock(event, player, fav, slot, favorites)
-  if event.button == defines.mouse_button_type.left and event.control then
-    local success, error_msg = favorites:toggle_favorite_lock(slot)
+  if event.button == defines.mouse_button_type.left and event.control then    local success, error_msg = favorites:toggle_favorite_lock(slot)
     if not success then
-      GameHelpers.player_print(player, "Failed to toggle lock: " .. (error_msg or "Unknown error"))
+      GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "failed_toggle_lock", {error_msg or LocaleUtils.get_error_string(player, "unknown_error")}))
       return false
-    end    -- Update the slot row to reflect lock state change
+    end-- Update the slot row to reflect lock state change
     local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
     local bar_frame = GuiUtils.find_child_by_name(main_flow, "fave_bar_frame")
     local bar_flow = bar_frame and GuiUtils.find_child_by_name(bar_frame, "fave_bar_flow")
