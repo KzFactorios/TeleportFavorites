@@ -1,0 +1,121 @@
+[mod-setting-name]
+favorites-on=Mostrar barra de favoritos
+teleport-radius=Radio de teletransporte
+destination-msg-on=Mostrar mensajes de destino
+terrain-protection-radius=Radio de protección del terreno de etiquetas del mapa
+
+[mod-setting-description]
+favorites-on=Habilita o deshabilita la barra de favoritos en la GUI superior
+teleport-radius=Radio en casillas para detección de colisión de teletransporte (1-32)
+destination-msg-on=Mostrar mensajes al teletransportarse a destinos
+terrain-protection-radius=Radio de protección del terreno alrededor de etiquetas del mapa (0=solo protección del propietario, 3=área estándar 7x7)
+
+[tf-gui]
+# Elementos básicos de la GUI
+favorite_slot_empty=Ranura de favorito vacía
+icon_tooltip=Selecciona un icono para esta etiqueta
+text_tooltip=Introduce una etiqueta para esta marca
+move_tooltip=Mueve esta etiqueta a una nueva ubicación
+delete_tooltip=Elimina esta etiqueta
+teleport_tooltip=Teletransportarse a la ubicación de esta etiqueta
+favorite_tooltip=Marcar o desmarcar esta etiqueta como favorita
+confirm=Confirmar
+confirm_tooltip=Confirmar y guardar cambios
+move_mode_active=Modo movimiento: selecciona una nueva ubicación o clic derecho para cancelar
+
+# Barra de favoritos
+fave_slot_locked_tooltip=Ranura de favorito bloqueada: __1__ __2__
+fave_slot_tooltip=Favorito: __1__ __2__
+fave_slot_tooltip_one=Favorito: __1__
+fave_bar_drag_start=Comenzó a arrastrar favorito desde la ranura __1__
+fave_bar_reordered=Favorito movido de la ranura __1__ a la ranura __2__
+fave_bar_lock_toggled=La ranura de favorito __1__ ahora está __2__
+
+# Visualizador de datos
+data_viewer_title=Visualizador de datos
+tag_label=Etiqueta
+owner_label=Propietario: __1__
+teleport_to=Teletransportarse a: __1__
+teleported_to=__1__ se teletransportó a __2__
+favorite_row_label=Favorito
+icon_row_label=Icono
+text_label=Texto
+confirm_delete_message=¿Estás seguro de que quieres eliminar esta etiqueta? Esto no se puede deshacer.
+confirm_delete_confirm=Eliminar etiqueta
+confirm_delete_cancel=Cancelar
+tag_deleted_successfully=Etiqueta eliminada exitosamente
+cancel_tooltip=Cancelar y cerrar el editor
+fave_bar_overflow_error=Has alcanzado el número máximo de favoritos permitidos en la barra. Elimina un favorito para agregar otro.
+toggle_fave_bar=Mostrar u ocultar tu barra de favoritos
+tab_player_data=Datos del jugador
+tab_surface_data=Datos de superficie
+tab_lookups=Búsquedas
+tab_all_data=Todos los datos
+font_minus_tooltip=Disminuir tamaño de fuente
+font_plus_tooltip=Aumentar tamaño de fuente
+opacity_minus_tooltip=Disminuir opacidad
+opacity_plus_tooltip=Aumentar opacidad
+refresh_tooltip=Actualizar datos
+close=Cerrar
+font_label=Fuente
+opacity_label=Opacidad
+refresh_label=Actualizar
+tag_editor_title=Editor de etiquetas
+teleport_failed=Fallo en el teletransporte
+invalid_position_title=Posición inválida detectada
+invalid_position_message=Esta etiqueta está ubicada en __1__ que no puede ser usada como ubicación de etiqueta: __2__
+valid_position_nearby=Se encontró una posición válida cerca: __1__
+delete_tag=Eliminar etiqueta
+move_to_valid=Mover a posición válida
+cancel=Cancelar
+teleport_success=¡Teletransporte exitoso!
+
+[tf-command]
+action_undone=La última acción ha sido deshecha
+nothing_to_undo=No hay acciones que deshacer
+gui_reopened=La GUI ha sido reabierta
+favorite_added=Ubicación agregada a favoritos
+favorite_removed=Ubicación eliminada de favoritos
+favorite_undone=El favorito __1__ ha sido deshecho
+tag_updated=La etiqueta ha sido actualizada
+tag_reverted=Los cambios de la etiqueta han sido revertidos
+teleport_reverted=El teletransporte ha sido revertido
+
+[tf-handler]
+teleport-favorite-no-location=Hay un error con tu destino previsto
+teleport-favorite-no-matching-position=No pudimos obtener una lectura de la nueva posición.
+
+[tf-error]
+# Errores del manejador de entrada
+input_handler_error=Ocurrió un error al procesar la entrada
+
+# Errores de estrategia de teletransporte
+driving_teleport_blocked=¿Estás loco? Intentar teletransportarse mientras conduces está estrictamente prohibido.
+player_missing=No se puede teletransportar. Falta el jugador
+player_character_missing=No se puede teletransportar. Falta el personaje del jugador
+invalid_gps_coordinates=Coordenadas GPS inválidas
+no_safe_position=No se encontró posición de aterrizaje segura dentro del radio de seguridad
+no_safe_position_available=No hay posición de aterrizaje segura disponible
+teleport_unforeseen_error=No pudimos realizar el teletransporte debido a circunstancias imprevistas
+vehicle_teleport_unforeseen_error=No pudimos realizar el teletransporte del vehículo debido a circunstancias imprevistas
+safe_teleport_unforeseen_error=No pudimos realizar el teletransporte seguro debido a circunstancias imprevistas
+position_normalization_failed=Falló la normalización de posición
+validation_failed=Falló la validación
+teleport_blocked_driving=Teletransporte bloqueado: El jugador está conduciendo
+no_suitable_strategy=No hay método de teletransporte adecuado disponible
+strategy_not_implemented=Estrategia no implementada
+
+# Errores de gestión de favoritos
+failed_add_favorite=Falló agregar favorito: __1__
+failed_remove_favorite=Falló eliminar favorito: __1__
+failed_reorder_favorite=Falló reordenar favorito: __1__
+failed_toggle_lock=Falló cambiar bloqueo: __1__
+unknown_error=Error desconocido
+
+# Errores del editor de etiquetas
+tag_text_length_exceeded=La longitud permitida es (__1__) caracteres
+tag_requires_icon_or_text=Una etiqueta requiere un ícono o texto para ser válida.
+move_mode_select_destination=Selecciona un nuevo destino para esta etiqueta, o haz clic derecho para cancelar.
+invalid_location_chosen=Ubicación inválida elegida.
+tag_move_cancelled=Modo mover cancelado.
+tag_deletion_forbidden=No tienes autoridad sobre esta etiqueta.

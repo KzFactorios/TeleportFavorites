@@ -1,19 +1,125 @@
 # TeleportFavorites Localization Guide
 
-This document provides comprehensive information about the localization system implemented for the TeleportFavorites Factorio mod.
+This document provides comprehensive information about the localization system and management tools for the TeleportFavorites Factorio mod.
 
 ## Directory Structure
 
 ```
 locale/
-├── en/              # English (default)
-│   └── strings.cfg
-├── de/              # German  
-│   └── strings.cfg
-├── fr/              # French
-│   └── strings.cfg
-└── es/              # Spanish
-    └── strings.cfg
+├── locale_validator.ps1     # Simple validation script
+├── locale_manager.ps1       # Comprehensive management script  
+├── README.md               # This guide
+├── backups/                # Backup files from operations
+├── en/                     # English (source)
+│   ├── strings.cfg
+│   ├── settings.cfg
+│   └── controls.cfg
+├── de/                     # German  
+│   ├── strings.cfg
+│   ├── settings.cfg
+│   └── controls.cfg
+├── fr/                     # French
+│   ├── strings.cfg
+│   ├── settings.cfg
+│   └── controls.cfg
+└── es/                     # Spanish
+    ├── strings.cfg
+    ├── settings.cfg
+    └── controls.cfg
+```
+
+## Locale Management Scripts
+
+### 🔧 `locale_validator.ps1` - Quick Validation
+
+Simple, fast validation of all locale files.
+
+**Usage:**
+```powershell
+# Basic validation
+.\locale_validator.ps1
+
+# Show detailed information
+.\locale_validator.ps1 -Verbose
+
+# Show summary statistics
+.\locale_validator.ps1 -Summary
+```
+
+**Features:**
+- ✅ Validates file existence and structure
+- ✅ Accurate key and section counting
+- ✅ Clean, readable output
+- ✅ Exit codes for automation
+
+---
+
+### 🛠️ `locale_manager.ps1` - Comprehensive Management
+
+Advanced locale management with validation, reporting, and pruning capabilities.
+
+**Usage:**
+```powershell
+# Show help and all options
+.\locale_manager.ps1 -Help
+
+# Validate all locale files
+.\locale_manager.ps1 -Validate
+
+# Generate detailed comparison report
+.\locale_manager.ps1 -Report
+
+# Find unused keys (preview only)
+.\locale_manager.ps1 -PruneUnused -DryRun
+
+# Remove unused keys with backup
+.\locale_manager.ps1 -PruneUnused -Backup
+
+# Target specific language
+.\locale_manager.ps1 -Report -Language de
+.\locale_manager.ps1 -Validate -Language fr
+```
+
+**Key Features:**
+
+#### 📊 **Validation & Reporting**
+- Comprehensive file structure validation
+- Accurate key/section counting with proper regex patterns
+- Detailed comparison reports showing completeness percentages
+- Language-specific targeting
+
+#### 🧹 **Unused Key Pruning**
+- **Uses English files as source of truth**
+- Identifies keys in other languages that don't exist in English
+- Safe removal with backup creation
+- Dry-run mode for preview
+- Preserves comments and formatting
+
+#### 🔒 **Safety Features**
+- Automatic backup creation before modifications
+- Dry-run mode to preview changes
+- Detailed logging with timestamps
+- Error handling and recovery
+
+**Example Output:**
+```
+[2025-06-16 01:49:10] [SUCCESS]   EN (source): 93 keys, 6 sections, 4901 bytes
+[2025-06-16 01:49:10] [SUCCESS]   DE: 93 keys, 6 sections, 5590 bytes (100%)
+[2025-06-16 01:49:10] [SUCCESS]   FR: 93 keys, 6 sections, 5864 bytes (100%)
+[2025-06-16 01:49:10] [SUCCESS]   ES: 93 keys, 6 sections, 5613 bytes (100%)
+```
+
+**Common Workflows:**
+```powershell
+# Daily validation check
+.\locale_manager.ps1 -Validate
+
+# Monthly cleanup (safe)
+.\locale_manager.ps1 -PruneUnused -DryRun  # Preview first
+.\locale_manager.ps1 -PruneUnused -Backup  # Then execute
+
+# Before releases
+.\locale_manager.ps1 -Report  # Full status check
 ```
 
 ## Supported Languages
@@ -25,28 +131,39 @@ locale/
 
 ## Locale Categories
 
-The localization system organizes strings into logical categories:
+The localization system organizes strings into logical categories across three main files:
 
-### 1. Mod Settings (`[mod-setting-name]` and `[mod-setting-description]`)
+### Locale File Structure
+Each language directory contains:
+- **`strings.cfg`** - Main localization strings (GUI, errors, commands, handlers)
+- **`settings.cfg`** - Mod setting names and descriptions
+- **`controls.cfg`** - Custom input/hotkey names and descriptions
+
+### 1. Mod Settings (`[mod-setting-name]` and `[mod-setting-description]`) - settings.cfg
 - Setting names and descriptions
 - Used in the mod settings interface
 
-### 2. GUI Elements (`[tf-gui]`)
+### 2. Custom Controls (`[controls]`) - controls.cfg  
+- Custom input and hotkey descriptions
+- Keyboard shortcut names (e.g., "Teleport to favorite 1")
+- Used in Factorio's controls settings interface
+
+### 3. GUI Elements (`[tf-gui]`) - strings.cfg
 - All user interface text
 - Button labels, tooltips, dialog messages
 - Most commonly used category
 
-### 3. Commands (`[tf-command]`)
+### 4. Commands (`[tf-command]`) - strings.cfg
 - Command feedback messages
 - Action confirmation messages
 - Undo/redo notifications
 
-### 4. Handlers (`[tf-handler]`)
+### 5. Handlers (`[tf-handler]`) - strings.cfg
 - Event handler messages
 - System notifications
 - Internal process feedback
 
-### 5. Errors (`[tf-error]`)
+### 6. Errors (`[tf-error]`) - strings.cfg
 - Error messages for various failure scenarios
 - Teleportation errors, validation failures
 - User-facing error notifications
@@ -193,26 +310,98 @@ parent.add{type = "button", caption = LocaleUtils.get_gui_string(player, "confir
 
 ## Best Practices
 
+### Development Workflow
 1. **Always use LocaleUtils** - Never hardcode user-facing strings
-2. **Test missing translations** - Enable debug mode during development
-3. **Validate parameters** - Ensure parameter placeholders are preserved
-4. **Cultural sensitivity** - Consider cultural context in translations
-5. **Consistency** - Use established Factorio terminology
+2. **English first** - Add new strings to English locale files before translating
+3. **Validate early, validate often** - Use the validation scripts during development:
+   ```powershell
+   .\locale_validator.ps1 -Verbose  # Quick check
+   .\locale_manager.ps1 -Report     # Detailed analysis
+   ```
+4. **Clean up regularly** - Use pruning to remove obsolete keys:
+   ```powershell
+   .\locale_manager.ps1 -PruneUnused -Backup
+   ```
+
+### Translation Guidelines
+1. **Test missing translations** - Enable debug mode during development
+2. **Validate parameters** - Ensure parameter placeholders are preserved (e.g., `__1__`, `__2__`)
+3. **Cultural sensitivity** - Consider cultural context in translations
+4. **Consistency** - Use established Factorio terminology
+5. **Verify completeness** - All languages should have 100% key coverage:
+   ```powershell
+   .\locale_manager.ps1 -Report  # Check for 100% completion
+   ```
+
+### File Management
+- **Use backups** - Always use `-Backup` flag when making changes
+- **Preview first** - Use `-DryRun` to see what would change
+- **Check status regularly** - Monitor translation completeness
+- **Keep English as source of truth** - Other languages follow English structure
 
 ## Maintenance
 
+### Managing Locale Files with Scripts
+
+#### **Quick Validation**
+```powershell
+# Validate all files and show summary
+.\locale_validator.ps1 -Verbose
+```
+
+#### **Comprehensive Management**
+```powershell
+# Check status of all locale files
+.\locale_manager.ps1 -Report
+
+# Clean up unused keys (English as source of truth)
+.\locale_manager.ps1 -PruneUnused -Backup
+```
+
 ### Adding New Strings
-1. Add to English locale file first
-2. Add to LocaleUtils fallbacks if critical
-3. Update translation templates
-4. Test with LocaleUtils
-5. Update documentation
+1. **Add to English locale file first** (strings.cfg, settings.cfg, or controls.cfg)
+2. **Run validation** to ensure proper formatting:
+   ```powershell
+   .\locale_validator.ps1 -Verbose
+   ```
+3. **Add translations** to other language files
+4. **Validate completeness**:
+   ```powershell
+   .\locale_manager.ps1 -Report
+   ```
+5. Test with LocaleUtils in-game
+6. Update documentation
 
 ### Updating Existing Strings
-1. Update English version
-2. Mark translations as needing update
-3. Test for breaking changes
-4. Update fallback strings if needed
+1. **Update English version first**
+2. **Update corresponding translations**
+3. **Run pruning** to clean up any obsolete keys:
+   ```powershell
+   .\locale_manager.ps1 -PruneUnused -DryRun  # Preview
+   .\locale_manager.ps1 -PruneUnused -Backup  # Execute
+   ```
+4. **Validate final state**:
+   ```powershell
+   .\locale_manager.ps1 -Report
+   ```
+
+### Cleaning Up Obsolete Keys
+When you remove keys from English files, other language files may retain obsolete translations:
+
+```powershell
+# Find obsolete keys
+.\locale_manager.ps1 -PruneUnused -DryRun
+
+# Clean them up safely
+.\locale_manager.ps1 -PruneUnused -Backup
+```
+
+**The pruning process:**
+- Uses English files as the authoritative source
+- Identifies keys in other languages that don't exist in English
+- Creates backups before removing anything
+- Preserves all comments and formatting
+- Reports exactly what was removed
 
 ## Performance Considerations
 
@@ -221,17 +410,103 @@ parent.add{type = "button", caption = LocaleUtils.get_gui_string(player, "confir
 - Fallback system minimizes lookup overhead
 - Debug mode can be disabled in production
 
-## Support
+## Support & Troubleshooting
+
+### Common Issues
+
+#### **Validation Failures**
+```powershell
+# Check specific language
+.\locale_manager.ps1 -Validate -Language de
+
+# Get detailed information
+.\locale_validator.ps1 -Verbose
+```
+
+#### **Inconsistent Key Counts**
+```powershell
+# Generate comparison report
+.\locale_manager.ps1 -Report
+
+# Clean up unused keys
+.\locale_manager.ps1 -PruneUnused -Backup
+```
+
+#### **Missing Translations**
+1. Check the detailed report for completion percentages
+2. Add missing keys to target language files
+3. Validate the fixes
+
+#### **File Corruption or Formatting Issues**
+1. Check the backup files in `locale/backups/`
+2. Restore from backup if needed
+3. Re-run validation to confirm fix
+
+### Script Troubleshooting
+
+**If locale_manager.ps1 fails:**
+- Check PowerShell execution policy: `Get-ExecutionPolicy`
+- Run with explicit execution policy: `powershell -ExecutionPolicy Bypass -File .\locale_manager.ps1 -Help`
+- Check file permissions in the locale directory
+
+**If pruning removes too much:**
+- Backups are automatically created in `locale/backups/`
+- Restore from backup files if needed
+- Always use `-DryRun` first to preview changes
+
+### Getting Help
+```powershell
+# Show all available options
+.\locale_manager.ps1 -Help
+
+# Check script version and capabilities
+.\locale_validator.ps1 -Verbose
+```
 
 For localization issues:
-1. Check test suite results
-2. Enable debug mode to identify missing strings
-3. Validate locale file syntax
-4. Check parameter placeholder preservation
-5. Test with different player locales
+1. Run the validation scripts first
+2. Check the generated reports for specific problems  
+3. Enable debug mode to identify missing strings in-game
+4. Validate locale file syntax with the scripts
+5. Check parameter placeholder preservation
+6. Test with different player locales
+
+---
+
+## Quick Reference
+
+### Daily Development
+```powershell
+# Quick validation check
+.\locale_validator.ps1
+
+# Check translation status
+.\locale_manager.ps1 -Report
+```
+
+### Before Committing Changes
+```powershell
+# Comprehensive validation
+.\locale_validator.ps1 -Verbose
+
+# Clean up any obsolete keys
+.\locale_manager.ps1 -PruneUnused -DryRun   # Preview
+.\locale_manager.ps1 -PruneUnused -Backup   # Execute
+
+# Final status check
+.\locale_manager.ps1 -Report
+```
+
+### Monthly Maintenance
+```powershell
+# Full cleanup and verification
+.\locale_manager.ps1 -PruneUnused -Backup
+.\locale_manager.ps1 -Report
+```
 
 ---
 
 **Last Updated**: June 16, 2025  
-**Version**: 1.0.0  
-**Status**: Foundation Complete, Implementation In Progress
+**Version**: 2.0.0  
+**Status**: Complete with Management Tools  
+**Scripts**: locale_validator.ps1, locale_manager.ps1
