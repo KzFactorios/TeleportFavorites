@@ -438,13 +438,13 @@ end
 ---@param chart_tag LuaCustomChartTag Chart tag that was changed
 ---@param old_position MapPosition Previous position
 ---@param new_position MapPosition New position
----@param surface_index number Surface index
 ---@return string notification_message Formatted notification message
-function GuiUtils.position_change_notification(player, chart_tag, old_position, new_position, surface_index)
-  if not player or not player.valid or not old_position or not new_position or not surface_index then
+function GuiUtils.position_change_notification(player, chart_tag, old_position, new_position)
+  if not player or not player.valid or not old_position or not new_position then
     return LocaleUtils.get_error_string(player, "invalid_position_change_fallback")
   end
   
+  local surface_index = player.surface.index
   local old_gps = string.format("[gps=%d,%d,%d]", 
     math.floor(old_position.x),
     math.floor(old_position.y),

@@ -26,12 +26,12 @@ Format a position change notification for the player
 @param chart_tag - The chart tag that was moved
 @param old_position - The old position
 @param new_position - The new position  
-@param surface_index - The surface index
 @return formatted notification string
 ]]
-function RichTextFormatter.position_change_notification(player, chart_tag, old_position, new_position, surface_index)
+function RichTextFormatter.position_change_notification(player, chart_tag, old_position, new_position)
     if not player or not chart_tag then return "" end
     
+    local surface_index = player.surface.index
     local old_gps = GPSUtils.gps_from_map_position(old_position, surface_index)
     local new_gps = GPSUtils.gps_from_map_position(new_position, surface_index)
     
@@ -52,7 +52,7 @@ Format a tag relocated notification for terrain changes
 function RichTextFormatter.tag_relocated_notification(chart_tag, old_position, new_position)
     if not chart_tag then return "" end
     
-    local surface_index = chart_tag.surface_index or 1
+    local surface_index = chart_tag.surface and chart_tag.surface.index or 1
     local old_gps = GPSUtils.gps_from_map_position(old_position, surface_index)
     local new_gps = GPSUtils.gps_from_map_position(new_position, surface_index)
     
@@ -68,12 +68,12 @@ Format a position change notification for terrain handling
 @param chart_tag - The chart tag 
 @param old_position - The old position
 @param new_position - The new position
-@param surface_index - The surface index
 @return formatted notification string
 ]]
-function RichTextFormatter.position_change_notification_terrain(chart_tag, old_position, new_position, surface_index)
+function RichTextFormatter.position_change_notification_terrain(chart_tag, old_position, new_position)
     if not chart_tag then return "" end
     
+    local surface_index = chart_tag.surface and chart_tag.surface.index or 1
     local old_gps = GPSUtils.gps_from_map_position(old_position, surface_index)
     local new_gps = GPSUtils.gps_from_map_position(new_position, surface_index)
     

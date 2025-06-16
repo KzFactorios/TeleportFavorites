@@ -160,19 +160,18 @@ function EventRegistrationDispatcher.register_core_events(script)
       end,
       name = "on_player_left_game"
     },    [defines.events.on_runtime_mod_setting_changed] = {
-      handler = function(event)        
-        -- Handle changes to the favorites on/off setting
+      handler = function(event)          -- Handle changes to the favorites on/off setting
         if event.setting == "favorites-on" then
           for _, player in pairs(game.connected_players) do
             local player_settings = Settings:getPlayerSettings(player)
             if player_settings.favorites_on then
-              fave_bar.build(player, player.gui.top)
+              fave_bar.build(player)
             else
               fave_bar.destroy(player)
             end
           end
           return
-        end        -- Handle changes to the teleport radius
+        end-- Handle changes to the teleport radius
         if event.setting == "teleport-radius" then
           ErrorHandler.debug_log("Teleport radius setting changed", {
             player_index = event.player_index

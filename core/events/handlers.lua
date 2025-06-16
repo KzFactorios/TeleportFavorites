@@ -68,8 +68,7 @@ local handlers = {}
 
 function handlers.on_init()
   for _, player in pairs(game.players) do
-    local parent = player.gui.top
-    fave_bar.build(player, parent)
+    fave_bar.build(player)
   end
 end
 
@@ -82,8 +81,7 @@ function handlers.on_player_created(event)
   local player = game.get_player(event.player_index)
   if not player or not player.valid then return end
 
-  local parent = player.gui.top
-  fave_bar.build(player, parent)
+  fave_bar.build(player)
 end
 
 function handlers.on_player_changed_surface(event)
@@ -91,8 +89,7 @@ function handlers.on_player_changed_surface(event)
   local player = game.get_player(event.player_index)
   if not player or not player.valid then return end
 
-  local parent = player.gui.top
-  fave_bar.build(player, parent)
+  fave_bar.build(player)
 end
 
 --- Handles right-click on the chart view to open tag editor
@@ -192,15 +189,12 @@ function handlers.on_chart_tag_added(event)
       chart_tag.destroy()
 
       -- Refresh the cache to include the new chart tag
-      Lookups.invalidate_surface_chart_tags(surface_index)
-
-      -- Inform the player about the position normalization
+      Lookups.invalidate_surface_chart_tags(surface_index)      -- Inform the player about the position normalization
       local notification_msg = RichTextFormatter.position_change_notification(
         player,
         new_chart_tag,
         position_pair.old,
-        position_pair.new,
-        surface_index
+        position_pair.new
       )
       GameHelpers.player_print(player, notification_msg)
     end
@@ -319,16 +313,13 @@ local function update_favorites_gps(old_gps, new_gps, acting_player)
     end
 
     -- Get chart tag for better notification
-    local chart_tag = Lookups.get_chart_tag_by_gps(new_gps)
-
-    for _, affected_player in ipairs(affected_players) do
+    local chart_tag = Lookups.get_chart_tag_by_gps(new_gps)    for _, affected_player in ipairs(affected_players) do
       if affected_player and affected_player.valid then
         local position_msg = RichTextFormatter.position_change_notification(
           affected_player,
           chart_tag,
           old_position or { x = 0, y = 0 },
-          new_position or { x = 0, y = 0 },
-          surface_index
+          new_position or { x = 0, y = 0 }
         )
         GameHelpers.player_print(affected_player, position_msg)
       end
@@ -379,15 +370,12 @@ function handlers.on_chart_tag_modified(event)
         Lookups.invalidate_surface_chart_tags(surface_index)
 
         -- Update chart_tag reference for future operations
-        chart_tag = new_chart_tag
-
-        -- Notify the player about the normalization
+        chart_tag = new_chart_tag        -- Notify the player about the normalization
         local notification_msg = RichTextFormatter.position_change_notification(
           player,
           new_chart_tag,
           old_position,
-          new_position,
-          surface_index
+          new_position
         )
         GameHelpers.player_print(player, notification_msg)
       end

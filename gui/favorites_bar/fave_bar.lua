@@ -191,8 +191,16 @@ function fave_bar.update_slot_row(player, bar_flow)
   local pfaves = Cache.get_player_favorites(player)
   local drag_index = Cache.get_player_data(player).drag_favorite_index or -1
   local fav_btns = fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves, drag_index)
-  set_slot_row_visibility(slots_frame, true)
-  return fav_btns
+  set_slot_row_visibility(slots_frame, true)  return fav_btns
+end
+
+--- Destroy/hide the favorites bar for a player
+---@param player LuaPlayer
+function fave_bar.destroy(player)
+  if not player or not player.valid then return end
+  
+  local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
+  GuiUtils.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
 end
 
 return fave_bar

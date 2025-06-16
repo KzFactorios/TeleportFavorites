@@ -157,15 +157,16 @@ function TagTerrainManager.relocate_chart_tag_from_water(chart_tag, search_radiu
         local tags = Cache.get_surface_tags(surface_index)
         tags[old_gps] = nil
         tags[new_gps] = tag
-    end
-    -- Destroy the old chart tag
+    end    -- Destroy the old chart tag
     chart_tag.destroy()
 
     -- Refresh cache
-    Lookups.invalidate_surface_chart_tags(surface_index)    -- Notify affected players if requested
+    Lookups.invalidate_surface_chart_tags(surface_index)
+    
+    -- Notify affected players if requested
     if notify_players and tag and tag.faved_by_players and #tag.faved_by_players > 0 then
         local message = RichTextFormatter.position_change_notification_terrain(
-            new_chart_tag, old_position, new_position, tonumber(surface_index) or 1
+            new_chart_tag, old_position, new_position
         )
         for _, player_index in ipairs(tag.faved_by_players) do
             local fav_player = game.get_player(player_index)

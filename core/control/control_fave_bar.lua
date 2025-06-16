@@ -174,12 +174,11 @@ local function handle_favorite_slot_click(event, player, favorites)
   handle_tag_editor(event, player, fav, slot)  -- Always update the slot row after any favorite action to ensure button is visible
   local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
   local bar_frame = GuiUtils.find_child_by_name(main_flow, "fave_bar_frame")
-  local bar_flow = bar_frame and GuiUtils.find_child_by_name(bar_frame, "fave_bar_flow")
-  if bar_flow then
+  local bar_flow = bar_frame and GuiUtils.find_child_by_name(bar_frame, "fave_bar_flow")  if bar_flow then
     fave_bar.update_slot_row(player, bar_flow)
   else
     -- If bar_flow is missing, rebuild the entire favorites bar
-    fave_bar.build(player, main_flow)
+    fave_bar.build(player)
   end
 end
 

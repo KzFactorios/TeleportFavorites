@@ -234,9 +234,9 @@ function FavoriteObserver:update(event_data)
     player = self.player.name,
     event_type = event_data.type or "unknown"
   })
-    -- Refresh favorites bar
+  -- Refresh favorites bar
   local success, err = pcall(function()
-    fave_bar.build(self.player, self.player.gui.top)
+    fave_bar.build(self.player)
   end)
   
   if not success then
