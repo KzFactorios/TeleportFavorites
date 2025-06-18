@@ -119,7 +119,7 @@ function TagTerrainManager.relocate_chart_tag_from_water(chart_tag, search_radiu
     local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(new_position, chart_tag, player, nil, true)
     
     -- Create new chart tag at valid position using safe wrapper
-    local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, surface, chart_tag_spec)
+    local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, surface, chart_tag_spec, player)
     if not new_chart_tag or not new_chart_tag.valid then
         ErrorHandler.debug_log("Failed to create new chart tag during relocation", {
             chart_tag_position = chart_tag.position,

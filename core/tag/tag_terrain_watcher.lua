@@ -80,9 +80,8 @@ local function relocate_tag_if_on_water(chart_tag)
   if chart_tag.icon and type(chart_tag.icon) == "table" and chart_tag.icon.name then
     chart_tag_spec.icon = chart_tag.icon
   end
-  
-  -- Add the new chart tag using safe wrapper
-  local new_chart_tag = ChartTagUtils.safe_add_chart_tag(force, surface, chart_tag_spec)
+    -- Add the new chart tag using safe wrapper
+  local new_chart_tag = ChartTagUtils.safe_add_chart_tag(force, surface, chart_tag_spec, nil)
     -- Only proceed if creation was successful
   if not new_chart_tag or not new_chart_tag.valid then return false end
     -- Update the GPS reference in our system

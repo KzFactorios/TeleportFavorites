@@ -50,7 +50,20 @@ function Tag:get_chart_tag()
     if self.chart_tag then
       ErrorHandler.debug_log("Chart tag found and cached")
     else
-      ErrorHandler.debug_log("No chart tag found for GPS", { gps = self.gps })
+      ErrorHandler.debug_log("No chart tag found for GPS, checking if cache needs refresh", { gps = self.gps })
+      
+      -- If no chart tag found, try invalidating cache and looking again
+      -- This handles cases where cache invalidation was missed
+      local surface_index = GPSUtils.get_surface_index_from_gps(self.gps)
+      if surface_index and surface_index > 0 then
+        Cache.Lookups.invalidate_surface_chart_tags(surface_index)
+        self.chart_tag = Cache.Lookups.get_chart_tag_by_gps(self.gps)
+        if self.chart_tag then
+          ErrorHandler.debug_log("Chart tag found after cache refresh")
+        else
+          ErrorHandler.debug_log("No chart tag found even after cache refresh", { gps = self.gps })
+        end
+      end
     end
   end
   return self.chart_tag
@@ -309,7 +322,7 @@ end
 local function create_new_chart_tag(player, destination_pos, chart_tag)  ErrorHandler.debug_log("Creating new chart tag", { destination_pos = destination_pos })  
   local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(destination_pos, chart_tag, player, nil, true)
     -- Create chart tag using our safe wrapper  
-  local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, player.surface, chart_tag_spec)
+  local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, player.surface, chart_tag_spec, player)
   if not new_chart_tag or not new_chart_tag.valid then
     ErrorHandler.debug_log("Chart tag creation failed")
     return nil, LocaleUtils.get_error_string(nil, "destination_not_available")

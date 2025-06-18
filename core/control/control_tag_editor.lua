@@ -118,6 +118,10 @@ local function update_chart_tag_fields(tag, text, icon, player)
     else
       chart_tag.icon = nil
     end
+    
+    -- CRITICAL: Invalidate cache after modifying chart tag
+    local surface_index = chart_tag.surface and chart_tag.surface.index or player.surface.index
+    Cache.Lookups.invalidate_surface_chart_tags(surface_index)
   else
     -- Create new chart tag using ChartTagUtils - set ownership for final chart tag
     local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(map_position, nil, player, text, true)
@@ -128,9 +132,13 @@ local function update_chart_tag_fields(tag, text, icon, player)
       chart_tag_spec.icon = nil
     end
 
-    local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, player.surface, chart_tag_spec)
+    local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, player.surface, chart_tag_spec, player)
     if new_chart_tag and new_chart_tag.valid then
       tag.chart_tag = new_chart_tag
+      
+      -- CRITICAL: Invalidate cache after creating new chart tag
+      local surface_index = player.surface.index
+      Cache.Lookups.invalidate_surface_chart_tags(surface_index)
     else
       ErrorHandler.warn_log("Failed to create chart tag", {
         gps = tag.gps,
@@ -193,14 +201,13 @@ local function handle_confirm_btn(player, element, tag_data)
   local is_new_tag = not tag_data.tag and not tag_data.chart_tag
 
   update_chart_tag_fields(tag, text, icon, player)
-  
-  -- Handle favorite operations only on confirm
+    -- Handle favorite operations only on confirm
   local favorite_success = handle_favorite_operations(player, tag, is_favorite)
   if not favorite_success then
     -- If favorite operation failed, don't continue with tag saving
     return
   end
-
+  -- Store the tag (GPS key naturally prevents duplicates)
   tags[tag.gps] = tag
 
   -- Notify observers of tag creation or modification
@@ -241,15 +248,13 @@ local function handle_move_btn(player, tag_data, script)
 
     -- Use position validation when moving the tag
     local position_validation_callback = function(action, updated_tag_data)
-      if action == "move" then
-        -- Update tag with new validated position
+      if action == "move" then        -- Update tag with new validated position
         tag.gps = updated_tag_data.gps
 
         -- Update the main gps field to the new location
-        tag_data.gps = updated_tag_data.gps
-        tag_data.tag = tag
+        tag_data.gps = updated_tag_data.gps        tag_data.tag = tag
 
-        -- Store in surface tags
+        -- Store in surface tags (GPS key naturally prevents duplicates)
         local tags = Cache.get_surface_tags(player.surface.index)
         tags[tag.gps] = tag
 

@@ -238,10 +238,9 @@ function handlers.on_chart_tag_added(event)
       player,
       nil,  -- Use existing text from source chart tag
       true  -- Set ownership for final chart tag replacement
-      )
-      
+      )      
     local surface_index = chart_tag.surface and chart_tag.surface.index or 1
-    local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, chart_tag.surface, chart_tag_spec)
+    local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, chart_tag.surface, chart_tag_spec, player)
     if new_chart_tag and new_chart_tag.valid then      -- Destroy the old chart tag with fractional coordinates
       chart_tag.destroy()      -- Refresh the cache to include the new chart tag
       Cache.Lookups.invalidate_surface_chart_tags(surface_index)-- Inform the player about the position normalization
@@ -416,7 +415,7 @@ function handlers.on_chart_tag_modified(event)
         true  -- Set ownership for final chart tag replacement
       )
 
-      local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, surface, chart_tag_spec)
+      local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, surface, chart_tag_spec, player)
       if new_chart_tag and new_chart_tag.valid then
         -- Destroy the old chart tag with fractional coordinates
         chart_tag.destroy()
@@ -484,7 +483,7 @@ function handlers.on_chart_tag_removed(event)
       -- Recreate the chart tag since it was already removed by the event      -- Create chart tag spec using centralized builder
       local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(chart_tag.position, chart_tag, player, nil, true)
 
-      local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, chart_tag.surface, chart_tag_spec)
+      local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, chart_tag.surface, chart_tag_spec, player)
 
       if new_chart_tag and new_chart_tag.valid then        -- Update the tag with the new chart tag reference        tag.chart_tag = new_chart_tag
         -- Refresh the cache

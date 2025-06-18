@@ -98,4 +98,8 @@ You are a specialized Factorio mod development assistant. Apply this checklist r
 // the next line was added as an ad-hoc instruction
 all test files should begin with test_ and must reside in the /tests folder
 
-summary files are unnecessary
+Comprehensive summary files are unnecessary. I will ask when I would like them. Do not create without permission
+
+The current Lua version is 5.4.2
+
+If a test requires the game to be run, I can follow your instructions on what to test in-game

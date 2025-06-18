@@ -113,11 +113,10 @@ local function clear_surface_cache_chart_tags(surface_index)
   if not surface_index then
     error("Invalid surface index: " .. tostring(surface_index))
   end
-
   local surface_idx = basic_helpers.normalize_index(surface_index)
   local surface_cache = ensure_surface_cache(surface_idx)
-  surface_cache.chart_tags = {}
-  surface_cache.chart_tags_mapped_by_gps = {}
+  surface_cache.chart_tags = nil  -- Set to nil to trigger refetch
+  surface_cache.chart_tags_mapped_by_gps = nil  -- Set to nil to trigger rebuild
   return surface_cache
 end
 

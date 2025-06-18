@@ -77,10 +77,25 @@ function ChartTagUtils.find_chart_tag_at_position(player, cursor_position)
      player.render_mode ~= defines.render_mode.chart_zoomed_in then 
     return nil
   end
-  -- Get all chart tags on the current surface
-  local force_tags = player.force.find_chart_tags(player.surface)
-  if not force_tags or #force_tags == 0 then return nil end
-    -- Get click radius from player settings
+    -- First check the cache to see if we have chart tags loaded
+  local surface_index = player.surface.index
+  local force_tags = Cache.Lookups.get_chart_tag_cache(surface_index)
+    -- If cache appears empty, try invalidating it once to trigger refresh
+  if not force_tags or #force_tags == 0 then
+    Cache.Lookups.invalidate_surface_chart_tags(surface_index)
+    force_tags = Cache.Lookups.get_chart_tag_cache(surface_index)
+    
+    ErrorHandler.debug_log("Attempted to refresh chart tag cache from Factorio API", {
+      surface_index = surface_index,
+      chart_tags_found = force_tags and #force_tags or 0
+    })
+  end
+  
+  -- If still no tags found, there genuinely are no chart tags on this surface
+  if not force_tags or #force_tags == 0 then 
+    return nil 
+  end
+  -- Get click radius from player settings
   local click_radius = Constants.settings.CHART_TAG_CLICK_RADIUS
   local player_settings = settings.get_player_settings(player)
   local setting = player_settings["chart-tag-click-radius"]
@@ -474,12 +489,13 @@ end
 -- CHART TAG CREATION WRAPPER
 -- ========================================
 
---- Safe wrapper for chart tag creation with comprehensive error handling
+--- Safe wrapper for chart tag creation with comprehensive error handling and collision detection
 ---@param force LuaForce The force that will own the chart tag
 ---@param surface LuaSurface The surface where the tag will be placed
 ---@param spec table Chart tag specification table (position, text, etc.)
+---@param player LuaPlayer? Player context for collision notifications
 ---@return LuaCustomChartTag|nil chart_tag The created chart tag or nil if failed
-function ChartTagUtils.safe_add_chart_tag(force, surface, spec)
+function ChartTagUtils.safe_add_chart_tag(force, surface, spec, player)
   -- Input validation
   if not force or not surface or not spec then
     ErrorHandler.debug_log("Invalid arguments to safe_add_chart_tag", {
@@ -496,7 +512,32 @@ function ChartTagUtils.safe_add_chart_tag(force, surface, spec)
       position = spec.position
     })
     return nil
-  end  -- Use protected call to catch any errors
+  end
+  -- Check for position collision before creation
+  local surface_index = tonumber(surface.index) or 1
+  local gps = GPSUtils.gps_from_map_position(spec.position, surface_index)
+  local existing_chart_tag, has_collision = ChartTagCollisionDetector.check_position_collision(gps)
+  
+  if has_collision and existing_chart_tag then
+    ErrorHandler.debug_log("Chart tag creation blocked due to position collision", {
+      gps = gps,
+      existing_text = existing_chart_tag.text or "",
+      attempted_text = spec.text or ""
+    })
+    
+    -- Notify player about collision if provided
+    if player and player.valid then
+      local message = string.format(
+        "[TeleportFavorites] Cannot create chart tag: position already occupied by '%s'",
+        existing_chart_tag.text or "existing tag"
+      )
+      GameHelpers.player_print(player, message)
+    end
+    
+    return nil
+  end
+
+  -- Use protected call to catch any errors
   local success, result = pcall(function()
     return force.add_chart_tag(surface, spec)
   end)
@@ -522,9 +563,19 @@ function ChartTagUtils.safe_add_chart_tag(force, surface, spec)
     return nil
   end
 
-  ErrorHandler.debug_log("Chart tag created successfully", {
+  -- Resolve any collisions that might have occurred (belt and suspenders approach)
+  local removed_count = ChartTagCollisionDetector.resolve_position_collision(result, player)
+  if removed_count > 0 then
+    ErrorHandler.debug_log("Resolved chart tag collisions after creation", {
+      removed_count = removed_count,
+      gps = gps
+    })
+  end
+
+  ErrorHandler.debug_log("Chart tag created successfully with collision prevention", {
     position = result.position,
-    text = result.text
+    text = result.text,
+    gps = gps
   })
 
   return result
