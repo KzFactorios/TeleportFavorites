@@ -10,11 +10,8 @@ using polling mechanisms like on_tick.
 
 local Cache = require("core.cache.cache")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
-local Lookups = require("core.cache.lookups")
 local GPSUtils = require("core.utils.gps_utils")
-local RichTextFormatter = require("core.utils.rich_text_formatter")
-local GameHelpers = require("core.utils.game_helpers")
-local PositionUtils = require("core.utils.position_utils")
+
 
 local tag_terrain_watcher = {}
 
@@ -76,7 +73,7 @@ local function relocate_tag_if_on_water(chart_tag)
   local chart_tag_spec = {
     position = new_position,
     text = chart_tag.text or "Tag",
-    last_user = chart_tag.last_user or "System"
+    last_user = chart_tag.last_user or ""
   }
   
   -- Only include icon if it's a valid SignalID
@@ -94,12 +91,10 @@ local function relocate_tag_if_on_water(chart_tag)
   -- Update tag's chart_tag reference and GPS
   tag.chart_tag = new_chart_tag
   tag.gps = new_gps
-  
-  -- Destroy the old chart tag
-  chart_tag.destroy()
+    -- Destroy the old chart tag  chart_tag.destroy()
   
   -- Refresh the cache
-  Lookups.invalidate_surface_chart_tags(surface_index)
+  Cache.Lookups.invalidate_surface_chart_tags(surface_index)
   
   -- Notify tag owners and favorites users
   if tag.faved_by_players and #tag.faved_by_players > 0 then    for _, player_index in ipairs(tag.faved_by_players) do
@@ -125,10 +120,9 @@ local function process_changed_tiles(tiles, surface)
     local pos_key = tile_data.position.x .. "," .. tile_data.position.y
     changed_positions[pos_key] = true
   end
-  
   -- Get chart tags from the affected surface
   local surface_index = surface.index
-  local chart_tags = Lookups.get_surface_chart_tags(surface_index)
+  local chart_tags = Cache.Lookups.get_chart_tag_cache(surface_index)
   
   if not chart_tags then return end
   
@@ -169,11 +163,9 @@ end
 -- Handle when scripts change tiles
 function tag_terrain_watcher.on_script_path_request_finished(event)
   -- Check all affected surfaces for any chart tags that need relocation
-  if global.tf_surfaces_to_check then
-    for surface_index, _ in pairs(global.tf_surfaces_to_check) do
-      local surface = game.get_surface(surface_index)
+  if global.tf_surfaces_to_check then    for surface_index, _ in pairs(global.tf_surfaces_to_check) do      local surface = game.get_surface(surface_index)
       if surface and surface.valid then
-        local chart_tags = Lookups.get_surface_chart_tags(surface_index)
+        local chart_tags = Cache.Lookups.get_chart_tag_cache(surface_index)
         if chart_tags then
           for _, chart_tag in pairs(chart_tags) do
             if chart_tag and chart_tag.valid then

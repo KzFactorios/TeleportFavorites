@@ -158,7 +158,7 @@ function GuiUtils.create_slot_button(parent, name, icon, tooltip, opts)
   if sprite and sprite ~= "" then
     local is_valid = GuiUtils.validate_sprite(sprite)
     if not is_valid then
-      sprite = "utility/questionmark"  -- Fallback sprite
+      sprite = Enum.SpriteEnum.QUESTION_MARK  -- Fallback sprite
       ErrorHandler.debug_log("Invalid sprite, using fallback", {
         original_sprite = icon,
         fallback = sprite
@@ -183,18 +183,56 @@ function GuiUtils.get_gui_frame_by_element(element)
   if not element or not element.valid then return nil end
   
   local current = element
+  local frames_checked = {}
+  
   while current and current.valid do
     if current.type == "frame" then
-      -- Check if this is a main GUI frame (not a nested content frame)
       local name = current.name or ""
+      table.insert(frames_checked, name)
+      
+      -- Debug logging
+      ErrorHandler.debug_log("GuiUtils.get_gui_frame_by_element: Checking frame", {
+        frame_name = name,
+        target_tag_editor = Enum.GuiEnum.GUI_FRAME.TAG_EDITOR,
+        target_data_viewer = Enum.GuiEnum.GUI_FRAME.DATA_VIEWER,
+        target_fave_bar = Enum.GuiEnum.GUI_FRAME.FAVE_BAR
+      })
+      
       if name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR or 
          name == Enum.GuiEnum.GUI_FRAME.DATA_VIEWER or 
          name == Enum.GuiEnum.GUI_FRAME.FAVE_BAR then
+        ErrorHandler.debug_log("GuiUtils.get_gui_frame_by_element: Found main frame", {
+          found_frame = name
+        })
         return current
       end
     end
     current = current.parent
   end
+  
+  ErrorHandler.debug_log("GuiUtils.get_gui_frame_by_element: No main frame found", {
+    original_element = element and element.name or "nil",
+    frames_checked = frames_checked
+  })
+  
+  -- Fallback: if we didn't find a main frame but we found frames, 
+  -- return the topmost frame (last in hierarchy)
+  if #frames_checked > 0 then
+    ErrorHandler.debug_log("GuiUtils.get_gui_frame_by_element: Using fallback - returning topmost frame", {
+      fallback_frame = frames_checked[#frames_checked]
+    })
+    -- Go back up to find the topmost frame
+    current = element
+    local topmost_frame = nil
+    while current and current.valid do
+      if current.type == "frame" then
+        topmost_frame = current
+      end
+      current = current.parent
+    end
+    return topmost_frame
+  end
+  
   return nil
 end
 
@@ -238,21 +276,37 @@ function GuiUtils.validate_sprite(sprite_path)
   -- Use remote interface if available for sprite validation
   if remote and remote.interfaces and remote.interfaces["__core__"] and remote.interfaces["__core__"].is_valid_sprite_path then
     local success, is_valid = pcall(remote.call, "__core__", "is_valid_sprite_path", sprite_path)
-    return success and is_valid
+    if success and is_valid then
+      return true
+    end
+    -- If remote call fails or returns false, continue to fallback validation
   end
-  
   -- Fallback validation - check for common sprite patterns
   local common_sprites = {
     "utility/add", "utility/remove", "utility/close", "utility/refresh",
     "utility/arrow-up", "utility/arrow-down", "utility/arrow-left", "utility/arrow-right",
-    "utility/questionmark", "utility/check-mark", "utility/warning"
+    "utility/questionmark", "utility/check_mark", "utility/warning_icon",
+    "utility/trash", "utility/copy", "utility/edit", "utility/enter",
+    "utility/confirm_slot", "utility/danger_icon", "utility/info",
+    "utility/export_slot", "utility/import_slot", "utility/list_view",
+    "utility/lock", "utility/pin", "utility/play", "utility/search_icon", "utility/settings"
   }
   
   for _, known_sprite in ipairs(common_sprites) do
     if sprite_path == known_sprite then return true end
   end
   
-  -- Check if it's a custom mod sprite
+  -- Check for custom TeleportFavorites sprites by name
+  local tf_custom_sprites = {
+    "tf_hint_arrow_up", "tf_hint_arrow_down", "tf_hint_arrow_left", "tf_hint_arrow_right",
+    "tf_star_disabled", "move_tag_icon", "logo_36", "logo_144", "utility/reset"
+  }
+  
+  for _, known_sprite in ipairs(tf_custom_sprites) do
+    if sprite_path == known_sprite then return true end
+  end
+  
+  -- Check if it's a custom mod sprite file path
   if sprite_path:find("__TeleportFavorites__") then return true end
   
   return false

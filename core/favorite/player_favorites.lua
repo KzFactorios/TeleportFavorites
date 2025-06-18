@@ -43,6 +43,7 @@ local FavoriteUtils = require("core.favorite.favorite")
 local Utils = require("core.utils.utils")
 local basic_helpers = require("core.utils.basic_helpers")
 local Cache = require("core.cache.cache")
+local ErrorHandler = require("core.utils.error_handler")
 
 -- Observer Pattern Integration
 local function notify_observers_safe(event_type, data)
@@ -168,35 +169,73 @@ end
 ---@param gps string
 ---@return Favorite|nil, string|nil error_message
 function PlayerFavorites:add_favorite(gps)
-  if not gps or type(gps) ~= "string" or gps == "" then
+  ErrorHandler.debug_log("PlayerFavorites:add_favorite called", {
+    player = (self.player and self.player.valid and self.player.name) or "unknown",
+    gps = gps,
+    gps_type = type(gps)
+  })
+    if not gps or type(gps) ~= "string" or gps == "" then
+    ErrorHandler.debug_log("Invalid GPS string", {
+      player = (self.player and self.player.valid and self.player.name) or "unknown",
+      gps = gps,
+      gps_type = type(gps)
+    })
     return nil, "Invalid GPS string"
   end
 
-  -- Check if already exists
-  local existing_fav, existing_slot = self:get_favorite_by_gps(gps)
-  if existing_fav then return existing_fav, nil end
-
+  -- Check if already exists  local existing_fav, existing_slot = self:get_favorite_by_gps(gps)
+  if existing_fav then 
+    ErrorHandler.debug_log("Favorite already exists", {
+      player = (self.player and self.player.valid and self.player.name) or "unknown",
+      gps = gps,
+      slot = existing_slot
+    })
+    return existing_fav, nil 
+  end
   -- Find first available slot
   local slot_idx = nil
+  ErrorHandler.debug_log("Looking for available slot", {
+    player = (self.player and self.player.valid and self.player.name) or "unknown",
+    max_slots = Constants.settings.MAX_FAVORITE_SLOTS,
+    current_favorites_count = #self.favorites
+  })
+  
   for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
+    ErrorHandler.debug_log("Checking slot", {
+      player = (self.player and self.player.valid and self.player.name) or "unknown",
+      slot = i,
+      favorite = self.favorites[i],
+      is_blank = FavoriteUtils.is_blank_favorite(self.favorites[i])
+    })
     if FavoriteUtils.is_blank_favorite(self.favorites[i]) then
       slot_idx = i
       break
     end
   end
-
   if not slot_idx then
+    ErrorHandler.debug_log("No available slots", {
+      player = (self.player and self.player.valid and self.player.name) or "unknown",
+      max_slots = Constants.settings.MAX_FAVORITE_SLOTS
+    })
     return nil, "No available slots (maximum " .. Constants.settings.MAX_FAVORITE_SLOTS .. " favorites)"
   end
 
+  ErrorHandler.debug_log("Found available slot", {
+    player = (self.player and self.player.valid and self.player.name) or "unknown",
+    slot = slot_idx
+  })
   -- Get or create tag
   local existing_tag = Cache.get_tag_by_gps(gps)
 
   -- Create new favorite
   local new_favorite = FavoriteUtils.new(gps, false, existing_tag)
-  if not new_favorite then
-    return nil, "Failed to create favorite"
-  end
+  
+  ErrorHandler.debug_log("Created new favorite", {
+    player = (self.player and self.player.valid and self.player.name) or "unknown",
+    gps = gps,
+    slot = slot_idx,
+    favorite = new_favorite
+  })
 
   -- Update tag's faved_by_players list
   if existing_tag then
@@ -345,10 +384,10 @@ function PlayerFavorites.update_gps_for_all_players(old_gps, new_gps, acting_pla
   if not old_gps or not new_gps or old_gps == new_gps then
     return {}
   end
-  
-  local affected_players = {}
+    local affected_players = {}
   
   for _, player in pairs(game.players) do
+    ---@cast player LuaPlayer
     if player and player.valid and player.index ~= acting_player_index then
       local favorites = PlayerFavorites.new(player)
       local was_updated = favorites:update_gps_coordinates(old_gps, new_gps)

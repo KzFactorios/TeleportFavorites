@@ -119,8 +119,9 @@ end
 -- Custom slot button style for all TeleportFavorites GUIs
 if not gui_style.tf_slot_button then
   local base = {}
-  for k, v in pairs(gui_style.slot_button) do base[k] = v end
-  -- Note: width/height removed as they're not used by Factorio's style system
+  for k, v in pairs(gui_style.slot_button) do
+    base[k] = v
+  end
   gui_style.tf_slot_button = base
 end
 
@@ -175,7 +176,7 @@ if not gui_style.slot_orange_favorite_on then
     width = 40,
     height = 40,
     padding = 1,
-    --icon_scale = 2, 
+    --icon_scale = 2,
     default_graphical_set = {
       -- originally hovered_graphical_set
       base = { position = { 202, 199 }, corner_size = 8 }, -- Example hover position-- 236, 216
@@ -187,7 +188,8 @@ if not gui_style.slot_orange_favorite_on then
       base = { position = { 202, 199 }, corner_size = 8 }, -- Example hover position
       shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT),
       glow = Styles.default_glow(Enum.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
-    },    clicked_graphical_set = {
+    },
+    clicked_graphical_set = {
       -- originally hovered_graphical_set
       base = { position = { 202, 199 }, corner_size = 8, tint = { r = 1, g = 1, b = 1, a = .2 } }, -- Example hover position
       shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT)
@@ -250,7 +252,7 @@ if not gui_style.tf_titlebar_draggable then
     type = "empty_widget_style",
     parent = "draggable_space_header",
     horizontally_stretchable = "on",
-    minimal_width = 8,   -- Reduced minimum to allow more expansion
+    minimal_width = 8, -- Reduced minimum to allow more expansion
     -- Allow maximum expansion to fill space
     maximal_width = 9999
   }

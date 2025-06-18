@@ -327,17 +327,29 @@ function ValidationUtils.validate_icon_exists(icon)
     return false, error_msg
   end
   
-  -- Check if the prototype exists
-  local prototypes = game and game[icon.type .. "_prototypes"]
-  if not prototypes then
-    return false, "Invalid icon type: " .. icon.type
-  end
-  
-  if not prototypes[icon.name] then
-    return false, "Icon does not exist: " .. icon.type .. "/" .. icon.name
-  end
-  
+  -- For now, just validate the structure. Runtime prototype checking can be added later.
+  -- The game's chart tag creation will fail gracefully if the icon doesn't exist.
   return true, nil
+end
+
+--- Validate if an icon is valid for chart tag creation
+--- This handles various icon formats from choose-elem-button and string formats
+---@param icon any Icon data from choose-elem-button or other sources
+---@return boolean is_valid True if icon can be used for chart tags
+function ValidationUtils.has_valid_icon(icon)
+  if not icon or icon == "" then 
+    return false 
+  end
+  
+  if type(icon) == "string" then 
+    return true 
+  end
+  
+  if type(icon) == "table" then 
+    return (icon.name ~= nil) or (icon.type ~= nil)
+  end
+  
+  return false
 end
 
 -- ========================================

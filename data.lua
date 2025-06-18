@@ -1,3 +1,4 @@
+-- filepath: v:\Fac2orios\2_Gemini\mods\TeleportFavorites\data.lua
 ---@diagnostic disable: undefined-global
 require("prototypes.styles.init")
 local Constants = require("constants")
@@ -20,8 +21,8 @@ data:extend {
   {
     type = "font",
     name = "custom-tiny-font",
-    from = "default",    size = 8,      -- Adjust this size to be smaller than default-tiny
-    -- Set to true if you want better readability with a border
+    from = "default",
+    size = 8,
     border = false
   },
   {
@@ -40,7 +41,8 @@ data:extend {
     x = 0,
     y = 0,
     flags = { "gui-icon" }
-  },  {
+  },
+  {
     type = "sprite",
     name = "tf_star_disabled",
     filename = "__TeleportFavorites__/graphics/dark-star.png",
@@ -51,63 +53,128 @@ data:extend {
     scale = .5,
     tint = { r = 1, g = .64, b = 0, a = 1.0 },
     flags = { "gui-icon" }
-  },  {
+  },
+  {
+    type = "sprite",
+    name = "tf_hint_arrow_up",
+    filename = "__core__/graphics/gui-new.png",
+    priority = "extra-high-no-scale",
+    x = 433,
+    y = 473,
+    width = 32,
+    height = 24,
+    scale = 0.5,
+    flags = { "icon" }
+  },
+  {
+    type = "sprite",
+    name = "tf_hint_arrow_down",
+    filename = "__core__/graphics/gui-new.png",
+    priority = "extra-high-no-scale",
+    x = 465,
+    y = 473,
+    width = 32,
+    height = 24,
+    scale = 0.5,
+    flags = { "icon" }
+  },
+  {
+    type = "sprite",
+    name = "tf_hint_arrow_right",
+    filename = "__core__/graphics/gui-new.png",
+    priority = "extra-high-no-scale",
+    x = 458,
+    y = 441,
+    width = 24,
+    height = 32,
+    scale = 0.5,
+    flags = { "icon" }
+  },
+  {
+    type = "sprite",
+    name = "tf_hint_arrow_left",
+    filename = "__core__/graphics/gui-new.png",
+    priority = "extra-high-no-scale",
+    x = 433,
+    y = 441,
+    width = 24,
+    height = 32,
+    scale = 0.5,
+    flags = { "icon" }
+  },
+  {
     type = "custom-input",
     name = Enum.EventEnum.TELEPORT_TO_FAVORITE .. "1",
     key_sequence = "CONTROL + 1",
     consuming = "game-only",
     order = "ca"
-  },  {
+  },
+  {
     type = "custom-input",
     name = Enum.EventEnum.TELEPORT_TO_FAVORITE .. "2",
     key_sequence = "CONTROL + 2",
     consuming = "game-only",
-    order = "cb"  },  {
+    order = "cb"
+  },
+  {
     type = "custom-input",
     name = Enum.EventEnum.TELEPORT_TO_FAVORITE .. "3",
     key_sequence = "CONTROL + 3",
     consuming = "game-only",
     order = "cc"
-  },  {
+  },
+  {
     type = "custom-input",
     name = Enum.EventEnum.TELEPORT_TO_FAVORITE .. "4",
     key_sequence = "CONTROL + 4",
     consuming = "game-only",
-    order = "cd"  },  {
+    order = "cd"
+  },
+  {
     type = "custom-input",
     name = Enum.EventEnum.TELEPORT_TO_FAVORITE .. "5",
     key_sequence = "CONTROL + 5",
     consuming = "game-only",
     order = "ce"
-  },  {
+  },
+  {
     type = "custom-input",
     name = Enum.EventEnum.TELEPORT_TO_FAVORITE .. "6",
     key_sequence = "CONTROL + 6",
     consuming = "game-only",
-    order = "cf"  },  {
+    order = "cf"
+  },
+  {
     type = "custom-input",
     name = Enum.EventEnum.TELEPORT_TO_FAVORITE .. "7",
     key_sequence = "CONTROL + 7",
     consuming = "game-only",
     order = "cg"
-  },  {
+  },
+  {
     type = "custom-input",
     name = Enum.EventEnum.TELEPORT_TO_FAVORITE .. "8",
     key_sequence = "CONTROL + 8",
     consuming = "game-only",
-    order = "ch"  },  {
+    order = "ch"
+  },
+  {
     type = "custom-input",
     name = Enum.EventEnum.TELEPORT_TO_FAVORITE .. "9",
     key_sequence = "CONTROL + 9",
     consuming = "game-only",
     order = "ci"
-  },  {
+  },
+  {
     type = "custom-input",
     name = Enum.EventEnum.TELEPORT_TO_FAVORITE .. "10",
     key_sequence = "CONTROL + 0",
     consuming = "game-only",
-    order = "cj"  },  {
-    type = "custom-input",    name = "dv-toggle-data-viewer",
+    order = "cj"
+  },
+  {
+    type = "custom-input",
+    name = "dv-toggle-data-viewer",
     key_sequence = "CONTROL + F12",
     consuming = "game-only",
     order = "z[data-viewer]"
@@ -118,7 +185,8 @@ data:extend {
     key_sequence = "mouse-button-2",
     consuming = "none",
     order = "ba[tag-editor-1]"
-  },{
+  },
+  {
     type = "custom-input",
     name = "tf-debug-tile-info",
     key_sequence = "CONTROL + SHIFT + mouse-button-2",
@@ -188,7 +256,8 @@ data:extend {
     name = "tf_font_20",
     from = "default",
     size = 20
-  },  {
+  },
+  {
     type = "font",
     name = "tf_font_22",
     from = "default",
@@ -200,7 +269,7 @@ data:extend {
     from = "default",
     size = 24
   },
-    -- Data viewer and utility shortcuts
+  -- Data viewer and utility shortcuts
   {
     type = "custom-input",
     name = "tf-data-viewer-tab-next",
@@ -221,5 +290,5 @@ data:extend {
     key_sequence = "CONTROL + Z",
     consuming = "game-only",
     order = "ea[undo-1]"
-  },
+  }
 }

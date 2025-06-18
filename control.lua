@@ -60,3 +60,4 @@ end)
 
 -- Register all mod events through centralized dispatcher
 event_registration_dispatcher.register_all_events(script)
+

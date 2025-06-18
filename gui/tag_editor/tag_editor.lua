@@ -33,6 +33,7 @@ local GuiBase = require("gui.gui_base")
 local GuiUtils = require("core.utils.gui_utils")
 local GPSUtils = require("core.utils.gps_utils")
 local BasicHelpers = require("core.utils.basic_helpers")
+local ValidationUtils = require("core.utils.validation_utils")
 
 
 local tag_editor = {}
@@ -46,7 +47,7 @@ local function setup_tag_editor_ui(refs, tag_data, player)
     local can_delete = false
 
     if tag and tag.chart_tag then
-        is_owner = (not tag.chart_tag.last_user or tag.chart_tag.last_user == "" or tag.chart_tag.last_user == player.name)
+        is_owner = tag.chart_tag.last_user and tag.chart_tag.last_user == player.name or false
 
         -- Can delete if player is owner AND no other players have favorited this tag
         can_delete = is_owner
@@ -68,8 +69,7 @@ local function setup_tag_editor_ui(refs, tag_data, player)
     if refs.icon_btn then GuiUtils.set_button_state(refs.icon_btn, is_owner) end
     if refs.teleport_btn then GuiUtils.set_button_state(refs.teleport_btn, true) end
     if refs.favorite_btn then GuiUtils.set_button_state(refs.favorite_btn, true) end
-    if refs.rich_text_input then GuiUtils.set_button_state(refs.rich_text_input, is_owner) end
-    if refs.move_btn then
+    if refs.rich_text_input then GuiUtils.set_button_state(refs.rich_text_input, is_owner) end    if refs.move_btn then
         -- Move button only enabled if player is owner AND in chart mode
         -- Disabled if: not owner, or not in chart mode
         local in_chart_mode = (player.render_mode == defines.render_mode.chart or player.render_mode == defines.render_mode.chart_zoomed_in)
@@ -78,21 +78,16 @@ local function setup_tag_editor_ui(refs, tag_data, player)
     end
     
     if refs.delete_btn then 
-        GuiUtils.set_button_state(refs.delete_btn, can_delete) 
-    end
-    
-    -- Confirm button enabled only if text input has content or icon is selected
+        -- Delete button only enabled if player is owner AND no other players have favorited this tag
+        -- Disabled if: not owner, or other players have favorited the tag
+        GuiUtils.set_button_state(refs.delete_btn, is_owner and can_delete) 
+    end    -- Confirm button enabled if text input has content OR icon is selected
     local has_text = tag_data.text and tag_data.text ~= ""
-    local function has_valid_icon(icon)
-        if not icon or icon == "" then return false end
-        if type(icon) == "string" then return true end
-        if type(icon) == "table" then return icon.name or icon.type end
-        return false
-    end    local has_icon = has_valid_icon(tag_data.icon)
+    local has_icon = ValidationUtils.has_valid_icon(tag_data.icon)
     local can_confirm = has_text or has_icon
     
     if refs.confirm_btn then 
-        GuiUtils.set_button_state(refs.confirm_btn, can_confirm) 
+        GuiUtils.set_button_state(refs.confirm_btn, can_confirm)
     end
     
     -- Button style/tooltips
@@ -157,9 +152,7 @@ local function build_owner_row(parent, tag_data)
     -- Create a flow for the buttons
     local label = GuiBase.create_label(label_flow, "tag_editor_owner_label",
         "", "tf_tag_editor_owner_label")
-    ---@diagnostic disable-next-line: assign-type-mismatch
-    label.caption = { "tf-gui.tag_editor_title" }
-
+    
     -- Add buttons to the button flow
     local button_flow = GuiBase.create_hflow(row_frame, "tag_editor_button_flow")
     local move_button = GuiBase.create_icon_button(button_flow, "tag_editor_move_button", Enum.SpriteEnum.MOVE,
@@ -175,13 +168,12 @@ local function build_teleport_favorite_row(parent, tag_data)
     local row = GuiBase.create_frame(parent, "tag_editor_teleport_favorite_row", "horizontal",
         "tf_tag_editor_teleport_favorite_row")
 
-    local star_state = (tag_data and tag_data.is_favorite and tag_data.is_favorite ~= nil and tag_data.is_favorite and Enum.SpriteEnum.STAR) or
-        Enum.SpriteEnum.STAR_DISABLED
-
-    local fave_style = tag_data.is_favorite and "slot_orange_favorite_on" or "slot_orange_favorite_off"
-
-    local favorite_btn = GuiBase.create_icon_button(row, "tag_editor_is_favorite_button", star_state,
-        nil, fave_style)    local teleport_btn = GuiBase.create_icon_button(row, "tag_editor_teleport_button", "",
+    -- Simplify the favorite button state logic
+    local is_favorite = tag_data and tag_data.is_favorite == true
+    local star_state = is_favorite and Enum.SpriteEnum.STAR or Enum.SpriteEnum.STAR_DISABLED
+    local fave_style = is_favorite and "slot_orange_favorite_on" or "slot_orange_favorite_off"    local favorite_btn = GuiBase.create_icon_button(row, "tag_editor_is_favorite_button", star_state,
+        nil, fave_style)
+    local teleport_btn = GuiBase.create_icon_button(row, "tag_editor_teleport_button", "",
         nil,
         -- Use gps for caption, fallback to move_gps if in move mode, else fallback
         "tf_teleport_button")
@@ -198,7 +190,7 @@ local function build_rich_text_row(parent, tag_data)
             tooltip = { "tf-gui.icon_tooltip" },
             style = "tf_slot_button",
             elem_type = "signal",
-            signal = tag_data.icon or ""
+            signal = tag_data.icon
         })
     -- Create textbox and set value from storage (tag_data)
     local text_input = GuiBase.create_textbox(row, "tag_editor_rich_text_input",
@@ -269,7 +261,7 @@ function tag_editor.build(player)
     local tag_editor_owner_row, owner_label, move_button, delete_button = build_owner_row(tag_editor_content_frame,
         tag_data)
 
-    local owner_value = (tag_data.chart_tag and tag_data.chart_tag["last_user"]) or player.name
+    local owner_value = (tag_data.chart_tag and tag_data.chart_tag["last_user"]) or ""
     ---@diagnostic disable-next-line: assign-type-mismatch
     owner_label.caption = { "tf-gui.owner_label", owner_value }
 
@@ -321,13 +313,7 @@ function tag_editor.update_confirm_button_state(player, tag_data)
     
     -- Check if text input has content or icon is selected
     local has_text = tag_data.text and tag_data.text ~= ""
-    local function has_valid_icon(icon)
-        if not icon or icon == "" then return false end
-        if type(icon) == "string" then return true end
-        if type(icon) == "table" then return icon.name or icon.type end
-        return false
-    end
-    local has_icon = has_valid_icon(tag_data.icon)
+    local has_icon = ValidationUtils.has_valid_icon(tag_data.icon)
     local can_confirm = has_text or has_icon
     
     GuiUtils.set_button_state(confirm_btn, can_confirm)

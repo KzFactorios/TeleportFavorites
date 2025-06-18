@@ -35,3 +35,4 @@
 - [x] **COMPLETED 2025-06-11**: Centralize tag_editor_data initialization to eliminate duplication. Created `Cache.create_tag_editor_data()` factory method and refactored all hardcoded initializations across cache.lua, handlers.lua, control_fave_bar.lua, and tag_editor.lua. See `notes/tag_editor_data_centralization_completion.md` for details.
 - [ ] Ensure that any "development" settings, flags, constants are not being used when deployed to production. Create a script that will package the code for production use that doesn't include such things as notes, tests, comments, etc and optimizes files for production
 - [ ] How does the reticle display hold up at different zoom levels on the map, including chart_view_zoomed_in
+- [ ] Make a note! that this mod does not support cross-server implementations. It may work for multiplayer - but not cross server (at least no guarantess)

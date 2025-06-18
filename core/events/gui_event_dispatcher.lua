@@ -92,9 +92,15 @@ function M.register_gui_handlers(script)
       if element.name == "fave_bar_visible_btns_toggle" or is_fave_bar_slot_button(element) then
         control_fave_bar.on_fave_bar_gui_click(event)
         return true
-      end
-
-      local parent_gui = GuiUtils.get_gui_frame_by_element(element)
+      end      local parent_gui = GuiUtils.get_gui_frame_by_element(element)
+      
+      ErrorHandler.debug_log("GUI Event Dispatcher: Frame detection result", {
+        element_name = element.name,
+        parent_gui_found = parent_gui ~= nil,
+        parent_gui_name = parent_gui and parent_gui.name or "nil",
+        expected_tag_editor = Enum.GuiEnum.GUI_FRAME.TAG_EDITOR
+      })
+      
       if not parent_gui then
         error("Element: " .. element.name .. ", parent GUI not found")
       end      -- Dispatch based on parent_gui
@@ -105,6 +111,18 @@ function M.register_gui_handlers(script)
         control_data_viewer.on_data_viewer_gui_click(event)
         return true
       else
+        -- Special handling for tag editor elements that might have wrong parent detection
+        local element_name = element.name or ""
+        if element_name:find("tag_editor") then
+          ErrorHandler.debug_log("Tag editor element with wrong parent frame - forcing tag editor handler", {
+            element_name = element_name,
+            parent_gui_name = parent_gui.name,
+            expected_frame = Enum.GuiEnum.GUI_FRAME.TAG_EDITOR
+          })
+          control_tag_editor.on_tag_editor_gui_click(event, script)
+          return true
+        end
+        
         ErrorHandler.debug_log("Unknown parent GUI", {
           parent_gui_name = tostring(parent_gui.name)
         })
@@ -167,15 +185,14 @@ function M.register_gui_handlers(script)
     if not event or not event.element then return end
     control_tag_editor.on_tag_editor_gui_text_changed(event)
   end
-  script.on_event(defines.events.on_gui_text_changed, shared_on_gui_text_changed)
-  -- Register elem changed handler for immediate storage saving (for icon picker)
+  script.on_event(defines.events.on_gui_text_changed, shared_on_gui_text_changed)  -- Register elem changed handler for immediate storage saving (for icon picker)
   local function shared_on_gui_elem_changed(event)
     if not event or not event.element then return end
     -- Handle icon picker changes in tag editor
     local element = event.element
     local parent_gui = GuiUtils.get_gui_frame_by_element(element)
     if parent_gui and parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
-      control_tag_editor.on_tag_editor_gui_click(event, script)
+      control_tag_editor.on_tag_editor_gui_elem_changed(event)
     end
   end
   script.on_event(defines.events.on_gui_elem_changed, shared_on_gui_elem_changed)

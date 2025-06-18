@@ -1,4 +1,4 @@
----@diagnostic disable: undefined-global
+---@diagnostic disable: undefined-global, undefined-field
 
 --[[
 gui_observer.lua
@@ -54,6 +54,9 @@ local tag_editor = require("gui.tag_editor.tag_editor")
 local gui_utils = require("core.utils.gui_utils")
 
 ---@class GuiEventBus
+---@field _observers table<string, table[]>
+---@field _notification_queue table[]
+---@field _processing boolean
 local GuiEventBus = {}
 GuiEventBus._observers = {}
 GuiEventBus._notification_queue = {}
@@ -118,8 +121,7 @@ function GuiEventBus.process_notifications()
   
   local processed_count = 0
   local error_count = 0
-  
-  while #GuiEventBus._notification_queue > 0 do
+    while #GuiEventBus._notification_queue > 0 do
     local notification = table.remove(GuiEventBus._notification_queue, 1)
     local observers = GuiEventBus._observers[notification.type] or {}
     
@@ -177,6 +179,9 @@ function GuiEventBus.cleanup_observers(event_type)
 end
 
 ---@class BaseGuiObserver
+---@field player LuaPlayer
+---@field observer_type string
+---@field created_tick uint
 local BaseGuiObserver = {}
 BaseGuiObserver.__index = BaseGuiObserver
 
@@ -215,8 +220,9 @@ FavoriteObserver.__index = FavoriteObserver
 ---@param player LuaPlayer
 ---@return FavoriteObserver
 function FavoriteObserver:new(player)
-  local obj = BaseGuiObserver.new(self, player, "favorite")
+  local obj = BaseGuiObserver:new(player, "favorite")
   setmetatable(obj, self)
+  ---@cast obj FavoriteObserver
   return obj
 end
 
@@ -226,14 +232,16 @@ function FavoriteObserver:update(event_data)
   if not self:is_valid() or not event_data then return end
   
   -- Only handle events for this player
-  if event_data.player and event_data.player.index ~= self.player.index then
+  if event_data.player_index and event_data.player_index ~= self.player.index then
     return
   end
   
   ErrorHandler.debug_log("Favorite observer updating", {
     player = self.player.name,
-    event_type = event_data.type or "unknown"
+    event_type = event_data.type or "unknown",
+    player_index = event_data.player_index
   })
+  
   -- Refresh favorites bar
   local success, err = pcall(function()
     fave_bar.build(self.player)
@@ -257,6 +265,7 @@ TagObserver.__index = TagObserver
 function TagObserver:new(player)
   local obj = BaseGuiObserver:new(player, "tag")
   setmetatable(obj, self)
+  ---@cast obj TagObserver
   return obj
 end
 
@@ -304,6 +313,7 @@ DataObserver.__index = DataObserver
 function DataObserver:new(player)
   local obj = BaseGuiObserver:new(player, "data")
   setmetatable(obj, self)
+  ---@cast obj DataObserver
   return obj
 end
 

@@ -6,8 +6,8 @@
 local data_viewer = require("gui.data_viewer.data_viewer")
 local Cache = require("core.cache.cache")
 local GuiUtils = require("core.utils.gui_utils")
-local Lookups = require("core.cache.lookups")
 local ErrorHandler = require("core.utils.error_handler")
+
 
 local M = {}
 
@@ -18,15 +18,73 @@ local M = {}
 ---@return table state object with data, top_key, and active_tab
 local function load_tab_data(player, active_tab, font_size)
   local state = { active_tab = active_tab, font_size = font_size or 12 }
-  
-  if active_tab == "player_data" then
+    if active_tab == "player_data" then
     state.data = Cache.get_player_data(player)
     state.top_key = "player_data"
   elseif active_tab == "surface_data" then
     state.data = Cache.get_surface_data(player.surface.index)
     state.top_key = "surface_data"
   elseif active_tab == "lookup" then
-    state.data = Lookups.get and Lookups.get("chart_tag_cache") or {}
+    -- Initialize Cache first to ensure Lookups is available
+    Cache.init()
+    -- Access the global Lookups cache directly
+    local lookups_cache = _G["Lookups"] or {}
+    
+    -- If the cache is empty, try to populate it with current data
+    if not lookups_cache.surfaces or next(lookups_cache.surfaces) == nil then
+      local populated_data = { surfaces = {} }
+      
+      for _, surface in pairs(game.surfaces) do
+        if surface and surface.valid then
+          local chart_tags = Cache.Lookups.get_chart_tag_cache(surface.index)
+          if chart_tags and #chart_tags > 0 then
+            populated_data.surfaces[surface.index] = {
+              surface_name = surface.name,
+              chart_tag_count = #chart_tags,
+              chart_tags = chart_tags
+            }
+          end
+        end
+      end
+        if next(populated_data.surfaces) == nil then
+        populated_data.info = "No chart tags found on any surface"
+        populated_data.cache_status = "empty_or_uninitialized"
+        populated_data.total_surfaces_checked = #game.surfaces or 0
+        
+        -- Add details about each surface checked
+        populated_data.surface_details = {}
+        for surface_index, surface in pairs(game.surfaces) do
+          populated_data.surface_details[surface_index] = {
+            name = surface.name,
+            valid = surface.valid,
+            chart_tag_count = 0
+          }
+        end
+      else
+        populated_data.cache_status = "populated_from_live_data"
+        populated_data.total_surfaces_with_tags = 0
+        for _ in pairs(populated_data.surfaces) do
+          populated_data.total_surfaces_with_tags = populated_data.total_surfaces_with_tags + 1
+        end
+      end
+        state.data = populated_data
+    else
+      -- Add metadata about the existing cache
+      local enriched_cache = {
+        cache_data = lookups_cache,
+        cache_status = "using_global_cache",
+        surfaces_count = 0
+      }
+      
+      if lookups_cache.surfaces then
+        for _ in pairs(lookups_cache.surfaces) do
+          enriched_cache.surfaces_count = enriched_cache.surfaces_count + 1
+        end
+      end
+      
+      state.data = enriched_cache
+    end
+    
     state.top_key = "lookups"
   elseif active_tab == "all_data" then
     state.data = storage
@@ -81,8 +139,9 @@ local function find_active_tab_from_gui(main_flow)
   local tabs_flow = inner_flow.data_viewer_tabs_flow
   if not tabs_flow then return "player_data" end
   
+  -- Look for tab buttons with the active style
   for _, child in pairs(tabs_flow.children) do
-    if child.style and child.style.name == "tf_slot_button_dragged" then
+    if child.style and child.style.name == "tf_data_viewer_tab_button_active" then
       if child.name:find("player_data") then return "player_data" end
       if child.name:find("surface_data") then return "surface_data" end
       if child.name:find("lookup") then return "lookup" end
@@ -132,10 +191,32 @@ function M.on_data_viewer_gui_click(event)
     update_font_size(player, main_flow, delta)
     return
   end
-  
   -- Handle close button click in data viewer
-  if element.name == "titlebar_close_btn" then      
+  if element.name == "data_viewer_close_btn" then      
     GuiUtils.safe_destroy_frame(main_flow, "data_viewer_frame")
+    return
+  end
+  
+  -- Handle tab button clicks to switch data views
+  if element.name == "data_viewer_player_data_tab" then
+    pdata.data_viewer_settings.active_tab = "player_data"
+    local font_size = pdata.data_viewer_settings.font_size or 12
+    rebuild_data_viewer(player, main_flow, "player_data", font_size)
+    return
+  elseif element.name == "data_viewer_surface_data_tab" then
+    pdata.data_viewer_settings.active_tab = "surface_data"
+    local font_size = pdata.data_viewer_settings.font_size or 12
+    rebuild_data_viewer(player, main_flow, "surface_data", font_size)
+    return
+  elseif element.name == "data_viewer_lookup_tab" then
+    pdata.data_viewer_settings.active_tab = "lookup"
+    local font_size = pdata.data_viewer_settings.font_size or 12
+    rebuild_data_viewer(player, main_flow, "lookup", font_size)
+    return
+  elseif element.name == "data_viewer_all_data_tab" then
+    pdata.data_viewer_settings.active_tab = "all_data"
+    local font_size = pdata.data_viewer_settings.font_size or 12
+    rebuild_data_viewer(player, main_flow, "all_data", font_size)
     return
   end
     -- Handle refresh button click in data viewer
@@ -143,8 +224,10 @@ function M.on_data_viewer_gui_click(event)
     local frame = GuiUtils.find_child_by_name(main_flow, "data_viewer_frame")
     if not (frame and frame.valid) then return end
     
-    local active_tab = find_active_tab_from_gui(main_flow)
-    rebuild_data_viewer(player, main_flow, active_tab, nil, true)
+    -- Use the stored active tab instead of trying to detect from GUI
+    local active_tab = pdata.data_viewer_settings.active_tab or "player_data"
+    local font_size = pdata.data_viewer_settings.font_size or 12
+    rebuild_data_viewer(player, main_flow, active_tab, font_size, true)
     
     -- Notify observers of data refresh
     local success, gui_observer = pcall(require, "core.pattern.gui_observer")
@@ -223,5 +306,9 @@ function M.register(script)
     end
   end)
 end
+
+-- Export functions for testing
+M.load_tab_data = load_tab_data
+M.rebuild_data_viewer = rebuild_data_viewer
 
 return M

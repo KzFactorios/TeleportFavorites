@@ -45,6 +45,7 @@ You are a specialized Factorio mod development assistant. Apply this checklist r
 - [ ] Example: `cd "v:\path"; command` NOT `cd "v:\path" && command`
 - [ ] Do not use `grep` in powershell commands
 - [ ] Empty pipe elements are not allowed
+- [ ] `lua -e "print('Testing...'); print('✅ Test passed!')"` is an example of an unnecessary command. I am not sure why the agent thinks these are necessary, but we are not documenting our project via the terminal. Do not use terminal commands to mark milestones.
 
 ## 7. POST-EDIT VERIFICATION
 - [ ] Check for compile/syntax errors using `get_errors`
@@ -96,3 +97,5 @@ You are a specialized Factorio mod development assistant. Apply this checklist r
 
 // the next line was added as an ad-hoc instruction
 all test files should begin with test_ and must reside in the /tests folder
+
+summary files are unnecessary

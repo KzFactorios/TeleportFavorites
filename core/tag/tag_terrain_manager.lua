@@ -14,7 +14,6 @@ This module handles:
 local Cache = require("core.cache.cache")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
 local GameHelpers = require("core.utils.game_helpers")
-local Lookups = Cache.lookups
 local GPSUtils = require("core.utils.gps_utils")
 local PositionUtils = require("core.utils.position_utils")
 local RichTextFormatter = require("core.utils.rich_text_formatter")
@@ -116,9 +115,8 @@ function TagTerrainManager.relocate_chart_tag_from_water(chart_tag, search_radiu
             search_radius = search_radius
         })
         return false
-    end    
-    -- Create a new chart tag at the valid position using centralized builder    
-    local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(new_position, chart_tag, player)
+    end      -- Create a new chart tag at the valid position using centralized builder    
+    local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(new_position, chart_tag, player, nil, true)
     
     -- Create new chart tag at valid position using safe wrapper
     local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, surface, chart_tag_spec)
@@ -157,12 +155,10 @@ function TagTerrainManager.relocate_chart_tag_from_water(chart_tag, search_radiu
         -- Update surface tags
         local tags = Cache.get_surface_tags(surface_index)
         tags[old_gps] = nil
-        tags[new_gps] = tag
+    tags[new_gps] = tag
     end    -- Destroy the old chart tag
-    chart_tag.destroy()
-
-    -- Refresh cache
-    Lookups.invalidate_surface_chart_tags(surface_index)
+    chart_tag.destroy()    -- Refresh cache
+    Cache.Lookups.invalidate_surface_chart_tags(surface_index)
     
     -- Notify affected players if requested
     if notify_players and tag and tag.faved_by_players and #tag.faved_by_players > 0 then
@@ -199,7 +195,7 @@ function TagTerrainManager.check_and_relocate_all_water_chart_tags(surface, sear
     local surface_index = surface.index
 
     -- Get all chart tags for this surface
-    local chart_tags = Lookups.get_surface_chart_tags(surface_index)
+    local chart_tags = Cache.Lookups.get_chart_tag_cache(surface_index)
     if not chart_tags or #chart_tags == 0 then return 0 end
 
     -- Make a copy of the tags to avoid modification issues during iteration
@@ -230,13 +226,11 @@ end
 ---@param notify_players boolean Whether to notify affected players
 ---@return number relocated_count The number of chart tags relocated
 function TagTerrainManager.check_area_for_water_chart_tags(surface, area, search_radius, notify_players)
-    if not surface or not surface.valid or not area then return 0 end
-
-    local relocated_count = 0
+    if not surface or not surface.valid or not area then return 0 end    local relocated_count = 0
     local surface_index = surface.index
 
     -- Get all chart tags for this surface
-    local chart_tags = Lookups.get_surface_chart_tags(surface_index)
+    local chart_tags = Cache.Lookups.get_chart_tag_cache(surface_index)
     if not chart_tags or #chart_tags == 0 then return 0 end
 
     -- Make a copy of the tags in the area to avoid modification issues during iteration

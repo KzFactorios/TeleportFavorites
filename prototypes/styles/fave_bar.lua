@@ -79,7 +79,7 @@ if not gui_style.tf_slot_button_smallfont then
         font = "default-small",
         horizontal_align = "center",
         vertical_align = "bottom",
-        font_color = { r = 1, g = 0.647, b = 0, a = 1 }, -- Factorio orange #ffa500
+        -- font_color = { r = 1, g = 0.647, b = 0, a = 1 }, -- Factorio orange #ffa500
         top_padding = 0,
         bottom_padding = 2,
         size = { 40, 40 }

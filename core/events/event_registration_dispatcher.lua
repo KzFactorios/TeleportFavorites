@@ -149,9 +149,12 @@ function EventRegistrationDispatcher.register_core_events(script)
     [defines.events.on_player_changed_surface] = {
       handler = handlers.on_player_changed_surface,
       name = "on_player_changed_surface"
-    },
-    [defines.events.on_player_left_game] = {
+    },    [defines.events.on_player_left_game] = {
       handler = function(event)
+        -- Handle chart tag ownership reset
+        local ChartTagOwnershipManager = require("core.control.chart_tag_ownership_manager")
+        ChartTagOwnershipManager.on_player_left_game(event)
+        
         -- Clean up observers when players leave
         local success, gui_observer = pcall(require, "core.pattern.gui_observer")
         if success and gui_observer.GuiEventBus and gui_observer.GuiEventBus.cleanup_all then
@@ -159,7 +162,21 @@ function EventRegistrationDispatcher.register_core_events(script)
         end
       end,
       name = "on_player_left_game"
-    },    [defines.events.on_runtime_mod_setting_changed] = {
+    },
+    [defines.events.on_player_removed] = {
+      handler = function(event)
+        -- Handle chart tag ownership reset
+        local ChartTagOwnershipManager = require("core.control.chart_tag_ownership_manager")
+        ChartTagOwnershipManager.on_player_removed(event)
+        
+        -- Clean up observers when players are removed
+        local success, gui_observer = pcall(require, "core.pattern.gui_observer")
+        if success and gui_observer.GuiEventBus and gui_observer.GuiEventBus.cleanup_all then
+          gui_observer.GuiEventBus.cleanup_all()
+        end
+      end,
+      name = "on_player_removed"
+    },[defines.events.on_runtime_mod_setting_changed] = {
       handler = function(event)          -- Handle changes to the favorites on/off setting
         if event.setting == "favorites-on" then
           for _, player in pairs(game.connected_players) do

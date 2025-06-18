@@ -69,22 +69,21 @@ fave_bar_frame (frame)
 -- Now using GuiUtils.get_or_create_gui_flow_from_gui_top
 
 -- Build the favorites bar to visually match the quickbar top row
-function fave_bar.build_quickbar_style(player, parent)
-  -- Add a horizontal flow to contain the toggle and slots row
-  local bar_flow = GuiBase.create_hflow(parent, "fave_bar_flow")
-  
-  -- Add a thin dark background frame for the toggle button
+---@diagnostic disable: assign-type-mismatch, param-type-mismatch
+function fave_bar.build_quickbar_style(player, parent)  -- Add a horizontal flow to contain the toggle and slots row
+  local bar_flow = GuiBase.create_hflow(parent, "fave_bar_flow")  -- Add a thin dark background frame for the toggle button
   local toggle_container = GuiBase.create_frame(bar_flow, "fave_bar_toggle_container", "vertical", "tf_fave_toggle_container")
   local toggle_btn = GuiBase.create_icon_button(toggle_container, "fave_bar_visible_btns_toggle", "logo_36", {"tf-gui.toggle_fave_bar"}, "tf_fave_toggle_button")
 
   -- Add slots frame to the same flow for proper layout
   local slots_frame = GuiBase.create_frame(bar_flow, "fave_bar_slots_flow", "horizontal", "tf_fave_slots_row")
-
   return bar_flow, slots_frame, toggle_btn
 end
+---@diagnostic enable: assign-type-mismatch, param-type-mismatch
 
-local function handle_overflow_error(frame, fav_btns, pfaves)  if pfaves and #pfaves > Constants.settings.MAX_FAVORITE_SLOTS then
-    GuiUtils.show_error_label(frame, { "tf-gui.fave_bar_overflow_error" })
+local function handle_overflow_error(frame, fav_btns, pfaves)
+  if pfaves and #pfaves > Constants.settings.MAX_FAVORITE_SLOTS then
+    GuiUtils.show_error_label(frame, "tf-gui.fave_bar_overflow_error")
   else
     GuiUtils.clear_error_label(frame)
   end
@@ -156,26 +155,37 @@ end
 -- Build a row of favorite slot buttons for the favorites bar
 function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
   drag_index = drag_index or -1
-  local max_slots = Constants.settings.MAX_FAVORITE_SLOTS or 10  for i = 1, max_slots do
+  local max_slots = Constants.settings.MAX_FAVORITE_SLOTS or 10
+  
+  -- Create slot buttons for all slots (both blank and non-blank)
+  for i = 1, max_slots do
     local fav = pfaves[i]
     local icon = nil
-    if fav and fav.icon then
-      icon = fav.icon
-    end
-    local tooltip = { "tf-gui.fave_slot_tooltip", i }
-    local style = "tf_slot_button_smallfont"if fav and not FavoriteUtils.is_blank_favorite(fav) then
+    local tooltip = { "tf-gui.favorite_slot_empty" }
+    local style = "tf_slot_button_smallfont"    -- Determine if this is a valid, non-blank favorite
+    if fav and not FavoriteUtils.is_blank_favorite(fav) then
+      -- Non-blank favorite - show icon and full tooltip
       if fav.icon and fav.icon ~= "" then
-        icon = fav.icon      else
+        icon = fav.icon
+      else
         -- Use PIN as default icon for non-blank favorites
         icon = Enum.SpriteEnum.PIN
-      end      tooltip = GuiUtils.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }
+      end
+      tooltip = GuiUtils.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }
       if fav.locked then style = "tf_slot_button_locked" end
       if drag_index == i then style = "tf_slot_button_dragged" end
+    else
+      -- Blank favorite - show empty slot with just slot number
+      icon = nil  -- No icon for empty slots
+      tooltip = { "tf-gui.favorite_slot_empty" }
+      style = "tf_slot_button_smallfont"
+    end    local btn = GuiUtils.create_slot_button(parent, "fave_bar_slot_" .. i, icon or "", tooltip, { style = style })
+    if btn and btn.valid then
+      -- Use diagnostic disable for LocalisedString assignment
+      ---@diagnostic disable-next-line: assign-type-mismatch
+      btn.caption = tostring(i)
+      -- All alignment, font, and padding must be set in the style prototype, not at runtime
     end
-    local btn = GuiUtils.create_slot_button(parent, "fave_bar_slot_" .. i, icon, tooltip, { style = style })
-    btn.style = style
-    btn.caption = tostring(i)
-    -- All alignment, font, and padding must be set in the style prototype, not at runtime
   end
   return parent
 end

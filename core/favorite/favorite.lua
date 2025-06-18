@@ -20,6 +20,7 @@ Notes:
 local Constants = require("constants")
 local CollectionUtils = require("core.utils.collection_utils")
 local GPSUtils = require("core.utils.gps_utils")
+local ErrorHandler = require("core.utils.error_handler")
 
 ---@class Favorite
 ---@field gps string GPS coordinates in 'xxx.yyy.s' format
@@ -96,9 +97,29 @@ end
 ---@return boolean
 function FavoriteUtils.check_state(fav, check_type)
   if check_type == "blank" then
-    if type(fav) ~= "table" then return false end
-    if next(fav) == nil then return true end
-    return (fav.gps == "" or fav.gps == nil or fav.gps == (Constants.settings.BLANK_GPS --[[@as string]])) and (fav.locked == false or fav.locked == nil)
+    if type(fav) ~= "table" then 
+      ErrorHandler.debug_log("FavoriteUtils.check_state blank - not table", {
+        fav_type = type(fav),
+        result = false
+      })
+      return false 
+    end
+    if next(fav) == nil then 
+      ErrorHandler.debug_log("FavoriteUtils.check_state blank - empty table", {
+        result = true
+      })
+      return true 
+    end
+    local is_blank = (fav.gps == "" or fav.gps == nil or fav.gps == (Constants.settings.BLANK_GPS --[[@as string]])) and (fav.locked == false or fav.locked == nil)
+    ErrorHandler.debug_log("FavoriteUtils.check_state blank - GPS check", {
+      fav_gps = fav.gps,
+      blank_gps = Constants.settings.BLANK_GPS,
+      fav_locked = fav.locked,
+      gps_match = (fav.gps == "" or fav.gps == nil or fav.gps == (Constants.settings.BLANK_GPS --[[@as string]])),
+      lock_check = (fav.locked == false or fav.locked == nil),
+      result = is_blank
+    })
+    return is_blank
   elseif check_type == "valid" then
     return type(fav) == "table" and type(fav.gps) == "string" and fav.gps ~= "" and fav.gps ~= (Constants.settings.BLANK_GPS --[[@as string]])
   elseif check_type == "locked" then

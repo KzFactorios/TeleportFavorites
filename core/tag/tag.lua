@@ -16,12 +16,12 @@ local utils = require("core.utils.utils")
 local basic_helpers = require("core.utils.basic_helpers")
 local GPSUtils = require("core.utils.gps_utils")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
-local Lookups = require("__TeleportFavorites__.core.cache.lookups")
 local Cache = require("core.cache.cache")
 local ErrorHandler = require("core.utils.error_handler")
 local LocaleUtils = require("core.utils.locale_utils")
 local TeleportStrategies = require("core.pattern.teleport_strategy")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
+
 
 ---@class Tag
 ---@field gps string # The GPS string (serves as the index)
@@ -46,7 +46,7 @@ end
 function Tag:get_chart_tag()
   if not self.chart_tag then
     ErrorHandler.debug_log("Fetching chart tag from cache", { gps = self.gps })
-    self.chart_tag = Lookups.get_chart_tag_by_gps(self.gps)
+    self.chart_tag = Cache.Lookups.get_chart_tag_by_gps(self.gps)
     if self.chart_tag then
       ErrorHandler.debug_log("Chart tag found and cached")
     else
@@ -306,9 +306,10 @@ end
 ---@param destination_pos MapPosition
 ---@param chart_tag LuaCustomChartTag
 ---@return LuaCustomChartTag?, string?
-local function create_new_chart_tag(player, destination_pos, chart_tag)
-  ErrorHandler.debug_log("Creating new chart tag", { destination_pos = destination_pos })  local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(destination_pos, chart_tag, player)
-    -- Create chart tag using our safe wrapper  local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, player.surface, chart_tag_spec)
+local function create_new_chart_tag(player, destination_pos, chart_tag)  ErrorHandler.debug_log("Creating new chart tag", { destination_pos = destination_pos })  
+  local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(destination_pos, chart_tag, player, nil, true)
+    -- Create chart tag using our safe wrapper  
+  local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, player.surface, chart_tag_spec)
   if not new_chart_tag or not new_chart_tag.valid then
     ErrorHandler.debug_log("Chart tag creation failed")
     return nil, LocaleUtils.get_error_string(nil, "destination_not_available")

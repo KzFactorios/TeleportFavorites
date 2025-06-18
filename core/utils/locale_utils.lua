@@ -115,12 +115,12 @@ function LocaleUtils.get_string(player, category, key, params)
         return key -- Return the key itself as fallback
     end    local locale_key = prefix .. "." .. key
     
-    -- In Factorio, localized strings are handled via the locale files
-    -- For now, return the fallback string directly since Factorio's localization
-    -- system will handle the actual translation when text is displayed
-    local localized_string = LocaleUtils.get_fallback_string(category, key, params)
-    
-    return localized_string
+    -- Return a localized string table that Factorio can process
+    if params and type(params) == "table" and #params > 0 then
+        return {locale_key, table.unpack(params)}
+    else
+        return {locale_key}
+    end
 end
 
 --[[

@@ -1,5 +1,7 @@
 ---@diagnostic disable: undefined-global
 
+---@diagnostic disable: undefined-global
+
 --[[
 Cache.lua
 TeleportFavorites Factorio Mod
@@ -44,13 +46,14 @@ storage = {
 
 
 local mod_version = require("core.utils.version")
-local Lookups = require("core.cache.lookups")
 local FavoriteUtils = require("core.favorite.favorite")
 local Constants = require("constants")
 local GPSUtils = require("core.utils.gps_utils")
+local Lookups = require("core.cache.lookups")
 local PositionUtils = require("core.utils.position_utils")
 local ErrorHandler = require("core.utils.error_handler")
 
+-- Lazy-loaded Lookups module to avoid circular dependency
 -- Observer Pattern Integration
 local function notify_observers_safe(event_type, data)
   -- Safe notification that handles module load order
@@ -62,9 +65,11 @@ end
 
 --- Persistent and runtime cache management for TeleportFavorites mod.
 ---@class Cache
----@field lookups table<string, any> Lookup tables for chart tags and other runtime data.
+---@field Lookups table<string, any> Lookup tables for chart tags and other runtime data.
 local Cache = {}
 Cache.__index = Cache
+--- Lookup tables for chart tags and other runtime data.
+Cache.Lookups = nil
 
 
 -- Ensure storage is always available for persistence (Factorio 2.0+)
@@ -72,19 +77,19 @@ if not storage then
   error("Storage table not available - this mod requires Factorio 2.0+")
 end
 
---- Lookup tables for chart tags and other runtime data.
-Cache.lookups = Cache.lookups or Lookups.init()
-
 --- Initialize the persistent cache table if not already present.
 function Cache.init()
   if not storage then
     error("Storage table not available - this mod requires Factorio 2.0+")
   end
   storage.players = storage.players or {}
-  storage.surfaces = storage.surfaces or {}
-  if not storage.mod_version or storage.mod_version ~= mod_version then
+  storage.surfaces = storage.surfaces or {}  if not storage.mod_version or storage.mod_version ~= mod_version then
     storage.mod_version = mod_version
   end
+    -- Initialize lookups cache properly
+  Lookups.init()
+  Cache.Lookups = Lookups
+  
   return storage
 end
 
@@ -121,7 +126,6 @@ function Cache.clear()
   storage.players = {}
   storage.surfaces = {}
   storage.mod_version = mod_version
-
   -- Clear non-persistent lookup cache if available
   if package.loaded["core.cache.lookups"] then
     local lookups_module = package.loaded["core.cache.lookups"]
@@ -163,13 +167,12 @@ local function init_player_data(player)
   player_data.surfaces[player.surface.index] = player_data.surfaces[player.surface.index] or {}
 
   local function init_player_favorites(player)
-    local pfaves = storage.players[player.index].surfaces[player.surface.index].favorites or {}
-
-    for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
+    local pfaves = storage.players[player.index].surfaces[player.surface.index].favorites or {}    for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
       if not pfaves[i] or type(pfaves[i]) ~= "table" then
         pfaves[i] = FavoriteUtils.get_blank_favorite()
       end
-      pfaves[i].gps = pfaves[i].gps or ""
+      -- Don't override GPS if it's already set - preserve BLANK_GPS value
+      pfaves[i].gps = pfaves[i].gps or Constants.settings.BLANK_GPS
       pfaves[i].locked = pfaves[i].locked or false
     end
 
@@ -252,17 +255,16 @@ function Cache.remove_stored_tag(gps)
 
   local surface_index = GPSUtils.get_surface_index_from_gps(gps)
   if not surface_index or surface_index < 1 then return end
-
   local safe_surface_index = tonumber(surface_index) and math.floor(surface_index) or nil
   if not safe_surface_index or safe_surface_index < 1 then return end
-  local uint_surface_index = safe_surface_index --[[@as uint]]
-  if not uint_surface_index then return end
-  local tag_cache = Cache.get_surface_tags(uint_surface_index)
+  local uint_surface_index = safe_surface_index --[[@as uint]]  local tag_cache = Cache.get_surface_tags(uint_surface_index)
   if not tag_cache[gps] then return end
-
   tag_cache[gps] = nil
-  -- Optionally, you can also remove the tag from the Lookups cache
-  Lookups.remove_chart_tag_from_cache(gps)
+  
+  -- Remove the tag from the Lookups cache as well
+  Cache.init() -- Ensure Lookups is initialized
+  ---@diagnostic disable-next-line: undefined-field, need-check-nil
+  Cache.Lookups.remove_chart_tag_from_cache_by_gps(gps)
 end
 
 --- @param gps string

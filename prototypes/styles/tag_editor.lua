@@ -198,8 +198,9 @@ if not gui_style.tf_tag_editor_last_row_draggable then
     --height = 40, -- Explicitly match the parent row height
     --min_height = 20, -- Ensure it fills the vertical space
     -- No custom width, margins, or padding
-    left_margin = 0,
+    top_margin = 8,
     right_margin = 8,
+    left_margin = 0,
     left_padding = 0,
     --right_padding = 8,
   }

@@ -5,7 +5,7 @@ Consolidated UI-related enumerations including colors, sprites, and GUI elements
 
 This module consolidates:
 - color_enum.lua - Color definitions for styling
-- sprite_enum.lua - Valid Factorio sprite paths  
+- sprite_enum.lua - Valid Factorio sprite paths
 - gui_enum.lua - GUI element identifiers
 
 Provides a unified API for all UI-related constants.
@@ -28,17 +28,17 @@ UIEnums.Colors = {
   ORANGE = { r = 0.98, g = 0.66, b = 0.22, a = 1 },
   RED = { r = 1, g = .56, b = .56, a = 1 },
   WHITE = { r = 1, g = 1, b = 1, a = 1 },
-  
+
   -- UI-specific colors
   CAPTION = { r = 1, g = .9, b = .75, a = 1 },
-  
+
   -- Effect colors
   DEFAULT_GLOW_COLOR = { r = .88, g = .69, b = .42, a = 1 },
   DEFAULT_SHADOW_COLOR = { r = 0, g = 0, b = 0, a = .35 },
   HARD_SHADOW_COLOR = { r = 0, g = 0, b = 0, a = 1 },
   DEFAULT_DIRT_COLOR = { r = .06, g = .03, b = .01, a = .39 },
   DEFAULT_DIRT_COLOR_FILLER = { r = .06, g = .03, b = .01, a = .22 },
-  
+
   -- Button glow colors
   GREEN_BUTTON_GLOW_COLOR = { r = .53, g = .85, b = .55, a = .5 },
   ORANGE_BUTTON_GLOW_COLOR = { r = .8, g = .56, b = .12, a = .5 },
@@ -53,11 +53,12 @@ UIEnums.Colors = {
 --- Reference: https://github.com/wube/factorio-data/blob/master/core/prototypes/utility-sprites.lua
 UIEnums.Sprites = {
   -- Navigation arrows
-  ARROW_DOWN = "utility/hint_arrow_down",
-  ARROW_LEFT = "utility/hint_arrow_left",
-  ARROW_RIGHT = "utility/hint_arrow_right",
-  ARROW_UP = "utility/hint_arrow_up",
-  
+  -- note that the utility/hint_button_xxx is only available in space age
+  ARROW_UP = "tf_hint_arrow_up",
+  ARROW_RIGHT = "tf_hint_arrow_right",
+  ARROW_DOWN = "tf_hint_arrow_down",
+  ARROW_LEFT = "tf_hint_arrow_left",
+
   -- Action icons
   CHECK_MARK = "utility/check_mark",
   CLOSE = "utility/close",
@@ -67,17 +68,18 @@ UIEnums.Sprites = {
   ENTER = "utility/enter",
   MOVE = "move_tag_icon",
   REFRESH = "utility/refresh",
+  RESET = "utility/reset", -- core/graphics/icons/mip/reset.png
   TRASH = "utility/trash",
-  
+
   -- Status icons
   DANGER = "utility/danger_icon",
   INFO = "utility/info",
   WARNING = "utility/warning_icon",
-  
+
   -- Import/Export
   EXPORT = "utility/export_slot",
   IMPORT = "utility/import_slot",
-  
+
   -- Interface elements
   LIST_VIEW = "utility/list_view",
   LOCK = "utility/lock",
@@ -85,11 +87,13 @@ UIEnums.Sprites = {
   PLAY = "utility/play",
   SEARCH = "utility/search_icon",
   SETTINGS = "utility/settings",
-  
+  SIGNAL_A = "virtual-signal/signal_A",
+
   -- Special symbols
   HEART = "virtual-signal/signal-heart",
   STAR = "virtual-signal/signal-star",
   STAR_DISABLED = "tf_star_disabled",
+  QUESTION_MARK = "utility/questionmark"
 }
 
 -- ========================================
@@ -115,7 +119,7 @@ UIEnums.GUI.FaveBar = {
   FAVE_BAR_FLOW = "fave_bar_flow",
   TOGGLE_CONTAINER = "fave_bar_toggle_container",
   SLOTS_FLOW = "fave_bar_slots_flow",
-  
+
   -- Buttons
   TOGGLE_BUTTON = "fave_bar_visible_btns_toggle",
   SLOT_BUTTON_PREFIX = "fave_bar_slot_", -- Append slot number (1-10)
@@ -127,11 +131,11 @@ UIEnums.GUI.TagEditor = {
   OUTER_FRAME = "tag_editor_frame",
   CONTENT_FRAME = "tag_editor_content_frame",
   CONTENT_INNER_FRAME = "tag_editor_content_inner_frame",
-  
+
   -- Titlebar
   TITLEBAR = "tag_editor_titlebar",
   TITLE_CLOSE_BUTTON = "tag_editor_title_row_close",
-  
+
   -- Owner row
   OWNER_ROW_FRAME = "tag_editor_owner_row_frame",
   LABEL_FLOW = "tag_editor_label_flow",
@@ -139,26 +143,26 @@ UIEnums.GUI.TagEditor = {
   BUTTON_FLOW = "tag_editor_button_flow",
   MOVE_BUTTON = "tag_editor_move_button",
   DELETE_BUTTON = "tag_editor_delete_button",
-  
+
   -- Teleport/Favorite row
   TELEPORT_FAVORITE_ROW = "tag_editor_teleport_favorite_row",
   FAVORITE_BUTTON = "tag_editor_is_favorite_button",
   TELEPORT_BUTTON = "tag_editor_teleport_button",
-  
+
   -- Rich text input row
   RICH_TEXT_ROW = "tag_editor_rich_text_row",
   ICON_BUTTON = "tag_editor_icon_button",
   TEXT_INPUT = "tag_editor_rich_text_input",
-  
+
   -- Error handling
   ERROR_ROW_FRAME = "tag_editor_error_row_frame",
   ERROR_MESSAGE = "error_row_error_message",
-  
+
   -- Action row
   LAST_ROW = "tag_editor_last_row",
   LAST_ROW_DRAGGABLE = "tag_editor_last_row_draggable",
   CONFIRM_BUTTON = "last_row_confirm_button",
-  
+
   -- Confirmation dialog
   CONFIRM_DIALOG_FRAME = "tf_confirm_dialog_frame",
   CONFIRM_DIALOG_LABEL = "tag_editor_tf_confirm_dialog_label",
@@ -171,11 +175,11 @@ UIEnums.GUI.TagEditor = {
 UIEnums.GUI.Shared = {
   -- Generic buttons that might appear in multiple GUIs
   TELEPORT_BUTTON = "tf_teleport_button", -- Style name, not element name
-  
+
   -- Titlebar elements (used across multiple GUIs)
   TITLEBAR_CLOSE_BUTTON = "titlebar_close_btn",
   TITLEBAR_DRAGGABLE = "tf_titlebar_draggable",
-  
+
   -- Generic flows and containers
   MAIN_GUI_FLOW = "tf_main_gui_flow",
 }

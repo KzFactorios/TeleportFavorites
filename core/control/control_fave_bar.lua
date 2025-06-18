@@ -67,7 +67,7 @@ local function open_tag_editor_from_favorite(player, favorite)
     local tag_data = Cache.create_tag_editor_data({
       gps = favorite.gps,
       locked = favorite.locked,
-      is_favorite = Cache.is_player_favorite(player, favorite.gps),
+      is_favorite = true,  -- Always true when opening from favorites bar
       icon = favorite.tag.chart_tag.icon or "",
       text = favorite.chart_tag.text,
       tag = favorite.tag,

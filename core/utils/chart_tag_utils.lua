@@ -34,16 +34,21 @@ local ChartTagUtils = {}
 ---@param source_chart_tag LuaCustomChartTag? Source chart tag to copy properties from
 ---@param player LuaPlayer? Player context
 ---@param text string? Custom text override
+---@param set_ownership boolean? Whether to set last_user (only for final tags, not temporary)
 ---@return table chart_tag_spec Chart tag specification ready for Factorio API
-function ChartTagUtils.build_chart_tag_spec(position, source_chart_tag, player, text)
+function ChartTagUtils.build_chart_tag_spec(position, source_chart_tag, player, text, set_ownership)
   local spec = {
     position = position,
-    text = text or (source_chart_tag and source_chart_tag.text) or "Tag",
-    last_user = (source_chart_tag and source_chart_tag.last_user) or 
-                (player and player.valid and player.name) or 
-                "System"
+    text = text or (source_chart_tag and source_chart_tag.text) or "Tag"
   }
-
+  
+  -- Only set last_user if this is a final chart tag (not temporary)
+  if set_ownership then
+    spec.last_user = (source_chart_tag and source_chart_tag.last_user) or 
+                     (player and player.valid and player.name) or 
+                     "System"
+  end
+  
   -- Add icon if valid
   local icon = source_chart_tag and source_chart_tag.icon
   if icon and type(icon) == "table" and icon.name then
@@ -56,9 +61,6 @@ end
 -- ========================================
 -- CHART TAG CLICK DETECTION
 -- ========================================
-
--- Settings for chart tag detection
-local CHART_TAG_CLICK_RADIUS = 1.0
 
 -- Cache for last clicked chart tags per player
 local last_clicked_chart_tags = {}
@@ -75,13 +77,23 @@ function ChartTagUtils.find_chart_tag_at_position(player, cursor_position)
      player.render_mode ~= defines.render_mode.chart_zoomed_in then 
     return nil
   end
-    -- Get all chart tags on the current surface
+  -- Get all chart tags on the current surface
   local force_tags = player.force.find_chart_tags(player.surface)
   if not force_tags or #force_tags == 0 then return nil end
+    -- Get click radius from player settings
+  local click_radius = Constants.settings.CHART_TAG_CLICK_RADIUS
+  local player_settings = settings.get_player_settings(player)
+  local setting = player_settings["chart-tag-click-radius"]
+  if setting and setting.value then
+    local value = tonumber(setting.value)
+    if value then
+      click_radius = value
+    end
+  end
   
   -- Find the closest chart tag within detection radius
   local closest_tag = nil
-  local min_distance = CHART_TAG_CLICK_RADIUS
+  local min_distance = click_radius
   
   for _, tag in pairs(force_tags) do
     if tag and tag.valid then
@@ -220,10 +232,9 @@ end
 function ChartTagUtils.is_position_protected(surface, position, requesting_player)
   if not surface or not surface.valid or not position then 
     return false, nil, false 
-  end
-    -- Get all chart tags on this surface
+  end  -- Get all chart tags on this surface
   local surface_index = surface.index
-  local chart_tags = Cache.lookups.get_surface_chart_tags(surface_index)
+  local chart_tags = Cache.Lookups.get_chart_tag_cache(surface_index)
   if not chart_tags or #chart_tags == 0 then 
     return false, nil, false 
   end
@@ -264,7 +275,8 @@ function ChartTagUtils.is_position_protected(surface, position, requesting_playe
             local owner_setting = owner_settings["terrain-protection-radius"]
             if owner_setting and owner_setting.value then
               local value = tonumber(owner_setting.value)
-              if value then                protection_radius = value
+              if value then                
+                protection_radius = value
                 -- Special case: if tag owner has radius 0 but requesting player is not owner,
                 -- use default protection to prevent griefing
                 if protection_radius == 0 and not is_owner then
@@ -486,7 +498,7 @@ function ChartTagUtils.safe_add_chart_tag(force, surface, spec)
     return nil
   end  -- Use protected call to catch any errors
   local success, result = pcall(function()
-    return force:add_chart_tag(surface, spec)
+    return force.add_chart_tag(surface, spec)
   end)
 
   -- Check if creation was successful

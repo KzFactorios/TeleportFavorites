@@ -173,8 +173,10 @@ end
 return {
   init = init,
   get_chart_tag_cache = get_chart_tag_cache,
+  get_surface_chart_tags = get_chart_tag_cache, -- Alias for consistency
   get_chart_tag_by_gps = get_chart_tag_by_gps,
   clear_surface_cache_chart_tags = clear_surface_cache_chart_tags,
+  invalidate_surface_chart_tags = clear_surface_cache_chart_tags, -- Alias for consistency
   remove_chart_tag_from_cache_by_gps = remove_chart_tag_from_cache_by_gps,
   clear_all_caches = clear_all_caches,
 }

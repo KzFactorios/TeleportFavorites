@@ -614,7 +614,7 @@
 ---@field research_queue LuaTechnology[]             
 ---@field valid boolean                              
 ---@field connected_players LuaPlayer[]              
----@field add_chart_tag fun(self: LuaForce, surface: LuaSurface, spec: table): LuaCustomChartTag
+---@field add_chart_tag fun(surface: LuaSurface, spec: table): LuaCustomChartTag
 ---@field is_chunk_charted fun(self: LuaForce, surface: LuaSurface, chunk_position: ChunkPosition): boolean 
 ---@field chart fun(self: LuaForce, surface: LuaSurface, area: BoundingBox) 
 ---@field chart_all fun(self: LuaForce, surface: LuaSurface) 

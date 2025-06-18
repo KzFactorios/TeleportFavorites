@@ -238,14 +238,12 @@ function GPSUtils.create_chart_tag_spec(player, map_position, text, icon)
     ErrorHandler.warn_log("Cannot create chart tag: " .. (error_msg or "Unknown error"))
     return nil
   end
-  
-  local spec = {
+    local spec = {
     position = map_position,
     text = text or "",
     last_user = player.name
   }
-  
-  if icon and icon.name then
+    if icon and icon.name then
     spec.icon = icon
   end
   
@@ -258,11 +256,13 @@ end
 ---@param text string Tag text
 ---@param icon SignalID? Optional icon
 ---@return LuaCustomChartTag? chart_tag Created chart tag or nil if failed
-function GPSUtils.create_and_validate_chart_tag(player, map_position, text, icon)  local spec = GPSUtils.create_chart_tag_spec(player, map_position, text, icon)
+function GPSUtils.create_and_validate_chart_tag(player, map_position, text, icon)
+  local spec = GPSUtils.create_chart_tag_spec(player, map_position, text, icon)
   if not spec then return nil end
+  
   -- Try to create the chart tag
   local success, result = pcall(function()
-    return player.force:add_chart_tag(player.surface, spec)
+    return player.force.add_chart_tag(player.surface, spec)
   end)
   
   if not success then

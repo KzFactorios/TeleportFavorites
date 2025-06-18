@@ -1,7 +1,6 @@
 local Constants = require("constants")
 
-data:extend({
-  {
+data:extend({  {
     name = "teleport-radius",
     type = "int-setting",
     setting_type = "runtime-per-user",
@@ -10,6 +9,7 @@ data:extend({
     minimum_value = Constants.settings.TELEPORT_RADIUS_MIN,
     ---@diagnostic disable-next-line: assign-type-mismatch
     maximum_value = Constants.settings.TELEPORT_RADIUS_MAX,
+    allowed_values = {1, 2, 4, 8, 16, 32},
     order = "kg",
   },
   {
@@ -24,8 +24,7 @@ data:extend({
     setting_type = "runtime-per-user",
     default_value = true,
     order = "kd",
-  },
-  {
+  },  {
     name = "terrain-protection-radius",
     type = "int-setting",
     setting_type = "runtime-per-user",
@@ -35,5 +34,17 @@ data:extend({
     ---@diagnostic disable-next-line: assign-type-mismatch
     maximum_value = Constants.settings.TERRAIN_PROTECTION_MAX,
     order = "ke",
+  },
+  {
+    name = "chart-tag-click-radius",
+    type = "int-setting",
+    setting_type = "runtime-per-user",
+    default_value = Constants.settings.CHART_TAG_CLICK_RADIUS,
+    ---@diagnostic disable-next-line: assign-type-mismatch
+    minimum_value = 1,
+    ---@diagnostic disable-next-line: assign-type-mismatch
+    maximum_value = 32,
+    allowed_values = {1, 2, 4, 8, 16, 32},
+    order = "kf",
   }
 })
