@@ -14,10 +14,13 @@ local function setup_factorio_mocks()
   
   -- Mock game object
   _G.game = {
-    players = {},
-    forces = {
+    players = {},    forces = {
       player = {
-        chart_tags = {}
+        chart_tags = {},
+        find_chart_tags = function(self, surface, area)
+          -- Return all chart tags for the surface (simple mock implementation)
+          return self.chart_tags or {}
+        end
       }
     },
     surfaces = {
@@ -130,13 +133,21 @@ end
 -- Mock cache persistence test
 local function test_cache_persistence_mock()
   print("\n🧪 Testing Cache Persistence (Mocked)...")
-  
-  -- Test 1: Basic cache structure
+    -- Test 1: Basic cache structure
   local success, Cache = pcall(require, "core.cache.cache")
   assert_test(success, "Failed to load Cache module: " .. tostring(Cache), "Cache module loading")
   
   if not success then
     return
+  end
+  
+  -- Initialize cache to set up Lookups
+  local init_success, init_error = pcall(function()
+    Cache.init()
+  end)
+  
+  if not init_success then
+    print("Cache initialization failed: " .. tostring(init_error))
   end
   
   -- Test 2: Cache initialization
@@ -152,7 +163,7 @@ local function test_cache_persistence_mock()
   print("Cache persistence mock tests completed.")
 end
 
--- Mock chart tag collision detection test
+-- Mock natural position system test
 local function test_natural_position_system_mock()
   print("\n🧪 Testing Natural Position System (Mocked)...")
   
@@ -164,7 +175,7 @@ local function test_natural_position_system_mock()
   test_tags[test_gps] = { gps = test_gps, text = "Test Tag" }
   assert_test(test_tags[test_gps] ~= nil, "Failed to store tag at GPS coordinate", "GPS-keyed storage")
   
-  -- Overwrite the same GPS (natural collision prevention)
+  -- Overwrite the same GPS (natural uniqueness prevention)
   test_tags[test_gps] = { gps = test_gps, text = "Updated Tag" }
   assert_test(test_tags[test_gps].text == "Updated Tag", "Failed to update tag at GPS coordinate", "GPS natural uniqueness")
   
@@ -200,8 +211,32 @@ local function test_tag_editor_control_mock()
   -- Test tag editor control loading
   local success, result = pcall(require, "core.control.control_tag_editor")
   assert_test(success, "Failed to load control_tag_editor: " .. tostring(result), "Tag editor control loading")
+    print("Tag editor control mock tests completed.")
+end
+
+-- Mock chart tag ownership test
+local function test_chart_tag_ownership_mock()
+  print("\n🧪 Testing Chart Tag Ownership Recording (Mocked)...")
   
-  print("Tag editor control mock tests completed.")
+  -- Test ChartTagUtils.build_chart_tag_spec ownership control
+  local success, ChartTagUtils = pcall(require, "core.utils.chart_tag_utils")
+  if not success then
+    assert_test(false, "Failed to load ChartTagUtils for ownership test", "ChartTagUtils loading for ownership")
+    return
+  end
+  
+  local mock_position = { x = 100, y = 100 }
+  local mock_player = { name = "TestPlayer", valid = true }
+  
+  -- Test 1: Temporary chart tag should NOT record ownership
+  local temp_spec = ChartTagUtils.build_chart_tag_spec(mock_position, nil, mock_player, "Temp Tag", false)
+  assert_test(temp_spec.last_user == nil, "Temporary chart tag incorrectly recorded ownership", "Temporary chart tag ownership")
+  
+  -- Test 2: Final chart tag SHOULD record ownership
+  local final_spec = ChartTagUtils.build_chart_tag_spec(mock_position, nil, mock_player, "Final Tag", true)
+  assert_test(final_spec.last_user == "TestPlayer", "Final chart tag failed to record ownership", "Final chart tag ownership")
+  
+  print("Chart tag ownership mock tests completed.")
 end
 
 -- Run all mock tests
@@ -211,11 +246,21 @@ local function run_all_mock_tests()
   
   -- Setup mocked environment
   setup_factorio_mocks()
-    -- Run individual test suites
+  -- Run individual test suites
   test_cache_persistence_mock()
   test_natural_position_system_mock()
   test_chart_tag_utils_mock()
   test_tag_editor_control_mock()
+  
+  -- Test chart tag ownership recording
+  local ownership_test = require("tests.test_chart_tag_ownership")
+  local ownership_success, ownership_error = pcall(ownership_test.test_chart_tag_ownership)
+  if ownership_success then
+    test_results.passed = test_results.passed + 4 -- 4 tests in ownership suite
+  else
+    test_results.failed = test_results.failed + 1
+    table.insert(test_results.errors, "Chart tag ownership test failed: " .. tostring(ownership_error))
+  end
   
   -- Print results summary
   print("\n📊 Test Results Summary:")
@@ -233,12 +278,11 @@ local function run_all_mock_tests()
   
   local success_rate = math.floor((test_results.passed / (test_results.passed + test_results.failed)) * 100)
   print("\n🎯 Success Rate: " .. success_rate .. "%")
-  
-  if test_results.failed == 0 then
+    if test_results.failed == 0 then
     print("\n🎉 All tests passed! The core modules can be loaded successfully.")
     print("💡 To test actual functionality, run the verification scripts in Factorio:")
     print("   /c dofile('verify_cache_fixes.lua')")
-    print("   /c dofile('verify_collision_detection.lua')")
+    print("   /c require('tests.test_natural_position_system')")
   else
     print("\n⚠️  Some tests failed. Check the error messages above for details.")
   end

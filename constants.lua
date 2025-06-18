@@ -21,7 +21,7 @@ local Constants = {
                                      -- higher values (2-5) are faster but may miss positions in dense areas
     
     -- Chart tag settings
-    CHART_TAG_CLICK_RADIUS = 8,    -- Radius in tiles for detecting chart tag clicks on the map
+    CHART_TAG_CLICK_RADIUS = 10,    -- Radius in tiles for detecting chart tag clicks on the map
     
     -- UI settings
     DEFAULT_SNAP_SCALE = 1,          -- Scale factor for position snapping

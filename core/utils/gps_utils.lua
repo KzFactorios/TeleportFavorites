@@ -231,8 +231,9 @@ end
 ---@param map_position MapPosition
 ---@param text string Tag text
 ---@param icon SignalID? Optional icon
+---@param set_ownership boolean? Whether to set last_user (only for final tags, not temporary)
 ---@return table? chart_tag_spec Chart tag specification or nil if invalid
-function GPSUtils.create_chart_tag_spec(player, map_position, text, icon)
+function GPSUtils.create_chart_tag_spec(player, map_position, text, icon, set_ownership)
   local can_tag, error_msg = GPSUtils.position_can_be_tagged(player, map_position)
   if not can_tag then
     ErrorHandler.warn_log("Cannot create chart tag: " .. (error_msg or "Unknown error"))
@@ -240,9 +241,13 @@ function GPSUtils.create_chart_tag_spec(player, map_position, text, icon)
   end
     local spec = {
     position = map_position,
-    text = text or "",
-    last_user = player.name
+    text = text or ""
   }
+  
+  -- Only set last_user if this is a final chart tag (not temporary)
+  if set_ownership then
+    spec.last_user = player.name
+  end
     if icon and icon.name then
     spec.icon = icon
   end
@@ -257,7 +262,8 @@ end
 ---@param icon SignalID? Optional icon
 ---@return LuaCustomChartTag? chart_tag Created chart tag or nil if failed
 function GPSUtils.create_and_validate_chart_tag(player, map_position, text, icon)
-  local spec = GPSUtils.create_chart_tag_spec(player, map_position, text, icon)
+  -- Use set_ownership=false since this is for temporary validation
+  local spec = GPSUtils.create_chart_tag_spec(player, map_position, text, icon, false)
   if not spec then return nil end
   
   -- Try to create the chart tag

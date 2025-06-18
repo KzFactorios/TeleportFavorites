@@ -43,8 +43,8 @@ data:extend({  {
     ---@diagnostic disable-next-line: assign-type-mismatch
     minimum_value = 1,
     ---@diagnostic disable-next-line: assign-type-mismatch
-    maximum_value = 32,
-    allowed_values = {1, 2, 4, 8, 16, 32},
+    maximum_value = 25,
+    allowed_values = {1, 5, 10, 15, 20, 25},
     order = "kf",
   }
 })

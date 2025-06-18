@@ -7,7 +7,7 @@ Consolidated chart tag utilities combining all chart tag operations.
 
 This module consolidates:
 - chart_tag_spec_builder.lua - Chart tag specification creation
-- chart_tag_click_detector.lua - Chart tag click detection and handling  
+- chart_tag_click_detector.lua - Chart tag click detection and handling
 - chart_tag_terrain_handler.lua - Terrain change detection and chart tag relocation
 
 Provides a unified API for all chart tag operations throughout the mod.
@@ -41,14 +41,14 @@ function ChartTagUtils.build_chart_tag_spec(position, source_chart_tag, player, 
     position = position,
     text = text or (source_chart_tag and source_chart_tag.text) or "Tag"
   }
-  
+
   -- Only set last_user if this is a final chart tag (not temporary)
   if set_ownership then
-    spec.last_user = (source_chart_tag and source_chart_tag.last_user) or 
-                     (player and player.valid and player.name) or 
-                     "System"
+    spec.last_user = (source_chart_tag and source_chart_tag.last_user) or
+        (player and player.valid and player.name) or
+        "System"
   end
-  
+
   -- Add icon if valid
   local icon = source_chart_tag and source_chart_tag.icon
   if icon and type(icon) == "table" and icon.name then
@@ -71,29 +71,29 @@ local last_clicked_chart_tags = {}
 ---@return LuaCustomChartTag? chart_tag Found chart tag or nil
 function ChartTagUtils.find_chart_tag_at_position(player, cursor_position)
   if not player or not player.valid or not cursor_position then return nil end
-  
+
   -- Only detect clicks while in map mode
-  if player.render_mode ~= defines.render_mode.chart and 
-     player.render_mode ~= defines.render_mode.chart_zoomed_in then 
+  if player.render_mode ~= defines.render_mode.chart and
+      player.render_mode ~= defines.render_mode.chart_zoomed_in then
     return nil
   end
-    -- First check the cache to see if we have chart tags loaded
+  -- First check the cache to see if we have chart tags loaded
   local surface_index = player.surface.index
   local force_tags = Cache.Lookups.get_chart_tag_cache(surface_index)
-    -- If cache appears empty, try invalidating it once to trigger refresh
+  -- If cache appears empty, try invalidating it once to trigger refresh
   if not force_tags or #force_tags == 0 then
     Cache.Lookups.invalidate_surface_chart_tags(surface_index)
     force_tags = Cache.Lookups.get_chart_tag_cache(surface_index)
-    
+
     ErrorHandler.debug_log("Attempted to refresh chart tag cache from Factorio API", {
       surface_index = surface_index,
       chart_tags_found = force_tags and #force_tags or 0
     })
   end
-  
+
   -- If still no tags found, there genuinely are no chart tags on this surface
-  if not force_tags or #force_tags == 0 then 
-    return nil 
+  if not force_tags or #force_tags == 0 then
+    return nil
   end
   -- Get click radius from player settings
   local click_radius = Constants.settings.CHART_TAG_CLICK_RADIUS
@@ -105,24 +105,28 @@ function ChartTagUtils.find_chart_tag_at_position(player, cursor_position)
       click_radius = value
     end
   end
-  
+
   -- Find the closest chart tag within detection radius
   local closest_tag = nil
   local min_distance = click_radius
-  
+  local distance = 500.0
+
   for _, tag in pairs(force_tags) do
     if tag and tag.valid then
-      local dx = tag.position.x - cursor_position.x
-      local dy = tag.position.y - cursor_position.y
-      local distance = math.sqrt(dx*dx + dy*dy)
-      
-      if distance < min_distance then
-        min_distance = distance
-        closest_tag = tag
+      local dx = math.abs(tag.position.x - cursor_position.x)
+      local dy = math.abs(tag.position.y - cursor_position.y)
+      -- Rectangle search: check if within radius bounds for both X and Y
+      if dx <= click_radius and dy <= click_radius then
+        -- Calculate distance for finding closest tag within rectangle
+        distance = math.sqrt(dx * dx + dy * dy)
+        if distance < min_distance then
+          min_distance = distance
+          closest_tag = tag
+        end
       end
     end
   end
-  
+
   return closest_tag
 end
 
@@ -132,35 +136,35 @@ end
 function ChartTagUtils.handle_map_click(event)
   local player = game.get_player(event.player_index)
   if not player or not player.valid then return nil end
-  
+
   -- Only process when player is in map view
-  if player.render_mode ~= defines.render_mode.chart and 
-     player.render_mode ~= defines.render_mode.chart_zoomed_in then 
+  if player.render_mode ~= defines.render_mode.chart and
+      player.render_mode ~= defines.render_mode.chart_zoomed_in then
     return nil
   end
-  
+
   -- Get cursor position
   local cursor_position = event.cursor_position or player.position
   if player.selected then
     cursor_position = player.selected.position
   end
-  
+
   -- Try to find chart tag at cursor position
   local clicked_chart_tag = ChartTagUtils.find_chart_tag_at_position(player, cursor_position)
-  
+
   -- Store last clicked tag for this player
   last_clicked_chart_tags[player.index] = clicked_chart_tag
-    -- Log the click if a tag was found
+  -- Log the click if a tag was found
   if clicked_chart_tag and clicked_chart_tag.valid then
     local gps = GPSUtils.gps_from_map_position(clicked_chart_tag.position, player.surface.index)
-    
+
     ErrorHandler.debug_log("Player clicked chart tag", {
       player_name = player.name,
       gps = gps,
       tag_text = clicked_chart_tag.text
     })
   end
-  
+
   return clicked_chart_tag
 end
 
@@ -174,9 +178,9 @@ end
 ---@return boolean is_on_water
 function ChartTagUtils.is_chart_tag_on_water(chart_tag, surface)
   if not chart_tag or not chart_tag.valid then return false end
-    surface = surface or chart_tag.surface
+  surface = surface or chart_tag.surface
   if not surface or not surface.valid then return false end
-  
+
   return PositionUtils.is_water_tile(surface, chart_tag.position)
 end
 
@@ -186,9 +190,9 @@ end
 ---@return boolean is_on_space
 function ChartTagUtils.is_chart_tag_on_space(chart_tag, surface)
   if not chart_tag or not chart_tag.valid then return false end
-    surface = surface or chart_tag.surface
+  surface = surface or chart_tag.surface
   if not surface or not surface.valid then return false end
-  
+
   return PositionUtils.is_space_tile(surface, chart_tag.position)
 end
 
@@ -199,9 +203,9 @@ end
 ---@return MapPosition? valid_position
 function ChartTagUtils.find_valid_position_near_chart_tag(chart_tag, search_radius, player)
   if not chart_tag or not chart_tag.valid then return nil end
-    local surface = chart_tag.surface
+  local surface = chart_tag.surface
   if not surface or not surface.valid then return nil end
-    
+
   return PositionUtils.find_valid_position(surface, chart_tag.position, search_radius or 20)
 end
 
@@ -215,7 +219,7 @@ end
 ---@return BoundingBox? protected_area The protected bounding box
 function ChartTagUtils.calculate_protected_area(position, player)
   if not position then return nil end
-  
+
   -- Get protection radius from player settings or use default
   local protection_radius = Constants.settings.TERRAIN_PROTECTION_DEFAULT
   if player and player.valid then
@@ -229,7 +233,7 @@ function ChartTagUtils.calculate_protected_area(position, player)
       end
     end
   end
-  
+
   -- Create protection area based on radius
   return {
     left_top = { x = math.floor(position.x) - protection_radius, y = math.floor(position.y) - protection_radius },
@@ -238,22 +242,22 @@ function ChartTagUtils.calculate_protected_area(position, player)
 end
 
 --- Check if a position is within the protected area of any chart tag
----@param surface LuaSurface Surface to check on 
+---@param surface LuaSurface Surface to check on
 ---@param position MapPosition Position to check
 ---@param requesting_player LuaPlayer? Player making the request (for ownership checks)
 ---@return boolean is_protected True if position is protected
 ---@return LuaCustomChartTag? protecting_tag The chart tag that protects this area
 ---@return boolean is_owner True if the requesting player owns the protecting tag
 function ChartTagUtils.is_position_protected(surface, position, requesting_player)
-  if not surface or not surface.valid or not position then 
-    return false, nil, false 
-  end  -- Get all chart tags on this surface
+  if not surface or not surface.valid or not position then
+    return false, nil, false
+  end -- Get all chart tags on this surface
   local surface_index = surface.index
   local chart_tags = Cache.Lookups.get_chart_tag_cache(surface_index)
-  if not chart_tags or #chart_tags == 0 then 
-    return false, nil, false 
+  if not chart_tags or #chart_tags == 0 then
+    return false, nil, false
   end
-  
+
   -- Check each chart tag for protection overlap
   for _, chart_tag in pairs(chart_tags) do
     if chart_tag and chart_tag.valid then
@@ -262,7 +266,7 @@ function ChartTagUtils.is_position_protected(surface, position, requesting_playe
       if requesting_player and requesting_player.valid and chart_tag.last_user then
         is_owner = (chart_tag.last_user == requesting_player.name)
       end
-        -- Get the requesting player's protection setting
+      -- Get the requesting player's protection setting
       local requesting_player_radius = Constants.settings.TERRAIN_PROTECTION_DEFAULT
       if requesting_player and requesting_player.valid then
         local player_settings = settings.get_player_settings(requesting_player)
@@ -274,13 +278,13 @@ function ChartTagUtils.is_position_protected(surface, position, requesting_playe
           end
         end
       end
-      
+
       -- Special logic for radius 0: if requesting player has radius 0 and is owner, allow change
       if requesting_player_radius == 0 and is_owner then
         -- Owner with radius 0 can modify their own tags - skip protection check for this tag
         goto continue
       end
-        -- For non-owners or when requesting player has radius > 0, use chart tag owner's settings or default
+      -- For non-owners or when requesting player has radius > 0, use chart tag owner's settings or default
       local protection_radius = Constants.settings.TERRAIN_PROTECTION_DEFAULT
       if chart_tag.last_user then
         -- Try to find the chart tag owner to get their protection settings
@@ -290,7 +294,7 @@ function ChartTagUtils.is_position_protected(surface, position, requesting_playe
             local owner_setting = owner_settings["terrain-protection-radius"]
             if owner_setting and owner_setting.value then
               local value = tonumber(owner_setting.value)
-              if value then                
+              if value then
                 protection_radius = value
                 -- Special case: if tag owner has radius 0 but requesting player is not owner,
                 -- use default protection to prevent griefing
@@ -303,26 +307,25 @@ function ChartTagUtils.is_position_protected(surface, position, requesting_playe
           end
         end
       end
-      
+
       -- Calculate protection area based on determined radius
       local protected_area = {
         left_top = { x = math.floor(chart_tag.position.x) - protection_radius, y = math.floor(chart_tag.position.y) - protection_radius },
         right_bottom = { x = math.floor(chart_tag.position.x) + protection_radius, y = math.floor(chart_tag.position.y) + protection_radius }
       }
-      
+
       -- Check if position is within protected area
-      if position.x >= protected_area.left_top.x and 
-         position.x <= protected_area.right_bottom.x and
-         position.y >= protected_area.left_top.y and 
-         position.y <= protected_area.right_bottom.y then
-        
+      if position.x >= protected_area.left_top.x and
+          position.x <= protected_area.right_bottom.x and
+          position.y >= protected_area.left_top.y and
+          position.y <= protected_area.right_bottom.y then
         return true, chart_tag, is_owner
       end
-      
+
       ::continue::
     end
   end
-  
+
   return false, nil, false
 end
 
@@ -333,19 +336,19 @@ end
 ---@return table filtered_tiles Tiles that are allowed to be changed
 ---@return table blocked_tiles Tiles that were blocked due to protection
 function ChartTagUtils.filter_protected_tiles(tiles, surface, requesting_player)
-  if not tiles or #tiles == 0 or not surface or not surface.valid then 
-    return tiles or {}, {} 
+  if not tiles or #tiles == 0 or not surface or not surface.valid then
+    return tiles or {}, {}
   end
-  
+
   local filtered_tiles = {}
   local blocked_tiles = {}
-  
+
   for _, tile_data in ipairs(tiles) do
     if tile_data.position then
       local is_protected, protecting_tag, is_owner = ChartTagUtils.is_position_protected(
         surface, tile_data.position, requesting_player
       )
-      
+
       if is_protected and not is_owner then
         -- Tile is protected and player doesn't own the tag
         table.insert(blocked_tiles, {
@@ -361,17 +364,18 @@ function ChartTagUtils.filter_protected_tiles(tiles, surface, requesting_player)
       table.insert(filtered_tiles, tile_data)
     end
   end
-  
+
   return filtered_tiles, blocked_tiles
 end
 
 --- Notify player about blocked terrain changes due to chart tag protection
 ---@param player LuaPlayer Player to notify
 ---@param blocked_tiles table Array of blocked tile changes
-function ChartTagUtils.notify_terrain_protection(player, blocked_tiles)  if not player or not player.valid or not blocked_tiles or #blocked_tiles == 0 then 
-    return 
+function ChartTagUtils.notify_terrain_protection(player, blocked_tiles)
+  if not player or not player.valid or not blocked_tiles or #blocked_tiles == 0 then
+    return
   end
-  
+
   -- Group blocked tiles by protecting tag
   local blocks_by_tag = {}
   for _, block_data in ipairs(blocked_tiles) do
@@ -387,34 +391,34 @@ function ChartTagUtils.notify_terrain_protection(player, blocked_tiles)  if not 
       blocks_by_tag[tag_key].blocked_count = blocks_by_tag[tag_key].blocked_count + 1
     end
   end
-  
+
   -- Send notifications for each protecting tag
   for _, block_info in pairs(blocks_by_tag) do
     local tag = block_info.tag
     local surface_index = tag.surface and tag.surface.index or 1
     local gps = GPSUtils.gps_from_map_position(tag.position, surface_index)
-    
+
     local message = string.format(
       "[TeleportFavorites] %d tile changes blocked by chart tag protection at %s. Delete the tag first to modify this area.",
       block_info.blocked_count,
       gps
     )
-    
+
     GameHelpers.player_print(player, message)
   end
 end
 
 --- Process terrain changes with protection system - prevent changes in protected areas
----@param tiles table Array of tile changes to process  
+---@param tiles table Array of tile changes to process
 ---@param surface LuaSurface Surface where tiles will be changed
 ---@param requesting_player LuaPlayer? Player making the terrain changes
 ---@return number blocked_count Number of tile changes blocked by protection
 function ChartTagUtils.process_terrain_changes_with_protection(tiles, surface, requesting_player)
   if not tiles or #tiles == 0 or not surface or not surface.valid then return 0 end
-  
+
   -- Filter tiles based on chart tag protection
   local filtered_tiles, blocked_tiles = ChartTagUtils.filter_protected_tiles(tiles, surface, requesting_player)
-  
+
   -- If any tiles were blocked, we need to revert them since the event fires after changes
   if #blocked_tiles > 0 then
     -- Revert blocked tile changes by restoring their original state
@@ -429,21 +433,20 @@ function ChartTagUtils.process_terrain_changes_with_protection(tiles, surface, r
         })
       end
     end
-    
+
     -- Apply the reverted tiles if we have any
     if #revert_tiles > 0 then
       surface:set_tiles(revert_tiles)
     end
-    
+
     -- Notify player about blocked changes
     if requesting_player and requesting_player.valid then
       ChartTagUtils.notify_terrain_protection(requesting_player, blocked_tiles)
     end
   end
-  
+
   return #blocked_tiles
 end
-
 
 -- ========================================
 -- EVENT HANDLERS
@@ -453,16 +456,16 @@ end
 ---@param event table Event data for on_player_built_tile or on_robot_built_tile
 function ChartTagUtils.on_tile_built(event)
   if not event or not event.tiles or #event.tiles == 0 then return end
-  
+
   local surface = event.surface
   if not surface or not surface.valid then return end
-  
+
   -- Get the player who made the change (if applicable)
   local requesting_player = nil
   if event.player_index then
     requesting_player = game.get_player(event.player_index)
   end
-  
+
   -- Use the new protection system instead of relocation
   ChartTagUtils.process_terrain_changes_with_protection(event.tiles, surface, requesting_player)
 end
@@ -474,9 +477,10 @@ function ChartTagUtils.register_terrain_events(script)
 
   -- Register for tile built/removed events
   script.on_event(defines.events.on_player_built_tile, ChartTagUtils.on_tile_built)
-  script.on_event(defines.events.on_robot_built_tile, ChartTagUtils.on_tile_built)  script.on_event(defines.events.on_player_mined_tile, ChartTagUtils.on_tile_built)
+  script.on_event(defines.events.on_robot_built_tile, ChartTagUtils.on_tile_built)
+  script.on_event(defines.events.on_player_mined_tile, ChartTagUtils.on_tile_built)
   script.on_event(defines.events.on_robot_mined_tile, ChartTagUtils.on_tile_built)
-  
+
   -- Script-caused terrain changes
   script.on_event(defines.events.script_raised_set_tiles, function(event)
     if not event or not event.tiles or #event.tiles == 0 then return end
@@ -513,29 +517,31 @@ function ChartTagUtils.safe_add_chart_tag(force, surface, spec, player)
     })
     return nil
   end
-  -- Check for position collision before creation
+  -- Natural position system: check for existing chart tag via cache
   local surface_index = tonumber(surface.index) or 1
   local gps = GPSUtils.gps_from_map_position(spec.position, surface_index)
-  local existing_chart_tag, has_collision = ChartTagCollisionDetector.check_position_collision(gps)
-  
-  if has_collision and existing_chart_tag then
-    ErrorHandler.debug_log("Chart tag creation blocked due to position collision", {
+  -- Use existing chart tag reuse system instead of collision detection
+  local existing_chart_tag = nil
+  if player and player.valid then
+    existing_chart_tag = ChartTagUtils.find_chart_tag_at_position(player, spec.position)
+  end
+
+  if existing_chart_tag and existing_chart_tag.valid then
+    ErrorHandler.debug_log("Chart tag reuse: updating existing tag", {
       gps = gps,
       existing_text = existing_chart_tag.text or "",
-      attempted_text = spec.text or ""
+      new_text = spec.text or ""
     })
-    
-    -- Notify player about collision if provided
-    if player and player.valid then
-      local message = string.format(
-        "[TeleportFavorites] Cannot create chart tag: position already occupied by '%s'",
-        existing_chart_tag.text or "existing tag"
-      )
-      GameHelpers.player_print(player, message)
-    end
-    
-    return nil
+
+    -- Update existing chart tag instead of creating new one
+    if spec.text then existing_chart_tag.text = spec.text end
+    if spec.icon then existing_chart_tag.icon = spec.icon end
+    if spec.last_user then existing_chart_tag.last_user = spec.last_user end
+    return existing_chart_tag
   end
+
+  -- Create new chart tag - only set last_user if explicitly provided in spec
+  -- This ensures temp chart tags don't record ownership until confirmed
 
   -- Use protected call to catch any errors
   local success, result = pcall(function()
@@ -553,7 +559,6 @@ function ChartTagUtils.safe_add_chart_tag(force, surface, spec, player)
 
   -- Cast result to ensure proper typing after successful pcall
   ---@cast result LuaCustomChartTag
-  
   -- Validate the created chart tag
   if not result or not result.valid then
     ErrorHandler.debug_log("Chart tag created but is invalid", {
@@ -563,16 +568,8 @@ function ChartTagUtils.safe_add_chart_tag(force, surface, spec, player)
     return nil
   end
 
-  -- Resolve any collisions that might have occurred (belt and suspenders approach)
-  local removed_count = ChartTagCollisionDetector.resolve_position_collision(result, player)
-  if removed_count > 0 then
-    ErrorHandler.debug_log("Resolved chart tag collisions after creation", {
-      removed_count = removed_count,
-      gps = gps
-    })
-  end
-
-  ErrorHandler.debug_log("Chart tag created successfully with collision prevention", {
+  -- Natural system: No collision resolution needed as GPS-keyed storage prevents duplicates
+  ErrorHandler.debug_log("Chart tag created successfully with natural position system", {
     position = result.position,
     text = result.text,
     gps = gps
