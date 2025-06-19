@@ -179,7 +179,9 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
       icon = nil  -- No icon for empty slots
       tooltip = { "tf-gui.favorite_slot_empty" }
       style = "tf_slot_button_smallfont"
-    end    local btn = GuiUtils.create_slot_button(parent, "fave_bar_slot_" .. i, icon or "", tooltip, { style = style })
+    end    
+    
+    local btn = GuiUtils.create_slot_button(parent, "fave_bar_slot_" .. i, icon or "", tooltip, { style = style })
     if btn and btn.valid then
       -- Use diagnostic disable for LocalisedString assignment
       ---@diagnostic disable-next-line: assign-type-mismatch

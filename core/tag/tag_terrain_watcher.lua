@@ -72,8 +72,8 @@ local function relocate_tag_if_on_water(chart_tag)
     -- Create a new chart tag at the valid position
   local chart_tag_spec = {
     position = new_position,
-    text = chart_tag.text or "Tag",
-    last_user = chart_tag.last_user or ""
+    text = chart_tag.text or "",
+    last_user = chart_tag.last_user and chart_tag.last_user.name or ""
   }
   
   -- Only include icon if it's a valid SignalID

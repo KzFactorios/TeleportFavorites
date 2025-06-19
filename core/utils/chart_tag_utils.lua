@@ -39,12 +39,12 @@ local ChartTagUtils = {}
 function ChartTagUtils.build_chart_tag_spec(position, source_chart_tag, player, text, set_ownership)
   local spec = {
     position = position,
-    text = text or (source_chart_tag and source_chart_tag.text) or "Tag"
+    text = text or (source_chart_tag and source_chart_tag.text) or ""
   }
 
   -- Only set last_user if this is a final chart tag (not temporary)
   if set_ownership then
-    spec.last_user = (source_chart_tag and source_chart_tag.last_user) or
+    spec.last_user = (source_chart_tag and source_chart_tag.last_user.name) or
         (player and player.valid and player.name) or
         "System"
   end
@@ -264,7 +264,7 @@ function ChartTagUtils.is_position_protected(surface, position, requesting_playe
       -- Determine ownership first
       local is_owner = false
       if requesting_player and requesting_player.valid and chart_tag.last_user then
-        is_owner = (chart_tag.last_user == requesting_player.name)
+        is_owner = (chart_tag.last_user.name == requesting_player.name)
       end
       -- Get the requesting player's protection setting
       local requesting_player_radius = Constants.settings.TERRAIN_PROTECTION_DEFAULT
@@ -289,7 +289,7 @@ function ChartTagUtils.is_position_protected(surface, position, requesting_playe
       if chart_tag.last_user then
         -- Try to find the chart tag owner to get their protection settings
         for _, player in pairs(game.players) do
-          if player.valid and player.name == chart_tag.last_user then
+          if player.valid and player.name == chart_tag.last_user.name then
             local owner_settings = settings.get_player_settings(player)
             local owner_setting = owner_settings["terrain-protection-radius"]
             if owner_setting and owner_setting.value then

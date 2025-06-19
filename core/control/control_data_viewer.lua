@@ -18,7 +18,7 @@ local M = {}
 ---@return table state object with data, top_key, and active_tab
 local function load_tab_data(player, active_tab, font_size)
   local state = { active_tab = active_tab, font_size = font_size or 12 }
-    if active_tab == "player_data" then
+  if active_tab == "player_data" then
     state.data = Cache.get_player_data(player)
     state.top_key = "player_data"
   elseif active_tab == "surface_data" then
@@ -27,70 +27,43 @@ local function load_tab_data(player, active_tab, font_size)
   elseif active_tab == "lookup" then
     -- Initialize Cache first to ensure Lookups is available
     Cache.init()
-    -- Access the global Lookups cache directly
-    local lookups_cache = _G["Lookups"] or {}
-    
-    -- If the cache is empty, try to populate it with current data
-    if not lookups_cache.surfaces or next(lookups_cache.surfaces) == nil then
-      local populated_data = { surfaces = {} }
-      
-      for _, surface in pairs(game.surfaces) do
-        if surface and surface.valid then
-          local chart_tags = Cache.Lookups.get_chart_tag_cache(surface.index)
-          if chart_tags and #chart_tags > 0 then
-            populated_data.surfaces[surface.index] = {
-              surface_name = surface.name,
-              chart_tag_count = #chart_tags,
-              chart_tags = chart_tags
-            }
+    -- Create a safe view of chart tag data for display
+    local chart_tag_data = {}
+    for _, surface in pairs(game.surfaces) do
+      if surface and surface.valid then
+        local surface_index = surface.index
+        local chart_tags = Cache.Lookups.get_chart_tag_cache(surface_index)
+        if chart_tags and #chart_tags > 0 then
+          chart_tag_data["surface_" .. surface_index] = {}
+          for i, chart_tag in ipairs(chart_tags) do
+            if chart_tag and chart_tag.valid then
+              -- Create a safe serializable representation
+              local safe_chart_tag = {
+                position = chart_tag.position and { x = chart_tag.position.x, y = chart_tag.position.y } or {},
+                text = tostring(chart_tag.text or ""),
+                icon = chart_tag.icon and {
+                  name = tostring(chart_tag.icon.name or ""),
+                  type = tostring(chart_tag.icon.type or "")
+                } or {},
+                last_user = chart_tag.last_user and chart_tag.last_user.name or "",
+                surface_name = chart_tag.surface and tostring(chart_tag.surface.name) or "unknown",
+                valid = chart_tag.valid
+              }
+              chart_tag_data["surface_" .. surface_index]["chart_tag_" .. i] = safe_chart_tag
+            end
           end
         end
       end
-        if next(populated_data.surfaces) == nil then
-        populated_data.info = "No chart tags found on any surface"
-        populated_data.cache_status = "empty_or_uninitialized"
-        populated_data.total_surfaces_checked = #game.surfaces or 0
-        
-        -- Add details about each surface checked
-        populated_data.surface_details = {}
-        for surface_index, surface in pairs(game.surfaces) do
-          populated_data.surface_details[surface_index] = {
-            name = surface.name,
-            valid = surface.valid,
-            chart_tag_count = 0
-          }
-        end
-      else
-        populated_data.cache_status = "populated_from_live_data"
-        populated_data.total_surfaces_with_tags = 0
-        for _ in pairs(populated_data.surfaces) do
-          populated_data.total_surfaces_with_tags = populated_data.total_surfaces_with_tags + 1
-        end
-      end
-        state.data = populated_data
-    else
-      -- Add metadata about the existing cache
-      local enriched_cache = {
-        cache_data = lookups_cache,
-        cache_status = "using_global_cache",
-        surfaces_count = 0
-      }
-      
-      if lookups_cache.surfaces then
-        for _ in pairs(lookups_cache.surfaces) do
-          enriched_cache.surfaces_count = enriched_cache.surfaces_count + 1
-        end
-      end
-      
-      state.data = enriched_cache
     end
-    
+    state.data = {
+      chart_tags_by_surface = chart_tag_data,
+      cache_status = next(chart_tag_data) and "populated" or "empty"
+    }
     state.top_key = "lookups"
   elseif active_tab == "all_data" then
     state.data = storage
     state.top_key = "all_data"
   end
-  
   return state
 end
 

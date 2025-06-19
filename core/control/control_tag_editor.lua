@@ -77,7 +77,8 @@ local function handle_favorite_operations(player, tag, is_favorite)
   return true
 end
 
-local function update_chart_tag_fields(tag, text, icon, player)
+-- Change function signature to accept tag_data
+local function update_chart_tag_fields(tag, tag_data, text, icon, player)
   -- Get or create chart tag
   local chart_tag = tag.chart_tag
   local map_position = GPSUtils.map_position_from_gps(tag.gps)
@@ -91,16 +92,14 @@ local function update_chart_tag_fields(tag, text, icon, player)
   if chart_tag and chart_tag.valid then
     -- Check permissions using AdminUtils
     local can_edit, is_owner, is_admin_override = AdminUtils.can_edit_chart_tag(player, chart_tag)
-    
     if not can_edit then
       ErrorHandler.warn_log("Player cannot edit chart tag: insufficient permissions", {
         player_name = player.name,
-        chart_tag_last_user = chart_tag.last_user or "",
+        chart_tag_last_user = chart_tag.last_user and chart_tag.last_user.name or "",
         is_admin = AdminUtils.is_admin(player)
       })
       return
     end
-    
     -- Log admin action if this is an admin override
     if is_admin_override then
       AdminUtils.log_admin_action(player, "edit_chart_tag", chart_tag, {
@@ -110,18 +109,39 @@ local function update_chart_tag_fields(tag, text, icon, player)
         new_icon = icon
       })
     end
-    
-    -- Transfer ownership to admin if last_user is unspecified
-    AdminUtils.transfer_ownership_to_admin(chart_tag, player)    -- Update existing chart tag properties    chart_tag.text = text or ""    -- Always set icon (can be nil for empty icons)
+    -- Always set ownership to the confirming player
+    chart_tag.last_user = player.name
+    ErrorHandler.debug_log("Set chart tag ownership to player (always on confirm)", {
+      player_name = player.name,
+      chart_tag_position = chart_tag.position,
+      chart_tag_text = chart_tag.text or ""
+    })
+    -- Update existing chart tag properties
+    chart_tag.text = text or ""
+    -- Always set icon (can be nil for empty icons)
     if ValidationUtils.has_valid_icon(icon) then
       chart_tag.icon = icon
     else
       chart_tag.icon = nil
     end
-    
     -- CRITICAL: Invalidate cache after modifying chart tag
     local surface_index = chart_tag.surface and chart_tag.surface.index or player.surface.index
     Cache.Lookups.invalidate_surface_chart_tags(surface_index)
+    -- Force immediate cache rebuild to ensure the modified chart tag is updated
+    local refreshed_cache = Cache.Lookups.get_chart_tag_cache(surface_index)
+    ErrorHandler.debug_log("Cache refreshed after chart tag modification", {
+      surface_index = surface_index,
+      chart_tags_in_cache = #refreshed_cache,
+      modified_chart_tag_gps = GPSUtils.gps_from_map_position(chart_tag.position, surface_index)
+    })
+    -- Refresh chart_tag reference from cache to ensure latest last_user is used
+    local gps = GPSUtils.gps_from_map_position(chart_tag.position, surface_index)
+    local refreshed_chart_tag = Cache.Lookups.get_chart_tag_by_gps(gps)
+    if refreshed_chart_tag and refreshed_chart_tag.valid then
+      tag.chart_tag = refreshed_chart_tag
+      tag_data.chart_tag = refreshed_chart_tag
+      tag_data.tag = tag
+    end
   else
     -- Create new chart tag using ChartTagUtils - set ownership for final chart tag
     local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(map_position, nil, player, text, true)
@@ -135,10 +155,26 @@ local function update_chart_tag_fields(tag, text, icon, player)
     local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, player.surface, chart_tag_spec, player)
     if new_chart_tag and new_chart_tag.valid then
       tag.chart_tag = new_chart_tag
-      
+
       -- CRITICAL: Invalidate cache after creating new chart tag
+      -- Add a small delay to ensure Factorio has registered the chart tag
       local surface_index = player.surface.index
       Cache.Lookups.invalidate_surface_chart_tags(surface_index)
+      -- Force immediate cache rebuild to ensure the new chart tag is included
+      local refreshed_cache = Cache.Lookups.get_chart_tag_cache(surface_index)
+      ErrorHandler.debug_log("Cache refreshed after chart tag creation", {
+        surface_index = surface_index,
+        chart_tags_in_cache = #refreshed_cache,
+        new_chart_tag_gps = GPSUtils.gps_from_map_position(new_chart_tag.position, surface_index)
+      })
+      -- Refresh chart_tag reference from cache to ensure latest last_user is used
+      local gps = GPSUtils.gps_from_map_position(new_chart_tag.position, surface_index)
+      local refreshed_chart_tag = Cache.Lookups.get_chart_tag_by_gps(gps)
+      if refreshed_chart_tag and refreshed_chart_tag.valid then
+        tag.chart_tag = refreshed_chart_tag
+        tag_data.chart_tag = refreshed_chart_tag
+        tag_data.tag = tag
+      end
     else
       ErrorHandler.warn_log("Failed to create chart tag", {
         gps = tag.gps,
@@ -173,17 +209,20 @@ local function handle_confirm_btn(player, element, tag_data)
   local text = (tag_data.text or ""):gsub("%s+$", "")
   local icon = tag_data.icon or ""
   local is_favorite = tag_data.is_favorite
-  local max_len = Constants.settings.TAG_TEXT_MAX_LENGTH  if #text > max_len then
+  local max_len = Constants.settings.TAG_TEXT_MAX_LENGTH
+  if #text > max_len then
     return show_tag_editor_error(player, tag_data,
       LocaleUtils.get_error_string(player, "tag_text_length_exceeded", { tostring(max_len) }))
   end
-  
+
   -- Require either text OR icon (not both empty)
   local has_valid_icon = ValidationUtils.has_valid_icon(icon)
   if text == "" and not has_valid_icon then
     return show_tag_editor_error(player, tag_data,
       LocaleUtils.get_error_string(player, "tag_requires_icon_or_text"))
-  end  local surface_index = player.surface.index
+  end
+
+  local surface_index = player.surface.index
   local tags = Cache.get_surface_tags(surface_index)
   local tag = tag_data.tag or {}
 
@@ -191,24 +230,33 @@ local function handle_confirm_btn(player, element, tag_data)
   if not tag.gps and tag_data.gps then
     tag.gps = tag_data.gps
   end
-  
+
   -- Ensure tag has chart_tag reference from tag_data if available
   if not tag.chart_tag and tag_data.chart_tag then
     tag.chart_tag = tag_data.chart_tag
   end
-    -- Determine if this is a new tag based on whether we opened the editor on an existing tag or chart tag
+  -- Determine if this is a new tag based on whether we opened the editor on an existing tag or chart tag
   -- If tag_data.tag OR tag_data.chart_tag exists, we're editing; if neither, we're creating
   local is_new_tag = not tag_data.tag and not tag_data.chart_tag
 
-  update_chart_tag_fields(tag, text, icon, player)
-    -- Handle favorite operations only on confirm
+  update_chart_tag_fields(tag, tag_data, text, icon, player)
+  -- After updating chart tag fields, re-fetch the tag object from cache to ensure latest chart_tag/last_user
+  local refreshed_tag = tags[tag.gps] or tag
+  tag_data.tag = refreshed_tag
+  tags[tag.gps] = refreshed_tag
+  -- Ensure tag_data.tag.chart_tag is the latest refreshed chart tag
+  if tag_data.tag and tag_data.chart_tag and tag_data.tag.chart_tag ~= tag_data.chart_tag then
+    tag_data.tag.chart_tag = tag_data.chart_tag
+    tags[tag.gps].chart_tag = tag_data.chart_tag
+  end
+  -- Handle favorite operations only on confirm
   local favorite_success = handle_favorite_operations(player, tag, is_favorite)
   if not favorite_success then
     -- If favorite operation failed, don't continue with tag saving
     return
   end
   -- Store the tag (GPS key naturally prevents duplicates)
-  tags[tag.gps] = tag
+  -- tags[tag.gps] = tag -- (already set above)
 
   -- Notify observers of tag creation or modification
   local event_type = is_new_tag and "tag_created" or "tag_modified"
@@ -248,11 +296,12 @@ local function handle_move_btn(player, tag_data, script)
 
     -- Use position validation when moving the tag
     local position_validation_callback = function(action, updated_tag_data)
-      if action == "move" then        -- Update tag with new validated position
+      if action == "move" then -- Update tag with new validated position
         tag.gps = updated_tag_data.gps
 
         -- Update the main gps field to the new location
-        tag_data.gps = updated_tag_data.gps        tag_data.tag = tag
+        tag_data.gps = updated_tag_data.gps
+        tag_data.tag = tag
 
         -- Store in surface tags (GPS key naturally prevents duplicates)
         local tags = Cache.get_surface_tags(player.surface.index)
@@ -373,7 +422,7 @@ local function handle_delete_confirm(player, tag_data)
 
   -- Use AdminUtils to validate deletion permissions
   local can_delete, is_owner, is_admin_override, reason = AdminUtils.can_delete_chart_tag(player, tag.chart_tag, tag)
-  
+
   if not can_delete then
     GuiUtils.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
     show_tag_editor_error(player, tag_data, reason or LocaleUtils.get_error_string(player, "tag_deletion_forbidden"))
@@ -425,9 +474,18 @@ local function on_tag_editor_gui_click(event, script)
   local element = event.element
   if not element or not element.valid then return end
 
-  -- Only handle clicks on our tag editor GUI elements (must start with or contain 'tag_editor')
+  -- Only handle clicks for tag editor or confirmation dialog frames
+  local parent_frame = GuiUtils.get_gui_frame_by_element(element)
+  local is_tag_editor = parent_frame and parent_frame.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR
+  local is_confirm_dialog = parent_frame and parent_frame.name == "tf_confirm_dialog_frame"
+
+  -- Only process tag editor logic if in tag editor or confirmation dialog
+  if not is_tag_editor and not is_confirm_dialog then
+    return
+  end
+
   local name = element.name or ""
-  if not name:find("tag_editor") and not name:find("last_row_confirm_button") then
+  if not name:find("tag_editor") and not name:find("last_row_confirm_button") and not name:find("tf_confirm_dialog") then
     -- Not our GUI, ignore
     return
   end
@@ -458,6 +516,13 @@ local function on_tag_editor_gui_click(event, script)
     close_tag_editor(player)
     return
   elseif element.name == "last_row_confirm_button" then
+    if event.button ~= defines.mouse_button_type.left then
+      ErrorHandler.debug_log("Tag editor confirm ignored non-left click", {
+        element_name = element.name,
+        button = event.button
+      })
+      return
+    end
     return handle_confirm_btn(player, element, tag_data)
   elseif element.name == "tag_editor_move_button" then
     return handle_move_btn(player, tag_data, script)

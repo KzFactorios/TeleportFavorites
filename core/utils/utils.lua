@@ -74,7 +74,6 @@ Utils.get_player_settings = SettingsAccess.getPlayerSettings
 
 --- Position utilities (frequently used)
 Utils.normalize_position = PositionUtils.normalize_position
-Utils.is_walkable_position = PositionUtils.is_walkable_position
 Utils.is_water_tile = PositionUtils.is_water_tile
 Utils.is_space_tile = PositionUtils.is_space_tile
 Utils.find_valid_position = PositionUtils.find_valid_position

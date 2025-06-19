@@ -36,7 +36,7 @@ function RichTextFormatter.position_change_notification(player, chart_tag, old_p
     local new_gps = GPSUtils.gps_from_map_position(new_position, surface_index)
     
     return LocaleUtils.get_handler_string(player, "position_normalized", {
-        chart_tag.text or "Tag",
+        chart_tag.text or "",
         old_gps,
         new_gps
     })

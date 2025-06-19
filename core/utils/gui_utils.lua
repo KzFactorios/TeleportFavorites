@@ -565,7 +565,7 @@ function GuiUtils.tag_relocated_notification(chart_tag, old_position, new_positi
   end
   
   local surface_index = chart_tag.surface and chart_tag.surface.index or 1
-  local tag_text = chart_tag.text or "Tag"
+  local tag_text = chart_tag.text or ""
   local icon_str = ""
   
   if chart_tag.icon and chart_tag.icon.type and chart_tag.icon.name then

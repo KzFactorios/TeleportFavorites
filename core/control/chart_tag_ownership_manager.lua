@@ -58,7 +58,7 @@ function ChartTagOwnershipManager.reset_ownership_for_player(player_name)
       local surface_cache = Cache.Lookups.get_chart_tag_cache(surface.index)
 
       for _, chart_tag in pairs(surface_cache or {}) do
-        if chart_tag and chart_tag.valid and chart_tag.last_user == player_name then
+        if chart_tag and chart_tag.valid and chart_tag.last_user and chart_tag.last_user.name == player_name then
           -- Reset ownership to empty string
           ---@diagnostic disable-next-line: assign-type-mismatch
           chart_tag.last_user = ""
@@ -111,7 +111,7 @@ function ChartTagOwnershipManager.player_owns_chart_tags(player_name)
       local surface_cache = Cache.Lookups.get_chart_tag_cache(surface.index)
 
       for _, chart_tag in pairs(surface_cache or {}) do
-        if chart_tag and chart_tag.valid and chart_tag.last_user == player_name then
+        if chart_tag and chart_tag.valid and chart_tag.last_user and chart_tag.last_user.name == player_name then
           owned_count = owned_count + 1
         end
       end
@@ -135,11 +135,11 @@ function ChartTagOwnershipManager.validate_ownership(chart_tag, player)
   end
 
   -- If no owner set, anyone can claim ownership (for legacy tags)
-  if not chart_tag.last_user or chart_tag.last_user == "" then
+  if not chart_tag.last_user or chart_tag.last_user.name == "" then
     return true
   end
 
-  return chart_tag.last_user == player.name
+  return chart_tag.last_user.name == player.name
 end
 
 --- Set initial ownership for a chart tag (only if no owner exists)
@@ -155,7 +155,7 @@ function ChartTagOwnershipManager.set_initial_ownership(chart_tag, player)
     return false
   end
   -- Only set ownership if no owner exists
-  if not chart_tag.last_user or chart_tag.last_user == "" then
+  if not chart_tag.last_user or chart_tag.last_user.name == "" then
     ---@diagnostic disable-next-line: assign-type-mismatch
     chart_tag.last_user = player.name
 
@@ -268,10 +268,10 @@ function ChartTagOwnershipManager.reset_orphaned_ownership()
       local surface_cache = Cache.Lookups.get_chart_tag_cache(surface.index)
 
       for _, chart_tag in pairs(surface_cache or {}) do
-        if chart_tag and chart_tag.valid and chart_tag.last_user and chart_tag.last_user ~= "" then
+        if chart_tag and chart_tag.valid and chart_tag.last_user and chart_tag.last_user.name ~= "" then
           -- If the owner no longer has mod data, reset ownership
           if not valid_players[chart_tag.last_user] then
-            local orphaned_owner = chart_tag.last_user
+            local orphaned_owner = chart_tag.last_user and chart_tag.last_user.name or ""
             ---@diagnostic disable-next-line: assign-type-mismatch
             chart_tag.last_user = ""
             reset_count = reset_count + 1

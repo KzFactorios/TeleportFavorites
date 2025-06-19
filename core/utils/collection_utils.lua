@@ -94,7 +94,7 @@ end
 ---@param tbl table
 ---@return boolean is_empty
 function CollectionUtils.table_is_empty(tbl)
-  if type(tbl) ~= "table" then return true end
+  if type(tbl) ~= "table" and type(tbl) ~= "userdata" then return true end
   return next(tbl) == nil
 end
 

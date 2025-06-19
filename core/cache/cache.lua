@@ -276,13 +276,14 @@ function Cache.get_tag_by_gps(gps)
   local surface = game.surfaces[surface_index]
   if not surface then return nil end
 
-  local uint_surface_index = surface_index --[[@as uint]]
-  local tag_cache = Cache.get_surface_tags(uint_surface_index)
+  local tag_cache = Cache.get_surface_tags(surface_index --[[@as uint]])
   local match_tag = tag_cache[gps] or nil
   
   -- Return the tag if it exists and is valid, otherwise return nil
-  -- Let the caller handle destruction of invalid tags to avoid circular dependencies
-  if match_tag and PositionUtils.is_walkable_position(surface, match_tag.gps) then
+  local is_valid_location = match_tag and match_tag.chart_tag and match_tag.chart_tag.valid and 
+    PositionUtils.is_walkable_position(surface, match_tag.chart_tag.position) or false
+
+  if is_valid_location and match_tag then
     return match_tag
   end
   
@@ -334,10 +335,10 @@ function Cache.create_tag_editor_data(options)
     is_favorite = false,
     icon = "",
     text = "",
-    tag = nil,
-    chart_tag = nil,    error_message = "",
-    -- Will be set from player settings if not provided
-    search_radius = nil
+    tag = {}, -- do not use nil
+    chart_tag = {}, -- do not use nil
+    error_message = "",
+    search_radius = 1
   }
 
   if not options or type(options) ~= "table" then

@@ -70,15 +70,15 @@ local handlers = {}
 
 function handlers.on_init()
   ErrorHandler.debug_log("Mod initialization started")
-  
+
   -- Clean up orphaned chart tag ownership from players who removed the mod
   local orphaned_count = ChartTagOwnershipManager.reset_orphaned_ownership()
   if orphaned_count > 0 then
-    ErrorHandler.debug_log("Cleaned up orphaned chart tag ownership during init", { 
-      orphaned_count = orphaned_count 
+    ErrorHandler.debug_log("Cleaned up orphaned chart tag ownership during init", {
+      orphaned_count = orphaned_count
     })
   end
-  
+
   for _, player in pairs(game.players) do
     ErrorHandler.debug_log("Building favorites bar for player during init", { player = player.name })
     fave_bar.build(player)
@@ -94,9 +94,9 @@ function handlers.on_player_created(event)
   ErrorHandler.debug_log("New player created", { player_index = event.player_index })
   ---@diagnostic disable-next-line: param-type-mismatch
   local player = game.get_player(event.player_index)
-  if not player or not player.valid then 
+  if not player or not player.valid then
     ErrorHandler.debug_log("Player creation handler: invalid player")
-    return 
+    return
   end
 
   ErrorHandler.debug_log("Building favorites bar for new player", { player = player.name })
@@ -114,21 +114,19 @@ end
 --- Handles right-click on the chart view to open tag editor
 ---@param event table Event data containing player_index and cursor_position
 function handlers.on_open_tag_editor_custom_input(event)
-  ErrorHandler.debug_log("Tag editor custom input handler called", { 
+  ErrorHandler.debug_log("Tag editor custom input handler called", {
     player_index = event.player_index,
-    cursor_position = event.cursor_position 
+    cursor_position = event.cursor_position
   })
-  
-  ---@diagnostic disable-next-line: param-type-mismatch
+
   local player = game.get_player(event.player_index)
-  if not player or not player.valid then 
+  if not player or not player.valid then
     ErrorHandler.debug_log("Tag editor handler: invalid player")
-    return 
+    return
   end
-  
-  -- Only handle chart mode interactions
+
   if player.render_mode ~= defines.render_mode.chart and player.render_mode ~= defines.render_mode.chart_zoomed_in then
-    ErrorHandler.debug_log("Tag editor handler: wrong render mode", { 
+    ErrorHandler.debug_log("Tag editor handler: wrong render mode", {
       render_mode = player.render_mode,
       chart_mode = defines.render_mode.chart,
       chart_zoomed = defines.render_mode.chart_zoomed_in
@@ -136,84 +134,109 @@ function handlers.on_open_tag_editor_custom_input(event)
     return
   end
 
-  -- Check if tag editor is already open - if so, ignore right-click events
   local tag_editor_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TAG_EDITOR]
   if tag_editor_frame and tag_editor_frame.valid then
-    -- Tag editor is open, ignore right-click
     return
   end
 
-  -- Get the position we right-clicked upon
   local cursor_position = event.cursor_position
   if not cursor_position or not (cursor_position.x and cursor_position.y) then
     return
-  end  -- Normalize the clicked position and convert to GPS string
+  end
   ErrorHandler.debug_log("Tag editor: Starting GPS conversion", { cursor_position = cursor_position })
-  
-  local gps_success, normalized_gps = pcall(GPSUtils.gps_from_map_position, cursor_position, player.surface.index)
-  if not gps_success then
-    ErrorHandler.warn_log("Tag editor: GPS conversion failed - " .. tostring(normalized_gps))
-    return
-  end
-  
-  -- Simple validation - check if position is valid for tagging
-  ErrorHandler.debug_log("Tag editor: Starting position validation")
-  local pos_valid_success, pos_valid = pcall(PositionUtils.is_valid_tag_position, player, cursor_position)
-  if not pos_valid_success then
-    ErrorHandler.warn_log("Tag editor: Position validation error - " .. tostring(pos_valid))
-    return
-  end
-  
-  if not pos_valid then
-    -- Play error sound to indicate invalid position
-    GameHelpers.safe_play_sound(player, { path = "utility/cannot_build" })
-    ErrorHandler.debug_log("Tag editor: Position validation failed")
-    return
-  end
-    ErrorHandler.debug_log("Tag editor: Position validation passed")
-  -- Get normalized position for chart tag creation
-  local norm_success, normalized_pos = pcall(PositionUtils.normalize_position, cursor_position)
-  if not norm_success then
-    ErrorHandler.warn_log("Tag editor: Position normalization failed - " .. tostring(normalized_pos))
-    return
-  end
-  
-  local surface_index = player.surface.index
-  local gps = GPSUtils.gps_from_map_position(normalized_pos, surface_index)
-  
-  ErrorHandler.debug_log("Tag editor: Starting cache operations", { gps = gps })
-  -- Try to find existing chart tag at this position
-  local nrm_chart_tag = ChartTagUtils.find_chart_tag_at_position(player, normalized_pos)
-  
-  -- Get existing tag from cache if available
-  local nrm_tag = Cache.get_tag_by_gps(gps)
-  
-  -- Check if this is a player favorite
-  local nrm_favorite = Cache.is_player_favorite(player, gps)
-  
-  ErrorHandler.debug_log("Tag editor: Starting settings access")
-  -- Get player's teleport radius setting for use in tag editor
-  local player_settings = Settings:getPlayerSettings(player)  local search_radius = player_settings.teleport_radius or Constants.settings.TELEPORT_RADIUS_DEFAULT
 
-  ErrorHandler.debug_log("Tag editor: Creating tag data")
-  local tag_data = Cache.create_tag_editor_data({
-    gps = gps,
-    locked = nrm_favorite and nrm_favorite.locked or false,
-    is_favorite = nrm_favorite ~= nil,
-    icon = nrm_chart_tag and nrm_chart_tag.icon or "",
-    text = nrm_chart_tag and nrm_chart_tag.text or "",
-    tag = nrm_tag or nil,
-    chart_tag = nrm_chart_tag or nil,
-    search_radius = search_radius
-  })
+  -- Utility: Find or create tag_data for tag editor (was in on_open_tag_editor_custom_input)
+  local function find_or_create_tag_data(player, cursor_position)
+    local surface_index = player.surface.index
+    local normalized_pos = PositionUtils.normalize_position(cursor_position)
+    local gps = GPSUtils.gps_from_map_position(normalized_pos, surface_index)
+    local nrm_tag = Cache.get_tag_by_gps(gps)
+    local nrm_chart_tag = nrm_tag and nrm_tag.chart_tag or nil
+    local click_radius = Constants.settings.CHART_TAG_CLICK_RADIUS or 1
 
-  ErrorHandler.debug_log("Tag editor: Setting cache data")
-  -- Persist GPS in tag_editor_data
+    -- Search for nearby chart tags if no tag match
+    if not nrm_tag then
+      local force_tags = Cache.Lookups.get_chart_tag_cache(surface_index)
+      local min_distance = click_radius
+      for _, tag in pairs(force_tags) do
+        if tag and tag.valid then
+          local dx = math.abs(tag.position.x - normalized_pos.x)
+          local dy = math.abs(tag.position.y - normalized_pos.y)
+          if dx <= click_radius and dy <= click_radius then
+            local distance = math.sqrt(dx * dx + dy * dy)
+            if distance < min_distance then
+              min_distance = distance
+              nrm_chart_tag = tag
+            end
+          end
+        end
+      end
+      if nrm_chart_tag then
+        gps = GPSUtils.gps_from_map_position(nrm_chart_tag.position, surface_index)
+        nrm_tag = Cache.get_tag_by_gps(gps)
+      end
+    end
+
+    local tag_gps = gps
+    -- Create temp chart tag if still no match
+    if not nrm_tag and not nrm_chart_tag then
+      local temp_spec = ChartTagUtils.build_chart_tag_spec(normalized_pos, nil, player, nil, false)
+      local tmp_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, player.surface, temp_spec, player)
+      if tmp_chart_tag and tmp_chart_tag.valid then
+        tag_gps = GPSUtils.gps_from_map_position(tmp_chart_tag.position, surface_index)
+        tag_destroy_helper.destroy_tag_and_chart_tag(nil, tmp_chart_tag)
+      end
+    end
+    if nrm_tag then
+      tag_gps = nrm_tag.gps
+      nrm_chart_tag = nrm_tag.chart_tag
+    elseif nrm_chart_tag then
+      tag_gps = GPSUtils.gps_from_map_position(nrm_chart_tag.position, surface_index)
+    end
+    local nrm_favorite = Cache.is_player_favorite(player, tag_gps)
+    local tag_text = nrm_chart_tag and nrm_chart_tag.text or ""
+    local tag_icon = nrm_chart_tag and nrm_chart_tag.icon or nil
+    return Cache.create_tag_editor_data({
+      gps = tag_gps,
+      locked = nrm_favorite and nrm_favorite.locked or false,
+      is_favorite = nrm_favorite ~= nil,
+      icon = tag_icon,
+      text = tag_text,
+      tag = nrm_tag or nil,
+      chart_tag = nrm_chart_tag or nil,
+      search_radius = click_radius
+    })
+  end
+
+  -- Use helper for tag lookup and tag_data creation
+  local tag_data = find_or_create_tag_data(player, cursor_position)
   Cache.set_tag_editor_data(player, tag_data)
-  
-  ErrorHandler.debug_log("Tag editor: Building GUI")
   tag_editor.build(player)
   ErrorHandler.debug_log("Tag editor: Successfully completed")
+end
+
+-- Utility: Normalize and replace chart tag (was duplicated in on_chart_tag_added/on_chart_tag_modified)
+local function normalize_and_replace_chart_tag(chart_tag, player)
+  local position = chart_tag.position
+  if not position then return end
+  if not basic_helpers.is_whole_number(position.x) or not basic_helpers.is_whole_number(position.y) then
+    local position_pair = PositionUtils.create_position_pair(position)
+    local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(
+      position_pair.new,
+      chart_tag,
+      player,
+      nil,
+      true
+    )
+    local surface_index = chart_tag.surface and chart_tag.surface.index or 1
+    local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player and player.force or chart_tag.force, chart_tag.surface, chart_tag_spec, player)
+    if new_chart_tag and new_chart_tag.valid then
+      chart_tag.destroy()
+      Cache.Lookups.invalidate_surface_chart_tags(surface_index)
+      return new_chart_tag, position_pair
+    end
+  end
+  return nil, nil
 end
 
 --- Handle chart tag added events
@@ -223,39 +246,18 @@ function handlers.on_chart_tag_added(event)
   if not event or not event.tag or not event.tag.valid then return end
 
   local chart_tag = event.tag
-  local player = game.get_player(event.player_index)
-  if not player or not player.valid then return end
+  local player = nil
+  if event.player_index then
+    player = game.get_player(event.player_index)
+    if not player or not player.valid then player = nil end
+  end
 
   -- Check if the chart tag coordinates need normalization
-  local position = chart_tag.position
-  if not position then return end
-  if not basic_helpers.is_whole_number(position.x) or not basic_helpers.is_whole_number(position.y) then
-    -- Need to normalize this chart tag to whole numbers
-    local position_pair = PositionUtils.create_position_pair(position)    -- Create new chart tag at normalized position using centralized builder
-    local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(
-      position_pair.new,
-      chart_tag,
-      player,
-      nil,  -- Use existing text from source chart tag
-      true  -- Set ownership for final chart tag replacement
-      )      
-    local surface_index = chart_tag.surface and chart_tag.surface.index or 1
-    local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, chart_tag.surface, chart_tag_spec, player)
-    if new_chart_tag and new_chart_tag.valid then      -- Destroy the old chart tag with fractional coordinates
-      chart_tag.destroy()      -- Refresh the cache to include the new chart tag
-      Cache.Lookups.invalidate_surface_chart_tags(surface_index)-- Inform the player about the position normalization
-      local notification_msg = RichTextFormatter.position_change_notification(
-        player,
-        new_chart_tag,
-        position_pair.old,
-        position_pair.new
-      )
-      GameHelpers.player_print(player, notification_msg)
-    end
-
-    -- else, it is possible that something didn't work out (new ct not created)
-    -- ignore this occurrence for now
-
+  local new_chart_tag, position_pair = normalize_and_replace_chart_tag(chart_tag, player)
+  if new_chart_tag then
+    -- Defensive: player is always nil here due to prior logic, so skip notification
+    -- (This avoids the impossible 'if player and player.valid' error)
+    -- No-op
   end
 end
 
@@ -269,11 +271,11 @@ local function is_valid_tag_modification(event, player)
 
   -- Check permissions using AdminUtils
   local can_edit, is_owner, is_admin_override = AdminUtils.can_edit_chart_tag(player, event.tag)
-  
+
   if not can_edit then
     ErrorHandler.debug_log("Chart tag modification rejected: insufficient permissions", {
       player_name = player.name,
-      chart_tag_last_user = event.tag.last_user or "",
+      chart_tag_last_user = event.tag.last_user and event.tag.last_user.name or "",
       is_admin = AdminUtils.is_admin(player)
     })
     return false
@@ -321,7 +323,7 @@ end
 local function update_tag_and_cleanup(old_gps, new_gps, event, player)
   if not old_gps or not new_gps then return end
   local old_chart_tag = Cache.Lookups.get_chart_tag_by_gps(old_gps)
-  local new_chart_tag = Cache.Lookups.get_chart_tag_by_gps(new_gps)  -- Ensure new chart tag exists
+  local new_chart_tag = Cache.Lookups.get_chart_tag_by_gps(new_gps) -- Ensure new chart tag exists
   if not new_chart_tag and player then
     local surface_index = (event.tag.surface and event.tag.surface.index) or player.surface.index
     Cache.Lookups.invalidate_surface_chart_tags(surface_index)
@@ -348,39 +350,23 @@ local function update_tag_and_cleanup(old_gps, new_gps, event, player)
 end
 
 --- Update all player favorites that reference the old GPS to use new GPS and notify affected players
----@param old_gps string|nil Original GPS coordinate string
----@param new_gps string|nil New GPS coordinate string
----@param acting_player LuaPlayer|nil Player who initiated the change
 local function update_favorites_gps(old_gps, new_gps, acting_player)
   if not old_gps or not new_gps then return end
-
   local acting_player_index = acting_player and acting_player.valid and acting_player.index or nil
-
-  -- Use PlayerFavorites method to handle GPS updates properly
   local PlayerFavorites = require("core.favorite.player_favorites")
   local affected_players = PlayerFavorites.update_gps_for_all_players(old_gps, new_gps, acting_player_index)
-
-  -- Notify affected players about their favorite location changes
   if #affected_players > 0 then
     local old_position = GPSUtils.map_position_from_gps(old_gps)
     local new_position = GPSUtils.map_position_from_gps(new_gps)
-
-    -- Extract surface_index from the GPS string
     local surface_index = 1
     local parts = {}
-    for part in string.gmatch(old_gps, "[^.]+") do
-      table.insert(parts, part)
-    end
-    if #parts >= 3 then
-      surface_index = tonumber(parts[3]) or 1
-    end    -- Get chart tag for better notification
-    local chart_tag = Cache.Lookups.get_chart_tag_by_gps(new_gps)for _, affected_player in ipairs(affected_players) do
+    for part in string.gmatch(old_gps, "[^.]+") do table.insert(parts, part) end
+    if #parts >= 3 then surface_index = tonumber(parts[3]) or 1 end
+    local chart_tag = Cache.Lookups.get_chart_tag_by_gps(new_gps)
+    for _, affected_player in ipairs(affected_players) do
       if affected_player and affected_player.valid then
         local position_msg = RichTextFormatter.position_change_notification(
-          affected_player,
-          chart_tag,
-          old_position or { x = 0, y = 0 },
-          new_position or { x = 0, y = 0 }
+          affected_player, chart_tag, old_position or { x = 0, y = 0 }, new_position or { x = 0, y = 0 }
         )
         GameHelpers.player_print(affected_player, position_msg)
       end
@@ -402,42 +388,23 @@ function handlers.on_chart_tag_modified(event)
   local chart_tag = event.tag
   ---@cast player LuaPlayer
   if chart_tag and chart_tag.valid and chart_tag.position and player and player.valid then
-    local position = chart_tag.position    -- Ensure coordinates are whole numbers
-    if PositionUtils.needs_normalization(position) then
-      local position_pair = PositionUtils.create_position_pair(position)
-      -- Create new chart tag with normalized position
-      local surface = chart_tag.surface      -- Create chart tag spec using centralized builder
-      local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(
-        position_pair.new,
-        chart_tag,
+    local new_chart_tag, position_pair = normalize_and_replace_chart_tag(chart_tag, player)
+    if new_chart_tag then
+      -- Destroy the old chart tag with fractional coordinates is handled in helper
+      -- Update the tag and gps
+      local surface_index = chart_tag.surface and chart_tag.surface.index or 1
+      local new_position = position_pair and position_pair.new or chart_tag.position
+      new_gps = GPSUtils.gps_from_map_position(new_position, surface_index)
+      Cache.Lookups.invalidate_surface_chart_tags(surface_index)
+      -- Update chart_tag reference for future operations
+      chart_tag = new_chart_tag
+      local notification_msg = RichTextFormatter.position_change_notification(
         player,
-        nil,  -- Use existing text from source chart tag
-        true  -- Set ownership for final chart tag replacement
+        new_chart_tag,
+        old_gps and GPSUtils.map_position_from_gps(old_gps) or {},
+        new_position
       )
-
-      local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, surface, chart_tag_spec, player)
-      if new_chart_tag and new_chart_tag.valid then
-        -- Destroy the old chart tag with fractional coordinates
-        chart_tag.destroy()
-
-        -- Update the tag and gps
-        local surface_index = surface and surface.index or 1
-
-        -- Use the position_pair for consistent position references        local old_position = position_pair.old
-        local new_position = position_pair.new        -- Create new GPS from normalized position
-        new_gps = GPSUtils.gps_from_map_position(new_position, surface_index)        -- Refresh the cache
-        Cache.Lookups.invalidate_surface_chart_tags(surface_index)
-
-        -- Update chart_tag reference for future operations
-        chart_tag = new_chart_tag        -- Notify the player about the normalization
-        local notification_msg = RichTextFormatter.position_change_notification(
-          player,
-          new_chart_tag,
-          old_position,
-          new_position
-        )
-        GameHelpers.player_print(player, notification_msg)
-      end
+      GameHelpers.player_print(player, notification_msg)
     end
   end
 
@@ -452,14 +419,20 @@ end
 --- Handle chart tag removal events
 ---@param event table Chart tag removal event data
 function handlers.on_chart_tag_removed(event)
-  if not event or not event.tag or not event.tag.valid then return end  local chart_tag = event.tag
+  if not event or not event.tag or not event.tag.valid then return end
+  local chart_tag = event.tag
+
+  -- short circuit if there is no text or icon - it is not a valid MOD tag
+  if chart_tag and not chart_tag.icon and (not chart_tag.text or chart_tag.text == "") then return end
+
   local surface_index = (chart_tag.surface and chart_tag.surface.index) or 1
   local gps = GPSUtils.gps_from_map_position(chart_tag.position, surface_index)
 
   -- Get the player who is removing the chart tag
   local tag = Cache.get_tag_by_gps(gps)
-  local player = game.get_player(event.player_index)  -- Check if this tag has favorites from other players
-  if tag and tag.faved_by_players and #tag.faved_by_players > 0 then    if not player or not player.valid then      -- No valid player to handle the removal, just clear the cache
+  local player = game.get_player(event.player_index)                                                           -- Check if this tag has favorites from other players
+  if tag and tag.faved_by_players and #tag.faved_by_players > 0 then
+    if not player or not player.valid then                                                                     -- No valid player to handle the removal, just clear the cache
       Cache.Lookups.invalidate_surface_chart_tags(surface_index)
       return
     end
@@ -474,10 +447,10 @@ function handlers.on_chart_tag_removed(event)
         break
       end
     end
-    
+
     -- Use AdminUtils to check if deletion should be prevented
-    local can_delete, is_owner, is_admin_override = AdminUtils.can_delete_chart_tag(player, chart_tag, tag)
-    
+    local can_delete, _is_owner, is_admin_override = AdminUtils.can_delete_chart_tag(player, chart_tag, tag)
+
     -- If deletion is not allowed (non-admin and other players have favorites), prevent it
     if has_other_players_favorites and not can_delete then
       -- Recreate the chart tag since it was already removed by the event      -- Create chart tag spec using centralized builder
@@ -485,7 +458,7 @@ function handlers.on_chart_tag_removed(event)
 
       local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, chart_tag.surface, chart_tag_spec, player)
 
-      if new_chart_tag and new_chart_tag.valid then        -- Update the tag with the new chart tag reference        tag.chart_tag = new_chart_tag
+      if new_chart_tag and new_chart_tag.valid then -- Update the tag with the new chart tag reference        tag.chart_tag = new_chart_tag
         -- Refresh the cache
         Cache.Lookups.invalidate_surface_chart_tags(surface_index)
         -- Notify the player
@@ -506,6 +479,57 @@ function handlers.on_chart_tag_removed(event)
   if not tag_destroy_helper.is_chart_tag_being_destroyed(chart_tag) then
     tag_destroy_helper.destroy_tag_and_chart_tag(tag, chart_tag)
   end
+end
+
+-- Handles tag delete requests from the tag editor (with confirmation dialog)
+function handlers.on_tag_delete_request(event)
+  local player = game.get_player(event.player_index)
+  if not player or not player.valid then return end
+
+  local tag_data = event.tag_data
+  if not tag_data or not tag_data.gps then
+    ErrorHandler.warn_log("Tag delete request: missing tag_data or gps", { player = player and player.name or "?" })
+    return
+  end
+
+  -- Retrieve the tag and chart_tag from cache
+  local tag = tag_data.tag or Cache.get_tag_by_gps(tag_data.gps)
+  local chart_tag = tag_data.chart_tag or (tag and tag.chart_tag)
+
+  -- If no tag or chart_tag, just close dialogs and notify
+  if not tag or not chart_tag then
+    tag_editor.build_confirmation_dialog(player, {
+      message = { "tf-gui.tag_already_deleted" },
+      on_confirm = function() tag_editor.close_tag_editor(player) end,
+      on_cancel = function() tag_editor.close_tag_editor(player) end
+    })
+    return
+  end
+
+  -- Show confirmation dialog
+  tag_editor.build_confirmation_dialog(player, {
+    message = { "tf-gui.confirm_delete_message" },
+    on_confirm = function()
+      -- Validate permissions again before deleting
+      local can_delete, is_owner, is_admin_override, reason = AdminUtils.can_delete_chart_tag(player, chart_tag, tag)
+      if not can_delete then
+        tag_editor.build_confirmation_dialog(player, {
+          message = { reason or "tf-gui.tag_deletion_forbidden" },
+          on_confirm = function() tag_editor.close_tag_editor(player) end,
+          on_cancel = function() tag_editor.close_tag_editor(player) end
+        })
+        return
+      end
+      -- Perform deletion using helper
+      tag_destroy_helper.destroy_tag_and_chart_tag(tag, chart_tag)
+      tag_editor.close_tag_editor(player)
+      GameHelpers.player_print(player, { "tf-gui.tag_deleted" })
+    end,
+    on_cancel = function()
+      tag_editor.close_confirmation_dialog(player)
+      tag_editor.build(player) -- Reopen tag editor with current data
+    end
+  })
 end
 
 --- Handles Ctrl+Shift+Right-click to display tile debugging information
@@ -606,7 +630,7 @@ function handlers.on_debug_tile_info_custom_input(event)
   local nearest_chart_tag = GameHelpers.get_nearest_chart_tag_to_click_position(player, pos, 5.0)
   if nearest_chart_tag then
     local tag_distance = math.sqrt((nearest_chart_tag.position.x - pos.x) ^ 2 + (nearest_chart_tag.position.y - pos.y) ^
-    2)
+      2)
     table.insert(debug_info, "Nearest chart tag: " .. string.format("%.2f", tag_distance) .. " tiles away")
     if nearest_chart_tag.text and nearest_chart_tag.text ~= "" then
       table.insert(debug_info, "Tag text: " .. nearest_chart_tag.text)

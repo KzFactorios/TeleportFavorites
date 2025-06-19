@@ -53,20 +53,19 @@ local function ensure_surface_cache(surface_index)
   if not surface_idx then
     error("Invalid surface index: " .. tostring(surface_index))
   end
-
   local cache = ensure_cache()
   cache.surfaces[surface_idx] = cache.surfaces[surface_idx] or {}
 
-  -- Only fetch chart tags if the cache is empty
-  if not cache.surfaces[surface_idx].chart_tags then
-    local surface = game.surfaces[surface_idx]
-    if surface then
-      cache.surfaces[surface_idx].chart_tags = game.forces["player"].find_chart_tags(surface) or {}
-    else
-      cache.surfaces[surface_idx].chart_tags = {}
-    end
-    cache.surfaces[surface_idx].chart_tags_mapped_by_gps = {}
+  -- Always fetch chart tags to ensure fresh data
+  local surface = game.surfaces[surface_idx]
+  if surface then
+    cache.surfaces[surface_idx].chart_tags = game.forces["player"].find_chart_tags(surface) or {}
+  else
+    cache.surfaces[surface_idx].chart_tags = {}
   end
+  
+  -- Always rebuild the GPS mapping
+  cache.surfaces[surface_idx].chart_tags_mapped_by_gps = {}
 
   -- Only rebuild the GPS map if it's empty and we have chart tags
   if not cache.surfaces[surface_idx].chart_tags_mapped_by_gps then
@@ -114,10 +113,11 @@ local function clear_surface_cache_chart_tags(surface_index)
     error("Invalid surface index: " .. tostring(surface_index))
   end
   local surface_idx = basic_helpers.normalize_index(surface_index)
-  local surface_cache = ensure_surface_cache(surface_idx)
-  surface_cache.chart_tags = nil  -- Set to nil to trigger refetch
-  surface_cache.chart_tags_mapped_by_gps = nil  -- Set to nil to trigger rebuild
-  return surface_cache
+  local cache = ensure_cache()
+  if cache.surfaces[surface_idx] then
+    cache.surfaces[surface_idx].chart_tags = nil  -- Set to nil to trigger refetch
+    cache.surfaces[surface_idx].chart_tags_mapped_by_gps = nil  -- Set to nil to trigger rebuild
+  end
 end
 
 --- Ensure the surfaces cache exists and initializes it if not.
@@ -136,13 +136,20 @@ end
 local function get_chart_tag_by_gps(gps)
   if not gps or gps == "" then return nil end
   local surface_index = GPSUtils.get_surface_index_from_gps(gps)
+  local surface = game.surfaces[surface_index]
+  if not surface then return nil end
+
   local surface_cache = ensure_surface_cache(surface_index)
   if not surface_cache then return nil end
   local match_chart_tag = surface_cache.chart_tags_mapped_by_gps[gps] or nil
-  if (match_chart_tag and not match_chart_tag.valid) or
-      (match_chart_tag and match_chart_tag.surface and not PositionUtils.is_walkable_position(match_chart_tag.surface, match_chart_tag.position)) then
+  if (match_chart_tag and not match_chart_tag.valid) then
     match_chart_tag = nil
   end
+  
+  if not PositionUtils.is_walkable_position(surface, match_chart_tag.position) then
+    match_chart_tag = nil
+  end
+
   return match_chart_tag
 end
 

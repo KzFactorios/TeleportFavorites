@@ -22,7 +22,7 @@ The mod creates chart tags using the standard Factorio API:
 -- From ChartTagUtils.build_chart_tag_spec()
 local spec = {
   position = position,
-  text = text or "Tag",
+  text = text or "",
   last_user = player_name,
   icon = source_chart_tag.icon  -- Standard SignalID format
 }

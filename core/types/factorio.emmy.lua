@@ -515,7 +515,7 @@
 ---@field create_entity fun(self: LuaSurface, spec: table): LuaEntity
 ---@field find_entities fun(self: LuaSurface, area?: BoundingBox): LuaEntity[]
 ---@field find_entity fun(self: LuaSurface, name: string, position: MapPosition): LuaEntity?
----@field get_tile fun(self: LuaSurface, x: number, y: number): LuaTile
+---@field get_tile fun(x: number, y: number): LuaTile
 ---@field set_tiles fun(self: LuaSurface, tiles: table)
 ---@field request_to_generate_chunks fun(self: LuaSurface, position: MapPosition, radius: uint)
 ---@field get_random_chunk_position fun(self: LuaSurface): ChunkPosition

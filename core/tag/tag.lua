@@ -85,7 +85,7 @@ function Tag:is_owner(player)
   local is_owner = self.chart_tag.last_user == player.name
   ErrorHandler.debug_log("Ownership check completed", {
     player_name = player.name,
-    last_user = self.chart_tag.last_user,
+    last_user = self.chart_tag.last_user and self.chart_tag.last_user.name or "",
     is_owner = is_owner
   })
 

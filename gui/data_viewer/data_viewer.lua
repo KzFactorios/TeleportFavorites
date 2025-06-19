@@ -166,54 +166,25 @@ local function get_lookup_data()
   -- Access the global Lookups cache directly
   local lookups_cache = _G["Lookups"] or {}
 
-  -- If the cache is empty or has no surfaces, try to populate it with current data
+  -- If the cache is empty or has no surfaces, try to populate it by accessing each surface
   if not lookups_cache.surfaces or next(lookups_cache.surfaces) == nil then
-    -- Try to populate with data from all available surfaces
-    local populated_data = { surfaces = {} }
-
+    -- Trigger cache population by calling get_chart_tag_cache for each surface
+    -- This will populate the global _G["Lookups"] cache via ensure_surface_cache()
     for _, surface in pairs(game.surfaces) do
       if surface and surface.valid then
-        local chart_tags = Cache.Lookups.get_chart_tag_cache(surface.index)
-        if chart_tags and #chart_tags > 0 then
-          populated_data.surfaces[surface.index] = {
-            surface_name = surface.name,
-            chart_tag_count = #chart_tags,
-            chart_tags = chart_tags
-          }
-        end
+        Cache.Lookups.get_chart_tag_cache(surface.index)
       end
     end
-    -- If we still have no data, show a helpful message with diagnostic info
-    if next(populated_data.surfaces) == nil then
-      populated_data.info = "No chart tags found on any surface"
-      populated_data.cache_status = "empty_or_uninitialized"
-      populated_data.total_surfaces_checked = #game.surfaces or 0
-
-      -- Add details about each surface checked
-      populated_data.surface_details = {}
-      for surface_index, surface in pairs(game.surfaces) do
-        populated_data.surface_details[surface_index] = {
-          name = surface.name,
-          valid = surface.valid,
-          chart_tag_count = 0
-        }
-      end
-    else
-      -- Add cache metadata when we do have data
-      populated_data.cache_status = "populated_from_live_data"
-      populated_data.total_surfaces_with_tags = 0
-      for _ in pairs(populated_data.surfaces) do
-        populated_data.total_surfaces_with_tags = populated_data.total_surfaces_with_tags + 1
-      end
-    end
-
-    return populated_data
+    
+    -- Refresh the lookups_cache reference after population
+    lookups_cache = _G["Lookups"] or {}
   end
+
   -- Return the actual lookups data structure for clarity in Data Viewer
   -- Add some metadata about the cache state
   local enriched_cache = {
     cache_data = lookups_cache,
-    cache_status = "using_global_cache",
+    cache_status = lookups_cache.surfaces and next(lookups_cache.surfaces) and "populated_cache" or "empty_cache",
     surfaces_count = 0
   }
 
@@ -232,6 +203,16 @@ local function rowline_parser(key, value, indent, max_line_len)
   indent = indent or 0
   max_line_len = max_line_len or 80
   local prefix = string.rep(INDENT_STR, indent)
+  
+  -- Check if this is userdata that we can serialize
+  if type(value) == "userdata" then
+    local serialized = serialize_chart_tag(value)
+    if serialized ~= value then
+      -- Successfully serialized, treat as table
+      value = serialized
+    end
+  end
+  
   if type(value) ~= "table" then
     local valstr = tostring(value)
     if type(value) ~= "string" and type(value) ~= "number" then valstr = valstr .. " [" .. type(value) .. "]" end
@@ -249,6 +230,14 @@ local function rowline_parser(key, value, indent, max_line_len)
   local all_scalar = true
   -- Process each table entry to build compact representation
   local function process_table_entry(v, k)
+    -- Also check for userdata in table entries
+    if type(v) == "userdata" then
+      local serialized = serialize_chart_tag(v)
+      if serialized ~= v then
+        v = serialized
+      end
+    end
+    
     if type(v) == "table" or type(v) == "function" then
       all_scalar = false
       -- Stop processing
@@ -277,6 +266,46 @@ local function rowline_parser(key, value, indent, max_line_len)
   return prefix .. tostring(key) .. " = {", false
 end
 
+-- Serialize LuaCustomChartTag userdata into a readable table format
+local function serialize_chart_tag(chart_tag)
+  if not chart_tag or type(chart_tag) ~= "userdata" then
+    return chart_tag
+  end
+  
+  -- Check if this is a LuaCustomChartTag by checking for known methods
+  local success, result = pcall(function()
+    if chart_tag.valid then      -- Convert all properties to basic types to avoid nested userdata
+      local chart_tag_text = tostring(chart_tag.text or "")
+      local serialized = {
+        position = chart_tag.position and { x = chart_tag.position.x, y = chart_tag.position.y } or {},
+        text = chart_tag_text == "" and "[No Text]" or chart_tag_text,
+        icon = chart_tag.icon and {
+          name = tostring(chart_tag.icon.name or ""),
+          type = tostring(chart_tag.icon.type or "")
+        } or {},
+        last_user = chart_tag.last_user and chart_tag.last_user.name or "",
+        surface_name = chart_tag.surface and tostring(chart_tag.surface.name) or "unknown",
+        surface_index = chart_tag.surface and tonumber(chart_tag.surface.index) or 0,
+        valid = chart_tag.valid,
+        object_name = "LuaCustomChartTag"
+      }
+      return serialized
+    else
+      return {
+        valid = false,
+        object_name = "LuaCustomChartTag (invalid)"
+      }
+    end
+  end)
+  
+  if success then
+    return result
+  else
+    -- If not a chart tag, return original value
+    return chart_tag
+  end
+end
+
 -- Render the data as a compact, hierarchical, property-only table with alternating row colors, indentation, and line wrapping
 local function render_compact_data_rows(parent, data, indent, font_size, row_index, visited, force_white)
   indent = indent or 0
@@ -295,6 +324,16 @@ local function render_compact_data_rows(parent, data, indent, font_size, row_ind
     set_label_font(lbl, font_size)
     return lbl
   end
+  
+  -- Check if this is userdata that we can serialize
+  if type(data) == "userdata" then
+    local serialized = serialize_chart_tag(data)
+    if serialized ~= data then
+      -- Successfully serialized, process as table
+      data = serialized
+    end
+  end
+  
   if type(data) ~= "table" then
     local valstr = tostring(data) .. " [" .. type(data) .. "]"
     if #valstr > MAX_LINE_LEN then
@@ -315,10 +354,17 @@ local function render_compact_data_rows(parent, data, indent, font_size, row_ind
     return row_index + 1
   end
   visited[data] = true
-
   -- Process each data entry with a row processor function
   local function process_data_entry(v, k)
     if not is_method(v) then
+      -- Handle userdata serialization before processing
+      if type(v) == "userdata" then
+        local serialized = serialize_chart_tag(v)
+        if serialized ~= v then
+          v = serialized
+        end
+      end
+      
       local line, compact = rowline_parser(k, v, indent, MAX_LINE_LEN)
       if compact == true then
         add_row(parent, line, font_size, row_index)
@@ -396,12 +442,24 @@ function data_viewer.build(player, parent, state)
   })
 
   -- REMOVE DEBUG LABEL: Remove debug_data_str label
-  -- data_table.add{type="label", caption=debug_data_str, style="data_viewer_row_even_label"}
-  -- Patch: If data is nil or empty, always show top_key = { } and closing brace, never [NO DATA TO DISPLAY]
+  -- data_table.add{type="label", caption=debug_data_str, style="data_viewer_row_even_label"}  -- Patch: If data is nil or empty, always show top_key = { } and closing brace, never [NO DATA TO DISPLAY]
+  -- Add debug logging to understand why data might appear empty
+  ErrorHandler.debug_log("Data viewer data check", {
+    data_is_nil = data == nil,
+    data_type = type(data),
+    data_has_next = data and next(data) ~= nil,
+    top_key = top_key
+  })
+  
   if data == nil or (type(data) == "table" and next(data) == nil) then
     if not top_key then
       top_key = "player_data"
     end
+
+    ErrorHandler.debug_log("Data viewer showing empty data structure", {
+      top_key = top_key,
+      reason = data == nil and "data_is_nil" or "table_is_empty"
+    })
 
     local style = "data_viewer_row_odd_label"
     local lbl = GuiBase.create_label(data_table, "data_top_key_empty", top_key .. " = {", style)

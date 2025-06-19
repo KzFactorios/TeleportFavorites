@@ -129,13 +129,12 @@ function PositionUtils.is_space_tile(surface, position)
   return false
 end
 
---- Check if a position is walkable (comprehensive validation)
+--- Check if a position is walkable (same result as is_valid_tag_position, but does not require a player)
 --- Consolidates logic from PositionUtils.is_walkable_position and other implementations
 ---@param surface LuaSurface
 ---@param position MapPosition
----@param player LuaPlayer? Optional player context for space platform detection
 ---@return boolean is_walkable
-function PositionUtils.is_walkable_position(surface, position, player)
+function PositionUtils.is_walkable_position(surface, position)
   if not surface or not position then return false end
   
   -- Get the tile at the position
@@ -148,15 +147,14 @@ function PositionUtils.is_walkable_position(surface, position, player)
   end
     -- Space tile validation with space platform context
   if PositionUtils.is_space_tile(surface, position) then
-    -- If player is provided and is on a space platform, space tiles are walkable
-    if player and PositionUtils.is_on_space_platform(player) then
-      return true
-    end
-    
     -- For non-space platform surfaces, space tiles are not walkable
     return false
   end
-  
+
+  -- If surface is provided and is on a space platform, space tiles are not allowed to be tagged
+  if PositionUtils.is_on_space_platform(surface) then
+    return false
+  end
   -- Use simpler walkability check based on tile properties
   -- If not water or space, consider it walkable
   return true
@@ -178,7 +176,7 @@ function PositionUtils.find_nearest_walkable_position(surface, center_position, 
   
   max_radius = max_radius or 20
     -- Check the original position first - might already be valid
-  if PositionUtils.is_walkable_position(surface, center_position, player) then
+  if PositionUtils.is_walkable_position(surface, center_position) then
     return center_position
   end
   
@@ -214,7 +212,7 @@ function PositionUtils.find_nearest_walkable_position(surface, center_position, 
         
         local check_pos = {x = x, y = y}
           -- Check if this position is walkable
-        if PositionUtils.is_walkable_position(surface, check_pos, player) then
+        if PositionUtils.is_walkable_position(surface, check_pos) then
           return check_pos
         end
       end
@@ -249,7 +247,7 @@ function PositionUtils.find_valid_position_in_box(surface, center_position, tole
   -- Normalize the center position first
   local normalized_pos = PositionUtils.normalize_position(center_position)
     -- Check if normalized position is already valid
-  if PositionUtils.is_walkable_position(surface, normalized_pos, player) then
+  if PositionUtils.is_walkable_position(surface, normalized_pos) then
     return normalized_pos
   end
   
@@ -267,11 +265,11 @@ function PositionUtils.find_valid_position_in_box(surface, center_position, tole
   
   -- Try Factorio's pathfinding using bounding box method
   local pathfinding_pos = surface:find_non_colliding_position_in_box("character", bounding_box, 1.0)
-    if pathfinding_pos and PositionUtils.is_walkable_position(surface, pathfinding_pos, player) then
+    if pathfinding_pos and PositionUtils.is_walkable_position(surface, pathfinding_pos) then
     -- Normalize the pathfinding result and verify it's still valid
     local normalized_path_pos = PositionUtils.normalize_position(pathfinding_pos)
     
-    if PositionUtils.is_walkable_position(surface, normalized_path_pos, player) then
+    if PositionUtils.is_walkable_position(surface, normalized_path_pos) then
       return normalized_path_pos
     end
   end
@@ -338,7 +336,7 @@ function PositionUtils.is_valid_tag_position(player, map_position, skip_notifica
   end
     -- Space tile validation with space platform context
   if PositionUtils.is_space_tile(player.surface, map_position) then
-    if PositionUtils.is_on_space_platform(player) then
+    if PositionUtils.is_on_space_platform(player.surface) then
       -- Space tiles are valid on space platforms
       return true
     else      -- Space tiles are invalid on regular surfaces
@@ -468,11 +466,11 @@ end
 
 --- Check if a player is currently on a space platform
 --- Used for space tile validation - space tiles are walkable on space platforms
----@param player LuaPlayer Player to check
+---@param surface LuaSurface Player to check
 ---@return boolean is_on_space_platform
-function PositionUtils.is_on_space_platform(player)
-  if not player or not player.surface or not player.surface.name then return false end
-  local name = player.surface.name:lower()
+function PositionUtils.is_on_space_platform(surface)
+  if not surface then return false end
+  local name = surface.name:lower()
   return name:find("space") ~= nil or name == "space-platform"
 end
 
