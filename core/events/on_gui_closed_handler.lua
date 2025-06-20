@@ -57,12 +57,20 @@ local function on_gui_closed(event)
   local player = game.get_player(event.player_index)
   if not player or not player.valid then return end
   
-  -- Check if the closed element corresponds to the tag editor
-  -- Note: We check the specific GUI frame rather than relying on event.element
-  -- because the event.element might be a child component, not the main frame
+  -- If the confirmation dialog is open, close it and do NOT close the tag editor
+  local confirm_dialog = GuiUtils.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
+  if confirm_dialog and confirm_dialog.valid then
+    confirm_dialog.destroy()
+    -- Restore modal focus to the tag editor
+    local tag_editor_frame = GuiUtils.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+    if tag_editor_frame and tag_editor_frame.valid then
+      player.opened = tag_editor_frame
+    end
+    return
+  end
+  -- Otherwise, close the tag editor if present
   local tag_editor_frame = GuiUtils.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
   if tag_editor_frame and tag_editor_frame.valid and tag_editor_frame.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
-    -- Direct close since command pattern isn't available
     control_tag_editor.close_tag_editor(player)
     return
   end

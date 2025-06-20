@@ -226,37 +226,33 @@ gui_style.tf_confirm_dialog_frame = {
   parent = "inside_shallow_frame_with_padding",
   horizontally_stretchable = "on",
   vertically_stretchable = "on",
+  horizontal_align = "center",
   minimal_width = 360,
-  maximal_width = 480,
+  maximal_width = 360,
   top_padding = 16,
-  right_padding = 16,
+  right_padding = 32,
   bottom_padding = 16,
-  left_padding = 16,
+  left_padding = 32,
 }
 
--- Confirm button style (large, green, right-aligned)
 gui_style.tf_dlg_confirm_title = {
   type = "label_style",
-  font = "default-bold",
-  maximal_width = 300,
-  single_line = false
+  parent = "frame_title",
+  font = "heading-1", -- Use idiomatic Factorio dialog title font
+  horizontally_stretchable = "on",
+  horizontal_align = "center",
+  maximal_width = 360,
+  single_line = false,
+  width = 0
 }
 
--- Table style for confirm/cancel button row in confirmation dialog
--- Ensures buttons are left/right aligned and not stretched
-gui_style.tf_confirm_dialog_btn_table = {
-  type = "table_style",
-  parent = "table",
+gui_style.tf_confirm_dialog_btn_row = {
+  type = "horizontal_flow_style",
   horizontally_stretchable = "on",
-  vertically_stretchable = "off",
-  horizontal_align = "center",
-  horizontal_spacing = 32,
-  width = 300,
-  top_margin = 16,
-  bottom_margin = 16,
+  horizontal_spacing = 0,
+  top_margin = 32,
   left_margin = 16,
   right_margin = 16,
-  -- No forced height/width, let parent frame control sizing
 }
 
 -- Confirm button style (large, green, right-aligned)

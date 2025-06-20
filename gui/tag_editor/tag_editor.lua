@@ -134,12 +134,15 @@ end
 -- Confirmation dialog for destructive actions (e.g., tag deletion)
 function tag_editor.build_confirmation_dialog(player, opts)
   -- opts: { message }
+  -- Present the confirm dialog as a modal overlay, do NOT close the tag editor dialog
   local frame = player.gui.screen.add {
     type = "frame",
     name = Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM,
     caption = "",
     direction = "vertical",
-    style = "tf_confirm_dialog_frame"
+    style = "tf_confirm_dialog_frame",
+    force_auto_center = true, -- idiomatic for modal overlays
+    modal = true -- idiomatic: blocks interaction with other GUIs
   }
   frame.auto_center = true
   frame.visible = true
@@ -154,48 +157,49 @@ function tag_editor.build_confirmation_dialog(player, opts)
   else
     message = { "tf-gui.confirm_delete_message" }
   end
+  GuiBase.create_label(frame, "tag_editor_tf_confirm_dialog_label", message, "tf_dlg_confirm_title")
 
-
-
--- this is where it fails
-  -- i think it is referencing the wrong parent when trying to add the label
-
-
-
-
-
-
-
-
-  GuiBase.create_label(frame, "tag_editor_tf_confirm_dialog_label", message, "tf_confirm_dialog_title")
-
-  -- Create a table for the buttons, full width
+  -- Button row: idiomatic horizontal flow with left/right flows for true alignment
   local btn_row = frame.add{
-    type = "table",
-    name = "tag_editor_tf_confirm_dialog_btn_table",
-    column_count = 2,
-    style = "tf_confirm_dialog_btn_table"
+    type = "flow",
+    name = "tag_editor_tf_confirm_dialog_btn_row",
+    direction = "horizontal",
+    style = "tf_confirm_dialog_btn_row"
   }
+  btn_row.style.horizontally_stretchable = true
 
-  -- Left: Cancel button (left cell)
-  local cancel_btn = btn_row.add{
+  -- Left-aligned flow for Cancel
+  local left_flow = btn_row.add{
+    type = "flow",
+    name = "tag_editor_tf_confirm_dialog_left_flow",
+    direction = "horizontal"
+  }
+  left_flow.style.horizontally_stretchable = false
+
+  -- Right-aligned flow for Confirm
+  local right_flow = btn_row.add{
+    type = "flow",
+    name = "tag_editor_tf_confirm_dialog_right_flow",
+    direction = "horizontal"
+  }
+  right_flow.style.horizontally_stretchable = true
+  right_flow.style.horizontal_align = "right"
+
+  local cancel_btn = left_flow.add{
     type = "button",
     name = "tf_confirm_dialog_cancel_btn",
     caption = {"tf-gui.confirm_delete_cancel"},
     style = "back_button"
   }
   cancel_btn.tags = { action = "cancel_delete" }
-  -- All button styling is now in the style prototype
 
-  -- Right: Confirm button (right cell)
-  local confirm_btn = btn_row.add{
+  local confirm_btn = right_flow.add{
     type = "button",
     name = "tf_confirm_dialog_confirm_btn",
     caption = {"tf-gui.confirm_delete_confirm"},
     style = "tf_dlg_confirm_button"
   }
   confirm_btn.tags = { action = "confirm_delete" }
-  -- All button styling is now in the style prototype
   confirm_btn.visible = true
 
   return frame, confirm_btn, cancel_btn
@@ -238,6 +242,8 @@ local function build_teleport_favorite_row(parent, tag_data)
   local fave_style = is_favorite and "slot_orange_favorite_on" or "slot_orange_favorite_off"
   local favorite_btn = GuiBase.create_icon_button(row, "tag_editor_is_favorite_button", star_state, { "tf-gui.favorite_tooltip" }, fave_style)
   local teleport_btn = GuiBase.create_icon_button(row, "tag_editor_teleport_button", "", { "tf-gui.teleport_tooltip" }, "tf_teleport_button")
+---@diagnostic disable-next-line: assign-type-mismatch
+  teleport_btn.caption = { "tf-gui.teleport_to", tag_data.gps }
   return row, favorite_btn, teleport_btn
 end
 

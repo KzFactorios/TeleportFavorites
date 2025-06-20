@@ -117,7 +117,7 @@ local function build_tabs_row(parent, active_tab)
       style = "tf_data_viewer_tab_button_active"
     end -- Create localized string for button caption (proper format)
     ---@diagnostic disable-next-line: param-type-mismatch
-    local btn = GuiBase.create_button(tabs_flow, element_name, { caption_key }, style)
+    local btn = GuiBase.create_button(tabs_flow, element_name, caption_key, style)
     btn.enabled = not is_active
     return btn
   end
@@ -199,7 +199,7 @@ end
 
 -- Helper to parse a table row into a compact string, combining simple tables onto one line
 local function rowline_parser(key, value, indent, max_line_len)
-  local INDENT_STR = "  "
+  local INDENT_STR = "    " -- Increased indent to 4 spaces
   indent = indent or 0
   max_line_len = max_line_len or 80
   local prefix = string.rep(INDENT_STR, indent)

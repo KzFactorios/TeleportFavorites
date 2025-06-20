@@ -18,6 +18,7 @@ local ErrorHandler = require("core.utils.error_handler")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
 local ValidationUtils = require("core.utils.validation_utils")
 local AdminUtils = require("core.utils.admin_utils")
+local SettingsAccess = require("core.utils.settings_access")
 
 -- Observer Pattern Integration
 local GuiObserver = require("core.pattern.gui_observer")
@@ -462,7 +463,12 @@ local function handle_delete_confirm(player)
   close_tag_editor(player)
   -- Reset delete mode
   Cache.reset_tag_editor_delete_mode(player)
-  GameHelpers.player_print(player, { "tf-gui.tag_deleted" })
+
+  -- get the player settings value for teleport messages on and make the next line conitional
+  local player_settings = SettingsAccess.getPlayerSettings(player)
+  if player_settings.destination_msg_on then
+    GameHelpers.player_print(player, { "tf-gui.tag_deleted" })
+  end
 end
 
 local function handle_delete_cancel(player)
@@ -491,18 +497,13 @@ local function handle_delete_btn(player, tag_data)
   local frame, confirm_btn, cancel_btn = tag_editor.build_confirmation_dialog(player, {
     message = { "tf-gui.confirm_delete_message" }
   })
-  player.opened = frame
+  
+  -- DO NOT set player.opened to the confirm dialog!
+  -- Keep player.opened as the tag editor frame so it remains modal and open
+  player.opened = GuiUtils.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
   ErrorHandler.debug_log("Confirmation dialog opened successfully", {
     player_name = player.name,
     frame_lua_type = type(frame)
-  })
-
-  -- Notify observers that a confirmation dialog was opened
-  GuiEventBus.notify("dialog_opened", {
-    player = player,
-    type = "confirmation_dialog",
-    dialog_type = "tag_delete_confirm",
-    frame = frame
   })
 end
 

@@ -125,7 +125,7 @@ gui_style.data_viewer_row_odd_label = {
   margin = 0,
   font_color = { r = 1, g = 1, b = 1 }, -- white text for odd rows
   single_line = false,
-  minimal_height = 17                   -- Base line height for 12pt font (12 * 1.25 + 2 = 17)
+  minimal_height = 14                   -- Reduced line height for tighter rows
 }
 
 gui_style.data_viewer_row_even_label = {
@@ -138,7 +138,7 @@ gui_style.data_viewer_row_even_label = {
   font = "default",
   font_color = { r = 0.98, g = 0.66, b = 0.22, a = .5 }, -- slightly dimmer text for even rows
   single_line = false,
-  minimal_height = 17                   -- Base line height for 12pt font (12 * 1.25 + 2 = 17)
+  minimal_height = 14                   -- Reduced line height for tighter rows
 }
 
 return true
