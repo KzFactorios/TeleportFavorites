@@ -54,6 +54,12 @@ local function notify_observers_safe(event_type, data)
   end
 end
 
+-- Use Cache.sanitize_for_storage to sanitize tags for favorites
+local function sanitize_tag_for_favorite(tag)
+  -- Exclude 'chart_tag' and all userdata fields
+  return Cache.sanitize_for_storage(tag, { chart_tag = true })
+end
+
 --- PlayerFavorites class for managing a player's favorite collection
 --- @class PlayerFavorites
 --- @field player LuaPlayer
@@ -227,8 +233,11 @@ function PlayerFavorites:add_favorite(gps)
   -- Get or create tag
   local existing_tag = Cache.get_tag_by_gps(gps)
 
+  -- Always use nil if no valid tag found
+  local tag_for_favorite = existing_tag and sanitize_tag_for_favorite(existing_tag) or nil
+
   -- Create new favorite
-  local new_favorite = FavoriteUtils.new(gps, false, existing_tag)
+  local new_favorite = FavoriteUtils.new(gps, false, tag_for_favorite)
   
   ErrorHandler.debug_log("Created new favorite", {
     player = (self.player and self.player.valid and self.player.name) or "unknown",

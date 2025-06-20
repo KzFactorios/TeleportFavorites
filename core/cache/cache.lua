@@ -395,4 +395,20 @@ function Cache.reset_tag_editor_delete_mode(player)
   Cache.set_tag_editor_data(player, tag_data)
 end
 
+--- Generic sanitizer for objects to be stored in persistent storage
+---@param obj table
+---@param exclude_fields table<string, boolean>|nil -- set of field names to exclude
+---@return table sanitized_obj
+function Cache.sanitize_for_storage(obj, exclude_fields)
+  if type(obj) ~= "table" then return {} end
+  local sanitized = {}
+  exclude_fields = exclude_fields or {}
+  for k, v in pairs(obj) do
+    if not exclude_fields[k] and type(v) ~= "userdata" then
+      sanitized[k] = v
+    end
+  end
+  return sanitized
+end
+
 return Cache

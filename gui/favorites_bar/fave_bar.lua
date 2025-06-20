@@ -42,6 +42,7 @@ local GuiBase = require("gui.gui_base")
 local Constants = require("constants")
 local ErrorHandler = require("core.utils.error_handler")
 local FavoriteUtils = require("core.favorite.favorite")
+local FavoriteRuntimeUtils = require("core.utils.favorite_utils")
 local GuiUtils = require("core.utils.gui_utils")
 local Settings = require("core.utils.settings_access")
 local Cache = require("core.cache.cache")
@@ -160,13 +161,16 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
   -- Create slot buttons for all slots (both blank and non-blank)
   for i = 1, max_slots do
     local fav = pfaves[i]
+    -- Rehydrate favorite (tag and chart_tag) from GPS using runtime utils
+    fav = FavoriteRuntimeUtils.rehydrate_favorite(fav)
+    ---@cast fav Favorite
     local icon = nil
     local tooltip = { "tf-gui.favorite_slot_empty" }
-    local style = "tf_slot_button_smallfont"    -- Determine if this is a valid, non-blank favorite
+    local style = "tf_slot_button_smallfont"
     if fav and not FavoriteUtils.is_blank_favorite(fav) then
       -- Non-blank favorite - show icon and full tooltip
-      if fav.icon and fav.icon ~= "" then
-        icon = fav.icon
+      if fav.tag and fav.tag.chart_tag and fav.tag.chart_tag.icon and fav.tag.chart_tag.icon.name and fav.tag.chart_tag.icon.name ~= "" then
+        icon = fav.tag.chart_tag.icon.name
       else
         -- Use PIN as default icon for non-blank favorites
         icon = Enum.SpriteEnum.PIN
@@ -183,10 +187,8 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
     
     local btn = GuiUtils.create_slot_button(parent, "fave_bar_slot_" .. i, icon or "", tooltip, { style = style })
     if btn and btn.valid then
-      -- Use diagnostic disable for LocalisedString assignment
       ---@diagnostic disable-next-line: assign-type-mismatch
       btn.caption = tostring(i)
-      -- All alignment, font, and padding must be set in the style prototype, not at runtime
     end
   end
   return parent

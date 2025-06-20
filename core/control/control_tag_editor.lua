@@ -258,6 +258,10 @@ local function handle_confirm_btn(player, element, tag_data)
   tag_data.tag = refreshed_tag
   tags[tag.gps] = refreshed_tag
 
+  -- Ensure tag is written to persistent storage (sanitized)
+  local sanitized_tag = Cache.sanitize_for_storage(refreshed_tag)
+  tags[tag.gps] = sanitized_tag
+
   -- Ensure tag_data.tag.chart_tag is the latest refreshed chart tag
   if tag_data.tag and tag_data.chart_tag and tag_data.tag.chart_tag ~= tag_data.chart_tag then
     tag_data.tag.chart_tag = tag_data.chart_tag
@@ -265,10 +269,17 @@ local function handle_confirm_btn(player, element, tag_data)
   end
 
   -- Handle favorite operations only on confirm
-  local favorite_success = handle_favorite_operations(player, tag, is_favorite)
-  if not favorite_success then
-    -- If favorite operation failed, don't continue with tag saving
-    return
+  if is_favorite then
+    -- Check for available slot before proceeding
+    local player_favorites = PlayerFavorites.new(player)
+    local _, error_msg = player_favorites:add_favorite(tag.gps)
+    if error_msg then
+      return show_tag_editor_error(player, tag_data, LocaleUtils.get_error_string(player, "favorite_slots_full") or error_msg)
+    end
+  else
+    -- Remove favorite if it exists
+    local player_favorites = PlayerFavorites.new(player)
+    player_favorites:remove_favorite(tag.gps)
   end
 
   -- Notify observers of tag creation or modification
@@ -282,6 +293,11 @@ local function handle_confirm_btn(player, element, tag_data)
   })
 
   close_tag_editor(player)
+  -- Always refresh the favorites bar after confirm
+  local ok, fave_bar = pcall(require, "gui.favorites_bar.fave_bar")
+  if ok and fave_bar and type(fave_bar.build) == "function" then
+    fave_bar.build(player)
+  end
   GameHelpers.player_print(player, { "tf-command.tag_editor_confirmed" })
 end
 

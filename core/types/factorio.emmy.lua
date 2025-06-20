@@ -377,7 +377,7 @@
 ---@field begin_crafting fun(self: LuaPlayer, params: {count: uint, recipe: string|LuaRecipe, silent?: boolean}): uint
 ---@field cancel_crafting fun(self: LuaPlayer, index: uint): boolean
 ---@field can_insert fun(self: LuaPlayer, item: {name: string, count: uint}): boolean
----@field clear_cursor fun(self: LuaPlayer)
+---@field clear_cursor fun()
 ---@field clear_items_inside fun(self: LuaPlayer)
 ---@field clear_personal_logistics fun(self: LuaPlayer)
 ---@field clear_personal_trash fun(self: LuaPlayer)

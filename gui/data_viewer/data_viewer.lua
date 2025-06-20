@@ -115,13 +115,14 @@ local function build_tabs_row(parent, active_tab)
     local style = (index > 1) and "tf_data_viewer_tab_button_margin" or "tf_data_viewer_tab_button"
     if is_active then
       style = "tf_data_viewer_tab_button_active"
-    end -- Create localized string for button caption (proper format)
-    ---@diagnostic disable-next-line: param-type-mismatch
-    local btn = GuiBase.create_button(tabs_flow, element_name, caption_key, style)
+    end
+    -- Pass the localization key as a LocalisedString table for correct localization
+    ---@diagnostic disable-next-line: assign-type-mismatch
+    local btn = GuiBase.create_button(tabs_flow, element_name, {caption_key}, style)
     btn.enabled = not is_active
     return btn
   end
-
+  
   -- Process each tab definition with the creation function
   for i, def in ipairs(tab_defs) do
     create_tab_button(def, i)
@@ -157,44 +158,6 @@ local function build_tabs_row(parent, active_tab)
     refresh_sprite = refresh_btn and refresh_btn.sprite
   })
   return tabs_flow
-end
-
-local function get_lookup_data()
-  -- Initialize Cache first to ensure Lookups is available
-  Cache.init()
-
-  -- Access the global Lookups cache directly
-  local lookups_cache = _G["Lookups"] or {}
-
-  -- If the cache is empty or has no surfaces, try to populate it by accessing each surface
-  if not lookups_cache.surfaces or next(lookups_cache.surfaces) == nil then
-    -- Trigger cache population by calling get_chart_tag_cache for each surface
-    -- This will populate the global _G["Lookups"] cache via ensure_surface_cache()
-    for _, surface in pairs(game.surfaces) do
-      if surface and surface.valid then
-        Cache.Lookups.get_chart_tag_cache(surface.index)
-      end
-    end
-    
-    -- Refresh the lookups_cache reference after population
-    lookups_cache = _G["Lookups"] or {}
-  end
-
-  -- Return the actual lookups data structure for clarity in Data Viewer
-  -- Add some metadata about the cache state
-  local enriched_cache = {
-    cache_data = lookups_cache,
-    cache_status = lookups_cache.surfaces and next(lookups_cache.surfaces) and "populated_cache" or "empty_cache",
-    surfaces_count = 0
-  }
-
-  if lookups_cache.surfaces then
-    for _ in pairs(lookups_cache.surfaces) do
-      enriched_cache.surfaces_count = enriched_cache.surfaces_count + 1
-    end
-  end
-
-  return enriched_cache
 end
 
 -- Helper to parse a table row into a compact string, combining simple tables onto one line

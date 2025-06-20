@@ -7,6 +7,8 @@ local Cache = require("core.cache.cache")
 local LocaleUtils = require("core.utils.locale_utils")
 local GuiUtils = require("core.utils.gui_utils")
 local Tag = require("core.tag.tag")
+local GameHelpers = require("core.utils.game_helpers")
+local PositionUtils = require("core.utils.position_utils")
 
 local M = {}
 
@@ -45,9 +47,38 @@ function M.enter_move_mode(player, tag_data, refresh_tag_editor, script)
       tag_data.error_message = LocaleUtils.get_error_string(player, "invalid_location_chosen")
       Cache.set_tag_editor_data(player, tag_data)
       refresh_tag_editor(player, tag_data)
+      if player and player.valid then
+        -- Use correct locale key and string for player_print
+        local msg = LocaleUtils.get_error_string(player, "invalid_location_chosen") or "[TeleportFavorites] Invalid location selected."
+        GameHelpers.player_print(player, msg)
+        local ok, err = pcall(function()
+          GameHelpers.safe_play_sound(player, {path = "utility/cannot_build"})
+        end)
+        if not ok then
+          GameHelpers.player_print(player, "[TeleportFavorites] Could not play error sound: " .. tostring(err))
+        end
+      end
       return
     end
-    
+
+    -- Validate the selected position before moving the tag
+    if not PositionUtils.position_can_be_tagged(player, pos) then
+      tag_data.error_message = LocaleUtils.get_error_string(player, "invalid_location_chosen")
+      Cache.set_tag_editor_data(player, tag_data)
+      refresh_tag_editor(player, tag_data)
+      if player and player.valid then
+        local msg = LocaleUtils.get_error_string(player, "invalid_location_chosen") or "[TeleportFavorites] Invalid location selected."
+        GameHelpers.player_print(player, msg)
+        local ok, err = pcall(function()
+          GameHelpers.safe_play_sound(player, {path = "utility/cannot_build"})
+        end)
+        if not ok then
+          GameHelpers.player_print(player, "[TeleportFavorites] Could not play error sound: " .. tostring(err))
+        end
+      end
+      return
+    end
+
     -- Use the robust tag move utility to move the tag and update all references
     local old_tag = tag_data.tag
     local old_chart_tag = old_tag and old_tag.chart_tag
@@ -66,6 +97,7 @@ function M.enter_move_mode(player, tag_data, refresh_tag_editor, script)
     else
       tag_data.error_message = LocaleUtils.get_error_string(player, "move_mode_failed")
     end
+
     tag_data.move_mode = false
     Cache.set_tag_editor_data(player, tag_data)
     refresh_tag_editor(player, tag_data)
@@ -74,6 +106,7 @@ function M.enter_move_mode(player, tag_data, refresh_tag_editor, script)
     -- Unregister handler
     script.on_event(defines.events.on_player_selected_area, nil)
   end
+
   script.on_event(defines.events.on_player_selected_area, on_move)
 end
 

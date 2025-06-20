@@ -82,6 +82,11 @@ function handlers.on_init()
   for _, player in pairs(game.players) do
     ErrorHandler.debug_log("Building favorites bar for player during init", { player = player.name })
     fave_bar.build(player)
+    -- Ensure GUI observers are registered for each player
+    local ok, gui_observer = pcall(require, "core.pattern.gui_observer")
+    if ok and gui_observer and gui_observer.GuiEventBus and gui_observer.GuiEventBus.register_player_observers then
+      gui_observer.GuiEventBus.register_player_observers(player)
+    end
   end
   ErrorHandler.debug_log("Mod initialization completed")
 end
@@ -101,6 +106,11 @@ function handlers.on_player_created(event)
 
   ErrorHandler.debug_log("Building favorites bar for new player", { player = player.name })
   fave_bar.build(player)
+  -- Ensure GUI observers are registered for the new player
+  local ok, gui_observer = pcall(require, "core.pattern.gui_observer")
+  if ok and gui_observer and gui_observer.GuiEventBus and gui_observer.GuiEventBus.register_player_observers then
+    gui_observer.GuiEventBus.register_player_observers(player)
+  end
 end
 
 function handlers.on_player_changed_surface(event)
