@@ -125,143 +125,128 @@ if not gui_style.tf_slot_button then
   gui_style.tf_slot_button = base
 end
 
-if not gui_style.tf_draggable_space_header then
-  gui_style.tf_draggable_space_header = {
-    type                     = "empty_widget_style",
-    parent                   = "draggable_space_header",
-    minimal_width            = 8,
-    height                   = 24,
-    horizontally_stretchable = "on",
-    top_margin               = 0,
-    right_margin             = 8,
-    bottom_margin            = 0,
-    left_margin              = 8
-  }
-end
+gui_style.tf_draggable_space_header = {
+  type                     = "empty_widget_style",
+  parent                   = "draggable_space_header",
+  minimal_width            = 8,
+  height                   = 24,
+  horizontally_stretchable = "on",
+  top_margin               = 0,
+  right_margin             = 8,
+  bottom_margin            = 0,
+  left_margin              = 8
+}
 
-if not gui_style.slot_orange then
-  gui_style.slot_orange = {
-    type = "button_style",
-    parent = "slot_button",
-    default_graphical_set = {
-      -- originally default_graphical_set
-      base = { position = { 236, 200 }, corner_size = 8 },
-      shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT)
-    },
-    hovered_graphical_set = {
-      -- originally hovered_graphical_set
-      base = { position = { 236, 216 }, corner_size = 8 }, -- Example hover position
-      shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT),
-      glow = Styles.default_glow(Enum.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
-    },
-    clicked_graphical_set = {
-      base = { position = { 236, 232 }, corner_size = 8 }, -- Example clicked position
-      shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT)
-    },
-  }
-end
-if not gui_style.slot_orange_favorite_off then
-  gui_style.slot_orange_favorite_off = {
-    type = "button_style",
-    parent = "slot_button",
-  }
-end
+gui_style.slot_orange = {
+  type = "button_style",
+  parent = "slot_button",
+  default_graphical_set = {
+    -- originally default_graphical_set
+    base = { position = { 236, 200 }, corner_size = 8 },
+    shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT)
+  },
+  hovered_graphical_set = {
+    -- originally hovered_graphical_set
+    base = { position = { 236, 216 }, corner_size = 8 },   -- Example hover position
+    shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT),
+    glow = Styles.default_glow(Enum.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
+  },
+  clicked_graphical_set = {
+    base = { position = { 236, 232 }, corner_size = 8 },   -- Example clicked position
+    shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT)
+  },
+}
+
+gui_style.slot_orange_favorite_off = {
+  type = "button_style",
+  parent = "slot_button",
+}
 
 -- all graphical sets are the same
 -- we always want to show the state of is favorite as obnoxious
-if not gui_style.slot_orange_favorite_on then
-  gui_style.slot_orange_favorite_on = {
-    type = "button_style",
-    --parent = "slot_orange",
-    width = 40,
-    height = 40,
-    padding = 1,
-    --icon_scale = 2,
-    default_graphical_set = {
-      -- originally hovered_graphical_set
-      base = { position = { 202, 199 }, corner_size = 8 }, -- Example hover position-- 236, 216
-      --shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT),
-      --glow = Styles.default_glow(Enum.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
-    },
-    hovered_graphical_set = {
-      -- originally hovered_graphical_set
-      base = { position = { 202, 199 }, corner_size = 8 }, -- Example hover position
-      shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT),
-      glow = Styles.default_glow(Enum.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
-    },
-    clicked_graphical_set = {
-      -- originally hovered_graphical_set
-      base = { position = { 202, 199 }, corner_size = 8, tint = { r = 1, g = 1, b = 1, a = .2 } }, -- Example hover position
-      shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT)
-      --glow = Styles.default_glow(Enum.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
-    },
-    disabled_graphical_set = {
-      -- originally hovered_graphical_set
-      base = { position = { 236, 216 }, corner_size = 8 }, -- Example hover position
-      shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT),
-      --glow = Styles.default_glow(Enum.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
-    },
+
+gui_style.slot_orange_favorite_on = {
+  type = "button_style",
+  --parent = "slot_orange",
+  width = 40,
+  height = 40,
+  padding = 1,
+  --icon_scale = 2,
+  default_graphical_set = {
+    -- originally hovered_graphical_set
+    base = { position = { 202, 199 }, corner_size = 8 },   -- Example hover position-- 236, 216
+    --shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT),
+    --glow = Styles.default_glow(Enum.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
+  },
+  hovered_graphical_set = {
+    -- originally hovered_graphical_set
+    base = { position = { 202, 199 }, corner_size = 8 },   -- Example hover position
+    shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT),
+    glow = Styles.default_glow(Enum.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
+  },
+  clicked_graphical_set = {
+    -- originally hovered_graphical_set
+    base = { position = { 202, 199 }, corner_size = 8, tint = { r = 1, g = 1, b = 1, a = .2 } },   -- Example hover position
+    shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT)
+    --glow = Styles.default_glow(Enum.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
+  },
+  disabled_graphical_set = {
+    -- originally hovered_graphical_set
+    base = { position = { 236, 216 }, corner_size = 8 },   -- Example hover position
+    shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT),
+    --glow = Styles.default_glow(Enum.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
+  },
+}
+
+gui_style.tf_orange_button = {
+
+  type = "button_style",
+  parent = "tool_button",
+  default_graphical_set =
+  {
+    base = { position = { 34, 17 }, corner_size = 8 },
+    shadow = Enum.ColorEnum.DEFAULT_DIRT
+  },
+  hovered_graphical_set =
+  {
+    base = { position = { 202, 199 }, corner_size = 8 },
+    shadow = Enum.ColorEnum.DEFAULT_DIRT,
+    glow = Styles.default_glow(Enum.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
+  },
+  clicked_graphical_set =
+  {
+    base = { position = { 352, 17 }, corner_size = 8 },
+    shadow = Enum.ColorEnum.DEFAULT_DIRT
+  },
+  disabled_graphical_set =
+  {
+    base = { position = { 368, 17 }, corner_size = 8 },
+    shadow = Enum.ColorEnum.DEFAULT_DIRT
   }
-end
+}
 
+gui_style.tf_frame_title = {
+  type = "label_style",
+  parent = "frame_title",
+  top_margin = -2,
+  horizontally_stretchable = "off",   -- Don't stretch, let draggable fill space
+  minimal_width = 60,                 -- Minimum space for title text
+  single_line = true,                 -- Ensure single line for title
+  horizontal_align = "left",          -- Left-align the title text
+  font_color = Enum.ColorEnum.CAPTION
+}
 
-if not gui_style.tf_orange_button then
-  gui_style.tf_orange_button = {
+gui_style.tf_titlebar_draggable = {
+  type = "empty_widget_style",
+  parent = "draggable_space_header",
+  horizontally_stretchable = "on",
+  minimal_width = 8,   -- Reduced minimum to allow more expansion
+  -- Allow maximum expansion to fill space
+  maximal_width = 9999
+}
 
-    type = "button_style",
-    parent = "tool_button",
-    default_graphical_set =
-    {
-      base = { position = { 34, 17 }, corner_size = 8 },
-      shadow = Enum.ColorEnum.DEFAULT_DIRT
-    },
-    hovered_graphical_set =
-    {
-      base = { position = { 202, 199 }, corner_size = 8 },
-      shadow = Enum.ColorEnum.DEFAULT_DIRT,
-      glow = Styles.default_glow(Enum.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
-    },
-    clicked_graphical_set =
-    {
-      base = { position = { 352, 17 }, corner_size = 8 },
-      shadow = Enum.ColorEnum.DEFAULT_DIRT
-    },
-    disabled_graphical_set =
-    {
-      base = { position = { 368, 17 }, corner_size = 8 },
-      shadow = Enum.ColorEnum.DEFAULT_DIRT
-    }
-  }
-end
-
-if not gui_style.tf_frame_title then
-  gui_style.tf_frame_title = {
-    type = "label_style",
-    parent = "frame_title",
-    top_margin = -2,
-    horizontally_stretchable = "off", -- Don't stretch, let draggable fill space
-    minimal_width = 60,               -- Minimum space for title text
-    single_line = true,               -- Ensure single line for title
-    horizontal_align = "left",        -- Left-align the title text
-    font_color = Enum.ColorEnum.CAPTION
-  }
-end
-
-if not gui_style.tf_titlebar_draggable then
-  gui_style.tf_titlebar_draggable = {
-    type = "empty_widget_style",
-    parent = "draggable_space_header",
-    horizontally_stretchable = "on",
-    minimal_width = 8, -- Reduced minimum to allow more expansion
-    -- Allow maximum expansion to fill space
-    maximal_width = 9999
-  }
-end
-
-if not gui_style.tf_frame_action_button then
-  gui_style.tf_frame_action_button = {
-    type = "button_style",
-    parent = "frame_action_button",
-    right_margin = 0, -- Ensure it aligns properly with frame edge
-  }
-end
+gui_style.tf_frame_action_button = {
+  type = "button_style",
+  parent = "frame_action_button",
+  right_margin = 0,   -- Ensure it aligns properly with frame edge
+}

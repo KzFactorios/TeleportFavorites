@@ -197,10 +197,9 @@ local function update_chart_tag_fields(tag, tag_data, text, icon, player)
 end
 
 local function close_tag_editor(player)
-  -- Always clear tag_editor_data and close all tag editor frames
+  -- Only destroy the tag editor frame, not the confirmation dialog
   Cache.set_tag_editor_data(player, {})
   GuiUtils.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
-  GuiUtils.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
   player.opened = nil
 end
 
@@ -240,23 +239,24 @@ local function handle_confirm_btn(player, element, tag_data)
   local is_new_tag = not tag_data.tag and not tag_data.chart_tag
 
   update_chart_tag_fields(tag, tag_data, text, icon, player)
+
   -- After updating chart tag fields, re-fetch the tag object from cache to ensure latest chart_tag/last_user
   local refreshed_tag = tags[tag.gps] or tag
   tag_data.tag = refreshed_tag
   tags[tag.gps] = refreshed_tag
+
   -- Ensure tag_data.tag.chart_tag is the latest refreshed chart tag
   if tag_data.tag and tag_data.chart_tag and tag_data.tag.chart_tag ~= tag_data.chart_tag then
     tag_data.tag.chart_tag = tag_data.chart_tag
     tags[tag.gps].chart_tag = tag_data.chart_tag
   end
+
   -- Handle favorite operations only on confirm
   local favorite_success = handle_favorite_operations(player, tag, is_favorite)
   if not favorite_success then
     -- If favorite operation failed, don't continue with tag saving
     return
   end
-  -- Store the tag (GPS key naturally prevents duplicates)
-  -- tags[tag.gps] = tag -- (already set above)
 
   -- Notify observers of tag creation or modification
   local event_type = is_new_tag and "tag_created" or "tag_modified"
@@ -403,20 +403,24 @@ local function handle_favorite_btn(player, tag_data)
   refresh_tag_editor(player, tag_data)
 end
 
-local function handle_delete_btn(player, tag_data, element)
-  -- Open confirmation dialog instead of deleting immediately
-  tag_editor.build_confirmation_dialog(player, {
-    message = { "tf-gui.confirm_delete_message" }
-  })
-end
-
-local function handle_delete_confirm(player, tag_data)
+local function handle_delete_confirm(player)
+  -- Get the tag data from the tag_editor_data cache
+  local tag_data = Cache.get_tag_editor_data(player)
+  if not tag_data then
+    -- No cached data, just close the dialogs
+    GuiUtils.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
+    close_tag_editor(player)
+    return
+  end
+  
   -- User confirmed deletion - execute deletion logic
   local tag = tag_data.tag
   if not tag then
     -- Close both confirmation dialog and tag editor
-    GuiUtils.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
+    GuiUtils.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
     close_tag_editor(player)
+    -- Reset delete mode
+    Cache.reset_tag_editor_delete_mode(player)
     return
   end
 
@@ -424,8 +428,10 @@ local function handle_delete_confirm(player, tag_data)
   local can_delete, is_owner, is_admin_override, reason = AdminUtils.can_delete_chart_tag(player, tag.chart_tag, tag)
 
   if not can_delete then
-    GuiUtils.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
+    GuiUtils.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
     show_tag_editor_error(player, tag_data, reason or LocaleUtils.get_error_string(player, "tag_deletion_forbidden"))
+    -- Reset delete mode
+    Cache.reset_tag_editor_delete_mode(player)
     return
   end
 
@@ -452,15 +458,52 @@ local function handle_delete_confirm(player, tag_data)
   })
 
   -- Close both dialogs
-  GuiUtils.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
+  GuiUtils.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
   close_tag_editor(player)
+  -- Reset delete mode
+  Cache.reset_tag_editor_delete_mode(player)
   GameHelpers.player_print(player, { "tf-gui.tag_deleted" })
 end
 
-local function handle_delete_cancel(player, tag_data)
+local function handle_delete_cancel(player)
   -- User cancelled deletion - close confirmation dialog and return to tag editor
-  GuiUtils.safe_destroy_frame(player.gui.screen, "tf_confirm_dialog_frame")
+  GuiUtils.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
   player.opened = GuiUtils.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+  -- Reset delete mode
+  Cache.reset_tag_editor_delete_mode(player)
+end
+
+local function handle_delete_btn(player, tag_data)
+  ErrorHandler.debug_log("Tag editor handle_delete_btn called", {
+    player_name = player and player.name or "<unknown>"
+  })
+
+  -- Standard player validation
+  if not player or not player.valid then return end
+
+  -- Always destroy any existing confirmation dialog before creating a new one
+  GuiUtils.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
+
+  -- Set delete mode in tag_editor_data
+  Cache.set_tag_editor_delete_mode(player, true)
+
+  -- Create the real confirmation dialog
+  local frame, confirm_btn, cancel_btn = tag_editor.build_confirmation_dialog(player, {
+    message = { "tf-gui.confirm_delete_message" }
+  })
+  player.opened = frame
+  ErrorHandler.debug_log("Confirmation dialog opened successfully", {
+    player_name = player.name,
+    frame_lua_type = type(frame)
+  })
+
+  -- Notify observers that a confirmation dialog was opened
+  GuiEventBus.notify("dialog_opened", {
+    player = player,
+    type = "confirmation_dialog",
+    dialog_type = "tag_delete_confirm",
+    frame = frame
+  })
 end
 
 local function handle_teleport_btn(player, map_position)
@@ -471,40 +514,14 @@ end
 
 --- Tag editor GUI click handler for shared dispatcher
 local function on_tag_editor_gui_click(event, script)
+  ErrorHandler.debug_log("[TAG_EDITOR] on_tag_editor_gui_click called", {
+    element_name = event and event.element and event.element.name or "<none>",
+    button = event and event.button,
+    event_type = event and event.input_name or "<no input_name>"
+  })
+
   local element = event.element
   if not element or not element.valid then return end
-
-  -- Only handle clicks for tag editor or confirmation dialog frames
-  local parent_frame = GuiUtils.get_gui_frame_by_element(element)
-  local is_tag_editor = parent_frame and parent_frame.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR
-  local is_confirm_dialog = parent_frame and parent_frame.name == "tf_confirm_dialog_frame"
-
-  -- Only process tag editor logic if in tag editor or confirmation dialog
-  if not is_tag_editor and not is_confirm_dialog then
-    return
-  end
-
-  local name = element.name or ""
-  if not name:find("tag_editor") and not name:find("last_row_confirm_button") and not name:find("tf_confirm_dialog") then
-    -- Not our GUI, ignore
-    return
-  end
-  -- Only handle left clicks (button value 1 = left, 2 = right, 3 = middle)
-  if event.button ~= defines.mouse_button_type.left then
-    ErrorHandler.debug_log("Tag editor ignoring non-left click", {
-      element_name = name,
-      button = event.button,
-      expected = defines.mouse_button_type.left,
-      left_value = defines.mouse_button_type.left,
-      comparison = event.button == defines.mouse_button_type.left
-    })
-    return
-  end
-
-  ErrorHandler.debug_log("Tag editor GUI click handler called", {
-    element_name = element.name,
-    button = event.button
-  })
 
   local player = game.get_player(event.player_index)
   if not player or not player.valid then return end
@@ -516,18 +533,16 @@ local function on_tag_editor_gui_click(event, script)
     close_tag_editor(player)
     return
   elseif element.name == "last_row_confirm_button" then
-    if event.button ~= defines.mouse_button_type.left then
-      ErrorHandler.debug_log("Tag editor confirm ignored non-left click", {
-        element_name = element.name,
-        button = event.button
-      })
-      return
-    end
+    -- Accept all button clicks for confirm button
     return handle_confirm_btn(player, element, tag_data)
   elseif element.name == "tag_editor_move_button" then
     return handle_move_btn(player, tag_data, script)
   elseif element.name == "tag_editor_delete_button" then
-    return handle_delete_btn(player, tag_data, element)
+    -- Accept any mouse button click for delete button
+    ErrorHandler.debug_log("Tag editor delete button clicked", {
+      button = event.button
+    })
+    return handle_delete_btn(player, tag_data)
   elseif element.name == "tag_editor_is_favorite_button" then
     return handle_favorite_btn(player, tag_data)
   elseif element.name == "tag_editor_teleport_button" then
@@ -541,12 +556,23 @@ local function on_tag_editor_gui_click(event, script)
     -- Update confirm button state based on new icon selection
     tag_editor.update_confirm_button_state(player, tag_data)
     return
-    -- Confirmation dialog event handlers
-  elseif element.name == "tf_confirm_dialog_confirm_btn" then
-    return handle_delete_confirm(player, tag_data)
-  elseif element.name == "tf_confirm_dialog_cancel_btn" then
-    return handle_delete_cancel(player, tag_data)
   end
+  -- Handle confirmation dialog buttons without checking button type
+  if element.name == "tf_confirm_dialog_confirm_btn" then
+    ErrorHandler.debug_log("Confirm dialog confirm button clicked", {
+      button = event.button
+    })
+    return handle_delete_confirm(player)
+  elseif element.name == "tf_confirm_dialog_cancel_btn" then
+    ErrorHandler.debug_log("Confirm dialog cancel button clicked", {
+      button = event.button
+    })
+    return handle_delete_cancel(player)
+  end
+
+  ErrorHandler.debug_log("Tag editor GUI click handler: no matching element", {
+    element_name = element.name
+  })
 end
 
 --- Handle text input changes - save immediately to storage

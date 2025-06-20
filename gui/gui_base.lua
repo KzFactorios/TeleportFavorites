@@ -34,16 +34,16 @@ local GuiBase = {}
 --- @param element LuaGuiElement Starting element
 --- @return LuaGuiElement? frame Found frame or nil
 local function get_gui_frame_by_element(element)
-  if not element or not element.valid then return nil end
-  
-  local current = element
-  while current and current.valid do
-    if current.type == "frame" then
-      return current
+    if not element or not element.valid then return nil end
+
+    local current = element
+    while current and current.valid do
+        if current.type == "frame" then
+            return current
+        end
+        current = current.parent
     end
-    current = current.parent
-  end
-  return nil
+    return nil
 end
 
 --- NOTE: All requires MUST be at the top of the file. Do NOT move requires inside functions to avoid circular dependencies.
@@ -57,24 +57,28 @@ end
 --- @return LuaGuiElement: The created element
 function GuiBase.create_element(element_type, parent, opts)
     if (type(parent) ~= "table" and type(parent) ~= "userdata") or type(parent.add) ~= "function" then
-        error("GuiBase.create_element: parent is not a valid LuaGuiElement")    end
+        error("GuiBase.create_element: parent is not a valid LuaGuiElement")
+    end
     if opts.type then opts.type = nil end -- Prevent accidental overwrite
-    
+
     local params = { type = element_type }
-    for k, v in pairs(opts) do params[k] = v end
-      -- Defensive: ensure name is a string
+    for k, v in pairs(opts) do
+        params[k] = v
+    end
+
+    -- Defensive: ensure name is a string
     if params.name == nil or type(params.name) ~= "string" or params.name == "" then
         -- Use deterministic naming based on element type and current tick for reproducibility
         local fallback_id = (game and game.tick) or os.time() or 0
         params.name = element_type .. "_unnamed_" .. tostring(fallback_id)
         ErrorHandler.debug_log("Unnamed element assigned name", {
-          element_type = element_type,
-          assigned_name = params.name
+            element_type = element_type,
+            assigned_name = params.name
         })
-    end---@diagnostic disable-next-line
+    end
+
+    ---@diagnostic disable-next-line
     local elem = parent.add(params)
-    -- Handle style assignment: if it's a string, we can't assign it directly to elem.style
-    -- The style should be set during creation in the params table
     return elem
 end
 
@@ -93,13 +97,16 @@ end
 --- @param parent LuaGuiElement: Parent element
 --- @param name string: Name of the button
 --- @param sprite string: Icon sprite path
---- @param tooltip LocalisedString|nil: Tooltip for the button
+--- @param tooltip any: Tooltip for the button
 --- @param style string: Optional style name (default: 'tf_slot_button')
 --- @param enabled? boolean|nil: Optional, default true
 --- @return LuaGuiElement: The created button
 function GuiBase.create_icon_button(parent, name, sprite, tooltip, style, enabled)
-    local btn = GuiBase.create_element('sprite-button', parent,
-        { name = name, sprite = sprite, tooltip = tooltip, style = style or 'tf_slot_button' })
+    local opts = { name = name, sprite = sprite, style = style or 'tf_slot_button' }
+    if tooltip ~= nil and tooltip ~= "" then
+        opts.tooltip = tooltip
+    end
+    local btn = GuiBase.create_element('sprite-button', parent, opts)
     btn.enabled = enabled ~= false
     return btn
 end
@@ -115,7 +122,8 @@ function GuiBase.create_label(parent, name, caption, style)
     if style then
         opts.style = style
     end
-    local elem = GuiBase.create_element('label', parent, opts)
+
+    local elem = GuiBase.create_element("label", parent, opts)
     return elem
 end
 
@@ -177,10 +185,10 @@ end
 --- @param style? string|nil: Optional style name
 --- @return LuaGuiElement: The created flow
 function GuiBase.create_flow(parent, name, direction, style)
-    return GuiBase.create_element('flow', parent, { 
-        name = name, 
-        direction = direction or 'horizontal', 
-        style = style 
+    return GuiBase.create_element('flow', parent, {
+        name = name,
+        direction = direction or 'horizontal',
+        style = style
     })
 end
 
@@ -192,10 +200,11 @@ function GuiBase.create_draggable(parent, name)
         name = "draggable_space"
     end
     ---@diagnostic disable-next-line
-    local dragger = parent.add { type = "empty-widget", name = name, style = "tf_draggable_space_header" }    if not dragger or not dragger.valid then
+    local dragger = parent.add { type = "empty-widget", name = name, style = "tf_draggable_space_header" }
+    if not dragger or not dragger.valid then
         error("GuiBase.create_draggable: failed to create draggable space")
     end
-    
+
     local drag_target = get_gui_frame_by_element(parent) or nil
 
     -- Set drag target for any screen-based GUI frame (generalized for reusability)
@@ -220,9 +229,9 @@ function GuiBase.create_titlebar(parent, name, close_button_name)
 
     local title_label = GuiBase.create_label(titlebar, "gui_base_title_label", "", "tf_frame_title")
 
-    local draggable = GuiBase.create_draggable(titlebar, "tf_titlebar_draggable")    local close_button = GuiBase.create_icon_button(titlebar, close_button_name or "titlebar_close_button",
-        Enum.SpriteEnum.CLOSE, "",
-        "tf_frame_action_button")
+    local draggable = GuiBase.create_draggable(titlebar, "tf_titlebar_draggable")
+    local close_button = GuiBase.create_icon_button(titlebar, close_button_name or "titlebar_close_button",
+        Enum.SpriteEnum.CLOSE, nil, "tf_frame_action_button")
 
     return titlebar, title_label, close_button
 end
@@ -247,9 +256,9 @@ end
 --- @param style? string|nil: Optional style name
 --- @return LuaGuiElement: The created table
 function GuiBase.create_table(parent, name, column_count, style)
-    local opts = { 
-        name = name, 
-        column_count = column_count or 1 
+    local opts = {
+        name = name,
+        column_count = column_count or 1
     }
     if style then
         opts.style = style
@@ -274,7 +283,8 @@ function GuiBase.create_textbox(parent, name, text, style, icon_selector)
     -- Remove nil values
     for k, v in pairs(opts) do
         if v == nil then opts[k] = nil end
-    end    return GuiBase.create_element('text-box', parent, opts)
+    end
+    return GuiBase.create_element('text-box', parent, opts)
 end
 
 -- Removed: get_or_create_gui_flow_from_gui_top - moved to GuiUtils

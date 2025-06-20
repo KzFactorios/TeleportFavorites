@@ -112,7 +112,7 @@ local function handle_teleport(event, player, fav, slot, did_drag)
   return false
 end
 
-local function handle_tag_editor(event, player, fav, slot)
+local function handle_request_to_open_tag_editor(event, player, fav, slot)
   if event.button == defines.mouse_button_type.right then
     if fav and not FavoriteUtils.is_blank_favorite(fav) then
       -- removed extra gps argument
@@ -124,9 +124,11 @@ local function handle_tag_editor(event, player, fav, slot)
 end
 
 local function handle_toggle_lock(event, player, fav, slot, favorites)
-  if event.button == defines.mouse_button_type.left and event.control then    local success, error_msg = favorites:toggle_favorite_lock(slot)
+  if event.button == defines.mouse_button_type.left and event.control then    
+    local success, error_msg = favorites:toggle_favorite_lock(slot)
     if not success then
-      GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "failed_toggle_lock", {error_msg or LocaleUtils.get_error_string(player, "unknown_error")}))
+      GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "failed_toggle_lock", 
+        {error_msg or LocaleUtils.get_error_string(player, "unknown_error")}))
       return false
     end-- Update the slot row to reflect lock state change
     local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
@@ -171,7 +173,8 @@ local function handle_favorite_slot_click(event, player, favorites)
 
   if handle_teleport(event, player, fav, slot, did_drag) then return end
 
-  handle_tag_editor(event, player, fav, slot)  -- Always update the slot row after any favorite action to ensure button is visible
+  handle_request_to_open_tag_editor(event, player, fav, slot)  -- Always update the slot row after any favorite action to ensure button is visible
+
   local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
   local bar_frame = GuiUtils.find_child_by_name(main_flow, "fave_bar_frame")
   local bar_flow = bar_frame and GuiUtils.find_child_by_name(bar_frame, "fave_bar_flow")  if bar_flow then

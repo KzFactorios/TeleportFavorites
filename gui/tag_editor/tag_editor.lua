@@ -82,7 +82,8 @@ local function setup_tag_editor_ui(refs, tag_data, player)
 
   -- Disable move/delete for temp (yet-to-be-created) tags: if tag_data.tag or tag_data.chart_tag are not nil, it's a temp tag
   -- old way: local is_temp_tag = tag_data.chart_tag and CollectionUtils.table_is_empty(tag_data.chart_tag) or false
-  local is_temp_tag = (not tag_data.chart_tag) or (type(tag_data.chart_tag) == "userdata" and not tag_data.chart_tag.valid)
+  local is_temp_tag = (not tag_data.chart_tag) or
+      (type(tag_data.chart_tag) == "userdata" and not tag_data.chart_tag.valid)
   if refs.move_btn then
     -- Move button only enabled if player is owner AND in chart mode AND not a temp tag
     local in_chart_mode = (player.render_mode == defines.render_mode.chart or player.render_mode == defines.render_mode.chart_zoomed_in)
@@ -94,8 +95,8 @@ local function setup_tag_editor_ui(refs, tag_data, player)
     GuiUtils.set_button_state(refs.delete_btn, is_owner and can_delete and not is_temp_tag)
     -- Button event handlers must be registered via script.on_event, not by setting .onclick
     -- The actual delete logic should be handled in the event handler for the delete button name
-  end 
-  
+  end
+
   -- Confirm button enabled if text input has content OR icon is selected
   local has_text = tag_data.text and tag_data.text ~= ""
   local has_icon = ValidationUtils.has_valid_icon(tag_data.icon)
@@ -132,20 +133,71 @@ end
 
 -- Confirmation dialog for destructive actions (e.g., tag deletion)
 function tag_editor.build_confirmation_dialog(player, opts)
-  -- opts: { message, on_confirm, on_cancel, parent_frame_name }
-  local parent = player.gui.screen
-  local frame = GuiBase.create_frame(parent, "tf_confirm_dialog_frame", "vertical", "inside_shallow_frame_with_padding")
+  -- opts: { message }
+  local frame = player.gui.screen.add {
+    type = "frame",
+    name = Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM,
+    caption = "",
+    direction = "vertical",
+    style = "tf_confirm_dialog_frame"
+  }
   frame.auto_center = true
-  GuiBase.create_label(frame, "tag_editor_tf_confirm_dialog_label", opts.message or { "tf-gui.confirm_delete_message" },
-    "bold_label")
-  local tag_editor_tf_confirm_dialog_btn_row = GuiBase.create_hflow(frame, "tag_editor_tf_confirm_dialog_btn_row")
-  local confirm_btn = GuiUtils.create_slot_button(tag_editor_tf_confirm_dialog_btn_row, "tf_confirm_dialog_confirm_btn",
-    Enum.SpriteEnum.CHECK_MARK, { "tf-gui.confirm_delete_confirm" })
-  local cancel_btn = GuiUtils.create_slot_button(tag_editor_tf_confirm_dialog_btn_row, "tf_confirm_dialog_cancel_btn",
-    Enum.SpriteEnum.CLOSE, { "tf-gui.confirm_delete_cancel" })
-  
-    -- Set modal/ESC behavior
-  player.opened = frame
+  frame.visible = true
+  frame.style.minimal_height = 80
+
+  -- Defensive: ensure message is a valid LocalisedString
+  local message = opts and opts.message
+  if type(message) == "table" then
+    -- Accept as-is
+  elseif type(message) == "string" then
+    message = { message }
+  else
+    message = { "tf-gui.confirm_delete_message" }
+  end
+
+
+
+-- this is where it fails
+  -- i think it is referencing the wrong parent when trying to add the label
+
+
+
+
+
+
+
+
+  GuiBase.create_label(frame, "tag_editor_tf_confirm_dialog_label", message, "tf_confirm_dialog_title")
+
+  -- Create a table for the buttons, full width
+  local btn_row = frame.add{
+    type = "table",
+    name = "tag_editor_tf_confirm_dialog_btn_table",
+    column_count = 2,
+    style = "tf_confirm_dialog_btn_table"
+  }
+
+  -- Left: Cancel button (left cell)
+  local cancel_btn = btn_row.add{
+    type = "button",
+    name = "tf_confirm_dialog_cancel_btn",
+    caption = {"tf-gui.confirm_delete_cancel"},
+    style = "back_button"
+  }
+  cancel_btn.tags = { action = "cancel_delete" }
+  -- All button styling is now in the style prototype
+
+  -- Right: Confirm button (right cell)
+  local confirm_btn = btn_row.add{
+    type = "button",
+    name = "tf_confirm_dialog_confirm_btn",
+    caption = {"tf-gui.confirm_delete_confirm"},
+    style = "tf_dlg_confirm_button"
+  }
+  confirm_btn.tags = { action = "confirm_delete" }
+  -- All button styling is now in the style prototype
+  confirm_btn.visible = true
+
   return frame, confirm_btn, cancel_btn
 end
 
@@ -170,11 +222,9 @@ local function build_owner_row(parent, tag_data)
     "", "tf_tag_editor_owner_label") -- Add buttons to the button flow
   local button_flow = GuiBase.create_hflow(row_frame, "tag_editor_button_flow")
   ---@diagnostic disable-next-line: param-type-mismatch
-  local move_button = GuiBase.create_icon_button(button_flow, "tag_editor_move_button", Enum.SpriteEnum.MOVE,
-    nil, "tf_move_button")
+  local move_button = GuiBase.create_icon_button(button_flow, "tag_editor_move_button", Enum.SpriteEnum.MOVE, { "tf-gui.move_tooltip" }, "tf_move_button")
   ---@diagnostic disable-next-line: param-type-mismatch
-  local delete_button = GuiBase.create_icon_button(button_flow, "tag_editor_delete_button", Enum.SpriteEnum.TRASH,
-    nil, "tf_delete_button")
+  local delete_button = GuiBase.create_icon_button(button_flow, "tag_editor_delete_button", Enum.SpriteEnum.TRASH, { "tf-gui.delete_tooltip" }, "tf_delete_button")
 
   return row_frame, label, move_button, delete_button
 end
@@ -186,17 +236,8 @@ local function build_teleport_favorite_row(parent, tag_data)
   local is_favorite = tag_data and tag_data.is_favorite == true
   local star_state = is_favorite and Enum.SpriteEnum.STAR or Enum.SpriteEnum.STAR_DISABLED
   local fave_style = is_favorite and "slot_orange_favorite_on" or "slot_orange_favorite_off"
-  ---@diagnostic disable-next-line: param-type-mismatch
-  local favorite_btn = GuiBase.create_icon_button(row, "tag_editor_is_favorite_button", star_state,
-    nil, fave_style)
-  ---@diagnostic disable-next-line: param-type-mismatch
-  local teleport_btn = GuiBase.create_icon_button(row, "tag_editor_teleport_button", "",
-    nil,
-    -- Use gps for caption, fallback to move_gps if in move mode, else fallback
-    "tf_teleport_button")
-  local coords = GPSUtils.coords_string_from_gps(tag_data.gps) or "no destination"
-  ---@diagnostic disable-next-line: assign-type-mismatch
-  teleport_btn.caption = { "tf-gui.teleport_to", coords }
+  local favorite_btn = GuiBase.create_icon_button(row, "tag_editor_is_favorite_button", star_state, { "tf-gui.favorite_tooltip" }, fave_style)
+  local teleport_btn = GuiBase.create_icon_button(row, "tag_editor_teleport_button", "", { "tf-gui.teleport_tooltip" }, "tf_teleport_button")
   return row, favorite_btn, teleport_btn
 end
 
@@ -244,7 +285,7 @@ local function build_last_row(parent)
     name = "last_row_confirm_button",
     caption = { "tf-gui.confirm" },
     tooltip = { "tf-gui.confirm_tooltip" },
-    style = "tf_confirm_button",
+    style = "tf_dlg_confirm_button",
     sprite = nil
   })
   return row, confirm_btn
@@ -295,6 +336,9 @@ function tag_editor.build(player)
   local tag_editor_teleport_favorite_row, tag_editor_is_favorite_button, tag_editor_teleport_button =
       build_teleport_favorite_row(tag_editor_content_inner_frame, tag_data)
 
+  -- NOTE: The built-in Factorio signal/icon picker (used for icon selection) always requires the user to confirm their selection
+  -- with a checkmark button. There is no property or style that allows auto-accepting the selection on click; this is a limitation
+  -- of the Factorio engine as of 1.1.x.
   local tag_editor_rich_text_row, tag_editor_icon_button, tag_editor_rich_text_input =
       build_rich_text_row(tag_editor_content_inner_frame, tag_data)
 
@@ -338,9 +382,5 @@ function tag_editor.update_confirm_button_state(player, tag_data)
 
   GuiUtils.set_button_state(confirm_btn, can_confirm)
 end
-
--- NOTE: The built-in Factorio signal/icon picker (used for icon selection) always requires the user to confirm their selection
--- with a checkmark button. There is no property or style that allows auto-accepting the selection on click; this is a limitation
--- of the Factorio engine as of 1.1.x.
 
 return tag_editor

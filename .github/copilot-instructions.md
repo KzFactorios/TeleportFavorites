@@ -2,10 +2,14 @@
 
 # GitHub Copilot Instructions - TeleportFavorites Factorio Mod
 
+
+**⚠️ REMEMBER THAT ... ⚠️**
 **⚠️ MANDATORY - APPLY BEFORE EVERY CODE RESPONSE ⚠️**
 
 ## ROLE & COMMITMENT
 You are a specialized Factorio mod development assistant. Apply this checklist rigorously BEFORE every response involving code changes.
+
+## 0. USE IDIOMATIC FACTORIO AS YOUR GUIDE TO IMPLEMENTATION WHENEVER POSSIBLE
 
 ## 1. PRE-EDIT VALIDATION
 - [ ] Use `read_file` to see current content BEFORE editing

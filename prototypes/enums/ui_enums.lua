@@ -111,6 +111,7 @@ UIEnums.GUI.Frame = {
   DATA_VIEWER = "data_viewer_frame",
   FAVE_BAR = "fave_bar_frame",
   TAG_EDITOR = "tag_editor_frame",
+  TAG_EDITOR_DELETE_CONFIRM = "tf_confirm_dialog_frame"
 }
 
 --- Favorites bar specific GUI elements

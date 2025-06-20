@@ -83,49 +83,74 @@ function M.register_gui_handlers(script)
   end
   local function shared_on_gui_click(event)
     Cache.init()
+
+     -- Add comprehensive event debugging including button type analysis
+  ErrorHandler.debug_log("[DISPATCH RAW_EVENT] Raw event received", {
+    event_type = "on_gui_click",
+    element_name = event and event.element and event.element.name or "<none>",
+    button = event and event.button or "<none>",
+    button_analysis = event and event.button and (
+      event.button == 1 and "LEFT_CLICK" or
+      event.button == 2 and "RIGHT_CLICK" or
+      event.button == 3 and "MIDDLE_CLICK" or
+      "UNKNOWN_BUTTON_" .. tostring(event.button)
+    ) or "<none>",
+    shift = event and event.shift or false,
+    control = event and event.control or false,
+    alt = event and event.alt or false,
+    player_index = event and event.player_index or "<none>",
+    tick = event and event.tick or "<none>",
+    element_type = event and event.element and event.element.type or "<none>",
+    element_style = event and event.element and event.element.style and event.element.style.name or "<none>"
+  })
+
+    ErrorHandler.debug_log("[DISPATCH] shared_on_gui_click called",
+      { event_type = "on_gui_click", element = event and event.element and event.element.name or "<none>" })
     if _tf_gui_click_guard then return end
-    _tf_gui_click_guard = true    local ok, result = xpcall(function()
+    _tf_gui_click_guard = true
+    local ok, result = xpcall(function()
       local element = event.element
-      if not element or not element.valid then return end      -- Global/utility buttons (not tied to a specific GUI)
+      if not element or not element.valid then return end -- Global/utility buttons (not tied to a specific GUI)
       -- Ignore clicks on blank/empty favorite slots
       if is_blank_fave_bar_slot_button(element) then return end
       if element.name == "fave_bar_visible_btns_toggle" or is_fave_bar_slot_button(element) then
+        ErrorHandler.debug_log("[DISPATCH] Routing to control_fave_bar.on_fave_bar_gui_click", { element = element.name })
         control_fave_bar.on_fave_bar_gui_click(event)
         return true
-      end      local parent_gui = GuiUtils.get_gui_frame_by_element(element)
-      
+      end
+      local parent_gui = GuiUtils.get_gui_frame_by_element(element)
+      ErrorHandler.debug_log("[DISPATCH] parent_gui detected",
+        { element = element.name, parent_gui = parent_gui and parent_gui.name or "<nil>" })
       ErrorHandler.debug_log("GUI Event Dispatcher: Frame detection result", {
         element_name = element.name,
         parent_gui_found = parent_gui ~= nil,
         parent_gui_name = parent_gui and parent_gui.name or "nil",
         expected_tag_editor = Enum.GuiEnum.GUI_FRAME.TAG_EDITOR
       })
-      
       if not parent_gui then
         error("Element: " .. element.name .. ", parent GUI not found")
-      end      -- Dispatch based on parent_gui
-      if parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
+      end -- Dispatch based on parent_gui
+      if parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR or parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM then
+        ErrorHandler.debug_log("[DISPATCH] Routing to control_tag_editor.on_tag_editor_gui_click",
+          { element = element.name, parent_gui = parent_gui.name })
         control_tag_editor.on_tag_editor_gui_click(event, script)
         return true
       elseif parent_gui.name == Enum.GuiEnum.GUI_FRAME.DATA_VIEWER then
+        ErrorHandler.debug_log("[DISPATCH] Routing to control_data_viewer.on_data_viewer_gui_click",
+          { element = element.name, parent_gui = parent_gui.name })
         control_data_viewer.on_data_viewer_gui_click(event)
         return true
       else
         -- Special handling for tag editor elements that might have wrong parent detection
         local element_name = element.name or ""
         if element_name:find("tag_editor") then
-          ErrorHandler.debug_log("Tag editor element with wrong parent frame - forcing tag editor handler", {
-            element_name = element_name,
-            parent_gui_name = parent_gui.name,
-            expected_frame = Enum.GuiEnum.GUI_FRAME.TAG_EDITOR
-          })
+          ErrorHandler.debug_log("[DISPATCH] Forcing tag editor handler due to element name",
+            { element_name = element_name, parent_gui_name = parent_gui.name, expected_frame = Enum.GuiEnum.GUI_FRAME
+            .TAG_EDITOR })
           control_tag_editor.on_tag_editor_gui_click(event, script)
           return true
         end
-        
-        ErrorHandler.debug_log("Unknown parent GUI", {
-          parent_gui_name = tostring(parent_gui.name)
-        })
+        ErrorHandler.debug_log("[DISPATCH] Unknown parent GUI", { parent_gui_name = tostring(parent_gui.name) })
       end
     end, function(e)
       _tf_gui_click_guard = false
@@ -154,7 +179,8 @@ function M.register_gui_handlers(script)
               etype = "<invalid element>"
             end
           end)
-        end        ErrorHandler.debug_log("GUI event debug info", {
+        end
+        ErrorHandler.debug_log("GUI event debug info", {
           element_name = tostring(ename),
           element_type = tostring(etype),
           player_index = event and event.player_index
@@ -165,11 +191,12 @@ function M.register_gui_handlers(script)
               property = tostring(k),
               value = tostring(v)
             })
-          end        
+          end
         end
       end
     end)
-    _tf_gui_click_guard = false    if not ok then
+    _tf_gui_click_guard = false
+    if not ok then
       -- Log the error but don't re-throw it to prevent cascading errors
       ErrorHandler.warn_log("GUI click handler failed", {
         error = tostring(result),
@@ -177,7 +204,6 @@ function M.register_gui_handlers(script)
       })
     end
   end
-  
   script.on_event(defines.events.on_gui_click, shared_on_gui_click)
 
   -- Register text change handler for immediate storage saving
@@ -185,7 +211,8 @@ function M.register_gui_handlers(script)
     if not event or not event.element then return end
     control_tag_editor.on_tag_editor_gui_text_changed(event)
   end
-  script.on_event(defines.events.on_gui_text_changed, shared_on_gui_text_changed)  -- Register elem changed handler for immediate storage saving (for icon picker)
+  script.on_event(defines.events.on_gui_text_changed, shared_on_gui_text_changed) -- Register elem changed handler for immediate storage saving (for icon picker)
+
   local function shared_on_gui_elem_changed(event)
     if not event or not event.element then return end
     -- Handle icon picker changes in tag editor

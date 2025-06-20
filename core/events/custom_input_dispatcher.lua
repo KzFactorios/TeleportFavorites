@@ -77,7 +77,6 @@ end
 ---@type table<string, function>
 local default_custom_input_handlers = {
   ["dv-toggle-data-viewer"] = control_data_viewer.on_toggle_data_viewer,
-  ["tf-debug-tile-info"] = handlers.on_debug_tile_info_custom_input,
   ["tf-undo-last-action"] = function(event)
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end

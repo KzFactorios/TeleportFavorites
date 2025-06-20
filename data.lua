@@ -187,13 +187,6 @@ data:extend {
     order = "ba[tag-editor-1]"
   },
   {
-    type = "custom-input",
-    name = "tf-debug-tile-info",
-    key_sequence = "CONTROL + SHIFT + mouse-button-2",
-    consuming = "none",
-    order = "ba[tile-debug-1]"
-  },
-  {
     type = "sprite",
     name = "logo_36",
     filename = "__TeleportFavorites__/graphics/prelim_logo_36.png",

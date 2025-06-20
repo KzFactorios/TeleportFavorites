@@ -195,12 +195,14 @@ function GuiUtils.get_gui_frame_by_element(element)
         frame_name = name,
         target_tag_editor = Enum.GuiEnum.GUI_FRAME.TAG_EDITOR,
         target_data_viewer = Enum.GuiEnum.GUI_FRAME.DATA_VIEWER,
-        target_fave_bar = Enum.GuiEnum.GUI_FRAME.FAVE_BAR
+        target_fave_bar = Enum.GuiEnum.GUI_FRAME.FAVE_BAR,
+        target_confirm_dialog = Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM
       })
       
       if name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR or 
          name == Enum.GuiEnum.GUI_FRAME.DATA_VIEWER or 
-         name == Enum.GuiEnum.GUI_FRAME.FAVE_BAR then
+         name == Enum.GuiEnum.GUI_FRAME.FAVE_BAR or
+         name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM then
         ErrorHandler.debug_log("GuiUtils.get_gui_frame_by_element: Found main frame", {
           found_frame = name
         })

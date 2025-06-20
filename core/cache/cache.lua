@@ -148,13 +148,21 @@ function Cache.get_mod_version()
   return (val and val ~= "") and tostring(val) or nil
 end
 
---- At this point, we assume the player is already initialized and has a valid surface.
---- Initialize the player's favorites array, ensuring it has the correct structure. eg: min # favorites
+-- At this point, we assume the player is already initialized and has a valid surface.
+-- Initialize the player's favorites array, ensuring it has the correct structure. eg: min # favorites
 
 
 --- Initialize and retrieve persistent player data for a given player.
 ---@param player LuaPlayer
 ---@return table Player data table (persistent)
+local function ensure_player_cache(player)
+  if not player or not player.valid or not player.index then return {} end
+  Cache.init()
+  storage.players = storage.players or {}
+  storage.players[player.index] = storage.players[player.index] or {}
+  return storage.players[player.index]
+end
+
 local function init_player_data(player)
   if not player or not player.index then return {} end
   Cache.init()
@@ -338,7 +346,10 @@ function Cache.create_tag_editor_data(options)
     tag = {}, -- do not use nil
     chart_tag = {}, -- do not use nil
     error_message = "",
-    search_radius = 1
+    search_radius = 1,
+    -- Delete confirmation state
+    delete_mode = false,
+    pending_delete = false
   }
 
   if not options or type(options) ~= "table" then
@@ -352,6 +363,36 @@ function Cache.create_tag_editor_data(options)
   end
 
   return result
+end
+
+-- Set the pending delete flag in tag_editor_data
+function Cache.set_tag_editor_delete_mode(player, is_delete_mode)
+  if not player or not player.valid then return end
+  
+  local tag_data = Cache.get_tag_editor_data(player)
+  tag_data.delete_mode = is_delete_mode == true
+  
+  -- Ensure we keep the tag_editor_data updated
+  Cache.set_tag_editor_data(player, tag_data)
+end
+
+-- Check if the tag editor is in delete mode
+function Cache.is_tag_editor_delete_mode(player)
+  if not player or not player.valid then return false end
+  
+  local tag_data = Cache.get_tag_editor_data(player)
+  return tag_data.delete_mode == true
+end
+
+-- Reset the delete mode flag in tag_editor_data
+function Cache.reset_tag_editor_delete_mode(player)
+  if not player or not player.valid then return end
+  
+  local tag_data = Cache.get_tag_editor_data(player)
+  tag_data.delete_mode = false
+  
+  -- Ensure we keep the tag_editor_data updated
+  Cache.set_tag_editor_data(player, tag_data)
 end
 
 return Cache
