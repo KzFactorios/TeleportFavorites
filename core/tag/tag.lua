@@ -21,6 +21,7 @@ local ErrorHandler = require("core.utils.error_handler")
 local LocaleUtils = require("core.utils.locale_utils")
 local TeleportStrategies = require("core.pattern.teleport_strategy")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
+local PositionUtils = require("core.utils.position_utils")
 
 
 ---@class Tag
@@ -273,47 +274,6 @@ local function collect_linked_favorites(current_gps)
   return all_fave_tags
 end
 
---- Validate and find non-colliding position for destination
----@param player LuaPlayer
----@param destination_pos MapPosition
----@return MapPosition?, string?
-local function validate_destination_position(player, destination_pos)
-  ErrorHandler.debug_log("Validating destination position", { destination_pos = destination_pos })
-  local player_settings = settings_access:getPlayerSettings(player)
-  local safety_radius = (player_settings.tp_radius_tiles or 0) + 2.0          -- Add safety margin for vehicle-sized clearance
-  local fine_precision = (Constants.settings.TELEPORT_PRECISION or 0.1) * 0.5 -- Finer search precision
-
-  local non_collide_position = nil
-  local success, error_msg = pcall(function()
-    non_collide_position = player.surface:find_non_colliding_position("character", destination_pos,
-      safety_radius, fine_precision)
-  end)
-  if not success then
-    ErrorHandler.debug_log("Error finding non-colliding position", { error = error_msg })
-    return nil, LocaleUtils.get_error_string(nil, "failed_find_safe_position")
-  end
-
-  if not non_collide_position then
-    ErrorHandler.debug_log("No non-colliding position found")
-    return nil, LocaleUtils.get_error_string(nil, "destination_not_available")
-  end-- normalize the landing position
-  local x = basic_helpers.normalize_index(non_collide_position.x or 0)
-  local y = basic_helpers.normalize_index(non_collide_position.y or 0)
-  -- Ensure we have valid numbers
-  if not x or not y then
-    ErrorHandler.debug_log("Failed to normalize position coordinates")
-    return nil, LocaleUtils.get_error_string(nil, "invalid_position_coordinates")
-  end
-
-  local normalized_pos = { x = x, y = y }
-  ErrorHandler.debug_log("Position validation successful", {
-    original = destination_pos,
-    normalized = normalized_pos
-  })
-
-  return normalized_pos, nil
-end
-
 --- Create and validate a new chart tag at the destination
 ---@param player LuaPlayer
 ---@param destination_pos MapPosition
@@ -409,12 +369,23 @@ function Tag.rehome_chart_tag(player, chart_tag, destination_gps)
   -- Step 1: Collect all linked favorites
   local all_fave_tags = collect_linked_favorites(current_gps)
 
-  -- Step 2: Validate and normalize destination position
-  local normalized_pos, error_msg = validate_destination_position(player, destination_pos)
-  if not normalized_pos then
+  -- Step 2: Use PositionUtils.move_tag_to_selected_position for robust validation and normalization
+  local tag = Cache.get_tag_by_gps(current_gps)
+  -- Convert Tag metatable instance to plain table for compatibility, always pass a table
+  local tag_table = tag and { gps = tag.gps, chart_tag = tag.chart_tag, faved_by_players = tag.faved_by_players } or {}
+  local normalized_pos, error_msg
+  local move_success = PositionUtils.move_tag_to_selected_position(player, tag_table, chart_tag, destination_pos, nil, function(result, tag_data)
+    if result == "invalid_position" then
+      error_msg = LocaleUtils.get_error_string(player, "destination_not_available")
+    elseif result == "move" and tag_data and tag_data.gps then
+      normalized_pos = GPSUtils.map_position_from_gps(tag_data.gps)
+    end
+  end)
+  if not move_success or not normalized_pos then
     ErrorHandler.debug_log("Destination validation failed", { error = error_msg })
     return nil
   end
+
   -- Step 3: Create new chart tag at destination
   local new_chart_tag, create_error = create_new_chart_tag(player, normalized_pos, chart_tag)
   if not new_chart_tag then
@@ -437,6 +408,9 @@ function Tag.rehome_chart_tag(player, chart_tag, destination_gps)
 
   -- Step 6: Clean up old chart tag
   cleanup_old_chart_tag(chart_tag)
+
+  -- Step 7: Invalidate Lookups cache for this surface to ensure runtime consistency
+  Cache.Lookups.invalidate_surface_chart_tags(surface_index)
 
   ErrorHandler.debug_log("Chart tag rehoming completed successfully", {
     final_gps = final_gps,

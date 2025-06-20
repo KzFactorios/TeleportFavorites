@@ -1,6 +1,7 @@
 -- filepath: v:\Fac2orios\2_Gemini\mods\TeleportFavorites\data.lua
 ---@diagnostic disable: undefined-global
 require("prototypes.styles.init")
+require("prototypes.item.selection_tool")
 local Constants = require("constants")
 local Enum = require("prototypes.enums.enum")
 
@@ -285,3 +286,4 @@ data:extend {
     order = "ea[undo-1]"
   }
 }
+

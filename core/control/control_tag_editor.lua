@@ -19,6 +19,7 @@ local ChartTagUtils = require("core.utils.chart_tag_utils")
 local ValidationUtils = require("core.utils.validation_utils")
 local AdminUtils = require("core.utils.admin_utils")
 local SettingsAccess = require("core.utils.settings_access")
+local TagEditorMoveMode = require("core.control.control_move_mode")
 
 -- Observer Pattern Integration
 local GuiObserver = require("core.pattern.gui_observer")
@@ -199,6 +200,17 @@ end
 
 local function close_tag_editor(player)
   -- Only destroy the tag editor frame, not the confirmation dialog
+  local tag_data = Cache.get_tag_editor_data(player)
+  local was_move_mode = tag_data and tag_data.move_mode == true
+  if was_move_mode then
+    if player and player.valid then
+      player.clear_cursor()
+    end
+    if script and script.on_event then
+      script.on_event(defines.events.on_player_selected_area, nil)
+      script.on_event(defines.events.on_player_alt_selected_area, nil)
+    end
+  end
   Cache.set_tag_editor_data(player, {})
   GuiUtils.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
   player.opened = nil
@@ -279,96 +291,7 @@ local function unregister_move_handlers(script)
 end
 
 local function handle_move_btn(player, tag_data, script)
-  tag_data.move_mode = true
-  show_tag_editor_error(player, tag_data,
-    LocaleUtils.get_error_string(player, "move_mode_select_destination"))
-  local function on_move(event)
-    if event.player_index ~= player.index then return end
-    local pos = event.area and event.area.left_top or nil
-    if not pos then
-      return show_tag_editor_error(player, tag_data, LocaleUtils.get_error_string(player, "invalid_location_chosen"))
-    end
-    -- Store the new position in move_gps first
-    local new_gps = GPSUtils.gps_from_map_position(pos, player.surface.index)
-    tag_data.move_gps = new_gps
-
-    local tag = tag_data.tag or {}
-    local chart_tag = tag.chart_tag
-
-    -- Use position validation when moving the tag
-    local position_validation_callback = function(action, updated_tag_data)
-      if action == "move" then -- Update tag with new validated position
-        tag.gps = updated_tag_data.gps
-
-        -- Update the main gps field to the new location
-        tag_data.gps = updated_tag_data.gps
-        tag_data.tag = tag
-
-        -- Store in surface tags (GPS key naturally prevents duplicates)
-        local tags = Cache.get_surface_tags(player.surface.index)
-        tags[tag.gps] = tag
-
-        -- Finish move process
-        tag_data.move_mode = false
-        tag_data.error_message = nil
-        tag_data.move_gps = "" -- Clear move_gps since move is complete
-        Cache.set_tag_editor_data(player, nil)
-        GameHelpers.player_print(player, { "tf-gui.tag_editor_move_success", "The tag has been relocated" })
-        refresh_tag_editor(player, tag_data)
-      elseif action == "delete" then
-        -- Delete the tag
-        local tags = Cache.get_surface_tags(player.surface.index)
-        tags[tag.gps] = nil
-
-        -- Clean up chart tag if it exists
-        if chart_tag and chart_tag.valid then
-          chart_tag.destroy()
-        end
-
-        -- Close tag editor
-        tag_data.move_mode = false
-        Cache.set_tag_editor_data(player, nil)
-        GuiUtils.safe_destroy_frame(player.gui.screen, "tag_editor_frame")
-      else
-        -- Action was canceled, reset move mode
-        tag_data.move_mode = false
-        tag_data.move_gps = "" -- Clear move_gps on cancel
-        tag_data.error_message = nil
-        refresh_tag_editor(player, tag_data)
-      end
-    end
-
-    -- Get player settings for search radius
-    local player_settings = Cache.get_player_data(player)
-    local search_radius = player_settings.teleport_radius or Constants.settings.TELEPORT_RADIUS_DEFAULT
-    -- Validate and move the tag to the selected position
-    local success = PositionUtils.move_tag_to_selected_position(
-      player, tag, chart_tag, pos, search_radius, position_validation_callback
-    )
-
-    -- If the function returns true, it means the position was valid and move was successful
-    if success == true then
-      -- Update cached data and refresh UI
-      tag_data.move_mode = false
-      tag_data.error_message = nil
-      tag_data.move_gps = "" -- Clear move_gps since move is complete
-      Cache.set_tag_editor_data(player, nil)
-      refresh_tag_editor(player, tag_data)
-    end
-
-    -- Always unregister handlers when done processing the move event
-    unregister_move_handlers(script)
-  end
-  local function on_cancel(event)
-    if event.player_index ~= player.index then return end
-    tag_data.move_mode = false
-    tag_data.move_gps = "" -- Clear move_gps on cancel
-    show_tag_editor_error(player, tag_data, LocaleUtils.get_error_string(player, "tag_move_cancelled"))
-    unregister_move_handlers(script)
-  end
-
-  script.on_event(defines.events.on_player_selected_area, on_move)
-  script.on_event(defines.events.on_player_alt_selected_area, on_cancel)
+  TagEditorMoveMode.enter_move_mode(player, tag_data, refresh_tag_editor, script)
 end
 
 local function handle_favorite_btn(player, tag_data)
@@ -465,7 +388,7 @@ local function handle_delete_confirm(player)
   Cache.reset_tag_editor_delete_mode(player)
 
   -- get the player settings value for teleport messages on and make the next line conitional
-  local player_settings = SettingsAccess.getPlayerSettings(player)
+  local player_settings = SettingsAccess:getPlayerSettings(player)
   if player_settings.destination_msg_on then
     GameHelpers.player_print(player, { "tf-gui.tag_deleted" })
   end

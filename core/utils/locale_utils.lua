@@ -113,7 +113,9 @@ function LocaleUtils.get_string(player, category, key, params)
             game.print("[LocaleUtils] Warning: Unknown category '" .. tostring(category) .. "'")
         end
         return key -- Return the key itself as fallback
-    end    local locale_key = prefix .. "." .. key
+    end    
+    
+    local locale_key = prefix .. "." .. key
     
     -- Return a localized string table that Factorio can process
     if params and type(params) == "table" and #params > 0 then
@@ -139,12 +141,14 @@ function LocaleUtils.get_fallback_string(category, key, params)
             close = "Close",
             delete_tag = "Delete Tag",
             teleport_success = "Teleported successfully!",
-            teleport_failed = "Teleportation failed"
+            teleport_failed = "Teleportation failed"            
         },
         error = {
             driving_teleport_blocked = "Are you crazy? Trying to teleport while driving is strictly prohibited.",
             player_missing = "Unable to teleport. Player is missing",
-            unknown_error = "Unknown error"
+            unknown_error = "Unknown error",
+            move_mode_failed = "Move failed",
+            invalid_location_chosen = "invalid location chosen"
         },
         command = {
             nothing_to_undo = "No actions to undo"

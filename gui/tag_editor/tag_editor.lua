@@ -129,6 +129,18 @@ local function setup_tag_editor_ui(refs, tag_data, player)
     error_label.caption = tag_data.error_message or ""
     error_label.visible = (tag_data.error_message ~= nil and tag_data.error_message ~= "") and true or false
   end
+
+  -- In move mode, disable all controls except cancel
+  if tag_data.move_mode then
+    if refs.icon_btn then GuiUtils.set_button_state(refs.icon_btn, false) end
+    if refs.teleport_btn then GuiUtils.set_button_state(refs.teleport_btn, false) end
+    if refs.favorite_btn then GuiUtils.set_button_state(refs.favorite_btn, false) end
+    if refs.rich_text_input then GuiUtils.set_button_state(refs.rich_text_input, false) end
+    if refs.move_btn then GuiUtils.set_button_state(refs.move_btn, false) end
+    if refs.delete_btn then GuiUtils.set_button_state(refs.delete_btn, false) end
+    if refs.confirm_btn then GuiUtils.set_button_state(refs.confirm_btn, false) end
+    -- Optionally, enable a cancel move button if present
+  end
 end
 
 -- Confirmation dialog for destructive actions (e.g., tag deletion)
