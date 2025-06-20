@@ -127,6 +127,7 @@ function GuiBase.create_label(parent, name, caption, style)
     return elem
 end
 
+
 --- Create a textfield with optional style.
 --- @param parent LuaGuiElement: Parent element
 --- @param name string: Name of the textfield
