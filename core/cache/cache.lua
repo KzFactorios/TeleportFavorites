@@ -190,11 +190,18 @@ local function init_player_data(player)
     storage.players[player.index].surfaces[player.surface.index].favorites = pfaves or {}
     return storage.players[player.index].surfaces[player.surface.index].favorites
   end
-
   player_data.surfaces[player.surface.index].favorites = init_player_favorites(player)
   player_data.player_name = player.name or "Unknown"
   player_data.render_mode = player_data.render_mode or player.render_mode
   player_data.tag_editor_data = player_data.tag_editor_data or Cache.create_tag_editor_data()
+  
+  -- Add drag state tracking for drag-and-drop functionality
+  player_data.drag_favorite = player_data.drag_favorite or {
+    active = false,
+    source_slot = nil,
+    favorite = nil
+  }
+  
   return player_data
 end
 

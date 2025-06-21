@@ -25,10 +25,7 @@ local function lstr(key, ...)
   return { key, ... }
 end
 
-local function clear_drag_state(player)
-  local pdata = Cache.get_player_data(player)
-  pdata.drag_favorite_index = nil
-end
+local CursorUtils = require("core.utils.cursor_utils")
 
 local function is_locked_favorite(fav)
   -- Defensive: treat nil as not locked
@@ -36,16 +33,23 @@ local function is_locked_favorite(fav)
 end
 
 local function start_drag(player, fav, slot)
-  local pdata = Cache.get_player_data(player)
-  pdata.drag_favorite_index = slot
-  GameHelpers.player_print(player, lstr("tf-gui.fave_bar_drag_start", slot))
+  -- Start dragging using cursor utils
+  local success = CursorUtils.start_drag_favorite(player, fav, slot)
+  -- No need for user feedback here - it's handled in CursorUtils.start_drag_favorite
+  return success
+end
+
+local function end_drag(player)
+  -- End dragging using cursor utils
+  return CursorUtils.end_drag_favorite(player)
 end
 
 local function reorder_favorites(player, favorites, drag_index, slot)
-  -- Use PlayerFavorites move_favorite method instead of manual array manipulation  local success, error_msg = favorites:move_favorite(drag_index, slot)
+  -- Use PlayerFavorites move_favorite method instead of manual array manipulation  
+  local success, error_msg = favorites:move_favorite(drag_index, slot)
   if not success then
     GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "failed_reorder_favorite", {error_msg or LocaleUtils.get_error_string(player, "unknown_error")}))
-    clear_drag_state(player)
+    end_drag(player)
     return false
   end
 
@@ -57,7 +61,7 @@ local function reorder_favorites(player, favorites, drag_index, slot)
     fave_bar.update_slot_row(player, bar_flow)
   end
   GameHelpers.player_print(player, lstr("tf-gui.fave_bar_reordered", drag_index, slot))
-  clear_drag_state(player)
+  end_drag(player)
   return true
 end
 
@@ -100,7 +104,7 @@ local function handle_reorder(event, player, favorites, drag_index, slot)
   if event.button == defines.mouse_button_type.left and not event.control and drag_index and drag_index ~= slot then
     return reorder_favorites(player, favorites, drag_index, slot)
   elseif event.button == defines.mouse_button_type.left and not event.control and drag_index and drag_index == slot then
-    clear_drag_state(player)
+    end_drag(player)
     return true
   end
   return false
@@ -151,8 +155,29 @@ end
 
 local function handle_shift_left_click(event, player, fav, slot, favorites)
   if event.button == defines.mouse_button_type.left and event.shift then
-    if fav and not FavoriteUtils.is_blank_favorite(fav) then
-      player.print("[FAVE BAR] drag started")
+    -- Check if we can start a drag (not a blank or locked favorite)
+    if can_start_drag(fav) then
+      start_drag(player, fav, slot)
+      return true
+    elseif is_locked_favorite(fav) then
+      GameHelpers.player_print(player, lstr("tf-gui.fave_bar_locked_cant_drag", slot))
+    end
+  end
+  return false
+end
+
+local function handle_drop_on_slot(event, player, slot, favorites)
+  -- Check if player is currently dragging a favorite
+  local is_dragging, source_slot = CursorUtils.is_dragging_favorite(player)
+  if is_dragging and source_slot and source_slot ~= slot then
+    -- Make sure target slot isn't locked
+    local target_fav = favorites.favorites[slot]
+    if target_fav and not is_locked_favorite(target_fav) then
+      return reorder_favorites(player, favorites, source_slot, slot)
+    elseif is_locked_favorite(target_fav) then
+      GameHelpers.player_print(player, lstr("tf-gui.fave_bar_locked_cant_target", slot))
+      end_drag(player)
+      return true
     end
   end
   return false
@@ -162,24 +187,41 @@ local function handle_favorite_slot_click(event, player, favorites)
   local element = event.element
   local slot = tonumber(element.name:match("fave_bar_slot_(%d+)"))
   if not slot then return end
-  local fav = favorites.favorites[slot]
-  if fav == nil then
+  
+  -- First check if we're in drag mode and this is a drop
+  local is_dragging, source_slot = CursorUtils.is_dragging_favorite(player)
+  if is_dragging then
+    -- This is a drop attempt
+    if handle_drop_on_slot(event, player, slot, favorites) then return end
+    
+    -- If we get here, the drop didn't work, but we need to exit drag mode anyway
+    end_drag(player)
     return
   end
+  
+  -- Not in drag mode, proceed with normal handling
+  local fav = favorites.favorites[slot]
+  if fav == nil then return end
+  
+  -- Check for blank favorite (different handling)
   if FavoriteUtils.is_blank_favorite(fav) then
+    -- For blank favorites, only allow drag targets (no teleport/etc)
     return
   end
 
-  -- Handle Shift+Left-Click to remove favorite
+  -- Handle Shift+Left-Click to start drag
   if handle_shift_left_click(event, player, fav, slot, favorites) then return end
 
   -- Handle Ctrl+click to toggle lock state
   if handle_toggle_lock(event, player, fav, slot, favorites) then return end
 
+  -- Normal left-click to teleport
   if handle_teleport(event, player, fav, slot, false) then return end
 
+  -- Right-click to open tag editor
   handle_request_to_open_tag_editor(event, player, fav, slot)
 
+  -- Update UI
   local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
   local bar_frame = GuiUtils.find_child_by_name(main_flow, "fave_bar_frame")
   local bar_flow = bar_frame and GuiUtils.find_child_by_name(bar_frame, "fave_bar_flow")

@@ -160,7 +160,11 @@ end
 
 -- Build a row of favorite slot buttons for the favorites bar
 function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
-  drag_index = drag_index or -1
+  -- Get drag state from player data instead of legacy drag_index parameter
+  local player_data = Cache.get_player_data(player)
+  local drag_active = player_data.drag_favorite and player_data.drag_favorite.active
+  local drag_source = player_data.drag_favorite and player_data.drag_favorite.source_slot
+  
   local max_slots = Constants.settings.MAX_FAVORITE_SLOTS or 10
   
   for i = 1, max_slots do
@@ -181,16 +185,29 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
         ErrorHandler.debug_log("[FAVE_BAR] Fallback icon used for slot", { slot = i, icon = btn_icon, debug_info = debug_info })
       end
       tooltip = GuiUtils.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }
-      if fav.locked then style = "tf_slot_button_locked" end
-      if drag_index == i then style = "tf_slot_button_dragged" end
-    else
+      
+      -- Apply styling based on state
+      if fav.locked then
+        style = "tf_slot_button_locked"
+      elseif drag_active and drag_source == i then
+        style = "tf_slot_button_dragged"
+      elseif drag_active and not fav.locked then
+        style = "tf_slot_button_drag_target"
+      end
+    else      -- Handle blank slot styling - can be a drop target when dragging
       btn_icon = ""
       tooltip = { "tf-gui.favorite_slot_empty" }
-      style = "tf_slot_button_smallfont"
+      if drag_active then
+        style = "tf_slot_button_drag_target"
+      else
+        style = "tf_slot_button_smallfont"
+      end
     end
+    
     if btn_icon == "tf_tag_in_map_view_small" then
       style = "tf_slot_button_smallfont_map_pin"
     end
+    
     local btn = GuiUtils.create_slot_button(parent, "fave_bar_slot_" .. i, tostring(btn_icon), tooltip, { style = style })
     if btn and btn.valid then
       ---@diagnostic disable-next-line: assign-type-mismatch
@@ -200,20 +217,29 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
   return parent
 end
 
---- Efficiently update only the slot row (fave_bar_slots_flow) for the given player
+-- Update only the slots row without rebuilding the entire bar
 -- parent: the bar_flow container (parent of fave_bar_slots_flow)
-function fave_bar.update_slot_row(player, bar_flow)
-  if not (bar_flow and bar_flow.valid and bar_flow.children) then return end
-  -- Destroy all children named fave_bar_slots_flow (robust to any state)
-  for _, child in pairs(bar_flow.children) do
-    if child.name == "fave_bar_slots_flow" then
+function fave_bar.update_slot_row(player, parent_flow)
+  if not player or not player.valid then return end
+  if not parent_flow or not parent_flow.valid then return end
+  
+  local slots_frame = GuiUtils.find_child_by_name(parent_flow, "fave_bar_slots_flow")
+  if not slots_frame or not slots_frame.valid then return end
+  
+  -- Remove all children
+  for _, child in pairs(slots_frame.children) do
+    if child and child.valid then
       child.destroy()
     end
-  end  local slots_frame = GuiBase.create_frame(bar_flow, "fave_bar_slots_flow", "horizontal", "tf_fave_slots_row")
+  end
+  
+  -- Get player favorites
   local pfaves = Cache.get_player_favorites(player)
-  local drag_index = Cache.get_player_data(player).drag_favorite_index or -1
-  local fav_btns = fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves, drag_index)
-  set_slot_row_visibility(slots_frame, true)  return fav_btns
+  
+  -- Rebuild only the slot buttons
+  fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves)
+  
+  return slots_frame
 end
 
 --- Destroy/hide the favorites bar for a player
