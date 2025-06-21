@@ -185,12 +185,25 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
       if drag_index == i then style = "tf_slot_button_dragged" end
     else
       -- Blank favorite - show empty slot with just slot number
-      icon_name = nil  -- No icon for empty slots
+      icon_name = ""  -- No icon for empty slots
       tooltip = { "tf-gui.favorite_slot_empty" }
       style = "tf_slot_button_smallfont"
     end    
-    
-    local btn = GuiUtils.create_slot_button(parent, "fave_bar_slot_" .. i, icon_name or "", tooltip, { style = style })
+    -- Only use question mark if the slot is truly invalid (should not happen for valid/blank slots)
+    local btn_icon = icon_name
+    if not btn_icon or btn_icon == "" then
+      if fav and not FavoriteUtils.is_blank_favorite(fav) then
+        btn_icon = Enum.SpriteEnum.PIN
+      else
+        btn_icon = "" -- blank slot, no icon
+      end
+    end
+    -- Always pass a string for icon (never nil)
+    local btn
+    if btn_icon == "tf_tag_in_map_view_small" then
+      style = "tf_slot_button_smallfont_map_pin"
+    end
+    btn = GuiUtils.create_slot_button(parent, "fave_bar_slot_" .. i, tostring(btn_icon), tooltip, { style = style })
     if btn and btn.valid then
       ---@diagnostic disable-next-line: assign-type-mismatch
       btn.caption = tostring(i)

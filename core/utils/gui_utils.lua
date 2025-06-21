@@ -301,7 +301,8 @@ function GuiUtils.validate_sprite(sprite_path)
   -- Check for custom TeleportFavorites sprites by name
   local tf_custom_sprites = {
     "tf_hint_arrow_up", "tf_hint_arrow_down", "tf_hint_arrow_left", "tf_hint_arrow_right",
-    "tf_star_disabled", "move_tag_icon", "logo_36", "logo_144", "utility/reset"
+    "tf_star_disabled", "move_tag_icon", "logo_36", "logo_144", "utility/reset", "tf_tag_in_map_view",
+    "tf_tag_in_map_view_small" -- Added small pin icon sprite
   }
   
   for _, known_sprite in ipairs(tf_custom_sprites) do

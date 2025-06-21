@@ -291,6 +291,15 @@ data:extend {
     filename = "__TeleportFavorites__/graphics/square-custom-tag-in-map-view.png",
     width = 32,
     height = 32,
+    scale = 0.25,
+    flags = {"gui-icon"}
+  },
+  {
+    type = "sprite",
+    name = "tf_tag_in_map_view_small",
+    filename = "__TeleportFavorites__/graphics/square-custom-tag-in-map-view-small.png",
+    width = 16,
+    height = 16,
     flags = {"gui-icon"}
   }
 }

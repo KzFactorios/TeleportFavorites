@@ -73,16 +73,25 @@ gui_style.tf_slot_button_smallfont = {
     vertical_align = "bottom",
     font_color = { r = 1, g = 0.647, b = 0, a = 1 },     -- Factorio orange #ffa500
 
-    top_padding = 0,
-    right_padding = 0,
-    bottom_padding = 0,
-    left_padding = 0,
+    top_padding = 2,
+    right_padding = 4,
+    bottom_padding = 4,
+    left_padding = 4,
 
     top_margin = 1,
     right_margin = 0,
     bottom_margin = 0,
     left_margin = -4,
     size = { 40, 40 }
+}
+
+gui_style.tf_slot_button_smallfont_map_pin = {
+    type = "button_style",
+    parent = "tf_slot_button_smallfont",
+    top_padding = 4,   -- More padding for map pin icon
+    right_padding = 8,
+    bottom_padding = 8,
+    left_padding = 8
 }
 
 -- Create tinted button variants manually (can't use GuiUtils during data stage)
