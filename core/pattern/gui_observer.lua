@@ -46,11 +46,8 @@ GuiEventBus:notify("favorite_added", {
 --]]
 
 local Cache = require("core.cache.cache")
-local control_data_viewer = require("core.control.control_data_viewer")
-local Enum = require("prototypes.enums.enum")
-local ErrorHandler = require("core.utils.error_handler")
 local fave_bar = require("gui.favorites_bar.fave_bar")
-local tag_editor = require("gui.tag_editor.tag_editor")
+local ErrorHandler = require("core.utils.error_handler")
 local gui_utils = require("core.utils.gui_utils")
 
 ---@class GuiEventBus
@@ -230,23 +227,62 @@ end
 ---@param event_data table
 function FavoriteObserver:update(event_data)
   if not self:is_valid() or not event_data then return end
-  
   -- Only handle events for this player
   if event_data.player_index and event_data.player_index ~= self.player.index then
     return
   end
-  
+  -- Handle tag_collection_changed: rebuild bar if any favorite matches GPS and player is on the same surface
+  if event_data.gps then
+    local gps_surface = nil
+    do
+      -- Extract surface index from gps string (format: 'x.y.s')
+      local parts = {}
+      for part in string.gmatch(event_data.gps, "[^.]+") do table.insert(parts, part) end
+      if #parts >= 3 then
+        gps_surface = tonumber(parts[3])
+      end
+    end
+    local player_surface = self.player and self.player.valid and self.player.surface and tonumber(self.player.surface.index) or nil
+    if type(gps_surface) == "number" and type(player_surface) == "number" and gps_surface == player_surface then
+      local player_faves = Cache.get_player_favorites(self.player)
+      for _, fav in pairs(player_faves) do
+        if fav.gps == event_data.gps then
+          ErrorHandler.debug_log("FavoriteObserver: tag_collection_changed triggers bar rebuild (surface match)", {
+            player = self.player.name,
+            gps = event_data.gps,
+            player_surface = player_surface
+          })
+          local success, err = pcall(function()
+            fave_bar.build(self.player)
+          end)
+          if not success then
+            ErrorHandler.warn_log("Failed to refresh favorites bar (tag_collection_changed)", {
+              player = self.player.name,
+              error = err
+            })
+          end
+          return
+        end
+      end
+    else
+      ErrorHandler.debug_log("FavoriteObserver: tag_collection_changed ignored (surface mismatch)", {
+        player = self.player and self.player.name or "<nil>",
+        gps = event_data.gps,
+        gps_surface = gps_surface,
+        player_surface = player_surface
+      })
+    end
+    return
+  end
   ErrorHandler.debug_log("Favorite observer updating", {
     player = self.player.name,
     event_type = event_data.type or "unknown",
     player_index = event_data.player_index
   })
-  
   -- Refresh favorites bar
   local success, err = pcall(function()
     fave_bar.build(self.player)
   end)
-  
   if not success then
     ErrorHandler.warn_log("Failed to refresh favorites bar", {
       player = self.player.name,
@@ -255,52 +291,50 @@ function FavoriteObserver:update(event_data)
   end
 end
 
----@class TagObserver : BaseGuiObserver
-local TagObserver = setmetatable({}, { __index = BaseGuiObserver })
-TagObserver.__index = TagObserver
-
---- Create tag observer
+--- Register observers for a player
 ---@param player LuaPlayer
----@return TagObserver
-function TagObserver:new(player)
-  local obj = BaseGuiObserver:new(player, "tag")
-  setmetatable(obj, self)
-  ---@cast obj TagObserver
-  return obj
+function GuiEventBus.register_player_observers(player)
+  ErrorHandler.debug_log("[GUI_OBSERVER] register_player_observers called", {
+    player = player and player.name or "<nil>",
+    player_index = player and player.index or "<nil>"
+  })
+  if not player or not player.valid then return end
+  
+  -- Create and register observers
+  local favorite_observer = FavoriteObserver:new(player)
+  
+  -- Register favorite observer for all favorite-related events
+  GuiEventBus.subscribe("favorite_added", favorite_observer)
+  GuiEventBus.subscribe("favorite_removed", favorite_observer)
+  GuiEventBus.subscribe("favorite_updated", favorite_observer)
+  GuiEventBus.subscribe("favorites_reordered", favorite_observer)
+  GuiEventBus.subscribe("tag_collection_changed", favorite_observer)
+
+  -- Register data observer for cache/data refresh events (for favorites bar only)
+  local data_observer = DataObserver:new(player)
+  GuiEventBus.subscribe("cache_updated", data_observer)
+  GuiEventBus.subscribe("data_refreshed", data_observer)
+
+  ErrorHandler.debug_log("GUI observers registered for player", {
+    player = player.name
+  })
+
+  -- After registering, trigger a single favorite_updated event to build the bar at startup
+  local player_favorites = Cache.get_player_favorites(player)
+  GuiEventBus.notify("favorite_updated", { player_index = player.index, favorites = player_favorites })
 end
 
---- Handle tag-related events
----@param event_data table
-function TagObserver:update(event_data)
-  if not self:is_valid() or not event_data then return end
-  
-  ErrorHandler.debug_log("Tag observer updating", {
-    player = self.player.name,
-    event_type = event_data.type or "unknown",
-    gps = event_data.gps
-  })
-    -- Refresh tag editor if it's open
-  local tag_editor_frame = gui_utils.find_child_by_name(
-    self.player.gui.screen, 
-    Enum.GuiEnum.GUI_FRAME.TAG_EDITOR
-  )
-  
-  if tag_editor_frame and tag_editor_frame.valid then
-    local success, err = pcall(function()
-      -- Get current tag data and refresh
-      local tag_data = Cache.get_tag_editor_data(self.player)
-      if tag_data and tag_data.gps == event_data.gps then
-        tag_editor.build(self.player)
-      end
-    end)
-    
-    if not success then
-      ErrorHandler.warn_log("Failed to refresh tag editor", {
-        player = self.player.name,
-        error = err
-      })
-    end
+--- Clean up all observers
+function GuiEventBus.cleanup_all()
+  for event_type, _ in pairs(GuiEventBus._observers) do
+    GuiEventBus.cleanup_observers(event_type)
   end
+  
+  -- Clear notification queue
+  GuiEventBus._notification_queue = {}
+  GuiEventBus._processing = false
+  
+  ErrorHandler.debug_log("All GUI observers cleaned up")
 end
 
 ---@class DataObserver : BaseGuiObserver
@@ -317,90 +351,24 @@ function DataObserver:new(player)
   return obj
 end
 
---- Handle data-related events
+--- Handle data-related events (favorites bar only)
 ---@param event_data table
 function DataObserver:update(event_data)
-  if not self:is_valid() or not event_data then return end
-  
-  -- Only handle events for this player
-  if event_data.player and event_data.player.index ~= self.player.index then
-    return
+  if not self:is_valid() then return end
+  local success, err = pcall(function()
+    fave_bar.build(self.player)
+  end)
+  if not success then
+    ErrorHandler.warn_log("DataObserver: Failed to refresh favorites bar", {
+      player = self.player.name,
+      error = err
+    })
   end
-  
-  ErrorHandler.debug_log("Data observer updating", {
-    player = self.player.name,
-    event_type = event_data.type or "unknown"
-  })
-    -- Refresh data viewer if it's open
-  local main_flow = gui_utils.get_or_create_gui_flow_from_gui_top(self.player)
-  
-  local data_viewer_frame = gui_utils.find_child_by_name(main_flow, "data_viewer_frame")
-  if data_viewer_frame and data_viewer_frame.valid then
-    local success, err = pcall(function()
-      local pdata = Cache.get_player_data(self.player)
-      local active_tab = pdata.data_viewer_settings and pdata.data_viewer_settings.active_tab or "player_data"
-      local font_size = pdata.data_viewer_settings and pdata.data_viewer_settings.font_size or 12
-      
-      -- Use internal rebuild function
-      if control_data_viewer.rebuild_data_viewer then
-        control_data_viewer.rebuild_data_viewer(self.player, main_flow, active_tab, font_size, true)
-      end
-    end)
-    
-    if not success then
-      ErrorHandler.warn_log("Failed to refresh data viewer", {
-        player = self.player.name,
-        error = err
-      })
-    end
-  end
-end
-
---- Register observers for a player
----@param player LuaPlayer
-function GuiEventBus.register_player_observers(player)
-  if not player or not player.valid then return end
-  
-  -- Create and register observers
-  local favorite_observer = FavoriteObserver:new(player)
-  local tag_observer = TagObserver:new(player)
-  local data_observer = DataObserver:new(player)
-  
-  -- Subscribe to relevant events
-  GuiEventBus.subscribe("favorite_added", favorite_observer)
-  GuiEventBus.subscribe("favorite_removed", favorite_observer)
-  GuiEventBus.subscribe("favorite_updated", favorite_observer)
-  GuiEventBus.subscribe("favorites_reordered", favorite_observer)
-  
-  GuiEventBus.subscribe("tag_created", tag_observer)
-  GuiEventBus.subscribe("tag_modified", tag_observer)
-  GuiEventBus.subscribe("tag_deleted", tag_observer)
-  
-  GuiEventBus.subscribe("cache_updated", data_observer)
-  GuiEventBus.subscribe("data_refreshed", data_observer)
-  
-  ErrorHandler.debug_log("GUI observers registered for player", {
-    player = player.name
-  })
-end
-
---- Clean up all observers
-function GuiEventBus.cleanup_all()
-  for event_type, _ in pairs(GuiEventBus._observers) do
-    GuiEventBus.cleanup_observers(event_type)
-  end
-  
-  -- Clear notification queue
-  GuiEventBus._notification_queue = {}
-  GuiEventBus._processing = false
-  
-  ErrorHandler.debug_log("All GUI observers cleaned up")
 end
 
 return {
   GuiEventBus = GuiEventBus,
   BaseGuiObserver = BaseGuiObserver,
   FavoriteObserver = FavoriteObserver,
-  TagObserver = TagObserver,
   DataObserver = DataObserver
 }

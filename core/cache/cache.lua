@@ -217,15 +217,14 @@ end
 ---@param gps string
 ---@return table|nil
 function Cache.is_player_favorite(player, gps)
+  if not player or not player.valid or not gps or gps == "" then return nil end
   local player_faves = Cache.get_player_favorites(player)
-  local player_favorite = nil
-  for k, v in pairs(player_faves) do
+  for _, v in pairs(player_faves) do
     if v.gps == gps then
-      player_favorite = v
-      break
+      return v
     end
   end
-  return player_favorite
+  return nil
 end
 
 --- Initialize and retrieve persistent surface data for a given surface index.

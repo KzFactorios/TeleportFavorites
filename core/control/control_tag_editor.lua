@@ -218,6 +218,11 @@ local function close_tag_editor(player)
 end
 
 local function handle_confirm_btn(player, element, tag_data)
+  GuiEventBus.register_player_observers(player)
+  ErrorHandler.debug_log("[TAG_EDITOR] handle_confirm_btn called", {
+    player = player and player.name or "<nil>",
+    tag_data_gps = tag_data and tag_data.gps or "<nil>"
+  })
   -- Get values directly from storage (tag_data), not from UI elements
   local text = (tag_data.text or ""):gsub("%s+$", "")
   local icon = tag_data.icon or ""
@@ -258,7 +263,6 @@ local function handle_confirm_btn(player, element, tag_data)
   local refreshed_tag = tags[tag.gps] or tag
   refreshed_tag.faved_by_players = refreshed_tag.faved_by_players or {}
   tag_data.tag = refreshed_tag
-  tags[tag.gps] = refreshed_tag
 
   -- Ensure tag is written to persistent storage (sanitized)
   local sanitized_tag = Cache.sanitize_for_storage(refreshed_tag)
@@ -280,12 +284,10 @@ local function handle_confirm_btn(player, element, tag_data)
         LocaleUtils.get_error_string(player, "favorite_slots_full") or error_msg)
     end
 
-    tag.faved_by_players[player.index] = true
+    tag.faved_by_players[player.index] = player.index
   else
-    -- Remove favorite if it exists
     local player_favorites = PlayerFavorites.new(player)
     player_favorites:remove_favorite(tag.gps)
-    -- Remove the player's index from tag's faved_by_players
     tag.faved_by_players[player.index] = nil
   end
 
@@ -296,6 +298,11 @@ local function handle_confirm_btn(player, element, tag_data)
 
   -- Notify observers of tag creation or modification
   local event_type = is_new_tag and "tag_created" or "tag_modified"
+  ErrorHandler.debug_log("[TAG_EDITOR] handle_confirm_btn: Notifying observers", {
+    event_type = event_type,
+    player = player and player.name or "<nil>",
+    gps = tag.gps
+  })
   GuiEventBus.notify(event_type, {
     player = player,
     gps = tag.gps,
@@ -303,13 +310,16 @@ local function handle_confirm_btn(player, element, tag_data)
     type = event_type,
     is_new = is_new_tag
   })
+  -- Fire multiplayer-safe tag collection changed event
+  GuiEventBus.notify("tag_collection_changed", {
+    gps = tag.gps
+  })
 
+  ErrorHandler.debug_log("[TAG_EDITOR] handle_confirm_btn: after notify, about to close_tag_editor", {
+    player = player and player.name or "<nil>",
+    gps = tag.gps
+  })
   close_tag_editor(player)
-  -- Always refresh the favorites bar after confirm
-  local ok, fave_bar = pcall(require, "gui.favorites_bar.fave_bar")
-  if ok and fave_bar and type(fave_bar.build) == "function" then
-    fave_bar.build(player)
-  end
   GameHelpers.player_print(player, { "tf-command.tag_editor_confirmed" })
 end
 
@@ -407,6 +417,10 @@ local function handle_delete_confirm(player)
     gps = tag_gps,
     type = "tag_deleted",
     deleted_by = player.name
+  })
+  -- Fire multiplayer-safe tag collection changed event
+  GuiEventBus.notify("tag_collection_changed", {
+    gps = tag_gps
   })
 
   -- Close both dialogs

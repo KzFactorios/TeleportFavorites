@@ -80,9 +80,7 @@ function handlers.on_init()
   end
 
   for _, player in pairs(game.players) do
-    ErrorHandler.debug_log("Building favorites bar for player during init", { player = player.name })
-    fave_bar.build(player)
-    -- Ensure GUI observers are registered for each player
+    -- Only register GUI observers; let observer trigger the initial bar build
     local ok, gui_observer = pcall(require, "core.pattern.gui_observer")
     if ok and gui_observer and gui_observer.GuiEventBus and gui_observer.GuiEventBus.register_player_observers then
       gui_observer.GuiEventBus.register_player_observers(player)
@@ -104,9 +102,7 @@ function handlers.on_player_created(event)
     return
   end
 
-  ErrorHandler.debug_log("Building favorites bar for new player", { player = player.name })
-  fave_bar.build(player)
-  -- Ensure GUI observers are registered for the new player
+  -- Only register GUI observers; let observer trigger the initial bar build
   local ok, gui_observer = pcall(require, "core.pattern.gui_observer")
   if ok and gui_observer and gui_observer.GuiEventBus and gui_observer.GuiEventBus.register_player_observers then
     gui_observer.GuiEventBus.register_player_observers(player)

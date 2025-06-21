@@ -25,13 +25,12 @@ local control_data_viewer = require("core.control.control_data_viewer")
 local event_registration_dispatcher = require("core.events.event_registration_dispatcher")
 local handlers = require("core.events.handlers")
 
--- Optional modules - load safely
-local gui_observer
+local gui_observer = nil
+local did_run_fave_bar_startup = false
 
-do
-  local success, module = pcall(require, "core.pattern.gui_observer")
-  if success then gui_observer = module end
-end
+-- Optional modules - load safely
+local success, module = pcall(require, "core.pattern.gui_observer")
+if success then gui_observer = module end
 
 -- Log control.lua loading
 if log then log("[TeleportFavorites] control.lua loaded") end
@@ -60,4 +59,18 @@ end)
 
 -- Register all mod events through centralized dispatcher
 event_registration_dispatcher.register_all_events(script)
+
+-- Run-once startup handler for favorites bar initialization
+script.on_event(defines.events.on_tick, function(event)
+  if not did_run_fave_bar_startup then
+    did_run_fave_bar_startup = true
+    if gui_observer and gui_observer.GuiEventBus and gui_observer.GuiEventBus.register_player_observers then
+      for _, player in pairs(game.players) do
+        gui_observer.GuiEventBus.register_player_observers(player)
+      end
+    end
+    -- Remove this handler after first run
+    script.on_event(defines.events.on_tick, nil)
+  end
+end)
 

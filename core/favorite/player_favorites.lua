@@ -42,13 +42,12 @@ local Constants = require("constants")
 local FavoriteUtils = require("core.favorite.favorite")
 local Cache = require("core.cache.cache")
 local ErrorHandler = require("core.utils.error_handler")
+local GuiObserver = require("core.pattern.gui_observer")
 
 -- Observer Pattern Integration
 local function notify_observers_safe(event_type, data)
-  -- Safe notification that handles module load order
-  local success, gui_observer = pcall(require, "core.pattern.gui_observer")
-  if success and gui_observer.GuiEventBus then
-    gui_observer.GuiEventBus.notify(event_type, data)
+  if GuiObserver and GuiObserver.GuiEventBus then
+    GuiObserver.GuiEventBus.notify(event_type, data)
   end
 end
 
@@ -178,7 +177,7 @@ function PlayerFavorites:add_favorite(gps)
     gps = gps,
     gps_type = type(gps)
   })
-    if not gps or type(gps) ~= "string" or gps == "" then
+  if not gps or type(gps) ~= "string" or gps == "" then
     ErrorHandler.debug_log("Invalid GPS string", {
       player = (self.player and self.player.valid and self.player.name) or "unknown",
       gps = gps,
@@ -187,7 +186,8 @@ function PlayerFavorites:add_favorite(gps)
     return nil, "Invalid GPS string"
   end
 
-  -- Check if already exists  local existing_fav, existing_slot = self:get_favorite_by_gps(gps)
+  -- Check if already exists
+  local existing_fav, existing_slot = self:get_favorite_by_gps(gps)
   if existing_fav then 
     ErrorHandler.debug_log("Favorite already exists", {
       player = (self.player and self.player.valid and self.player.name) or "unknown",
@@ -203,7 +203,6 @@ function PlayerFavorites:add_favorite(gps)
     max_slots = Constants.settings.MAX_FAVORITE_SLOTS,
     current_favorites_count = #self.favorites
   })
-  
   for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
     ErrorHandler.debug_log("Checking slot", {
       player = (self.player and self.player.valid and self.player.name) or "unknown",
@@ -230,35 +229,25 @@ function PlayerFavorites:add_favorite(gps)
   })
   -- Get or create tag
   local existing_tag = Cache.get_tag_by_gps(gps)
-
-  -- Always use nil if no valid tag found
   local tag_for_favorite = existing_tag and sanitize_tag_for_favorite(existing_tag) or nil
-
-  -- Create new favorite
   local new_favorite = FavoriteUtils.new(gps, false, tag_for_favorite)
-  
   ErrorHandler.debug_log("Created new favorite", {
     player = (self.player and self.player.valid and self.player.name) or "unknown",
     gps = gps,
     slot = slot_idx,
     favorite = new_favorite
   })
-
-  -- Update tag's faved_by_players list
   if existing_tag then
     update_tag_favorites(existing_tag, self.player_index, "add")
   end
-  -- Update favorites and storage
   self.favorites[slot_idx] = new_favorite
   sync_to_storage(self)
-
-  -- Notify observers
+  -- Only notify if a favorite was actually added
   notify_observers_safe("favorite_added", {
     player_index = self.player_index,
     favorite = new_favorite,
     slot_index = slot_idx
   })
-
   return new_favorite, nil
 end
 
@@ -269,28 +258,22 @@ function PlayerFavorites:remove_favorite(gps)
   if not gps or type(gps) ~= "string" or gps == "" then
     return false, "Invalid GPS string"
   end
-
   local existing_fav, slot_idx = self:get_favorite_by_gps(gps)
   if not existing_fav or not slot_idx then
     return false, "Favorite not found"
   end
-
-  -- Update tag's faved_by_players list
   local existing_tag = Cache.get_tag_by_gps(gps)
   if existing_tag then
     update_tag_favorites(existing_tag, self.player_index, "remove")
   end
-  -- Replace with blank favorite
   self.favorites[slot_idx] = FavoriteUtils.get_blank_favorite()
   sync_to_storage(self)
-
-  -- Notify observers
+  -- Only notify if a favorite was actually removed
   notify_observers_safe("favorite_removed", {
     player_index = self.player_index,
     gps = gps,
     slot_index = slot_idx
   })
-
   return true, nil
 end
 

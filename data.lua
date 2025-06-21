@@ -284,6 +284,14 @@ data:extend {
     key_sequence = "CONTROL + Z",
     consuming = "game-only",
     order = "ea[undo-1]"
+  },
+  {
+    type = "sprite",
+    name = "tf_tag_in_map_view",
+    filename = "__TeleportFavorites__/graphics/square-custom-tag-in-map-view.png",
+    width = 32,
+    height = 32,
+    flags = {"gui-icon"}
   }
 }
 

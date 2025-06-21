@@ -50,7 +50,7 @@ local Enum = require("prototypes.enums.enum")
 
 local fave_bar = {}
 
-
+local last_build_tick = {}
 
 --[[
 Element Hierarchy Diagram:
@@ -90,17 +90,23 @@ local function handle_overflow_error(frame, fav_btns, pfaves)
   end
 end
 
-local _fave_bar_building_guard = _G._fave_bar_building_guard or {}
-_G._fave_bar_building_guard = _fave_bar_building_guard
-
 local function set_slot_row_visibility(slots_frame, visibility)
   slots_frame.visible = visibility
 end
 
 function fave_bar.build(player, force_show)
-  local pid = player.index
-  if _fave_bar_building_guard[pid] then return end
-  _fave_bar_building_guard[pid] = true
+  if not player or not player.valid then return end
+  local tick = game and game.tick or 0
+  local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
+  local bar_frame = main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
+  if last_build_tick[player.index] == tick and bar_frame and bar_frame.valid then
+    ErrorHandler.debug_log("[FAVE_BAR] build skipped (already built this tick, bar present)", { player = player.name, tick = tick })
+    return
+  end
+  last_build_tick[player.index] = tick
+  ErrorHandler.debug_log("[FAVE_BAR] build called", {
+    player = player and player.name or "<nil>"
+  })
   local success, result = pcall(function()
     local player_settings = Settings:getPlayerSettings(player)
     if not player_settings.favorites_on then return end
@@ -117,9 +123,9 @@ function fave_bar.build(player, force_show)
     
     -- add the fave bar frame
     -- Outer frame for the bar (matches quickbar background)
-    local fave_bar_frame = GuiBase.create_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR, "horizontal", "tf_fave_bar_frame")    -- Use the new quickbar-style builder for the favorites bar
+    local fave_bar_frame = GuiBase.create_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR, "horizontal", "tf_fave_bar_frame")
     ErrorHandler.debug_log("Favorites bar: Building quickbar style")
-    local bar_flow, slots_frame, toggle_button = fave_bar.build_quickbar_style(player, fave_bar_frame)
+    local _bar_flow, slots_frame, _toggle_button = fave_bar.build_quickbar_style(player, fave_bar_frame)
     
     -- Only one toggle button: the one created in build_quickbar_style
     ErrorHandler.debug_log("Favorites bar: Getting player favorites")
@@ -139,8 +145,8 @@ function fave_bar.build(player, force_show)
     -- Do NOT set toggle_container.visible here; toggle button always visible unless a future setting overrides it
     handle_overflow_error(fave_bar_frame, slots_frame, pfaves)
 
-    return fave_bar_frame  end)
-  _fave_bar_building_guard[pid] = nil
+    return fave_bar_frame
+  end)
   if not success then
     ErrorHandler.warn_log("Favorites bar build failed for player " .. (player and player.name or "unknown") .. ": " .. tostring(result))
     ErrorHandler.debug_log("Favorites bar build failed", {
@@ -149,12 +155,15 @@ function fave_bar.build(player, force_show)
     })
     return nil
   end
-    
   return result
 end
 
 -- Build a row of favorite slot buttons for the favorites bar
 function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
+  ErrorHandler.debug_log("[FAVE BAR] rebuilding...", {
+    player = player
+  })
+
   drag_index = drag_index or -1
   local max_slots = Constants.settings.MAX_FAVORITE_SLOTS or 10
   
@@ -164,28 +173,28 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
     -- Rehydrate favorite (tag and chart_tag) from GPS using runtime utils
     fav = FavoriteRuntimeUtils.rehydrate_favorite(fav)
     ---@cast fav Favorite
-    local icon = nil
+    local icon_name = nil
     local tooltip = { "tf-gui.favorite_slot_empty" }
     local style = "tf_slot_button_smallfont"
     if fav and not FavoriteUtils.is_blank_favorite(fav) then
       -- Non-blank favorite - show icon and full tooltip
       if fav.tag and fav.tag.chart_tag and fav.tag.chart_tag.icon and fav.tag.chart_tag.icon.name and fav.tag.chart_tag.icon.name ~= "" then
-        icon = fav.tag.chart_tag.icon.name
+        icon_name = fav.tag.chart_tag.icon.name
       else
         -- Use PIN as default icon for non-blank favorites
-        icon = Enum.SpriteEnum.PIN
+        icon_name = Enum.SpriteEnum.PIN
       end
       tooltip = GuiUtils.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }
       if fav.locked then style = "tf_slot_button_locked" end
       if drag_index == i then style = "tf_slot_button_dragged" end
     else
       -- Blank favorite - show empty slot with just slot number
-      icon = nil  -- No icon for empty slots
+      icon_name = nil  -- No icon for empty slots
       tooltip = { "tf-gui.favorite_slot_empty" }
       style = "tf_slot_button_smallfont"
     end    
     
-    local btn = GuiUtils.create_slot_button(parent, "fave_bar_slot_" .. i, icon or "", tooltip, { style = style })
+    local btn = GuiUtils.create_slot_button(parent, "fave_bar_slot_" .. i, icon_name or "", tooltip, { style = style })
     if btn and btn.valid then
       ---@diagnostic disable-next-line: assign-type-mismatch
       btn.caption = tostring(i)
