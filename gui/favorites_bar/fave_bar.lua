@@ -185,23 +185,15 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
         ErrorHandler.debug_log("[FAVE_BAR] Fallback icon used for slot", { slot = i, icon = btn_icon, debug_info = debug_info })
       end
       tooltip = GuiUtils.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }
-      
-      -- Apply styling based on state
+      -- Only apply locked style, never drag styles
       if fav.locked then
         style = "tf_slot_button_locked"
-      elseif drag_active and drag_source == i then
-        style = "tf_slot_button_dragged"
-      elseif drag_active and not fav.locked then
-        style = "tf_slot_button_drag_target"
       end
-    else      -- Handle blank slot styling - can be a drop target when dragging
+    else
+      -- Blank slot: default style, no drag styling
       btn_icon = ""
       tooltip = { "tf-gui.favorite_slot_empty" }
-      if drag_active then
-        style = "tf_slot_button_drag_target"
-      else
-        style = "tf_slot_button_smallfont"
-      end
+      style = "tf_slot_button_smallfont"
     end
     
     if btn_icon == "tf_tag_in_map_view_small" then

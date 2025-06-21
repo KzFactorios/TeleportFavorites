@@ -53,13 +53,8 @@ local function reorder_favorites(player, favorites, drag_index, slot)
     return false
   end
 
-  -- Efficiently update only the slot row, not the whole bar
-  local parent = player.gui.top
-  local bar_frame = parent and parent.fave_bar_frame
-  local bar_flow = bar_frame and bar_frame.fave_bar_flow
-  if bar_flow then
-    fave_bar.update_slot_row(player, bar_flow)
-  end
+  -- Rebuild the entire favorites bar to reflect new order
+  fave_bar.build(player)
   GameHelpers.player_print(player, lstr("tf-gui.fave_bar_reordered", drag_index, slot))
   end_drag(player)
   return true
@@ -176,6 +171,7 @@ local function handle_drop_on_slot(event, player, slot, favorites)
       return reorder_favorites(player, favorites, source_slot, slot)
     elseif is_locked_favorite(target_fav) then
       GameHelpers.player_print(player, lstr("tf-gui.fave_bar_locked_cant_target", slot))
+      GameHelpers.safe_play_sound(player, { path = "utility/cannot_build" })
       end_drag(player)
       return true
     end
