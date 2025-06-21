@@ -160,10 +160,6 @@ end
 
 -- Build a row of favorite slot buttons for the favorites bar
 function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
-  ErrorHandler.debug_log("[FAVE BAR] rebuilding...", {
-    player = player
-  })
-
   drag_index = drag_index or -1
   local max_slots = Constants.settings.MAX_FAVORITE_SLOTS or 10
   

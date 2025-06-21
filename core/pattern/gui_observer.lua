@@ -49,6 +49,7 @@ local Cache = require("core.cache.cache")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local ErrorHandler = require("core.utils.error_handler")
 local gui_utils = require("core.utils.gui_utils")
+local Enum = require("prototypes.enums.enum")
 
 ---@class GuiEventBus
 ---@field _observers table<string, table[]>
@@ -226,102 +227,20 @@ end
 --- Handle favorite-related events
 ---@param event_data table
 function FavoriteObserver:update(event_data)
+  ErrorHandler.debug_log("[FAVORITE OBSERVER] update called", {
+    class = "FavoriteObserver",
+    method = "update",
+    player = self.player and self.player.name or "<nil>",
+    event_type = event_data and event_data.type or "<nil>",
+    player_index = event_data and event_data.player_index or "<nil>"
+  })
   if not self:is_valid() or not event_data then return end
   -- Only handle events for this player
   if event_data.player_index and event_data.player_index ~= self.player.index then
     return
   end
-  -- Handle tag_collection_changed: rebuild bar if any favorite matches GPS and player is on the same surface
-  if event_data.gps then
-    local gps_surface = nil
-    do
-      -- Extract surface index from gps string (format: 'x.y.s')
-      local parts = {}
-      for part in string.gmatch(event_data.gps, "[^.]+") do table.insert(parts, part) end
-      if #parts >= 3 then
-        gps_surface = tonumber(parts[3])
-      end
-    end
-    local player_surface = self.player and self.player.valid and self.player.surface and tonumber(self.player.surface.index) or nil
-    if type(gps_surface) == "number" and type(player_surface) == "number" and gps_surface == player_surface then
-      local player_faves = Cache.get_player_favorites(self.player)
-      for _, fav in pairs(player_faves) do
-        if fav.gps == event_data.gps then
-          ErrorHandler.debug_log("FavoriteObserver: tag_collection_changed triggers bar rebuild (surface match)", {
-            player = self.player.name,
-            gps = event_data.gps,
-            player_surface = player_surface
-          })
-          local success, err = pcall(function()
-            fave_bar.build(self.player)
-          end)
-          if not success then
-            ErrorHandler.warn_log("Failed to refresh favorites bar (tag_collection_changed)", {
-              player = self.player.name,
-              error = err
-            })
-          end
-          return
-        end
-      end
-    else
-      ErrorHandler.debug_log("FavoriteObserver: tag_collection_changed ignored (surface mismatch)", {
-        player = self.player and self.player.name or "<nil>",
-        gps = event_data.gps,
-        gps_surface = gps_surface,
-        player_surface = player_surface
-      })
-    end
-    return
-  end
-  ErrorHandler.debug_log("Favorite observer updating", {
-    player = self.player.name,
-    event_type = event_data.type or "unknown",
-    player_index = event_data.player_index
-  })
-  -- Refresh favorites bar
-  local success, err = pcall(function()
-    fave_bar.build(self.player)
-  end)
-  if not success then
-    ErrorHandler.warn_log("Failed to refresh favorites bar", {
-      player = self.player.name,
-      error = err
-    })
-  end
-end
-
---- Register observers for a player
----@param player LuaPlayer
-function GuiEventBus.register_player_observers(player)
-  ErrorHandler.debug_log("[GUI_OBSERVER] register_player_observers called", {
-    player = player and player.name or "<nil>",
-    player_index = player and player.index or "<nil>"
-  })
-  if not player or not player.valid then return end
-  
-  -- Create and register observers
-  local favorite_observer = FavoriteObserver:new(player)
-  
-  -- Register favorite observer for all favorite-related events
-  GuiEventBus.subscribe("favorite_added", favorite_observer)
-  GuiEventBus.subscribe("favorite_removed", favorite_observer)
-  GuiEventBus.subscribe("favorite_updated", favorite_observer)
-  GuiEventBus.subscribe("favorites_reordered", favorite_observer)
-  GuiEventBus.subscribe("tag_collection_changed", favorite_observer)
-
-  -- Register data observer for cache/data refresh events (for favorites bar only)
-  local data_observer = DataObserver:new(player)
-  GuiEventBus.subscribe("cache_updated", data_observer)
-  GuiEventBus.subscribe("data_refreshed", data_observer)
-
-  ErrorHandler.debug_log("GUI observers registered for player", {
-    player = player.name
-  })
-
-  -- After registering, trigger a single favorite_updated event to build the bar at startup
-  local player_favorites = Cache.get_player_favorites(player)
-  GuiEventBus.notify("favorite_updated", { player_index = player.index, favorites = player_favorites })
+  -- Only handle non-favorites-bar events here (e.g., for other GUIs if needed)
+  -- Do not call fave_bar.build here for tag_collection_changed or cache_updated
 end
 
 --- Clean up all observers
@@ -355,14 +274,45 @@ end
 ---@param event_data table
 function DataObserver:update(event_data)
   if not self:is_valid() then return end
+  local debug_context = {
+    class = "DataObserver",
+    method = "update",
+    player = self.player.name,
+    event_type = event_data and event_data.type or "unknown",
+    event_data = event_data,
+    stacktrace = (debug and debug.traceback and debug.traceback()) or "<no traceback>"
+  }
+  ErrorHandler.debug_log("[DATA OBSERVER] ===> (cache/data event)", debug_context)
   local success, err = pcall(function()
     fave_bar.build(self.player)
   end)
   if not success then
-    ErrorHandler.warn_log("DataObserver: Failed to refresh favorites bar", {
-      player = self.player.name,
-      error = err
-    })
+    ErrorHandler.warn_log("[DATA OBSERVER] ===> Failed to refresh favorites bar", debug_context)
+  end
+end
+
+--- Register observers for a player
+---@param player LuaPlayer
+function GuiEventBus.register_player_observers(player)
+  ErrorHandler.debug_log("[GUI_OBSERVER] register_player_observers called", {
+    player = player and player.name or "<nil>",
+    player_index = player and player.index or "<nil>"
+  })
+  if not player or not player.valid then return end
+
+  -- Only register DataObserver for cache_updated events (favorites bar only)
+  local data_observer = DataObserver:new(player)
+  GuiEventBus.subscribe("cache_updated", data_observer)
+
+  ErrorHandler.debug_log("GUI observers registered for player (DataObserver only, cache_updated)", {
+    player = player.name
+  })
+
+  -- Ensure the favorites bar is visible on startup (only if not already present)
+  local main_flow = gui_utils.get_or_create_gui_flow_from_gui_top(player)
+  local bar_frame = main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
+  if not (bar_frame and bar_frame.valid) then
+    fave_bar.build(player)
   end
 end
 

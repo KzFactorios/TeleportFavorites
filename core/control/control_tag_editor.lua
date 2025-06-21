@@ -197,6 +197,7 @@ local function update_chart_tag_fields(tag, tag_data, text, icon, player)
       icon = icon
     }
   })
+  -- Do NOT notify "cache_updated" here; only handle_confirm_btn should do so
 end
 
 local function close_tag_editor(player)
@@ -218,7 +219,7 @@ local function close_tag_editor(player)
 end
 
 local function handle_confirm_btn(player, element, tag_data)
-  GuiEventBus.register_player_observers(player)
+  -- Removed: GuiEventBus.register_player_observers(player)
   ErrorHandler.debug_log("[TAG_EDITOR] handle_confirm_btn called", {
     player = player and player.name or "<nil>",
     tag_data_gps = tag_data and tag_data.gps or "<nil>"
@@ -312,6 +313,11 @@ local function handle_confirm_btn(player, element, tag_data)
   })
   -- Fire multiplayer-safe tag collection changed event
   GuiEventBus.notify("tag_collection_changed", {
+    gps = tag.gps
+  })
+  -- Fire cache_updated event for DataObserver
+  GuiEventBus.notify("cache_updated", {
+    type = "tag_editor_confirmed",
     gps = tag.gps
   })
 
