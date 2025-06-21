@@ -274,45 +274,18 @@ end
 ---@return boolean is_valid True if sprite exists
 function GuiUtils.validate_sprite(sprite_path)
   if not sprite_path or sprite_path == "" then return false end
-  
+
   -- Use remote interface if available for sprite validation
   if remote and remote.interfaces and remote.interfaces["__core__"] and remote.interfaces["__core__"].is_valid_sprite_path then
     local success, is_valid = pcall(remote.call, "__core__", "is_valid_sprite_path", sprite_path)
     if success and is_valid then
       return true
+    else
+      return false
     end
-    -- If remote call fails or returns false, continue to fallback validation
   end
-  -- Fallback validation - check for common sprite patterns
-  local common_sprites = {
-    "utility/add", "utility/remove", "utility/close", "utility/refresh",
-    "utility/arrow-up", "utility/arrow-down", "utility/arrow-left", "utility/arrow-right",
-    "utility/questionmark", "utility/check_mark", "utility/warning_icon",
-    "utility/trash", "utility/copy", "utility/edit", "utility/enter",
-    "utility/confirm_slot", "utility/danger_icon", "utility/info",
-    "utility/export_slot", "utility/import_slot", "utility/list_view",
-    "utility/lock", "utility/pin", "utility/play", "utility/search_icon", "utility/settings"
-  }
-  
-  for _, known_sprite in ipairs(common_sprites) do
-    if sprite_path == known_sprite then return true end
-  end
-  
-  -- Check for custom TeleportFavorites sprites by name
-  local tf_custom_sprites = {
-    "tf_hint_arrow_up", "tf_hint_arrow_down", "tf_hint_arrow_left", "tf_hint_arrow_right",
-    "tf_star_disabled", "move_tag_icon", "logo_36", "logo_144", "utility/reset", "tf_tag_in_map_view",
-    "tf_tag_in_map_view_small" -- Added small pin icon sprite
-  }
-  
-  for _, known_sprite in ipairs(tf_custom_sprites) do
-    if sprite_path == known_sprite then return true end
-  end
-  
-  -- Check if it's a custom mod sprite file path
-  if sprite_path:find("__TeleportFavorites__") then return true end
-  
-  return false
+  -- If remote is not available (data stage or fallback), optimistically allow any non-empty sprite path
+  return true
 end
 
 --- Extract sprite debugging information

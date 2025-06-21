@@ -90,20 +90,16 @@ end
 ---@return boolean is_water
 function PositionUtils.is_water_tile(surface, position)
   if not surface or not surface.get_tile then return false end
-  
-  local x, y = math.floor(position.x), math.floor(position.y)
+  local x, y = position.x, position.y
   local tile = surface.get_tile(x, y)
   if not tile or not tile.valid then return false end
-  
   -- Check tile name for water patterns - most reliable method
   local tile_name = tile.name
-  -- Check for various water tile naming patterns
   local name = tile_name:lower()
   if name:find("water") or name:find("deepwater") or name:find("shallow%-water") or 
      name == "water" or name == "deepwater" or name == "shallow-water" then
     return true
   end
-  
   return false
 end
 
@@ -114,18 +110,14 @@ end
 ---@return boolean is_space
 function PositionUtils.is_space_tile(surface, position)
   if not surface or not surface.get_tile then return false end
-  
-  local tile = surface.get_tile(math.floor(position.x), math.floor(position.y))
+  local tile = surface.get_tile(position.x, position.y)
   if not tile or not tile.valid then return false end
-  
   -- Check tile name for space patterns
   local tile_name = tile.name
   local name = tile_name:lower()
-  -- Common space tile names in Factorio
   if name:find("space") or name:find("void") or name == "out-of-map" then
     return true
   end
-  
   return false
 end
 
@@ -135,28 +127,40 @@ end
 ---@param position MapPosition
 ---@return boolean is_walkable
 function PositionUtils.is_walkable_position(surface, position)
-  if not surface or not position then return false end
-  
-  -- Get the tile at the position
-  local tile = surface.get_tile(position.x, position.y)
-  if not tile or not tile.valid then return false end
-  
-  -- Primary check: Water tiles are never walkable
-  if PositionUtils.is_water_tile(surface, position) then
+  if not surface or not position then 
+    ErrorHandler.debug_log("[WALKABLE] Invalid surface or position", {surface=surface and surface.name, position=position})
+    return false 
+  end
+  -- Normalize position to whole numbers before tile checks
+  local norm_pos = PositionUtils.normalize_position(position)
+  local tile = surface.get_tile(norm_pos.x, norm_pos.y)
+  local tile_info = {
+    surface=surface.name,
+    surface_index=surface.index,
+    orig_x=position.x, orig_y=position.y,
+    norm_x=norm_pos.x, norm_y=norm_pos.y,
+    tile_name=tile and tile.name or "<nil>",
+    tile_prototype=tile and tile.prototype and tile.prototype.name or "<nil>",
+    tile_unique_id=tile and tile.prototype and tile.prototype.order or "<nil>"
+  }
+  ErrorHandler.debug_log("[WALKABLE] Tile info", tile_info)
+  if not tile or not tile.valid then 
+    ErrorHandler.debug_log("[WALKABLE] Invalid tile", tile_info)
+    return false 
+  end
+  if PositionUtils.is_water_tile(surface, norm_pos) then
+    ErrorHandler.debug_log("[WALKABLE] Position is water", tile_info)
     return false
   end
-    -- Space tile validation with space platform context
-  if PositionUtils.is_space_tile(surface, position) then
-    -- For non-space platform surfaces, space tiles are not walkable
+  if PositionUtils.is_space_tile(surface, norm_pos) then
+    ErrorHandler.debug_log("[WALKABLE] Position is space/void", tile_info)
     return false
   end
-
-  -- If surface is provided and is on a space platform, space tiles are not allowed to be tagged
   if PositionUtils.is_on_space_platform(surface) then
+    ErrorHandler.debug_log("[WALKABLE] Surface is space platform", tile_info)
     return false
   end
-  -- Use simpler walkability check based on tile properties
-  -- If not water or space, consider it walkable
+  ErrorHandler.debug_log("[WALKABLE] Position is walkable", tile_info)
   return true
 end
 

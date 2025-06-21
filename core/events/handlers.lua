@@ -219,6 +219,16 @@ function handlers.on_open_tag_editor_custom_input(event)
   Cache.set_tag_editor_data(player, tag_data)
   tag_editor.build(player)
   ErrorHandler.debug_log("Tag editor: Successfully completed")
+
+  -- Debugging: Log detailed information for tag editor opening
+  ErrorHandler.debug_log("[TAG_EDITOR] Tag editor open debug", {
+    cursor_position = cursor_position,
+    normalized_pos = PositionUtils.normalize_position(cursor_position),
+    gps = GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index),
+    nrm_tag_gps = Cache.get_tag_by_gps(GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)) and Cache.get_tag_by_gps(GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)).gps or nil,
+    nrm_chart_tag_position = Cache.get_tag_by_gps(GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)) and Cache.get_tag_by_gps(GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)).chart_tag and Cache.get_tag_by_gps(GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)).chart_tag.position or nil,
+    gps_from_chart_tag_position = Cache.get_tag_by_gps(GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)) and Cache.get_tag_by_gps(GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)).chart_tag and Cache.get_tag_by_gps(GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)).chart_tag.position and GPSUtils.gps_from_map_position(PositionUtils.normalize_position(Cache.get_tag_by_gps(GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)).chart_tag.position), player.surface.index) or nil
+  })
 end
 
 -- Utility: Normalize and replace chart tag (was duplicated in on_chart_tag_added/on_chart_tag_modified)

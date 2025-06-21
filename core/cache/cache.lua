@@ -284,16 +284,38 @@ function Cache.get_tag_by_gps(gps)
   if not surface then return nil end
 
   local tag_cache = Cache.get_surface_tags(surface_index --[[@as uint]])
+  local cache_keys = {}
+  for k, _ in pairs(tag_cache) do table.insert(cache_keys, k) end
+  local cache_keys_str = table.concat(cache_keys, ", ")
+  ErrorHandler.debug_log("[CACHE] get_tag_by_gps", {
+    gps = gps,
+    surface_index = surface_index,
+    cache_keys = cache_keys_str
+  })
   local match_tag = tag_cache[gps] or nil
-  
-  -- Return the tag if it exists and is valid, otherwise return nil
-  local is_valid_location = match_tag and match_tag.chart_tag and match_tag.chart_tag.valid and 
-    PositionUtils.is_walkable_position(surface, match_tag.chart_tag.position) or false
-
+  local valid_chart_tag = match_tag and match_tag.chart_tag and match_tag.chart_tag.valid
+  local walkable = false
+  if match_tag and match_tag.chart_tag and match_tag.chart_tag.position then
+    -- DEBUG: Log all relevant positions and GPS for walkability check
+    ErrorHandler.debug_log("[CACHE] get_tag_by_gps walkability debug", {
+      gps = gps,
+      chart_tag_position = match_tag.chart_tag.position,
+      normalized_position = PositionUtils.normalize_position(match_tag.chart_tag.position),
+      gps_from_position = GPSUtils.gps_from_map_position(PositionUtils.normalize_position(match_tag.chart_tag.position), surface_index),
+      tag_gps = match_tag.gps
+    })
+    walkable = PositionUtils.is_walkable_position(surface, match_tag.chart_tag.position)
+  end
+  ErrorHandler.debug_log("[CACHE] get_tag_by_gps validity check", {
+    gps = gps,
+    valid_chart_tag = valid_chart_tag,
+    walkable = walkable,
+    match_tag_present = match_tag ~= nil
+  })
+  local is_valid_location = valid_chart_tag and walkable or false
   if is_valid_location and match_tag then
     return match_tag
   end
-  
   return nil
 end
 

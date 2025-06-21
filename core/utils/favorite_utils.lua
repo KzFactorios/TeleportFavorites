@@ -3,6 +3,7 @@
 
 local Cache = require("core.cache.cache")
 local FavoriteUtils = require("core.favorite.favorite")
+local ErrorHandler = require("core.utils.error_handler")
 
 local FavoriteRuntimeUtils = {}
 
@@ -20,6 +21,20 @@ function FavoriteRuntimeUtils.rehydrate_favorite(fav)
       tag.chart_tag = chart_tag
     end
   end
+
+  local icon_info = nil
+  if tag and tag.chart_tag and tag.chart_tag.icon then
+    local icon = tag.chart_tag.icon
+    icon_info = (icon.type or "<no type>") .. "/" .. (icon.name or "<no name>")
+  end
+  ErrorHandler.debug_log("[FAVE_BAR] Rehydrate favorite", {
+    gps = fav.gps,
+    tag_present = tag ~= nil,
+    chart_tag_present = tag and tag.chart_tag ~= nil,
+    icon_present = tag and tag.chart_tag and tag.chart_tag.icon ~= nil,
+    icon_info = icon_info
+  })
+
   return new_fav
 end
 

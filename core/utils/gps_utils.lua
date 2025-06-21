@@ -215,7 +215,7 @@ function GPSUtils.position_can_be_tagged(player, map_position)
   
   -- Check for water/space tiles using basic tile checking
   -- Note: This is simplified - full terrain validation should use PositionUtils
-  local tile = player.surface:get_tile(map_position.x, map_position.y)
+  local tile = player.surface.get_tile(map_position.x, map_position.y)
   if tile and tile.valid then
     local tile_name = tile.name:lower()
     if tile_name:find("water") or tile_name:find("space") or tile_name:find("void") then

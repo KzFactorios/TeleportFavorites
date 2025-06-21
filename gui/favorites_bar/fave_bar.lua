@@ -174,8 +174,19 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
     local style = "tf_slot_button_smallfont"
     if fav and not FavoriteUtils.is_blank_favorite(fav) then
       -- Non-blank favorite - show icon and full tooltip
+      if fav.tag and fav.tag.chart_tag and fav.tag.chart_tag.icon then
+        ErrorHandler.debug_log("[FAVE_BAR] Slot icon candidate", {
+          slot = i,
+          icon_table = fav.tag.chart_tag.icon
+        })
+      end
       if fav.tag and fav.tag.chart_tag and fav.tag.chart_tag.icon and fav.tag.chart_tag.icon.name and fav.tag.chart_tag.icon.name ~= "" then
-        icon_name = fav.tag.chart_tag.icon.name
+        local icon = fav.tag.chart_tag.icon
+        if icon.type and icon.type ~= "" then
+          icon_name = icon.type .. "/" .. icon.name
+        else
+          icon_name = icon.name
+        end
       else
         -- Use PIN as default icon for non-blank favorites
         icon_name = Enum.SpriteEnum.PIN

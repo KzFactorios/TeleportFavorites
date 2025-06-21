@@ -219,6 +219,13 @@ local function close_tag_editor(player)
 end
 
 local function handle_confirm_btn(player, element, tag_data)
+  ErrorHandler.debug_log("[TAG_EDITOR] handle_confirm_btn: entry", {
+    player = player and player.name or "<nil>",
+    tag_data_gps = tag_data and tag_data.gps or "<nil>",
+    text = tag_data and tag_data.text or "<nil>",
+    icon = tag_data and tag_data.icon or "<nil>",
+    is_favorite = tag_data and tag_data.is_favorite or "<nil>"
+  })
   -- Removed: GuiEventBus.register_player_observers(player)
   ErrorHandler.debug_log("[TAG_EDITOR] handle_confirm_btn called", {
     player = player and player.name or "<nil>",
@@ -265,6 +272,13 @@ local function handle_confirm_btn(player, element, tag_data)
   refreshed_tag.faved_by_players = refreshed_tag.faved_by_players or {}
   tag_data.tag = refreshed_tag
 
+  ErrorHandler.debug_log("[TAG_EDITOR] handle_confirm_btn: about to save tag to cache", {
+    gps = tag.gps,
+    tag_present = tag ~= nil,
+    chart_tag_present = tag and tag.chart_tag ~= nil,
+    icon_present = tag and tag.chart_tag and tag.chart_tag.icon ~= nil,
+    icon_info = tag and tag.chart_tag and tag.chart_tag.icon and ((tag.chart_tag.icon.type or "<no type>") .. "/" .. (tag.chart_tag.icon.name or "<no name>")) or nil
+  })
   -- Ensure tag is written to persistent storage (sanitized)
   local sanitized_tag = Cache.sanitize_for_storage(refreshed_tag)
   tags[tag.gps] = sanitized_tag
