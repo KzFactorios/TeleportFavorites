@@ -157,30 +157,19 @@ local function handle_favorite_slot_click(event, player, favorites)
     return
   end
 
-  local pdata = Cache.get_player_data(player)
-  local drag_index = pdata.drag_favorite_index
-  local did_drag = false
-
-  if not drag_index then
-    did_drag = handle_drag_start(event, player, fav, slot)
-  else
-    did_drag = handle_reorder(event, player, favorites, drag_index, slot)
-    if did_drag then return end
-  end
-
   -- Handle Ctrl+click to toggle lock state
   if handle_toggle_lock(event, player, fav, slot, favorites) then return end
 
-  if handle_teleport(event, player, fav, slot, did_drag) then return end
+  if handle_teleport(event, player, fav, slot, false) then return end
 
-  handle_request_to_open_tag_editor(event, player, fav, slot)  -- Always update the slot row after any favorite action to ensure button is visible
+  handle_request_to_open_tag_editor(event, player, fav, slot)
 
   local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
   local bar_frame = GuiUtils.find_child_by_name(main_flow, "fave_bar_frame")
-  local bar_flow = bar_frame and GuiUtils.find_child_by_name(bar_frame, "fave_bar_flow")  if bar_flow then
+  local bar_flow = bar_frame and GuiUtils.find_child_by_name(bar_frame, "fave_bar_flow")
+  if bar_flow then
     fave_bar.update_slot_row(player, bar_flow)
   else
-    -- If bar_flow is missing, rebuild the entire favorites bar
     fave_bar.build(player)
   end
 end

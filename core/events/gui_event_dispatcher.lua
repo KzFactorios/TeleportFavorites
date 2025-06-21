@@ -84,30 +84,33 @@ function M.register_gui_handlers(script)
   local function shared_on_gui_click(event)
     Cache.init()
 
-     -- Add comprehensive event debugging including button type analysis
-  ErrorHandler.debug_log("[DISPATCH RAW_EVENT] Raw event received", {
-    event_type = "on_gui_click",
-    element_name = event and event.element and event.element.name or "<none>",
-    button = event and event.button or "<none>",
-    button_analysis = event and event.button and (
-      event.button == 1 and "LEFT_CLICK" or
-      event.button == 2 and "RIGHT_CLICK" or
-      event.button == 3 and "MIDDLE_CLICK" or
-      "UNKNOWN_BUTTON_" .. tostring(event.button)
-    ) or "<none>",
-    shift = event and event.shift or false,
-    control = event and event.control or false,
-    alt = event and event.alt or false,
-    player_index = event and event.player_index or "<none>",
-    tick = event and event.tick or "<none>",
-    element_type = event and event.element and event.element.type or "<none>",
-    element_style = event and event.element and event.element.style and event.element.style.name or "<none>"
-  })
+    -- Add comprehensive event debugging including button type analysis
+    ErrorHandler.debug_log("[DISPATCH RAW_EVENT] Raw event received", {
+      event_type = "on_gui_click",
+      element_name = event and event.element and event.element.name or "<none>",
+      button = event and event.button or "<none>",
+      button_analysis = event and event.button and (
+        event.button == 1 and "LEFT_CLICK" or
+        event.button == 2 and "RIGHT_CLICK" or
+        event.button == 3 and "MIDDLE_CLICK" or
+        "UNKNOWN_BUTTON_" .. tostring(event.button)
+      ) or "<none>",
+      shift = event and event.shift or false,
+      control = event and event.control or false,
+      alt = event and event.alt or false,
+      player_index = event and event.player_index or "<none>",
+      tick = event and event.tick or "<none>",
+      element_type = event and event.element and event.element.type or "<none>",
+      element_style = event and event.element and event.element.style and event.element.style.name or "<none>"
+    })
 
     ErrorHandler.debug_log("[DISPATCH] shared_on_gui_click called",
       { event_type = "on_gui_click", element = event and event.element and event.element.name or "<none>" })
+
     if _tf_gui_click_guard then return end
+
     _tf_gui_click_guard = true
+
     local ok, result = xpcall(function()
       local element = event.element
       if not element or not element.valid then return end -- Global/utility buttons (not tied to a specific GUI)
@@ -118,6 +121,7 @@ function M.register_gui_handlers(script)
         control_fave_bar.on_fave_bar_gui_click(event)
         return true
       end
+      
       local parent_gui = GuiUtils.get_gui_frame_by_element(element)
       ErrorHandler.debug_log("[DISPATCH] parent_gui detected",
         { element = element.name, parent_gui = parent_gui and parent_gui.name or "<nil>" })
@@ -145,8 +149,12 @@ function M.register_gui_handlers(script)
         local element_name = element.name or ""
         if element_name:find("tag_editor") then
           ErrorHandler.debug_log("[DISPATCH] Forcing tag editor handler due to element name",
-            { element_name = element_name, parent_gui_name = parent_gui.name, expected_frame = Enum.GuiEnum.GUI_FRAME
-            .TAG_EDITOR })
+            {
+              element_name = element_name,
+              parent_gui_name = parent_gui.name,
+              expected_frame = Enum.GuiEnum.GUI_FRAME
+                  .TAG_EDITOR
+            })
           control_tag_editor.on_tag_editor_gui_click(event, script)
           return true
         end

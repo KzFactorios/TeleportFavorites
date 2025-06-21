@@ -714,7 +714,13 @@ function GuiUtils.get_validated_sprite_path(icon, opts)
     sprite_path = icon
   elseif type(icon) == "table" then
     if icon.type and icon.type ~= "" and icon.name and icon.name ~= "" then
-      sprite_path = icon.type .. "/" .. icon.name
+      -- Special handling for virtual signals: use 'virtual-signal/' not 'virtual/'
+      if icon.type == "virtual" or icon.type == "virtual-signal" then
+        sprite_path = "virtual-signal/" .. icon.name
+        debug_info.reason = "icon type is virtual or virtual-signal, using virtual-signal/ prefix"
+      else
+        sprite_path = icon.type .. "/" .. icon.name
+      end
     elseif icon.name and icon.name ~= "" then
       -- Prefer item/ as the default fallback for unknown type
       sprite_path = "item/" .. icon.name
@@ -740,7 +746,7 @@ function GuiUtils.get_validated_sprite_path(icon, opts)
     used_fallback = true
   end
 
-  if used_fallback then
+  if used_fallback == true then
     ErrorHandler.debug_log("[SPRITE] Fallback used in get_validated_sprite_path", {
       sprite_path = sprite_path,
       debug_info = debug_info,
