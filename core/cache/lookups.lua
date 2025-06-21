@@ -30,8 +30,6 @@ local GPSUtils = require("core.utils.gps_utils")
 local ErrorHandler = require("core.utils.error_handler")
 
 
----@diagnostic disable: undefined-global
----@class Lookups
 -- Handles the non-persistent in-game data cache for runtime lookups.
 local Lookups = {}
 Lookups.__index = Lookups
@@ -178,7 +176,8 @@ local function clear_all_caches()
   ensure_cache()
 end
 
-
+---@class Lookups
+---@field get_chart_tag_by_gps fun(gps: string): LuaCustomChartTag|nil
 return {
   init = init,
   get_chart_tag_cache = get_chart_tag_cache,

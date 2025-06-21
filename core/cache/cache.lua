@@ -69,6 +69,7 @@ end
 local Cache = {}
 Cache.__index = Cache
 --- Lookup tables for chart tags and other runtime data.
+---@type Lookups
 Cache.Lookups = nil
 
 
@@ -83,13 +84,14 @@ function Cache.init()
     error("Storage table not available - this mod requires Factorio 2.0+")
   end
   storage.players = storage.players or {}
-  storage.surfaces = storage.surfaces or {}  if not storage.mod_version or storage.mod_version ~= mod_version then
+  storage.surfaces = storage.surfaces or {}
+  if not storage.mod_version or storage.mod_version ~= mod_version then
     storage.mod_version = mod_version
   end
-    -- Initialize lookups cache properly
+  -- Initialize lookups cache properly
   Lookups.init()
   Cache.Lookups = Lookups
-  
+
   return storage
 end
 
@@ -175,7 +177,8 @@ local function init_player_data(player)
   player_data.surfaces[player.surface.index] = player_data.surfaces[player.surface.index] or {}
 
   local function init_player_favorites(player)
-    local pfaves = storage.players[player.index].surfaces[player.surface.index].favorites or {}    for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
+    local pfaves = storage.players[player.index].surfaces[player.surface.index].favorites or {}
+    for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
       if not pfaves[i] or type(pfaves[i]) ~= "table" then
         pfaves[i] = FavoriteUtils.get_blank_favorite()
       end
@@ -264,10 +267,11 @@ function Cache.remove_stored_tag(gps)
   if not surface_index or surface_index < 1 then return end
   local safe_surface_index = tonumber(surface_index) and math.floor(surface_index) or nil
   if not safe_surface_index or safe_surface_index < 1 then return end
-  local uint_surface_index = safe_surface_index --[[@as uint]]  local tag_cache = Cache.get_surface_tags(uint_surface_index)
+  local uint_surface_index = safe_surface_index --[[@as uint]]
+  local tag_cache = Cache.get_surface_tags(uint_surface_index)
   if not tag_cache[gps] then return end
   tag_cache[gps] = nil
-  
+
   -- Remove the tag from the Lookups cache as well
   Cache.init() -- Ensure Lookups is initialized
   ---@diagnostic disable-next-line: undefined-field, need-check-nil
@@ -285,14 +289,24 @@ function Cache.get_tag_by_gps(gps)
 
   local tag_cache = Cache.get_surface_tags(surface_index --[[@as uint]])
   local cache_keys = {}
-  for k, _ in pairs(tag_cache) do table.insert(cache_keys, k) end
+  for k, _ in pairs(tag_cache) do
+    table.insert(cache_keys, k)
+  end
   local cache_keys_str = table.concat(cache_keys, ", ")
   ErrorHandler.debug_log("[CACHE] get_tag_by_gps", {
     gps = gps,
     surface_index = surface_index,
     cache_keys = cache_keys_str
   })
+
   local match_tag = tag_cache[gps] or nil
+  -- Ensure chart_tag is present for walkability/debug
+  if match_tag and (not match_tag.chart_tag or not match_tag.chart_tag.position) then
+    local chart_tag_lookup = Cache.Lookups.get_chart_tag_by_gps(gps)
+    if chart_tag_lookup and chart_tag_lookup.valid then
+      match_tag.chart_tag = chart_tag_lookup
+    end
+  end
   local valid_chart_tag = match_tag and match_tag.chart_tag and match_tag.chart_tag.valid
   local walkable = false
   if match_tag and match_tag.chart_tag and match_tag.chart_tag.position then
@@ -301,7 +315,8 @@ function Cache.get_tag_by_gps(gps)
       gps = gps,
       chart_tag_position = match_tag.chart_tag.position,
       normalized_position = PositionUtils.normalize_position(match_tag.chart_tag.position),
-      gps_from_position = GPSUtils.gps_from_map_position(PositionUtils.normalize_position(match_tag.chart_tag.position), surface_index),
+      gps_from_position = GPSUtils.gps_from_map_position(PositionUtils.normalize_position(match_tag.chart_tag.position),
+        surface_index),
       tag_gps = match_tag.gps
     })
     walkable = PositionUtils.is_walkable_position(surface, match_tag.chart_tag.position)
@@ -364,7 +379,7 @@ function Cache.create_tag_editor_data(options)
     is_favorite = false,
     icon = "",
     text = "",
-    tag = {}, -- do not use nil
+    tag = {},       -- do not use nil
     chart_tag = {}, -- do not use nil
     error_message = "",
     search_radius = 1,
@@ -389,10 +404,10 @@ end
 -- Set the pending delete flag in tag_editor_data
 function Cache.set_tag_editor_delete_mode(player, is_delete_mode)
   if not player or not player.valid then return end
-  
+
   local tag_data = Cache.get_tag_editor_data(player)
   tag_data.delete_mode = is_delete_mode == true
-  
+
   -- Ensure we keep the tag_editor_data updated
   Cache.set_tag_editor_data(player, tag_data)
 end
@@ -400,7 +415,7 @@ end
 -- Check if the tag editor is in delete mode
 function Cache.is_tag_editor_delete_mode(player)
   if not player or not player.valid then return false end
-  
+
   local tag_data = Cache.get_tag_editor_data(player)
   return tag_data.delete_mode == true
 end
@@ -408,10 +423,10 @@ end
 -- Reset the delete mode flag in tag_editor_data
 function Cache.reset_tag_editor_delete_mode(player)
   if not player or not player.valid then return end
-  
+
   local tag_data = Cache.get_tag_editor_data(player)
   tag_data.delete_mode = false
-  
+
   -- Ensure we keep the tag_editor_data updated
   Cache.set_tag_editor_data(player, tag_data)
 end
