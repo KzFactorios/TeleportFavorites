@@ -20,6 +20,7 @@ local GuiBase = require("gui.gui_base")
 local GameHelpers = require("core.utils.game_helpers")
 local LocaleUtils = require("core.utils.locale_utils")
 local Enum = require("prototypes.enums.enum")
+local GPSUtils = require("core.utils.gps_utils")
 
 ---@class GuiUtils
 local GuiUtils = {}
@@ -130,7 +131,7 @@ end
 function GuiUtils.build_favorite_tooltip(fav, opts)
   opts = opts or {}
   local gps_str = fav and fav.gps or opts.gps or "?"
-  local tag_text = fav and fav.tag and fav.tag.text or opts.text or nil
+  local tag_text = fav and fav.tag and fav.tag.chart_tag and fav.tag.chart_tag.text or opts.text or nil
   
   -- Truncate long tag text
   if type(tag_text) == "string" and #tag_text > (opts.max_len or 50) then
@@ -138,7 +139,7 @@ function GuiUtils.build_favorite_tooltip(fav, opts)
   end
 
   if not tag_text or tag_text == "" then
-    return { "tf-gui.fave_slot_tooltip_one", gps_str }
+    return { "tf-gui.fave_slot_tooltip_one", GPSUtils.coords_string_from_gps(gps_str) }
   else
     return { "tf-gui.fave_slot_tooltip_both", tag_text or "", gps_str }
   end
