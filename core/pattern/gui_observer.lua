@@ -279,8 +279,8 @@ function DataObserver:update(event_data)
     method = "update",
     player = self.player.name,
     event_type = event_data and event_data.type or "unknown",
-    event_data = event_data,
-    stacktrace = (debug and debug.traceback and debug.traceback()) or "<no traceback>"
+    event_data = event_data
+    -- stacktrace removed for log clarity
   }
   ErrorHandler.debug_log("[DATA OBSERVER] ===> (cache/data event)", debug_context)
   local success, err = pcall(function()
