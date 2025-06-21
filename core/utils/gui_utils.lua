@@ -716,8 +716,9 @@ function GuiUtils.get_validated_sprite_path(icon, opts)
     if icon.type and icon.type ~= "" and icon.name and icon.name ~= "" then
       sprite_path = icon.type .. "/" .. icon.name
     elseif icon.name and icon.name ~= "" then
-      sprite_path = "entity/" .. icon.name
-      debug_info.reason = "icon missing type, defaulted to entity/"
+      -- Prefer item/ as the default fallback for unknown type
+      sprite_path = "item/" .. icon.name
+      debug_info.reason = "icon missing type, defaulted to item/"
     else
       sprite_path = fallback
       used_fallback = true

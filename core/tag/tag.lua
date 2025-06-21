@@ -367,7 +367,7 @@ function Tag.rehome_chart_tag(player, chart_tag, destination_gps)
   local all_fave_tags = collect_linked_favorites(current_gps)
 
   -- Step 2: Use PositionUtils.move_tag_to_selected_position for robust validation and normalization
-  local tag = Cache.get_tag_by_gps(current_gps)
+  local tag = Cache.get_tag_by_gps(player, current_gps)
   -- Convert Tag metatable instance to plain table for compatibility, always pass a table
   local tag_table = tag and { gps = tag.gps, chart_tag = tag.chart_tag, faved_by_players = tag.faved_by_players } or {}
   local normalized_pos, error_msg
@@ -395,7 +395,7 @@ function Tag.rehome_chart_tag(player, chart_tag, destination_gps)
   local final_gps = GPSUtils.gps_from_map_position(new_chart_tag.position, surface_index)
   update_favorites_gps(all_fave_tags, final_gps)
   -- Step 5: Update matching tag GPS
-  local matching_tag = Cache.get_tag_by_gps(current_gps)
+  local matching_tag = Cache.get_tag_by_gps(player, current_gps)
   if matching_tag then
     matching_tag.gps = final_gps
     ErrorHandler.debug_log("Updated matching tag GPS", { old_gps = current_gps, new_gps = final_gps })

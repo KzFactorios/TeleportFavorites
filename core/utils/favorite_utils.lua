@@ -13,9 +13,12 @@ local FavoriteRuntimeUtils = {}
 ---@return table Favorite|nil
 function FavoriteRuntimeUtils.rehydrate_favorite(player, fav)
   if not player then return nil end
-  if not fav or type(fav) ~= "table" or not fav.gps or fav.gps == "" then return FavoriteUtils.get_blank_favorite() end
+  if not fav or type(fav) ~= "table" or not fav.gps or fav.gps == "" or FavoriteUtils.is_blank_favorite(fav) then
+    return FavoriteUtils.get_blank_favorite()
+  end
+
   local tag = Cache.get_tag_by_gps(player, fav.gps)
-  
+
   local locked = fav.locked or false
   local new_fav = FavoriteUtils.new(fav.gps, locked, tag)
   if tag and not tag.chart_tag then
