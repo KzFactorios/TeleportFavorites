@@ -83,7 +83,7 @@ local function sync_to_storage(self)
   if not storage.players[self.player_index].surfaces then storage.players[self.player_index].surfaces = {} end
 
   storage.players[self.player_index].surfaces[self.surface_index] =
-  storage.players[self.player_index].surfaces[self.surface_index] or {}
+      storage.players[self.player_index].surfaces[self.surface_index] or {}
   storage.players[self.player_index].surfaces[self.surface_index].favorites = self.favorites
 end
 
@@ -105,7 +105,8 @@ local function update_tag_favorites(tag, player_index, action)
 
   if action == "add" then
     if not found_index then
-      table.insert(tag.faved_by_players, player_index)    end
+      table.insert(tag.faved_by_players, player_index)
+    end
   else
     -- action == "remove"
     if found_index then
@@ -145,7 +146,7 @@ function PlayerFavorites.new(player)
     if not storage.players[obj.player_index].surfaces then storage.players[obj.player_index].surfaces = {} end
 
     storage.players[obj.player_index].surfaces[obj.surface_index] =
-    storage.players[obj.player_index].surfaces[obj.surface_index] or {}
+        storage.players[obj.player_index].surfaces[obj.surface_index] or {}
     storage.players[obj.player_index].surfaces[obj.surface_index].favorites = obj.favorites
   end
 
@@ -186,15 +187,18 @@ function PlayerFavorites:add_favorite(gps)
     return nil, "Invalid GPS string"
   end
 
+  local player = self.player
+  if not player then return nil, "player not available" end
+
   -- Check if already exists
   local existing_fav, existing_slot = self:get_favorite_by_gps(gps)
-  if existing_fav then 
+  if existing_fav then
     ErrorHandler.debug_log("Favorite already exists", {
       player = (self.player and self.player.valid and self.player.name) or "unknown",
       gps = gps,
       slot = existing_slot
     })
-    return existing_fav, nil 
+    return existing_fav, nil
   end
   -- Find first available slot
   local slot_idx = nil
@@ -228,7 +232,7 @@ function PlayerFavorites:add_favorite(gps)
     slot = slot_idx
   })
   -- Get or create tag
-  local existing_tag = Cache.get_tag_by_gps(gps)
+  local existing_tag = Cache.get_tag_by_gps(player, gps)
   local tag_for_favorite = existing_tag and sanitize_tag_for_favorite(existing_tag) or nil
   local new_favorite = FavoriteUtils.new(gps, false, tag_for_favorite)
   ErrorHandler.debug_log("Created new favorite", {
@@ -262,7 +266,10 @@ function PlayerFavorites:remove_favorite(gps)
   if not existing_fav or not slot_idx then
     return false, "Favorite not found"
   end
-  local existing_tag = Cache.get_tag_by_gps(gps)
+  local player = self.player
+  if not player then return false end
+
+  local existing_tag = Cache.get_tag_by_gps(player, gps)
   if existing_tag then
     update_tag_favorites(existing_tag, self.player_index, "remove")
   end
@@ -288,7 +295,7 @@ function PlayerFavorites:move_favorite(from_slot, to_slot)
     return false, "Invalid slot indices"
   end
   if from_slot == to_slot then return true, nil end
-  
+
   local fav = self.favorites[from_slot]
   if FavoriteUtils.is_blank_favorite(fav) then
     return false, "Cannot move blank favorite"
@@ -296,10 +303,10 @@ function PlayerFavorites:move_favorite(from_slot, to_slot)
   if fav and fav.locked then
     return false, "Cannot move locked favorite"
   end
-  
+
   local moved_fav = table.remove(self.favorites, math.floor(from_slot))
   table.insert(self.favorites, math.floor(to_slot), moved_fav)
-  
+
   -- Ensure array stays correct size
   while #self.favorites < Constants.settings.MAX_FAVORITE_SLOTS do
     table.insert(self.favorites, FavoriteUtils.get_blank_favorite())
@@ -307,7 +314,7 @@ function PlayerFavorites:move_favorite(from_slot, to_slot)
   while #self.favorites > Constants.settings.MAX_FAVORITE_SLOTS do
     table.remove(self.favorites)
   end
-  
+
   sync_to_storage(self)
   return true, nil
 end
@@ -319,12 +326,12 @@ function PlayerFavorites:toggle_favorite_lock(slot_idx)
   if not is_valid_slot(slot_idx) then
     return false, "Invalid slot index"
   end
-  
+
   local fav = self.favorites[slot_idx]
   if not fav or FavoriteUtils.is_blank_favorite(fav) then
     return false, "Cannot lock blank favorite"
   end
-  
+
   FavoriteUtils.toggle_locked(fav)
   sync_to_storage(self)
   return true, nil
@@ -340,9 +347,9 @@ function PlayerFavorites:update_gps_coordinates(old_gps, new_gps)
   if not old_gps or not new_gps or old_gps == new_gps then
     return false
   end
-  
+
   local any_updated = false
-  
+
   for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
     local fav = self.favorites[i]
     if fav and not FavoriteUtils.is_blank_favorite(fav) and fav.gps == old_gps then
@@ -350,10 +357,10 @@ function PlayerFavorites:update_gps_coordinates(old_gps, new_gps)
       any_updated = true
     end
   end
-  
+
   if any_updated then
     sync_to_storage(self)
-    
+
     -- Notify observers of GPS update
     notify_observers_safe("favorites_gps_updated", {
       player_index = self.player_index,
@@ -361,12 +368,12 @@ function PlayerFavorites:update_gps_coordinates(old_gps, new_gps)
       new_gps = new_gps
     })
   end
-  
+
   return any_updated
 end
 
 --- Update GPS coordinates across all players and return list of affected players
----@param old_gps string Original GPS coordinate string  
+---@param old_gps string Original GPS coordinate string
 ---@param new_gps string New GPS coordinate string
 ---@param acting_player_index uint? Player index who initiated the change (excluded from results)
 ---@return LuaPlayer[] affected_players List of players whose favorites were updated
@@ -374,20 +381,20 @@ function PlayerFavorites.update_gps_for_all_players(old_gps, new_gps, acting_pla
   if not old_gps or not new_gps or old_gps == new_gps then
     return {}
   end
-    local affected_players = {}
-  
+  local affected_players = {}
+
   for _, player in pairs(game.players) do
     ---@cast player LuaPlayer
     if player and player.valid and player.index ~= acting_player_index then
       local favorites = PlayerFavorites.new(player)
       local was_updated = favorites:update_gps_coordinates(old_gps, new_gps)
-      
+
       if was_updated then
         table.insert(affected_players, player)
       end
     end
   end
-  
+
   return affected_players
 end
 

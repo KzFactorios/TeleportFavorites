@@ -278,9 +278,11 @@ function Cache.remove_stored_tag(gps)
   Cache.Lookups.remove_chart_tag_from_cache_by_gps(gps)
 end
 
+--- @param player LuaPlayer
 --- @param gps string
 --- @return Tag|nil
-function Cache.get_tag_by_gps(gps)
+function Cache.get_tag_by_gps(player, gps)
+  if not player then return nil end
   if not gps or gps == "" then return nil end
   local surface_index = GPSUtils.get_surface_index_from_gps(gps)
   if not surface_index or surface_index < 1 then return nil end
@@ -300,37 +302,26 @@ function Cache.get_tag_by_gps(gps)
   })
 
   local match_tag = tag_cache[gps] or nil
-  -- Ensure chart_tag is present for walkability/debug
+  -- Ensure chart_tag is present
   if match_tag and (not match_tag.chart_tag or not match_tag.chart_tag.position) then
     local chart_tag_lookup = Cache.Lookups.get_chart_tag_by_gps(gps)
     if chart_tag_lookup and chart_tag_lookup.valid then
       match_tag.chart_tag = chart_tag_lookup
     end
   end
+
   local valid_chart_tag = match_tag and match_tag.chart_tag and match_tag.chart_tag.valid
-  local walkable = false
-  if match_tag and match_tag.chart_tag and match_tag.chart_tag.position then
-    -- DEBUG: Log all relevant positions and GPS for walkability check
-    ErrorHandler.debug_log("[CACHE] get_tag_by_gps walkability debug", {
-      gps = gps,
-      chart_tag_position = match_tag.chart_tag.position,
-      normalized_position = PositionUtils.normalize_position(match_tag.chart_tag.position),
-      gps_from_position = GPSUtils.gps_from_map_position(PositionUtils.normalize_position(match_tag.chart_tag.position),
-        surface_index),
-      tag_gps = match_tag.gps
-    })
-    walkable = PositionUtils.is_walkable_position(surface, match_tag.chart_tag.position)
-  end
-  ErrorHandler.debug_log("[CACHE] get_tag_by_gps validity check", {
+  ErrorHandler.debug_log("[CACHE] get_tag_by_gps chart_tag validity", {
     gps = gps,
     valid_chart_tag = valid_chart_tag,
-    walkable = walkable,
     match_tag_present = match_tag ~= nil
   })
-  local is_valid_location = valid_chart_tag and walkable or false
-  if is_valid_location and match_tag then
+  if valid_chart_tag and match_tag then
     return match_tag
   end
+
+  -- Notify player if chart_tag is invalid
+  notify_observers_safe("invalid_chart_tag", { player = player, gps = gps })
   return nil
 end
 

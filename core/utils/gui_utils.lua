@@ -136,11 +136,13 @@ function GuiUtils.build_favorite_tooltip(fav, opts)
   if type(tag_text) == "string" and #tag_text > (opts.max_len or 50) then
     tag_text = tag_text:sub(1, opts.max_len or 50) .. "..."
   end
-  
-  if fav and fav.locked then
-    return { "tf-gui.fave_slot_locked_tooltip", gps_str, tag_text or "" }
+
+  if not tag_text or tag_text == "" then
+    return { "tf-gui.fave_slot_tooltip_one", gps_str }
+  else
+    return { "tf-gui.fave_slot_tooltip_both", tag_text or "", gps_str }
   end
-  return { "tf-gui.fave_slot_tooltip", gps_str, tag_text or "" }
+
 end
 
 --- Create a styled slot button with icon and tooltip
@@ -682,6 +684,70 @@ function GuiUtils.get_or_create_gui_flow_from_gui_top(player)
     -- Do NOT set .style fields at runtime for flows; use style at creation only
   end
   return flow
+end
+
+-- ========================================
+-- SPRITE PATH BUILDING, VALIDATION, AND FALLBACK (CENTRALIZED)
+-- ========================================
+
+--- Build and validate a sprite path from icon data (table or string), with fallback and debug logging
+---@param icon table|string|nil Icon table (with .type/.name) or string path
+---@param opts table|nil Options: { fallback?: string, log_context?: table, allow_blank?: boolean }
+---@return string sprite_path Valid sprite path (never blank unless allow_blank)
+---@return boolean used_fallback True if fallback was used
+---@return table debug_info Debug info for logging
+function GuiUtils.get_validated_sprite_path(icon, opts)
+  opts = opts or {}
+  local fallback = opts.fallback or Enum.SpriteEnum.PIN
+  local allow_blank = opts.allow_blank or false
+  local log_context = opts.log_context or {}
+  local sprite_path, used_fallback, debug_info
+  used_fallback = false
+  debug_info = { original_icon = icon, fallback = fallback }
+
+  -- Build sprite path from icon
+  if not icon or icon == "" then
+    sprite_path = allow_blank and "" or fallback
+    used_fallback = not allow_blank
+    debug_info.reason = "icon is nil or blank"
+  elseif type(icon) == "string" then
+    sprite_path = icon
+  elseif type(icon) == "table" then
+    if icon.type and icon.type ~= "" and icon.name and icon.name ~= "" then
+      sprite_path = icon.type .. "/" .. icon.name
+    elseif icon.name and icon.name ~= "" then
+      sprite_path = "entity/" .. icon.name
+      debug_info.reason = "icon missing type, defaulted to entity/"
+    else
+      sprite_path = fallback
+      used_fallback = true
+      debug_info.reason = "icon table missing name"
+    end
+  else
+    sprite_path = fallback
+    used_fallback = true
+    debug_info.reason = "icon not string or table"
+  end
+
+  -- Validate sprite path
+  if sprite_path ~= "" and not GuiUtils.validate_sprite(tostring(sprite_path)) then
+    local icon_str = (debug_info.original_icon and basic_helpers and basic_helpers.table_to_json and type(basic_helpers.table_to_json) == "function")
+      and basic_helpers.table_to_json(debug_info.original_icon)
+      or tostring(debug_info.original_icon)
+    debug_info.reason = icon_str .. ": " .. (debug_info.reason or "") .. ", sprite invalid"
+    sprite_path = fallback
+    used_fallback = true
+  end
+
+  if used_fallback then
+    ErrorHandler.debug_log("[SPRITE] Fallback used in get_validated_sprite_path", {
+      sprite_path = sprite_path,
+      debug_info = debug_info,
+      log_context = log_context
+    })
+  end
+
+  return sprite_path, used_fallback, debug_info
 end
 
 return GuiUtils

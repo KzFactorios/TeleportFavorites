@@ -261,13 +261,19 @@ end
 
 local function build_rich_text_row(parent, tag_data)
   local row = GuiBase.create_hflow(parent, "tag_editor_rich_text_row")
+  -- Centralized icon validation and sprite path building
+  local sprite_path, used_fallback, debug_info = GuiUtils.get_validated_sprite_path(tag_data.icon, { fallback = Enum.SpriteEnum.PIN, log_context = { context = "tag_editor", gps = tag_data.gps } })
   local icon_btn = GuiBase.create_element("choose-elem-button", row, {
     name = "tag_editor_icon_button",
     tooltip = { "tf-gui.icon_tooltip" },
     style = "tf_slot_button",
     elem_type = "signal",
-    signal = tag_data.icon
+    signal = tag_data.icon,
+    sprite = sprite_path
   })
+  if used_fallback then
+    ErrorHandler.debug_log("[TAG_EDITOR] Fallback icon used for tag editor icon button", { sprite_path = sprite_path, debug_info = debug_info })
+  end
   -- Create textbox and set value from storage (tag_data)
   local text_input = GuiBase.create_textbox(row, "tag_editor_rich_text_input",
     tag_data.text or "", "tf_tag_editor_text_input", true)

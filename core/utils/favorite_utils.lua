@@ -8,11 +8,14 @@ local ErrorHandler = require("core.utils.error_handler")
 local FavoriteRuntimeUtils = {}
 
 --- Rehydrate a favorite's tag and chart_tag from GPS using the runtime cache
+---@param player LuaPlayer
 ---@param fav table Favorite
----@return table Favorite (with tag/chart_tag fields populated if possible)
-function FavoriteRuntimeUtils.rehydrate_favorite(fav)
+---@return table Favorite|nil
+function FavoriteRuntimeUtils.rehydrate_favorite(player, fav)
+  if not player then return nil end
   if not fav or type(fav) ~= "table" or not fav.gps or fav.gps == "" then return FavoriteUtils.get_blank_favorite() end
-  local tag = Cache.get_tag_by_gps(fav.gps)
+  local tag = Cache.get_tag_by_gps(player, fav.gps)
+  
   local locked = fav.locked or false
   local new_fav = FavoriteUtils.new(fav.gps, locked, tag)
   if tag and not tag.chart_tag then

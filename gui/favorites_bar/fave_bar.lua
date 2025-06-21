@@ -165,71 +165,33 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
   
   for i = 1, max_slots do
     local fav = pfaves[i]
-    fav = FavoriteRuntimeUtils.rehydrate_favorite(fav)
+    fav = FavoriteRuntimeUtils.rehydrate_favorite(player, fav)
     ---@cast fav Favorite
+    
     local icon_name = nil
     local tooltip = { "tf-gui.favorite_slot_empty" }
     local style = "tf_slot_button_smallfont"
     local used_fallback = false
+    local btn_icon, debug_info
+
     if fav and not FavoriteUtils.is_blank_favorite(fav) then
-      if fav.tag and fav.tag.chart_tag and fav.tag.chart_tag.icon then
-        ErrorHandler.debug_log("[FAVE_BAR] Slot icon candidate", {
-          slot = i,
-          icon_table = fav.tag.chart_tag.icon
-        })
-      end
-      if fav.tag and fav.tag.chart_tag and fav.tag.chart_tag.icon and fav.tag.chart_tag.icon.name and fav.tag.chart_tag.icon.name ~= "" then
-        local icon = fav.tag.chart_tag.icon
-        if icon.type and icon.type ~= "" then
-          icon_name = icon.type .. "/" .. icon.name
-        elseif icon.name and icon.name ~= "" then
-          -- Patch: If only name is present, assume entity type
-          icon_name = "entity/" .. icon.name
-          ErrorHandler.debug_log("[FAVE_BAR] Patched icon missing type, defaulted to entity/", { slot = i, patched_icon = icon_name, icon_table = icon })
-        else
-          icon_name = icon.name
-        end
-        -- Validate sprite path format
-        if not GuiUtils.validate_sprite(tostring(icon_name)) then
-          ErrorHandler.debug_log("[FAVE_BAR] Invalid icon sprite, using fallback", { slot = i, attempted = icon_name })
-          icon_name = Enum.SpriteEnum.PIN
-          used_fallback = true
-        end
-      else
-        icon_name = Enum.SpriteEnum.PIN
-        used_fallback = true
+      local icon = fav.tag and fav.tag.chart_tag and fav.tag.chart_tag.icon or nil
+      btn_icon, used_fallback, debug_info = GuiUtils.get_validated_sprite_path(icon, { fallback = Enum.SpriteEnum.PIN, log_context = { slot = i, fav_gps = fav.gps, fav_tag = fav.tag } })
+      if used_fallback then
+        ErrorHandler.debug_log("[FAVE_BAR] Fallback icon used for slot", { slot = i, icon = btn_icon, debug_info = debug_info })
       end
       tooltip = GuiUtils.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }
       if fav.locked then style = "tf_slot_button_locked" end
       if drag_index == i then style = "tf_slot_button_dragged" end
     else
-      icon_name = ""  -- No icon for empty slots
+      btn_icon = ""
       tooltip = { "tf-gui.favorite_slot_empty" }
       style = "tf_slot_button_smallfont"
-    end    
-    local btn_icon = icon_name
-    if not btn_icon or btn_icon == "" then
-      if fav and not FavoriteUtils.is_blank_favorite(fav) then
-        btn_icon = Enum.SpriteEnum.PIN
-        used_fallback = true
-      else
-        btn_icon = "" -- blank slot, no icon
-      end
     end
-    -- Final validation: if still not valid, use question mark
-    if btn_icon ~= "" and not GuiUtils.validate_sprite(tostring(btn_icon)) then
-      ErrorHandler.debug_log("[FAVE_BAR] Final icon invalid, using question mark", { slot = i, attempted = btn_icon })
-      btn_icon = Enum.SpriteEnum.QUESTION_MARK
-      used_fallback = true
-    end
-    if used_fallback then
-      ErrorHandler.debug_log("[FAVE_BAR] Fallback icon used for slot", { slot = i, icon = btn_icon })
-    end
-    local btn
     if btn_icon == "tf_tag_in_map_view_small" then
       style = "tf_slot_button_smallfont_map_pin"
     end
-    btn = GuiUtils.create_slot_button(parent, "fave_bar_slot_" .. i, tostring(btn_icon), tooltip, { style = style })
+    local btn = GuiUtils.create_slot_button(parent, "fave_bar_slot_" .. i, tostring(btn_icon), tooltip, { style = style })
     if btn and btn.valid then
       ---@diagnostic disable-next-line: assign-type-mismatch
       btn.caption = tostring(i)

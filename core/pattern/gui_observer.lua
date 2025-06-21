@@ -50,6 +50,7 @@ local fave_bar = require("gui.favorites_bar.fave_bar")
 local ErrorHandler = require("core.utils.error_handler")
 local gui_utils = require("core.utils.gui_utils")
 local Enum = require("prototypes.enums.enum")
+local GameHelpers = require("core.utils.game_helpers")
 
 ---@class GuiEventBus
 ---@field _observers table<string, table[]>
@@ -243,6 +244,29 @@ function FavoriteObserver:update(event_data)
   -- Do not call fave_bar.build here for tag_collection_changed or cache_updated
 end
 
+---@class NotificationObserver : BaseGuiObserver
+local NotificationObserver = setmetatable({}, { __index = BaseGuiObserver })
+NotificationObserver.__index = NotificationObserver
+
+--- Create notification observer
+---@param player LuaPlayer
+---@return NotificationObserver
+function NotificationObserver:new(player)
+  local obj = BaseGuiObserver:new(player, "notification")
+  setmetatable(obj, self)
+  ---@cast obj NotificationObserver
+  return obj
+end
+
+--- Handle notification-related events
+---@param event_data table
+function NotificationObserver:update(event_data)
+  if not self:is_valid() or not event_data then return end
+  if event_data.player and event_data.player.valid then
+    GameHelpers.player_print(event_data.player, {"tf-gui.invalid_chart_tag_warning"})
+  end
+end
+
 --- Clean up all observers
 function GuiEventBus.cleanup_all()
   for event_type, _ in pairs(GuiEventBus._observers) do
@@ -314,6 +338,10 @@ function GuiEventBus.register_player_observers(player)
   if not (bar_frame and bar_frame.valid) then
     fave_bar.build(player)
   end
+
+  -- Register NotificationObserver for invalid_chart_tag events
+  local notification_observer = NotificationObserver:new(player)
+  GuiEventBus.subscribe("invalid_chart_tag", notification_observer)
 end
 
 return {

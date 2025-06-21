@@ -156,7 +156,7 @@ function handlers.on_open_tag_editor_custom_input(event)
     local surface_index = player.surface.index
     local normalized_pos = PositionUtils.normalize_position(cursor_position)
     local gps = GPSUtils.gps_from_map_position(normalized_pos, surface_index)
-    local nrm_tag = Cache.get_tag_by_gps(gps)
+    local nrm_tag = Cache.get_tag_by_gps(player, gps)
     local nrm_chart_tag = nrm_tag and nrm_tag.chart_tag or nil
     local click_radius = Constants.settings.CHART_TAG_CLICK_RADIUS or 1
 
@@ -179,7 +179,7 @@ function handlers.on_open_tag_editor_custom_input(event)
       end
       if nrm_chart_tag then
         gps = GPSUtils.gps_from_map_position(nrm_chart_tag.position, surface_index)
-        nrm_tag = Cache.get_tag_by_gps(gps)
+        nrm_tag = Cache.get_tag_by_gps(player, gps)
       end
     end
 
@@ -225,9 +225,9 @@ function handlers.on_open_tag_editor_custom_input(event)
     cursor_position = cursor_position,
     normalized_pos = PositionUtils.normalize_position(cursor_position),
     gps = GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index),
-    nrm_tag_gps = Cache.get_tag_by_gps(GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)) and Cache.get_tag_by_gps(GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)).gps or nil,
-    nrm_chart_tag_position = Cache.get_tag_by_gps(GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)) and Cache.get_tag_by_gps(GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)).chart_tag and Cache.get_tag_by_gps(GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)).chart_tag.position or nil,
-    gps_from_chart_tag_position = Cache.get_tag_by_gps(GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)) and Cache.get_tag_by_gps(GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)).chart_tag and Cache.get_tag_by_gps(GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)).chart_tag.position and GPSUtils.gps_from_map_position(PositionUtils.normalize_position(Cache.get_tag_by_gps(GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)).chart_tag.position), player.surface.index) or nil
+    nrm_tag_gps = Cache.get_tag_by_gps(player, GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)) and Cache.get_tag_by_gps(player, GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)).gps or nil,
+    nrm_chart_tag_position = Cache.get_tag_by_gps(player, GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)) and Cache.get_tag_by_gps(player, GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)).chart_tag and Cache.get_tag_by_gps(player, GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)).chart_tag.position or nil,
+    gps_from_chart_tag_position = Cache.get_tag_by_gps(player, GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)) and Cache.get_tag_by_gps(player, GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)).chart_tag and Cache.get_tag_by_gps(player, GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)).chart_tag.position and GPSUtils.gps_from_map_position(PositionUtils.normalize_position(Cache.get_tag_by_gps(player, GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)).chart_tag.position), player.surface.index) or nil
   })
 end
 
@@ -350,7 +350,7 @@ local function update_tag_and_cleanup(old_gps, new_gps, event, player)
   end
 
   -- Get or create tag object
-  local old_tag = Cache.get_tag_by_gps(old_gps)
+  local old_tag = Cache.get_tag_by_gps(player, old_gps)
   if not old_tag then
     old_tag = Tag.new(new_gps, {})
   end
@@ -445,7 +445,7 @@ function handlers.on_chart_tag_removed(event)
   local gps = GPSUtils.gps_from_map_position(chart_tag.position, surface_index)
 
   -- Get the player who is removing the chart tag
-  local tag = Cache.get_tag_by_gps(gps)
+  local tag = Cache.get_tag_by_gps(player, gps)
   local player = game.get_player(event.player_index)                                                           -- Check if this tag has favorites from other players
   if tag and tag.faved_by_players and #tag.faved_by_players > 0 then
     if not player or not player.valid then                                                                     -- No valid player to handle the removal, just clear the cache
