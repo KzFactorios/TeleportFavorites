@@ -13,6 +13,7 @@ local GameHelpers = require("core.utils.game_helpers")
 local GuiUtils = require("core.utils.gui_utils")
 local ErrorHandler = require("core.utils.error_handler")
 local LocaleUtils = require("core.utils.locale_utils")
+local FavoriteRuntimeUtils = require("core.utils.favorite_utils")
 
 -- Observer Pattern Integration
 local GuiObserver = require("core.pattern.gui_observer")
@@ -62,14 +63,17 @@ end
 
 local function open_tag_editor_from_favorite(player, favorite)
   local tag_data = {}
+
   if favorite then
+    -- Rehydrate the favorite to ensure all runtime fields are present
+    favorite = FavoriteRuntimeUtils.rehydrate_favorite(player, favorite)
     -- Create initial tag data from favorite
     local tag_data = Cache.create_tag_editor_data({
       gps = favorite.gps,
       locked = favorite.locked,
       is_favorite = true,  -- Always true when opening from favorites bar
       icon = favorite.tag.chart_tag.icon or "",
-      text = favorite.chart_tag.text,
+      text = favorite.tag.chart_tag.text or "",
       tag = favorite.tag,
       chart_tag = favorite.chart_tag
     })
@@ -145,6 +149,15 @@ local function handle_toggle_lock(event, player, fav, slot, favorites)
   return false
 end
 
+local function handle_shift_left_click(event, player, fav, slot, favorites)
+  if event.button == defines.mouse_button_type.left and event.shift then
+    if fav and not FavoriteUtils.is_blank_favorite(fav) then
+      player.print("[FAVE BAR] drag started")
+    end
+  end
+  return false
+end
+
 local function handle_favorite_slot_click(event, player, favorites)
   local element = event.element
   local slot = tonumber(element.name:match("fave_bar_slot_(%d+)"))
@@ -156,6 +169,9 @@ local function handle_favorite_slot_click(event, player, favorites)
   if FavoriteUtils.is_blank_favorite(fav) then
     return
   end
+
+  -- Handle Shift+Left-Click to remove favorite
+  if handle_shift_left_click(event, player, fav, slot, favorites) then return end
 
   -- Handle Ctrl+click to toggle lock state
   if handle_toggle_lock(event, player, fav, slot, favorites) then return end
