@@ -40,8 +40,6 @@ Notes:
 
 local Constants = require("constants")
 local FavoriteUtils = require("core.favorite.favorite")
-local Utils = require("core.utils.utils")
-local basic_helpers = require("core.utils.basic_helpers")
 local Cache = require("core.cache.cache")
 local ErrorHandler = require("core.utils.error_handler")
 

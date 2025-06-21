@@ -10,10 +10,6 @@ Tag model and utilities for managing teleportation tags, chart tags, and player 
 - All tag-related state and operations are centralized here for maintainability and DRYness.
 ]]
 
-local Constants = require("constants")
-local settings_access = require("core.utils.settings_access")
-local utils = require("core.utils.utils")
-local basic_helpers = require("core.utils.basic_helpers")
 local GPSUtils = require("core.utils.gps_utils")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local Cache = require("core.cache.cache")
@@ -22,6 +18,7 @@ local LocaleUtils = require("core.utils.locale_utils")
 local TeleportStrategies = require("core.pattern.teleport_strategy")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
 local PositionUtils = require("core.utils.position_utils")
+local CollectionUtils = require("core.utils.collection_utils")
 
 
 ---@class Tag
@@ -108,7 +105,7 @@ function Tag:add_faved_by_player(player_index)
     return idx == player_index
   end
 
-  if not utils.find_first_match(self.faved_by_players, player_exists) then
+  if not CollectionUtils.find_first_match(self.faved_by_players, player_exists) then
     table.insert(self.faved_by_players, player_index)
     ErrorHandler.debug_log("Player added to favorites", {
       player_index = player_index,
@@ -128,7 +125,7 @@ function Tag:remove_faved_by_player(player_index)
   })
 
   local initial_count = #self.faved_by_players
-  utils.table_remove_value(self.faved_by_players, player_index)
+  CollectionUtils.table_remove_value(self.faved_by_players, player_index)
   local final_count = #self.faved_by_players
 
   if initial_count > final_count then

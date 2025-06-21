@@ -26,7 +26,7 @@ storage = {
         is_favorite = boolean,         -- Whether the tag is favorited (pending state)
         icon = string,                 -- Icon signal name (empty string if none)
         text = string,                 -- Tag text content (empty string if none)
-        tag = table|nil,              -- Tag object being edited (may be nil)
+        tag = Tag|nil,              -- Tag object being edited (may be nil)
         chart_tag = LuaCustomChartTag|nil, -- Associated chart tag (may be nil)
         error_message = string,        -- Error message to display (empty string if none)
         -- Additional transient fields for move mode, etc.
@@ -39,7 +39,6 @@ storage = {
             [1..MAX_FAVORITE_SLOTS] = {
               gps = string,            -- GPS in format "xxx.yyy.s"
               locked = boolean,        -- Whether slot is locked against changes
-              tag = table|nil,         -- Associated tag object (for tooltips)
             },
           },
         },
@@ -51,7 +50,6 @@ storage = {
       tags = {
         [gps] = {                      -- Tag objects indexed by GPS string
           gps = string,                -- Canonical GPS string "xxx.yyy.s"
-          chart_tag = LuaCustomChartTag|nil, -- Associated chart tag
           faved_by_players = {         -- Array of player indices who favorited this
             [1..n] = player_index,
           },

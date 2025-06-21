@@ -20,6 +20,7 @@ local ValidationUtils = require("core.utils.validation_utils")
 local AdminUtils = require("core.utils.admin_utils")
 local SettingsAccess = require("core.utils.settings_access")
 local TagEditorMoveMode = require("core.control.control_move_mode")
+local CollectionUtils = require("core.utils.collection_utils")
 
 -- Observer Pattern Integration
 local GuiObserver = require("core.pattern.gui_observer")
@@ -255,6 +256,7 @@ local function handle_confirm_btn(player, element, tag_data)
 
   -- After updating chart tag fields, re-fetch the tag object from cache to ensure latest chart_tag/last_user
   local refreshed_tag = tags[tag.gps] or tag
+  refreshed_tag.faved_by_players = refreshed_tag.faved_by_players or {}
   tag_data.tag = refreshed_tag
   tags[tag.gps] = refreshed_tag
 
@@ -274,13 +276,23 @@ local function handle_confirm_btn(player, element, tag_data)
     local player_favorites = PlayerFavorites.new(player)
     local _, error_msg = player_favorites:add_favorite(tag.gps)
     if error_msg then
-      return show_tag_editor_error(player, tag_data, LocaleUtils.get_error_string(player, "favorite_slots_full") or error_msg)
+      return show_tag_editor_error(player, tag_data,
+        LocaleUtils.get_error_string(player, "favorite_slots_full") or error_msg)
     end
+
+    tag.faved_by_players[player.index] = true
   else
     -- Remove favorite if it exists
     local player_favorites = PlayerFavorites.new(player)
     player_favorites:remove_favorite(tag.gps)
+    -- Remove the player's index from tag's faved_by_players
+    tag.faved_by_players[player.index] = nil
   end
+
+  -- After updating faved_by_players, re-sanitize and persist the tag
+  local sanitized_tag = Cache.sanitize_for_storage(tag)
+  tags[tag.gps] = sanitized_tag
+  tag_data.tag = sanitized_tag
 
   -- Notify observers of tag creation or modification
   local event_type = is_new_tag and "tag_created" or "tag_modified"
@@ -352,7 +364,7 @@ local function handle_delete_confirm(player)
     close_tag_editor(player)
     return
   end
-  
+
   -- User confirmed deletion - execute deletion logic
   local tag = tag_data.tag
   if not tag then
@@ -436,7 +448,7 @@ local function handle_delete_btn(player, tag_data)
   local frame, confirm_btn, cancel_btn = tag_editor.build_confirmation_dialog(player, {
     message = { "tf-gui.confirm_delete_message" }
   })
-  
+
   -- DO NOT set player.opened to the confirm dialog!
   -- Keep player.opened as the tag editor frame so it remains modal and open
   player.opened = GuiUtils.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)

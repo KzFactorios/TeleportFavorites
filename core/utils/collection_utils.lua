@@ -170,18 +170,68 @@ function CollectionUtils.table_find(tbl, value)
   return nil
 end
 
---- Remove value from table
+--- Find value in table and return key
+---@param tbl table
+---@param value any
+---@return number? found_index
+function CollectionUtils.table_find_index_of(tbl, value)
+  if type(tbl) ~= "table" then return nil end
+  for k, v in pairs(tbl) do
+    if v == value then
+      return k
+    end
+  end
+  return -1
+end
+
+--- Remove value from table if it exists
 ---@param tbl table
 ---@param value any
 ---@return boolean removed
 function CollectionUtils.table_remove_value(tbl, value)
   if type(tbl) ~= "table" then return false end
-  local key = CollectionUtils.table_find(tbl, value)
-  if key ~= nil then
-    tbl[key] = nil
-    return true
+  -- Check if array-like (contiguous integer keys from 1..n)
+  local is_array = true
+  local n = 0
+  for k, _ in pairs(tbl) do
+    if type(k) ~= "number" or k < 1 or math.floor(k) ~= k then
+      is_array = false
+      break
+    end
+    n = n + 1
   end
-  return false
+  if is_array then
+    -- Remove all occurrences from the end to avoid holes
+    local removed = false
+    for i = #tbl, 1, -1 do
+      if tbl[i] == value then
+        table.remove(tbl, i)
+        removed = true
+      end
+    end
+    return removed
+  else
+    -- Map-like: remove by key
+    local removed = false
+    for k, v in pairs(tbl) do
+      if v == value then
+        tbl[k] = nil
+        removed = true
+      end
+    end
+    return removed
+  end
+end
+
+--- Add an element to the unique list
+function CollectionUtils.add_unique(list, value)
+  for _, v in ipairs(list) do
+    if v == value then
+      return false  -- Value already exists; do not add
+    end
+  end
+  table.insert(list, value)
+  return true  -- Value was added
 end
 
 --- Find first match using a matcher function
