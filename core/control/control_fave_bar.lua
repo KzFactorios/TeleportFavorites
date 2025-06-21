@@ -14,6 +14,7 @@ local GuiUtils = require("core.utils.gui_utils")
 local ErrorHandler = require("core.utils.error_handler")
 local LocaleUtils = require("core.utils.locale_utils")
 local FavoriteRuntimeUtils = require("core.utils.favorite_utils")
+local CursorUtils = require("core.utils.cursor_utils")
 
 -- Observer Pattern Integration
 local GuiObserver = require("core.pattern.gui_observer")
@@ -150,10 +151,69 @@ local function handle_toggle_lock(event, player, fav, slot, favorites)
 end
 
 local function handle_shift_left_click(event, player, fav, slot, favorites)
+  local pdata = Cache.get_player_data(player)
   if event.button == defines.mouse_button_type.left and event.shift then
-    if fav and not FavoriteUtils.is_blank_favorite(fav) then
-      player.print("[FAVE BAR] drag started")
+    if fav and not FavoriteUtils.is_blank_favorite(fav) and not fav.locked then
+      pdata.drag_favorite.active = true
+      pdata.drag_favorite.source_slot = slot
+      pdata.drag_favorite.favorite = FavoriteUtils.deep_copy and FavoriteUtils.deep_copy(fav) or fav
+      CursorUtils.add_favorite_to_cursor(player, fav)
+      GameHelpers.player_print(player, {"tf-gui.fave_bar_drag_start", slot})
+      return true
+    elseif fav and fav.locked then
+      GameHelpers.player_print(player, {"tf-gui.fave_slot_locked_cannot_drag"})
+      return true
     end
+  end
+  return false
+end
+
+local function handle_drop_on_slot(event, player, slot, favorites)
+  local pdata = Cache.get_player_data(player)
+  if pdata.drag_favorite and pdata.drag_favorite.active == true then
+    local source_slot = pdata.drag_favorite.source_slot
+    if not source_slot or source_slot == slot then
+      CursorUtils.clear_favorite_from_cursor(player)
+      pdata.drag_favorite.active = false
+      pdata.drag_favorite.source_slot = nil
+      pdata.drag_favorite.favorite = nil
+      return true
+    end
+    local fav = favorites.favorites[source_slot]
+    if fav and fav.locked then
+      GameHelpers.player_print(player, {"tf-gui.fave_slot_locked_cannot_drag"})
+      CursorUtils.clear_favorite_from_cursor(player)
+      pdata.drag_favorite.active = false
+      pdata.drag_favorite.source_slot = nil
+      pdata.drag_favorite.favorite = nil
+      return true
+    end
+    local target_fav = favorites.favorites[slot]
+    if target_fav and target_fav.locked then
+      GameHelpers.player_print(player, {"tf-gui.fave_slot_locked_cannot_drop"})
+      CursorUtils.clear_favorite_from_cursor(player)
+      pdata.drag_favorite.active = false
+      pdata.drag_favorite.source_slot = nil
+      pdata.drag_favorite.favorite = nil
+      return true
+    end
+    local success, err = favorites:move_favorite(source_slot, slot)
+    if success then
+      GameHelpers.player_print(player, {"tf-gui.fave_reordered_success", source_slot, slot})
+    else
+      GameHelpers.player_print(player, {"tf-gui.fave_bar_reorder_failed", err or "?"})
+    end
+    CursorUtils.clear_favorite_from_cursor(player)
+    pdata.drag_favorite.active = false
+    pdata.drag_favorite.source_slot = nil
+    pdata.drag_favorite.favorite = nil
+    local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
+    local bar_frame = GuiUtils.find_child_by_name(main_flow, "fave_bar_frame")
+    local bar_flow = bar_frame and GuiUtils.find_child_by_name(bar_frame, "fave_bar_flow")
+    if bar_flow then
+      fave_bar.update_slot_row(player, bar_flow)
+    end
+    return true
   end
   return false
 end
@@ -170,7 +230,12 @@ local function handle_favorite_slot_click(event, player, favorites)
     return
   end
 
-  -- Handle Shift+Left-Click to remove favorite
+  local pdata = Cache.get_player_data(player)
+  if pdata.drag_favorite and pdata.drag_favorite.active == true then
+    if handle_drop_on_slot(event, player, slot, favorites) then return end
+  end
+
+  -- Handle Shift+Left-Click to start drag
   if handle_shift_left_click(event, player, fav, slot, favorites) then return end
 
   -- Handle Ctrl+click to toggle lock state
@@ -188,18 +253,6 @@ local function handle_favorite_slot_click(event, player, favorites)
   else
     fave_bar.build(player)
   end
-end
-
-local function handle_visible_fave_btns_toggle_click(player)
-  local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
-  if not main_flow or not main_flow.valid then return end
-  local slots_row = GuiUtils.find_child_by_name(main_flow, "fave_bar_slots_flow")
-  if not slots_row or not slots_row.valid then
-    return
-  end
-
-  local currently_visible = slots_row.visible
-  slots_row.visible = not currently_visible
 end
 
 --- Handle favorites bar GUI click events

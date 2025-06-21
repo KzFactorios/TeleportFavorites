@@ -162,12 +162,15 @@ end
 function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
   drag_index = drag_index or -1
   local max_slots = Constants.settings.MAX_FAVORITE_SLOTS or 10
-  
+  local pdata = Cache.get_player_data(player)
+  local drag_state = pdata.drag_favorite or {active=false}
+  local drag_active = drag_state.active == true
+  local drag_source = drag_state.source_slot
+
   for i = 1, max_slots do
     local fav = pfaves[i]
     fav = FavoriteRuntimeUtils.rehydrate_favorite(player, fav)
     ---@cast fav Favorite
-    
     local icon_name = nil
     local tooltip = { "tf-gui.favorite_slot_empty" }
     local style = "tf_slot_button_smallfont"
@@ -181,8 +184,13 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
         ErrorHandler.debug_log("[FAVE_BAR] Fallback icon used for slot", { slot = i, icon = btn_icon, debug_info = debug_info })
       end
       tooltip = GuiUtils.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }
-      if fav.locked then style = "tf_slot_button_locked" end
-      if drag_index == i then style = "tf_slot_button_dragged" end
+      if fav.locked then
+        style = "tf_slot_button_locked"
+      elseif drag_active and drag_source == i then
+        style = "tf_slot_button_dragged"
+      elseif drag_active and not fav.locked and drag_source ~= i then
+        style = "tf_slot_button_drag_target"
+      end
     else
       btn_icon = ""
       tooltip = { "tf-gui.favorite_slot_empty" }

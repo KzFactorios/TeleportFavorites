@@ -195,6 +195,12 @@ local function init_player_data(player)
   player_data.player_name = player.name or "Unknown"
   player_data.render_mode = player_data.render_mode or player.render_mode
   player_data.tag_editor_data = player_data.tag_editor_data or Cache.create_tag_editor_data()
+  -- Drag-and-drop state for favorites bar
+  player_data.drag_favorite = player_data.drag_favorite or {
+    active = false,
+    source_slot = nil,
+    favorite = nil
+  }
   return player_data
 end
 
