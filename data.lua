@@ -301,6 +301,14 @@ data:extend {
     width = 16,
     height = 16,
     flags = {"gui-icon"}
+  },
+  {
+    type = "sprite",
+    name = "tf_slot_lock",
+    filename = "__TeleportFavorites__/graphics/icons8-lock.png",
+    width = 24,
+    height = 24,
+    flags = {"gui-icon"}
   }
 }
 

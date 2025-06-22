@@ -94,30 +94,15 @@ gui_style.tf_slot_button_smallfont_map_pin = {
     left_padding = 8
 }
 
--- Create tinted button variants manually (can't use GuiUtils during data stage)
-gui_style.tf_slot_button_dragged = {
-    type = "button_style",
-    parent = "slot_button",
-    default_graphical_set = {
-        base = { position = { 0, 0 }, corner_size = 8, tint = { r = 0.2, g = 0.7, b = 1, a = 1 } }
-    }
-}
-
 gui_style.tf_slot_button_locked = {
     type = "button_style",
-    parent = "slot_button",
+    parent = "tf_slot_button_smallfont",
     default_graphical_set = {
-        base = { position = { 0, 0 }, corner_size = 8, tint = { r = 1, g = 0.5, b = 0, a = 1 } }
-    }
+        base = { position = { 0, 0 }, size = { 40, 40 }, corner_size = 8, tint = { r = .3, g = .3, b =.3, a = .4 } }
+    },
+    size = { 40, 40 }
 }
 
-gui_style.tf_slot_button_drag_target = {
-    type = "button_style",
-    parent = "slot_button",
-    default_graphical_set = {
-        base = { position = { 0, 0 }, corner_size = 8, tint = { r = 1, g = 1, b = 0.2, a = 1 } }
-    }
-}
 
 
 return true
