@@ -203,7 +203,7 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
     local btn = GuiUtils.create_slot_button(parent, "fave_bar_slot_" .. i, tostring(btn_icon), tooltip, { style = style })
     if btn and btn.valid then
       -- Set caption to slot number for visual consistency
-      btn.caption = " "-- tostring(i)
+      btn.caption = tostring(i)
       -- Also add child label for visual consistency with project standards
       GuiBase.create_label(btn, "tf_fave_bar_slot_number_" .. tostring(i), tostring(i), "tf_fave_bar_slot_number")
     end

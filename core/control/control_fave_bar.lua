@@ -117,7 +117,8 @@ local function handle_teleport(event, player, fav, slot, did_drag)
 end
 
 local function handle_request_to_open_tag_editor(event, player, fav, slot)
-  if event.button == defines.mouse_button_type.right then
+  -- Use direct comparison with numeric value 2 for right click
+  if event.button == 2 then
     -- Check if player is currently in a drag operation
     local is_dragging, _ = CursorUtils.is_dragging_favorite(player)
     if is_dragging then
@@ -157,7 +158,16 @@ local function handle_toggle_lock(event, player, fav, slot, favorites)
 end
 
 local function handle_shift_left_click(event, player, fav, slot, favorites)
-  if event.button == defines.mouse_button_type.left and event.shift then
+  -- Use direct comparison with numeric value 1 for left click
+  if event.button == 1 and event.shift then
+    -- Log that we're attempting to start a drag operation
+    ErrorHandler.debug_log("[FAVE_BAR] Handling shift+left click for drag start", {
+      player = player.name, 
+      slot = slot,
+      button_value = event.button,
+      shift = event.shift
+    })
+    
     -- Check if we can start a drag (not a blank or locked favorite)
     if can_start_drag(fav) then
       start_drag(player, fav, slot)
@@ -172,19 +182,55 @@ end
 local function handle_drop_on_slot(event, player, slot, favorites)
   -- Check if player is currently dragging a favorite
   local is_dragging, source_slot = CursorUtils.is_dragging_favorite(player)
-  if is_dragging and source_slot and source_slot ~= slot then
+    -- Enhanced debugging for drag operations
+  ErrorHandler.debug_log("[FAVE_BAR] handle_drop_on_slot processing", {
+    player = player and player.name or "<nil>",
+    is_dragging = is_dragging,
+    source_slot = source_slot,
+    target_slot = slot,
+    raw_button = event and event.button or "<nil>",
+    button_type = event and event.button and (
+      event.button == 1 and "LEFT_CLICK" or
+      event.button == 2 and "RIGHT_CLICK" or
+      event.button == 3 and "MIDDLE_CLICK" or
+      "UNKNOWN_BUTTON_" .. tostring(event.button)
+    ) or "<nil>"
+  })
+  
+  -- If we're not in a drag operation, exit early
+  if not is_dragging or not source_slot then
+    ErrorHandler.debug_log("[FAVE_BAR] Not in drag mode or missing source slot", {
+      is_dragging = is_dragging,
+      source_slot = source_slot
+    })
+    return false
+  end
+  
+  -- Handle dropping onto a different slot
+  if source_slot ~= slot then
     -- Make sure target slot isn't locked
     local target_fav = favorites.favorites[slot]
-    if target_fav and not is_locked_favorite(target_fav) then
-      return reorder_favorites(player, favorites, source_slot, slot)
-    elseif is_locked_favorite(target_fav) then
+    if is_locked_favorite(target_fav) then
       GameHelpers.player_print(player, lstr("tf-gui.fave_bar_locked_cant_target", slot))
       GameHelpers.safe_play_sound(player, { path = "utility/cannot_build" })
       end_drag(player)
       return true
+    else
+      -- Target slot is not locked or is empty, proceed with reordering
+      ErrorHandler.debug_log("[FAVE_BAR] Reordering favorite", {
+        from_slot = source_slot,
+        to_slot = slot
+      })
+      return reorder_favorites(player, favorites, source_slot, slot)
     end
+  else
+    -- Dropping onto the same slot, just end the drag
+    ErrorHandler.debug_log("[FAVE_BAR] Dropping onto same slot, canceling drag", {
+      slot = slot
+    })
+    end_drag(player)
+    return true
   end
-  return false
 end
 
 local function handle_favorite_slot_click(event, player, favorites)
@@ -197,11 +243,44 @@ local function handle_favorite_slot_click(event, player, favorites)
     })
     return
   end
-    -- First check if we're in drag mode and this is a drop or cancel
+    -- Log more detailed information about the click event
+  ErrorHandler.debug_log("[FAVE_BAR] Slot click detected", {
+    player = player and player.name or "<nil>",
+    slot = slot,
+    button_value = event and event.button or "<nil>",
+    button_type = event and event.button and (
+      event.button == 1 and "LEFT_CLICK" or
+      event.button == 2 and "RIGHT_CLICK" or
+      event.button == 3 and "MIDDLE_CLICK" or
+      "UNKNOWN_BUTTON_" .. tostring(event.button)
+    ) or "<nil>",
+    shift = event and event.shift or false,
+    control = event and event.control or false
+  })
+  
+  -- PRIORITY CHECK: First check if we're in drag mode and this is a drop or cancel
   local is_dragging, source_slot = CursorUtils.is_dragging_favorite(player)
+  
+  -- Enhanced drag detection logging
   if is_dragging then
-    -- Check if this is a right-click to cancel the drag
-    if event.button == defines.mouse_button_type.right then
+    ErrorHandler.debug_log("[FAVE_BAR] In active drag mode", {
+      player = player.name,
+      source_slot = source_slot,
+      target_slot = slot
+    })
+  end
+  
+  if is_dragging then
+    ErrorHandler.debug_log("[FAVE_BAR] Click during drag operation", {
+      player = player.name,
+      source_slot = source_slot,
+      target_slot = slot,
+      button_value = event.button,
+      raw_button = event.button
+    })
+    
+    -- Check if this is a right-click to cancel the drag (use numeric value 2)
+    if event.button == 2 then
       ErrorHandler.debug_log("[FAVE_BAR] Right-click detected during drag, canceling drag operation", 
         { player = player.name, source_slot = source_slot })
       end_drag(player)
@@ -209,10 +288,58 @@ local function handle_favorite_slot_click(event, player, favorites)
       return
     end
     
-    -- This is a drop attempt
-    if handle_drop_on_slot(event, player, slot, favorites) then return end
+    -- Check if this is a left-click to complete the drag (use numeric value 1)
+    if event.button == 1 then
+      ErrorHandler.debug_log("[FAVE_BAR] Left-click detected during drag, attempting to drop", 
+        { player = player.name, source_slot = source_slot, target_slot = slot, raw_button = event.button })
+      
+      -- Direct attempt to reorder favorites (skip handle_drop_on_slot)
+      if source_slot ~= slot then
+        local target_fav = favorites.favorites[slot]
+        
+        -- Check if target slot is locked
+        if is_locked_favorite(target_fav) then
+          GameHelpers.player_print(player, lstr("tf-gui.fave_bar_locked_cant_target", slot))
+          GameHelpers.safe_play_sound(player, { path = "utility/cannot_build" })
+          end_drag(player)
+          ErrorHandler.debug_log("[FAVE_BAR] Target slot is locked, canceling drag")
+          return
+        end
+        
+        -- Target slot is not locked, proceed with reordering
+        ErrorHandler.debug_log("[FAVE_BAR] Directly reordering favorites", {
+          from_slot = source_slot,
+          to_slot = slot
+        })
+        
+        local success = reorder_favorites(player, favorites, source_slot, slot)
+        if success then
+          ErrorHandler.debug_log("[FAVE_BAR] Drop successful via direct reordering")
+          return
+        else
+          ErrorHandler.debug_log("[FAVE_BAR] Direct reordering failed")
+        end
+      else
+        -- Dropping onto the same slot, just end the drag
+        ErrorHandler.debug_log("[FAVE_BAR] Dropping onto same slot, canceling drag", {
+          slot = slot
+        })
+        end_drag(player)
+        return
+      end
+      
+      -- Fallback to regular drop handler
+      ErrorHandler.debug_log("[FAVE_BAR] Falling back to regular drop handler")
+      if handle_drop_on_slot(event, player, slot, favorites) then
+        ErrorHandler.debug_log("[FAVE_BAR] Drop successful via fallback handler")
+        return
+      end
+      
+      -- If we get here, all drop attempts failed
+      ErrorHandler.debug_log("[FAVE_BAR] Drop unsuccessful after all attempts, ending drag anyway")
+    end
     
-    -- If we get here, the drop didn't work, but we need to exit drag mode anyway
+    -- If we get here, the drop didn't work or it was another button, but we need to exit drag mode anyway
     end_drag(player)
     return
   end
@@ -269,7 +396,30 @@ local function on_fave_bar_gui_click(event)
   local player = game.get_player(event.player_index)
   if not player or not player.valid then return end
 
+  -- Log detailed information about the click before any processing
+  ErrorHandler.debug_log("[FAVE_BAR] on_fave_bar_gui_click entry point", {
+    element_name = element.name,
+    player = player.name,
+    raw_button_value = event.button,
+    button_type = event.button == 1 and "LEFT_CLICK" or 
+                  event.button == 2 and "RIGHT_CLICK" or 
+                  event.button == 3 and "MIDDLE_CLICK" or "UNKNOWN_" .. tostring(event.button),
+    defines_values = {
+      left = defines.mouse_button_type.left,
+      right = defines.mouse_button_type.right,
+      middle = defines.mouse_button_type.middle
+    },
+    shift_pressed = event.shift,
+    control_pressed = event.control,
+    is_dragging = CursorUtils.is_dragging_favorite(player)
+  })
+
   if element.name:find("^fave_bar_slot_") then
+    ErrorHandler.debug_log("[FAVE_BAR] Handling slot click", {
+      slot = element.name:match("fave_bar_slot_(%d+)"),
+      player = player.name,
+      button = event.button
+    })
     local favorites = PlayerFavorites.new(player)
     handle_favorite_slot_click(event, player, favorites)
     return

@@ -119,7 +119,24 @@ function CursorUtils.is_dragging_favorite(player)
   if not player or not player.valid then return false, nil end
   
   local player_data = Cache.get_player_data(player)
-  if player_data and player_data.drag_favorite and player_data.drag_favorite.active then
+  
+  -- Handle the case where drag_favorite might not be initialized properly
+  if not player_data.drag_favorite then
+    player_data.drag_favorite = {
+      active = false,
+      source_slot = nil,
+      favorite = nil
+    }
+  end
+  
+  -- Check if drag is active and has a valid source slot
+  if player_data.drag_favorite.active and player_data.drag_favorite.source_slot then
+    -- Log the active drag state for debugging
+    ErrorHandler.debug_log("[CURSOR_UTILS] Detected active drag operation", {
+      player = player.name,
+      source_slot = player_data.drag_favorite.source_slot,
+      active = player_data.drag_favorite.active
+    })
     return true, player_data.drag_favorite.source_slot
   end
   
