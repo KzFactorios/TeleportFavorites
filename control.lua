@@ -74,3 +74,8 @@ script.on_event(defines.events.on_tick, function(event)
     script.on_event(defines.events.on_tick, nil)
   end
 end)
+
+-- Register the TeleportFavorites interface for testing
+remote.add_interface("TeleportFavorites", {
+  test_button_values = require("tests.test_button_values").log_button_values
+})

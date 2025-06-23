@@ -50,8 +50,7 @@ function ChartTagUtils.find_chart_tag_at_position(player, cursor_position)
   if not player or not player.valid or not cursor_position then return nil end
 
   -- Only detect clicks while in map mode
-  if player.render_mode ~= defines.render_mode.chart and
-      player.render_mode ~= defines.render_mode.chart_zoomed_in then
+  if player.render_mode ~= defines.render_mode.chart then
     return nil
   end
   -- First check the cache to see if we have chart tags loaded
@@ -115,8 +114,7 @@ function ChartTagUtils.handle_map_click(event)
   if not player or not player.valid then return nil end
 
   -- Only process when player is in map view
-  if player.render_mode ~= defines.render_mode.chart and
-      player.render_mode ~= defines.render_mode.chart_zoomed_in then
+  if player.render_mode ~= defines.render_mode.chart then
     return nil
   end
 

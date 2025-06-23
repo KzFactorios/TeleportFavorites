@@ -133,11 +133,10 @@ function handlers.on_open_tag_editor_custom_input(event)
     return
   end
 
-  if player.render_mode ~= defines.render_mode.chart and player.render_mode ~= defines.render_mode.chart_zoomed_in then
+  if player.render_mode ~= defines.render_mode.chart then
     ErrorHandler.debug_log("Tag editor handler: wrong render mode", {
       render_mode = player.render_mode,
-      chart_mode = defines.render_mode.chart,
-      chart_zoomed = defines.render_mode.chart_zoomed_in
+      chart_mode = defines.render_mode.chart
     })
     return
   end

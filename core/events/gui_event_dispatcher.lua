@@ -87,9 +87,7 @@ function M.register_gui_handlers(script)
     error("[TeleportFavorites] Invalid script object provided to register_gui_handlers")
   end
 
-  local function shared_on_gui_click(event)
-    Cache.init()
-    -- Ignore shift+right-click everywhere (Factorio native move-tag behavior)
+  local function shared_on_gui_click(event)    Cache.init()    -- Ignore shift+right-click everywhere (Factorio native move-tag behavior)
     if event.button == defines.mouse_button_type.right and event.shift then return end
     -- Ignore shift+left-click everywhere EXCEPT on a fave bar slot button
     if event.button == defines.mouse_button_type.left and event.shift and not is_fave_bar_slot_button(event.element) then return end
@@ -98,11 +96,16 @@ function M.register_gui_handlers(script)
     ErrorHandler.debug_log("[DISPATCH RAW_EVENT] Raw event received", {
       event_type = "on_gui_click",
       element_name = event and event.element and event.element.name or "<none>",
-      button = event and event.button or "<none>",
+      raw_button_value = event and event.button or "<none>",
+      define_values = {
+        left = defines.mouse_button_type.left,
+        right = defines.mouse_button_type.right,
+        middle = defines.mouse_button_type.middle
+      },
       button_analysis = event and event.button and (
-        event.button == 1 and "LEFT_CLICK" or
-        event.button == 2 and "RIGHT_CLICK" or
-        event.button == 3 and "MIDDLE_CLICK" or
+        event.button == defines.mouse_button_type.left and "LEFT_CLICK" or
+        event.button == defines.mouse_button_type.right and "RIGHT_CLICK" or
+        event.button == defines.mouse_button_type.middle and "MIDDLE_CLICK" or
         "UNKNOWN_BUTTON_" .. tostring(event.button)
       ) or "<none>",
       shift = event and event.shift or false,
@@ -119,16 +122,25 @@ function M.register_gui_handlers(script)
 
     _tf_gui_click_guard = true
     
-    local ok, result = xpcall(function()
-      local player = game.get_player(event.player_index)
-      if not player or not player.valid then return end      -- Check for right-click during drag operation
+    local ok, result = xpcall(function()      
+    local player = game.get_player(event.player_index)
+      if not player or not player.valid then return end
+      
+      -- Check for right-click during drag operation
       if event.button == defines.mouse_button_type.right then
         local is_dragging = false
         local player_data = Cache.get_player_data(player)
-        if player_data and player_data.drag_favorite and player_data.drag_favorite.active then
+        -- Ensure drag_favorite is properly initialized
+        if not player_data.drag_favorite then
+          player_data.drag_favorite = {active = false, source_slot = nil, favorite = nil}
+        end
+        if player_data.drag_favorite.active then
           is_dragging = true
-          ErrorHandler.debug_log("[DISPATCH] Right-click detected during drag operation, cancelling drag", 
-            { player = player.name, source_slot = player_data.drag_favorite.source_slot })
+          ErrorHandler.debug_log("[DISPATCH] Right-click detected during drag operation, cancelling drag", { 
+            player = player.name, 
+            source_slot = player_data.drag_favorite.source_slot,
+            raw_button = event.button
+          })
           CursorUtils.end_drag_favorite(player)
           GameHelpers.player_print(player, {"tf-gui.fave_bar_drag_canceled"})
           
@@ -145,9 +157,20 @@ function M.register_gui_handlers(script)
       
       -- Continue with normal processing
       local element = event.element
-      if not element or not element.valid then return end -- Global/utility buttons (not tied to a specific GUI)
+      if not element or not element.valid then return end 
+        
+      -- Global/utility buttons (not tied to a specific GUI)
       -- Ignore clicks on blank/empty favorite slots
-      if is_blank_fave_bar_slot_button(element, player) then return end
+
+        ErrorHandler.debug_log("[DISPATCH] Check for blank fave. end if blank", { element = element.name })
+      if is_blank_fave_bar_slot_button(element, player) then
+        if CursorUtils.is_dragging_favorite(player) then
+          control_fave_bar.on_fave_bar_gui_click(event)
+          return true
+        end
+        return
+      end
+      
       if element.name == "fave_bar_visible_btns_toggle" or is_fave_bar_slot_button(element) then
         ErrorHandler.debug_log("[DISPATCH] Routing to control_fave_bar.on_fave_bar_gui_click", { element = element.name })
         control_fave_bar.on_fave_bar_gui_click(event)

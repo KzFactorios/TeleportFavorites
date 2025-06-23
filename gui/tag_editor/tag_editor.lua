@@ -86,7 +86,7 @@ local function setup_tag_editor_ui(refs, tag_data, player)
       (type(tag_data.chart_tag) == "userdata" and not tag_data.chart_tag.valid)
   if refs.move_btn then
     -- Move button only enabled if player is owner AND in chart mode AND not a temp tag
-    local in_chart_mode = (player.render_mode == defines.render_mode.chart or player.render_mode == defines.render_mode.chart_zoomed_in)
+    local in_chart_mode = (player.render_mode == defines.render_mode.chart)
     local can_move = is_owner and in_chart_mode and not is_temp_tag
     GuiUtils.set_button_state(refs.move_btn, can_move)
   end

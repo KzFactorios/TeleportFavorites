@@ -106,6 +106,7 @@ local function handle_reorder(event, player, favorites, drag_index, slot)
 end
 
 local function handle_teleport(event, player, fav, slot, did_drag)
+  -- Use defines.mouse_button_type.left for left click
   if event.button == defines.mouse_button_type.left and not event.control and not did_drag then
     if fav and not FavoriteUtils.is_blank_favorite(fav) then
       -- Use the shared teleportation utility for water-tile safe teleportation
@@ -117,8 +118,8 @@ local function handle_teleport(event, player, fav, slot, did_drag)
 end
 
 local function handle_request_to_open_tag_editor(event, player, fav, slot)
-  -- Use direct comparison with numeric value 2 for right click
-  if event.button == 2 then
+  -- Use defines.mouse_button_type.right for right click
+  if event.button == defines.mouse_button_type.right then
     -- Check if player is currently in a drag operation
     local is_dragging, _ = CursorUtils.is_dragging_favorite(player)
     if is_dragging then
@@ -136,7 +137,8 @@ local function handle_request_to_open_tag_editor(event, player, fav, slot)
 end
 
 local function handle_toggle_lock(event, player, fav, slot, favorites)
-  if event.button == defines.mouse_button_type.left and event.control then    
+  -- Use defines.mouse_button_type.left for left click
+  if event.button == defines.mouse_button_type.left and event.control then
     local success, error_msg = favorites:toggle_favorite_lock(slot)
     if not success then
       GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "failed_toggle_lock", 
@@ -157,26 +159,143 @@ local function handle_toggle_lock(event, player, fav, slot, favorites)
   return false
 end
 
-local function handle_shift_left_click(event, player, fav, slot, favorites)
-  -- Use direct comparison with numeric value 1 for left click
-  if event.button == 1 and event.shift then
-    -- Log that we're attempting to start a drag operation
+local function handle_shift_left_click(event, player, fav, slot, favorites)  -- Use defines.mouse_button_type.left for left click
+  if event.button == defines.mouse_button_type.left and event.shift then
+    -- Enhanced logging to better diagnose shift-click issues
     ErrorHandler.debug_log("[FAVE_BAR] Handling shift+left click for drag start", {
       player = player.name, 
       slot = slot,
       button_value = event.button,
-      shift = event.shift
+      raw_button = event.button,
+      shift = event.shift,
+      fav_is_blank = FavoriteUtils.is_blank_favorite(fav),
+      fav_is_locked = is_locked_favorite(fav),
+      can_drag = can_start_drag(fav)
     })
     
     -- Check if we can start a drag (not a blank or locked favorite)
     if can_start_drag(fav) then
-      start_drag(player, fav, slot)
-      return true
+      local success = start_drag(player, fav, slot)
+      ErrorHandler.debug_log("[FAVE_BAR] Drag start result", {
+        success = success,
+        player = player.name,
+        slot = slot
+      })
+      return success
     elseif is_locked_favorite(fav) then
       GameHelpers.player_print(player, lstr("tf-gui.fave_bar_locked_cant_drag", slot))
     end
   end
   return false
+end
+
+local BLANK_GPS = "1000000.1000000.1"
+
+local function handle_drag_drop(slots, src_idx, dest_idx)
+    -- Validate indices (Lua 1-based)
+    if src_idx < 1 or src_idx > #slots or dest_idx < 1 or dest_idx > #slots then
+        return slots
+    end
+
+    local src = slots[src_idx]
+    local dest = slots[dest_idx]
+
+    ErrorHandler.debug_log("[FAVE_BAR] handle_drag_drop invoked", {
+        slots_before = slots,
+        src_idx = src_idx,
+        dest_idx = dest_idx
+    })
+
+    -- Rule: Blank or locked source cannot be dragged
+    if src.gps == BLANK_GPS or src.locked then
+        ErrorHandler.debug_log("[FAVE_BAR] Source slot is blank or locked", {
+            src = src
+        })
+        return slots
+    end
+
+    -- Rule: Cannot drag onto locked destination
+    if dest.locked then
+        ErrorHandler.debug_log("[FAVE_BAR] Destination slot is locked", {
+            dest = dest
+        })
+        return slots
+    end
+
+    -- If source and destination are the same, do nothing
+    if src_idx == dest_idx then
+        ErrorHandler.debug_log("[FAVE_BAR] Source and destination are the same", {
+            src_idx = src_idx,
+            dest_idx = dest_idx
+        })
+        return slots
+    end
+
+    -- If destination is blank, swap source and destination
+    if dest.gps == BLANK_GPS then
+        ErrorHandler.debug_log("[FAVE_BAR] Destination is blank, swapping", {
+            src = src,
+            dest = dest
+        })
+        slots[dest_idx] = {gps = src.gps, locked = src.locked}
+        slots[src_idx] = {gps = BLANK_GPS, locked = false}
+        ErrorHandler.debug_log("[FAVE_BAR] Slots after blank swap", {
+            slots = slots
+        })
+        return slots
+    end
+
+    -- If source and destination are adjacent, swap them
+    if math.abs(src_idx - dest_idx) == 1 then
+        ErrorHandler.debug_log("[FAVE_BAR] Source and destination are adjacent, swapping", {
+            src_idx = src_idx,
+            dest_idx = dest_idx
+        })
+        slots[src_idx], slots[dest_idx] = slots[dest_idx], slots[src_idx]
+        ErrorHandler.debug_log("[FAVE_BAR] Slots after adjacent swap", {
+            slots = slots
+        })
+        return slots
+    end
+
+    -- Otherwise, perform reversed cascade
+    ErrorHandler.debug_log("[FAVE_BAR] Performing reversed cascade", {
+        src_idx = src_idx,
+        dest_idx = dest_idx
+    })
+
+    local step = (src_idx < dest_idx) and -1 or 1  -- reversed direction
+    local start_idx, end_idx
+
+    if src_idx < dest_idx then
+        start_idx, end_idx = dest_idx, src_idx + 1
+    else
+        start_idx, end_idx = dest_idx, src_idx - 1
+    end
+
+    -- Check for locked slots in the cascade path (excluding src and dest)
+    for i = start_idx, end_idx, step do
+        if slots[i].locked then
+            -- Abort if cascade would overwrite a locked slot
+            return slots
+        end
+    end
+
+    -- Shift all intervening slots toward the source
+    for i = start_idx, end_idx, step do
+        slots[i] = {gps = slots[i - step].gps, locked = slots[i - step].locked}
+    end
+
+    -- Place dragged item at destination
+    slots[dest_idx] = {gps = src.gps, locked = src.locked}
+    -- Set source to blank
+    slots[src_idx] = {gps = BLANK_GPS, locked = false}
+
+    ErrorHandler.debug_log("[FAVE_BAR] handle_drag_drop completed", {
+        slots_after = slots
+    })
+
+    return slots
 end
 
 local function handle_drop_on_slot(event, player, slot, favorites)
@@ -190,9 +309,9 @@ local function handle_drop_on_slot(event, player, slot, favorites)
     target_slot = slot,
     raw_button = event and event.button or "<nil>",
     button_type = event and event.button and (
-      event.button == 1 and "LEFT_CLICK" or
-      event.button == 2 and "RIGHT_CLICK" or
-      event.button == 3 and "MIDDLE_CLICK" or
+      event.button == defines.mouse_button_type.left and "LEFT_CLICK" or
+      event.button == defines.mouse_button_type.right and "RIGHT_CLICK" or
+      event.button == defines.mouse_button_type.middle and "MIDDLE_CLICK" or
       "UNKNOWN_BUTTON_" .. tostring(event.button)
     ) or "<nil>"
   })
@@ -206,31 +325,23 @@ local function handle_drop_on_slot(event, player, slot, favorites)
     return false
   end
   
-  -- Handle dropping onto a different slot
-  if source_slot ~= slot then
-    -- Make sure target slot isn't locked
-    local target_fav = favorites.favorites[slot]
-    if is_locked_favorite(target_fav) then
-      GameHelpers.player_print(player, lstr("tf-gui.fave_bar_locked_cant_target", slot))
-      GameHelpers.safe_play_sound(player, { path = "utility/cannot_build" })
-      end_drag(player)
-      return true
-    else
-      -- Target slot is not locked or is empty, proceed with reordering
-      ErrorHandler.debug_log("[FAVE_BAR] Reordering favorite", {
-        from_slot = source_slot,
-        to_slot = slot
-      })
-      return reorder_favorites(player, favorites, source_slot, slot)
-    end
-  else
-    -- Dropping onto the same slot, just end the drag
-    ErrorHandler.debug_log("[FAVE_BAR] Dropping onto same slot, canceling drag", {
-      slot = slot
-    })
-    end_drag(player)
-    return true
-  end
+  ErrorHandler.debug_log("[FAVE_BAR] handle_drop_on_slot invoked", {
+    is_dragging = is_dragging,
+    source_slot = source_slot,
+    target_slot = slot,
+    favorites_before = favorites
+  })
+
+  favorites = handle_drag_drop(favorites, source_slot, slot)
+
+  ErrorHandler.debug_log("[FAVE_BAR] handle_drop_on_slot completed", {
+    favorites_after = favorites
+  })
+
+  -- Update the favorites bar GUI to reflect the new order
+  fave_bar.build(player)
+  GameHelpers.player_print(player, {"tf-gui.fave_bar_reordered", source_slot, slot})
+  return true
 end
 
 local function handle_favorite_slot_click(event, player, favorites)
@@ -278,18 +389,16 @@ local function handle_favorite_slot_click(event, player, favorites)
       button_value = event.button,
       raw_button = event.button
     })
-    
-    -- Check if this is a right-click to cancel the drag (use numeric value 2)
-    if event.button == 2 then
+      -- Check if this is a right-click to cancel the drag
+    if event.button == defines.mouse_button_type.right then
       ErrorHandler.debug_log("[FAVE_BAR] Right-click detected during drag, canceling drag operation", 
         { player = player.name, source_slot = source_slot })
       end_drag(player)
       GameHelpers.player_print(player, {"tf-gui.fave_bar_drag_canceled"})
       return
     end
-    
-    -- Check if this is a left-click to complete the drag (use numeric value 1)
-    if event.button == 1 then
+      -- Check if this is a left-click to complete the drag
+    if event.button == defines.mouse_button_type.left then
       ErrorHandler.debug_log("[FAVE_BAR] Left-click detected during drag, attempting to drop", 
         { player = player.name, source_slot = source_slot, target_slot = slot, raw_button = event.button })
       
