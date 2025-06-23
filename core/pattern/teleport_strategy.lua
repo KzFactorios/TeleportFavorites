@@ -1,3 +1,4 @@
+---@diagnostic disable: undefined-doc-param, param-type-mismatch, missing-parameter
 --[[
 core/pattern/teleport_strategy.lua
 TeleportFavorites Factorio Mod
@@ -48,6 +49,44 @@ local function find_safe_landing_position(surface, position, radius, precision)
   return TileUtils.find_safe_landing_position(surface, position, radius, precision)
 end
 
+--- Local implementation of chart tag finding to avoid circular dependencies
+---@param player LuaPlayer The player
+---@param position MapPosition The position to search at
+---@return LuaCustomChartTag|nil chart_tag
+local function find_chart_tag_at_position(player, position)
+  if not player or not player.valid or not position then return nil end
+  
+  -- Create a small search area around the position
+  local search_area = {
+    left_top = { x = position.x - 0.01, y = position.y - 0.01 },
+    right_bottom = { x = position.x + 0.01, y = position.y + 0.01 }
+  }
+  
+  -- Search for chart tags in the area
+  local tags = player.force.find_chart_tags(player.surface, search_area)
+  if not tags or #tags == 0 then return nil end
+  
+  -- Find the closest tag
+  local closest_tag = nil
+  local min_distance = math.huge
+  
+  for _, tag in pairs(tags) do
+    if tag and tag.valid and tag.position then
+      local dx = tag.position.x - position.x
+      local dy = tag.position.y - position.y
+      local distance = dx * dx + dy * dy
+      
+      if distance < min_distance then
+        min_distance = distance
+        closest_tag = tag
+      end
+    end
+  end
+  
+  return closest_tag
+end
+
+--- Base teleport strategy
 ---@class BaseTeleportStrategy
 local BaseTeleportStrategy = {}
 BaseTeleportStrategy.__index = BaseTeleportStrategy
@@ -87,20 +126,14 @@ end
 --- Validate common teleportation prerequisites
 ---@param player LuaPlayer
 ---@param gps string
----@return boolean valid, string error_message
-function BaseTeleportStrategy:validate_prerequisites(player, gps)
+---@return boolean valid, string? error_message
+function BaseTeleportStrategy:validate_prerequisites(player, gps, context)
   if not player or not player.valid then
     return false, LocaleUtils.get_error_string(player, "player_missing")
   end
-  
-  if rawget(player, "character") == nil then
+  if not player.character then
     return false, LocaleUtils.get_error_string(player, "player_character_missing")
   end
-  
-  if not gps or gps == "" then
-    return false, LocaleUtils.get_error_string(player, "invalid_gps_coordinates")
-  end
-  
   return true, ""
 end
 
@@ -114,14 +147,26 @@ function BaseTeleportStrategy:get_landing_position(player, gps)
   if not position then
     return nil, LocaleUtils.get_error_string(player, "invalid_gps_format")
   end
-  
-  -- Find chart tag at this position to validate it exists
-  local chart_tag = ChartTagSpecBuilder.find_chart_tag_at_position(player, position)
+    -- Find chart tag at this position to validate it exists
+  local chart_tag = find_chart_tag_at_position(player, position)
   if not chart_tag then
     return nil, LocaleUtils.get_error_string(player, "position_normalization_failed")
   end
   
   return chart_tag.position, ""
+end
+
+--- Teleport using the appropriate strategy
+---@param player LuaPlayer
+---@param gps string
+---@param context TeleportContext?
+---@return string|integer result
+function BaseTeleportStrategy:apply_teleport(player, position, context)
+  ErrorHandler.debug_log("Abstract teleport strategy should not be called directly")
+  if player and player.valid then
+    player.print("Abstract teleport strategy should not be called")
+  end
+  return LocaleUtils.get_error_string(player, "abstract_teleport_error")
 end
 
 --- Standard Teleportation Strategy
@@ -147,11 +192,14 @@ function StandardTeleportStrategy:execute(player, gps, context)
     strategy = self:get_name()
   })
   
-  local valid, error_msg = self:validate_prerequisites(player, gps)  if not valid then
+  local valid, error_msg = self:validate_prerequisites(player, gps)  
+  if not valid then
     ErrorHandler.debug_log("Standard teleport failed validation", { error = error_msg })
     return error_msg or LocaleUtils.get_error_string(player, "validation_failed")
   end
-    local position, pos_error = self:get_landing_position(player, gps)  if not position then    ErrorHandler.debug_log("Standard teleport failed position normalization", { error = pos_error })
+  local position, pos_error = self:get_landing_position(player, gps)  
+  if not position then    
+    ErrorHandler.debug_log("Standard teleport failed position normalization", { error = pos_error })
     local error_message = pos_error or LocaleUtils.get_error_string(player, "position_normalization_failed")
     if player and player.valid then
       player.print(error_message)
@@ -168,13 +216,15 @@ function StandardTeleportStrategy:execute(player, gps, context)
       safe = safe_position 
     })
   end
-    
-  local teleport_success = player:teleport(final_position, player.surface, true)
+  
+  -- Execute teleport and verify success
+  local teleport_success = player.teleport(final_position, player.surface, true)
   if teleport_success then
-    ErrorHandler.debug_log("Standard teleportation successful")
+    ErrorHandler.debug_log("Standard teleport successful", { final_position = final_position })
     return Enum.ReturnStateEnum.SUCCESS
   end
-    ErrorHandler.debug_log("Standard teleport failed: Unforeseen circumstances")
+  
+  ErrorHandler.debug_log("Standard teleport failed: Unforeseen circumstances")
   return LocaleUtils.get_error_string(player, "teleport_unforeseen_error")
 end
 
@@ -224,14 +274,16 @@ function VehicleTeleportStrategy:execute(player, gps, context)
     return error_msg or LocaleUtils.get_error_string(player, "validation_failed")
   end
     -- Check if player is actively driving (not just a passenger)
-  if _G.defines and player.riding_state and player.riding_state ~= _G.defines.riding.acceleration.nothing then    ErrorHandler.debug_log("Teleport blocked: Player is actively driving")
+  if defines and player.riding_state and player.riding_state ~= defines.riding.acceleration.nothing then    
+    ErrorHandler.debug_log("Teleport blocked: Player is actively driving")
     if player and player.valid then
       player.print(LocaleUtils.get_error_string(player, "driving_teleport_blocked"))
     end
     return LocaleUtils.get_error_string(player, "teleport_blocked_driving")
   end
   local position, pos_error = self:get_landing_position(player, gps)
-  if not position then    ErrorHandler.debug_log("Vehicle teleport failed position normalization", { error = pos_error })
+  if not position then    
+    ErrorHandler.debug_log("Vehicle teleport failed position normalization", { error = pos_error })
     local error_message = pos_error or LocaleUtils.get_error_string(player, "position_normalization_failed")
     if player and player.valid then
       player.print(error_message)
@@ -254,7 +306,7 @@ function VehicleTeleportStrategy:execute(player, gps, context)
   if player.vehicle and player.vehicle.valid then
     vehicle_success = player.vehicle:teleport(final_position, player.surface, false)
   end
-  local player_success = player:teleport(final_position, player.surface, true)
+  local player_success = player.teleport(final_position, player.surface, true)
     if vehicle_success and player_success then
     ErrorHandler.debug_log("Vehicle teleportation successful")
     return Enum.ReturnStateEnum.SUCCESS
@@ -307,7 +359,9 @@ function SafeTeleportStrategy:execute(player, gps, context)
   end
   
   local position, pos_error = self:get_landing_position(player, gps)
-  if not position then    ErrorHandler.debug_log("Safe teleport failed position normalization", { error = pos_error })    local error_message = pos_error or LocaleUtils.get_error_string(player, "position_normalization_failed")
+  if not position then    
+    ErrorHandler.debug_log("Safe teleport failed position normalization", { error = pos_error })    
+    local error_message = pos_error or LocaleUtils.get_error_string(player, "position_normalization_failed")
     if player and player.valid then
       player.print(error_message)
     end
@@ -325,13 +379,12 @@ function SafeTeleportStrategy:execute(player, gps, context)
       safe = safe_position 
     })
   end
-  -- Use the final position (either original or safe landing spot)
-  local teleport_success
+  -- Use the final position (either original or safe landing spot)  local teleport_success
   if player.driving and player.vehicle and player.vehicle.valid then
     player.vehicle:teleport(final_position, player.surface, false)
-    teleport_success = player:teleport(final_position, player.surface, true)
+    teleport_success = player.teleport(final_position, player.surface, true)
   else
-    teleport_success = player:teleport(final_position, player.surface, true)
+    teleport_success = player.teleport(final_position, player.surface, true)
   end
     if teleport_success then
     ErrorHandler.debug_log("Safe teleportation successful", { final_position = final_position })

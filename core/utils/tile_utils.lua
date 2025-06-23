@@ -54,7 +54,7 @@ function TileUtils.find_safe_landing_position(surface, position, search_radius, 
   precision = precision or 0.5
   
   -- Use Factorio's built-in collision detection to find a safe position
-  return surface:find_non_colliding_position("character", position, search_radius, precision)
+  return surface.find_non_colliding_position("character", position, search_radius, precision)
 end
 
 return TileUtils

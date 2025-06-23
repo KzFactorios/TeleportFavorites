@@ -97,7 +97,7 @@ end
 
 function GameHelpers.safe_play_sound(player, sound)
   if player and player.valid and type(player.play_sound) == "function" and type(sound) == "table" then
-    local success, err = pcall(function() player.play_sound(sound, {}) end)    if not success then
+    local success, err = pcall(function() player.play_sound(sound, {}) end)if not success then
       -- Log directly without using PlayerComm
       pcall(function()
         log("[TeleportFavorites] DEBUG: Failed to play sound for player | player_name=" .. 
