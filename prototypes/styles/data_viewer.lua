@@ -95,7 +95,6 @@ gui_style.tf_data_viewer_font_size_button_minus = {
   width = 32,
   height = 32,
   padding = 6,
-  scale = 0.7
 }
 
 gui_style.tf_data_viewer_font_size_button_plus = {
@@ -104,7 +103,6 @@ gui_style.tf_data_viewer_font_size_button_plus = {
   width = 32,
   height = 32,
   padding = 6,
-  scale = 0.7
 }
 
 gui_style.tf_data_viewer_font_size_button_refresh = {

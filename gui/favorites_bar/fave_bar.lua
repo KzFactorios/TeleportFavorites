@@ -195,15 +195,17 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
       tooltip = { "tf-gui.favorite_slot_empty" }
       style = "tf_slot_button_smallfont"
     end
-    
-    if btn_icon == "tf_tag_in_map_view_small" then
+      if btn_icon == "tf_tag_in_map_view_small" then
       style = "tf_slot_button_smallfont_map_pin"
     end
-    
+    -- Create the button with proper name pattern for event handling
+    -- Note: Factorio has NO native drag/drop - our implementation is custom
     local btn = GuiUtils.create_slot_button(parent, "fave_bar_slot_" .. i, tostring(btn_icon), tooltip, { style = style })
     if btn and btn.valid then
-      ---@diagnostic disable-next-line: assign-type-mismatch
-      btn.caption = tostring(i)
+      -- Set caption to slot number for visual consistency
+      btn.caption = " "-- tostring(i)
+      -- Also add child label for visual consistency with project standards
+      GuiBase.create_label(btn, "tf_fave_bar_slot_number_" .. tostring(i), tostring(i), "tf_fave_bar_slot_number")
     end
   end
   return parent

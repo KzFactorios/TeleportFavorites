@@ -241,7 +241,6 @@ gui_style.tf_dlg_confirm_title = {
   font = "heading-1", -- Use idiomatic Factorio dialog title font
   horizontally_stretchable = "on",
   horizontal_align = "center",
-  maximal_width = 360,
   single_line = false,
   width = 0
 }

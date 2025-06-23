@@ -61,6 +61,7 @@ end)
 event_registration_dispatcher.register_all_events(script)
 
 -- Run-once startup handler for favorites bar initialization
+
 script.on_event(defines.events.on_tick, function(event)
   if not did_run_fave_bar_startup then
     did_run_fave_bar_startup = true
@@ -73,4 +74,3 @@ script.on_event(defines.events.on_tick, function(event)
     script.on_event(defines.events.on_tick, nil)
   end
 end)
-

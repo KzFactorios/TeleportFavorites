@@ -50,6 +50,7 @@ API:
 local Cache = require("core.cache.cache")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
 local Constants = require("constants")
+local CursorUtils = require("core.utils.cursor_utils")
 local Enum = require("prototypes.enums.enum")
 local ErrorHandler = require("core.utils.error_handler")
 local fave_bar = require("gui.favorites_bar.fave_bar")
@@ -125,9 +126,31 @@ function handlers.on_open_tag_editor_custom_input(event)
     cursor_position = event.cursor_position
   })
 
+  ---@type LuaPlayer
   local player = game.get_player(event.player_index)
   if not player or not player.valid then
     ErrorHandler.debug_log("Tag editor handler: invalid player")
+    return
+  end
+    -- Check if player is currently in drag mode, if so, don't open tag editor and cancel the drag
+  local player_data = Cache.get_player_data(player)
+  if player_data and player_data.drag_favorite and player_data.drag_favorite.active then
+    ErrorHandler.debug_log("[TAG EDITOR] Canceling drag operation and aborting tag editor open", 
+      { player = player.name, source_slot = player_data.drag_favorite.source_slot })
+    
+    -- Cancel the drag operation here since right-clicks on map don't go through gui_event_dispatcher
+    CursorUtils.end_drag_favorite(player)
+    GameHelpers.player_print(player, {"tf-gui.fave_bar_drag_canceled"})
+    
+    return
+  end
+  
+  -- Check if tag editor opening was suppressed due to a recent drag cancellation
+  if player_data and player_data.suppress_tag_editor and 
+     player_data.suppress_tag_editor.tick and 
+     player_data.suppress_tag_editor.tick == game.tick then
+    ErrorHandler.debug_log("[TAG EDITOR] Suppressing tag editor open on same tick as drag cancellation", 
+      { player = player.name, tick = game.tick })
     return
   end
 

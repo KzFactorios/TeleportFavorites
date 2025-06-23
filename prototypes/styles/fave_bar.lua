@@ -17,7 +17,6 @@ gui_style.tf_fave_bar_frame = {
     right_margin = 0,
     bottom_margin = 0,
     left_margin = 0,
-    horizontal_spacing = 0,
     vertically_stretchable = "on",
     horizontally_stretchable = "off",
 }
@@ -44,13 +43,8 @@ gui_style.tf_fave_toggle_button = {
     type = "button_style",
     parent = "button",
     margin = 0,
-    width = 40,
-    height = 40,
-    top_padding = 0,
-    right_padding = 0,
-    botoom_padding = 0,
-    left_padding = 0
-    --default_graphical_set = { base = { position = { 34, 17 }, corner_size = 8 } }
+    width = 42,
+    height = 42,
 }
 
 gui_style.tf_fave_slots_row = {
@@ -71,7 +65,6 @@ gui_style.tf_slot_button_smallfont = {
     font = "default-small",
     horizontal_align = "center",
     vertical_align = "bottom",
-    font_color = { r = 1, g = 0.647, b = 0, a = 1 },     -- Factorio orange #ffa500
 
     top_padding = 2,
     right_padding = 4,
@@ -98,11 +91,18 @@ gui_style.tf_slot_button_locked = {
     type = "button_style",
     parent = "tf_slot_button_smallfont",
     default_graphical_set = {
-        base = { position = { 0, 0 }, size = { 40, 40 }, corner_size = 8, tint = { r = .3, g = .3, b =.3, a = .4 } }
+        base = { position = { 0, 0 }, corner_size = 8, tint = { r = .3, g = .3, b =.3, a = .4 } }
     },
     size = { 40, 40 }
 }
 
-
+gui_style.tf_fave_bar_slot_number = {
+    type = "label_style",
+    font="technology-slot-level-font",
+    font_color = { r = 0.98, g = 0.66, b = 0.22, a = .7 },
+    horizontal_align = "center",
+    width=25,
+    top_padding = 14
+}
 
 return true

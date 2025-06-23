@@ -117,6 +117,13 @@ end
 
 local function handle_request_to_open_tag_editor(event, player, fav, slot)
   if event.button == defines.mouse_button_type.right then
+    -- Check if player is currently in a drag operation
+    local is_dragging, _ = CursorUtils.is_dragging_favorite(player)
+    if is_dragging then
+      -- Don't open tag editor during drag operations
+      return false
+    end
+    
     if fav and not FavoriteUtils.is_blank_favorite(fav) then
       -- removed extra gps argument
       open_tag_editor_from_favorite(player, fav)
@@ -182,11 +189,25 @@ end
 local function handle_favorite_slot_click(event, player, favorites)
   local element = event.element
   local slot = tonumber(element.name:match("fave_bar_slot_(%d+)"))
-  if not slot then return end
-  
-  -- First check if we're in drag mode and this is a drop
+  if not slot then
+    ErrorHandler.debug_log("[FAVE_BAR] Could not parse slot number from element name", {
+      element_name = element and element.name or "<nil>",
+      element_caption = element and element.caption or "<nil>"
+    })
+    return
+  end
+    -- First check if we're in drag mode and this is a drop or cancel
   local is_dragging, source_slot = CursorUtils.is_dragging_favorite(player)
   if is_dragging then
+    -- Check if this is a right-click to cancel the drag
+    if event.button == defines.mouse_button_type.right then
+      ErrorHandler.debug_log("[FAVE_BAR] Right-click detected during drag, canceling drag operation", 
+        { player = player.name, source_slot = source_slot })
+      end_drag(player)
+      GameHelpers.player_print(player, {"tf-gui.fave_bar_drag_canceled"})
+      return
+    end
+    
     -- This is a drop attempt
     if handle_drop_on_slot(event, player, slot, favorites) then return end
     

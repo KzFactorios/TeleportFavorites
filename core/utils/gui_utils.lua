@@ -168,9 +168,11 @@ function GuiUtils.create_slot_button(parent, name, icon, tooltip, opts)
       })
     end
   end
-  
-  -- Create button using GuiBase
+    -- FACTORIO ENGINE QUIRK: The sprite-button may require a non-empty caption for drag/drop to work properly.
+  -- This is an engine limitation. We DON'T set the caption here to allow the caller to set it appropriately.
+  -- This is a strict project policy: slot number logic must use the button name, never the caption.
   local button = GuiBase.create_icon_button(parent, name, sprite, tooltip, opts.style or "tf_slot_button", opts.enabled)
+  -- NOTE: We deliberately do NOT set button.caption here anymore due to Factorio engine quirks
   
   if button and opts.tags then
     button.tags = opts.tags
