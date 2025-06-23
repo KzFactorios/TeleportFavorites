@@ -43,6 +43,7 @@ local PlayerFavorites = require("core.favorite.player_favorites")
 local FavoriteUtils = require("core.favorite.favorite")
 local Enum = require("prototypes.enums.enum")
 local GPSUtils = require("core.utils.gps_utils")
+local Tag = require("core.tag.tag")
 
 
 ---@class CustomInputDispatcher
@@ -77,22 +78,53 @@ local function create_safe_handler(handler, handler_name)
   end
 end
 
--- Default custom input handlers (private to avoid global pollution)
----@type table<string, function>
-
 --- Helper function to handle teleporting to a favorite slot
 ---@param event table The custom input event
 ---@param slot_number number The favorite slot number (1-10)
 local function handle_teleport_to_favorite_slot(event, slot_number)
   local player = game.get_player(event.player_index)
-  if not player or not player.valid then return end
+  if not player or not player.valid then 
+    ErrorHandler.debug_log("Invalid player in teleport handler", { player_index = event.player_index })
+    return 
+  end
   
-  -- Use the shared teleportation utility
-  local success = GameHelpers.teleport_to_favorite_slot(player, slot_number)
-  
-  ErrorHandler.debug_log("Teleport to favorite slot via hotkey", {
+  ErrorHandler.debug_log("Attempting teleport to favorite slot", {
     player = player.name,
     slot = slot_number,
+    input_name = event.input_name
+  })
+  
+  -- Get player favorites
+  local player_favorites = PlayerFavorites.new(player)
+  if not player_favorites or not player_favorites.favorites then
+    ErrorHandler.debug_log("No favorites found for player", { player = player.name })
+    GameHelpers.player_print(player, {"tf-gui.no_favorites_available"})
+    return
+  end
+  
+  -- Get the favorite at the specified slot
+  local favorite = player_favorites.favorites[slot_number]
+  if not favorite or FavoriteUtils.is_blank_favorite(favorite) then
+    ErrorHandler.debug_log("Favorite slot empty", { player = player.name, slot = slot_number })
+    GameHelpers.player_print(player, {"tf-gui.favorite_slot_empty"})
+    return
+  end
+  
+  ErrorHandler.debug_log("Found favorite, attempting teleport", {
+    player = player.name,
+    slot = slot_number,
+    gps = favorite.gps
+  })
+  
+  -- Use Tag module for teleportation (already has all the strategy logic)
+  local result = Tag.teleport_player_with_messaging(player, favorite.gps, nil)
+  local success = result == Enum.ReturnStateEnum.SUCCESS
+  
+  ErrorHandler.debug_log("Teleport to favorite slot result", {
+    player = player.name,
+    slot = slot_number,
+    gps = favorite.gps,
+    result = result,
     success = success
   })
 end

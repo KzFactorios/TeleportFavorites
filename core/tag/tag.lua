@@ -15,10 +15,11 @@ local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local Cache = require("core.cache.cache")
 local ErrorHandler = require("core.utils.error_handler")
 local LocaleUtils = require("core.utils.locale_utils")
-local TeleportStrategies = require("core.pattern.teleport_strategy")
+local TeleportUtils = require("core.utils.teleport_utils")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
 local PositionUtils = require("core.utils.position_utils")
 local CollectionUtils = require("core.utils.collection_utils")
+local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 
 
 ---@class Tag
@@ -42,52 +43,30 @@ end
 --- Get and cache the related LuaCustomChartTag by gps.
 ---@return LuaCustomChartTag|nil
 function Tag:get_chart_tag()
-  if not self.chart_tag then
-    ErrorHandler.debug_log("Fetching chart tag from cache", { gps = self.gps })
-    self.chart_tag = Cache.Lookups.get_chart_tag_by_gps(self.gps)
-    if self.chart_tag then
-      ErrorHandler.debug_log("Chart tag found and cached")
-    else
-      ErrorHandler.debug_log("No chart tag found for GPS, checking if cache needs refresh", { gps = self.gps })
-      
-      -- If no chart tag found, try invalidating cache and looking again
-      -- This handles cases where cache invalidation was missed
-      local surface_index = GPSUtils.get_surface_index_from_gps(self.gps)
-      if surface_index and surface_index > 0 then
-        Cache.Lookups.invalidate_surface_chart_tags(surface_index)
-        self.chart_tag = Cache.Lookups.get_chart_tag_by_gps(self.gps)
-        if self.chart_tag then
-          ErrorHandler.debug_log("Chart tag found after cache refresh")
-        else
-          ErrorHandler.debug_log("No chart tag found even after cache refresh", { gps = self.gps })
-        end
+  local chart_tag = Cache.Lookups.get_chart_tag_by_gps(self.gps)
+  if not chart_tag then
+    ErrorHandler.debug_log("No chart tag found for GPS, checking if cache needs refresh", { gps = self.gps })
+    local surface_index = GPSUtils.get_surface_index_from_gps(self.gps)
+    if surface_index and surface_index > 0 then
+      Cache.Lookups.invalidate_surface_chart_tags(surface_index)
+      chart_tag = Cache.Lookups.get_chart_tag_by_gps(self.gps)
+      if chart_tag ~= nil then
+        ErrorHandler.debug_log("Chart tag found after cache refresh")
+      else
+        ErrorHandler.debug_log("No chart tag found even after cache refresh", { gps = self.gps })
       end
     end
   end
-  return self.chart_tag
+  return chart_tag
 end
 
 --- Check if the player is the owner (last_user) of this tag.
 ---@param player LuaPlayer
 ---@return boolean
 function Tag:is_owner(player)
-  if not self.chart_tag or not player or not player.name then
-    ErrorHandler.debug_log("Ownership check failed: Missing data", {
-      has_chart_tag = self.chart_tag ~= nil,
-      has_player = player ~= nil,
-      has_player_name = player and player.name ~= nil
-    })
-    return false
-  end
-
-  local is_owner = self.chart_tag.last_user == player.name
-  ErrorHandler.debug_log("Ownership check completed", {
-    player_name = player.name,
-    last_user = self.chart_tag.last_user and self.chart_tag.last_user.name or "",
-    is_owner = is_owner
-  })
-
-  return is_owner
+  local chart_tag = Cache.Lookups.get_chart_tag_by_gps(self.gps)
+  if not chart_tag or not player or not player.name then return false end
+  return chart_tag.last_user == player.name
 end
 
 --- Add a player index to faved_by_players if not present using functional approach.
@@ -151,16 +130,18 @@ function Tag.teleport_player_with_messaging(player, gps, context)
     gps = gps,
     context = context
   })
-
-  -- Use Strategy Pattern for teleportation
-  local result = TeleportStrategies.TeleportStrategyManager.execute_teleport(player, gps, context)
-
-  ErrorHandler.debug_log("Strategy-based teleportation completed", {
-    player_name = player and player.name,
-    result = result
-  })
-
-  return result
+  local result = TeleportUtils.teleport_to_gps(player, gps, context, true)
+  if type(result) == "boolean" then
+    if result then
+      return "success"
+    else
+      return "teleport_failed"
+    end
+  elseif type(result) == "string" or type(result) == "number" then
+    return result
+  else
+    return "teleport_failed"
+  end
 end
 
 --- Legacy teleport function for backward compatibility
@@ -174,7 +155,6 @@ function Tag.teleport_player_with_messaging_legacy(player, gps)
     player_name = player and player.name,
     gps = gps
   })
-
   return Tag.teleport_player_with_messaging(player, gps, nil)
 end
 
@@ -189,12 +169,10 @@ function Tag.teleport_player_safe(player, gps, custom_radius)
     gps = gps,
     custom_radius = custom_radius
   })
-
   local context = {
     force_safe = true,
     custom_radius = custom_radius
   }
-
   return Tag.teleport_player_with_messaging(player, gps, context)
 end
 
@@ -207,11 +185,9 @@ function Tag.teleport_player_precise(player, gps)
     player_name = player and player.name,
     gps = gps
   })
-
   local context = {
     precision_mode = true
   }
-
   return Tag.teleport_player_with_messaging(player, gps, context)
 end
 
@@ -226,11 +202,9 @@ function Tag.teleport_player_vehicle_aware(player, gps, allow_vehicle)
     gps = gps,
     allow_vehicle = allow_vehicle
   })
-
   local context = {
     allow_vehicle = allow_vehicle
   }
-
   return Tag.teleport_player_with_messaging(player, gps, context)
 end
 
@@ -277,7 +251,7 @@ end
 ---@param chart_tag LuaCustomChartTag
 ---@return LuaCustomChartTag?, string?
 local function create_new_chart_tag(player, destination_pos, chart_tag)  ErrorHandler.debug_log("Creating new chart tag", { destination_pos = destination_pos })  
-  local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(destination_pos, chart_tag, player, nil, true)
+  local chart_tag_spec = ChartTagSpecBuilder.build(destination_pos, chart_tag, player, nil, true)
     -- Create chart tag using our safe wrapper  
   local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, player.surface, chart_tag_spec, player)
   if not new_chart_tag or not new_chart_tag.valid then

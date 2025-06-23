@@ -72,31 +72,33 @@ Not at this time
 
 ```
 data_viewer_frame (frame)
-  └─ data_viewer_titlebar_flow (flow, horizontal)
-    ├─ data_viewer_title_label (label)
-    ├─ data_viewer_titlebar_filler (empty-widget)
-    └─ data_viewer_close_btn (sprite-button)
-  └─data_viewer_inner_flow (frame, vertical, invisible_frame)
-    └─ data_viewer_tabs_flow (flow, horizontal)
-      ├─ data_viewer_player_data_tab (button/sprite-button)
-      ├─ data_viewer_surface_data_tab (button/sprite-button)
-      ├─ data_viewer_lookup_tab (button/sprite-button)
-      ├─ data_viewer_all_data_tab (button/sprite-button)
-      └─ data_viewer_tab_actions_flow (flow, horizontal)
-          ├─ data_viewer_actions_font_size_flow (flow, horizontal)
-          |   ├─ data_viewer_actions_font_down_btn (button)
-          |   └─ data_viewer_actions_font_up_btn (button)
-          └─ data_viewer_tab_actions_refresh_data_btn
-    └─ data_viewer_content_flow (flow, vertical)
-      └─ data_viewer_table (table)
-          ├─ data_viewer_row_1_label (label)
-          ├─ data_viewer_row_1_value (label)
-          ├─ ...
-          └─ data_viewer_row_N_value (label)
+├─ data_viewer_titlebar_flow (flow, horizontal)
+│  ├─ data_viewer_title_label (label)
+│  ├─ data_viewer_titlebar_filler (empty-widget)
+│  └─ data_viewer_close_btn (sprite-button)
+├─ data_viewer_inner_flow (frame, vertical, invisible_frame)
+│  ├─ data_viewer_tabs_flow (flow, horizontal)
+│  │  ├─ data_viewer_player_data_tab (button/sprite-button)
+│  │  ├─ data_viewer_surface_data_tab (button/sprite-button)
+│  │  ├─ data_viewer_lookup_tab (button/sprite-button)
+│  │  ├─ data_viewer_all_data_tab (button/sprite-button)
+│  │  └─ data_viewer_tab_actions_flow (flow, horizontal)
+│  │      ├─ data_viewer_actions_font_size_flow (flow, horizontal)
+│  │      │   ├─ data_viewer_actions_font_down_btn (button)
+│  │      │   └─ data_viewer_actions_font_up_btn (button)
+│  │      └─ data_viewer_tab_actions_refresh_data_btn (button/sprite-button)
+│  └─ data_viewer_content_scroll_pane (scroll-pane, vertical)
+│      └─ data_viewer_content_flow (flow, vertical)
+│          └─ data_viewer_table (table)
+│              ├─ data_viewer_row_1_label (label)
+│              ├─ data_viewer_row_1_value (label)
+│              ├─ ...
+│              └─ data_viewer_row_N_value (label)
 ```
-- The author is unsure of how scrollbars will be structured, but they will control the viewing of data within the data_viewer_content_flow or the data_viewer_table
-- All element names use (for the most part) the `{gui_context}_{purpose}_{type}` convention.
+- All element names use the `{gui_context}_{purpose}_{type}` convention.
+- The scroll pane ensures the data panel is always scrollable, regardless of content size.
 - The number of tab buttons and table rows may vary depending on the data being viewed.
+- The data panel is 1000px wide and resizable.
 
 ---
 
@@ -135,16 +137,6 @@ the data panel sohuld be the same width and show below the tabs. Create a button
 keep things very simple as this only a dev utility
 -->
 ## Working Vanilla Factorio Utility Sprites (for Data Viewer and General GUI)
-
-- utility/list_view         (generic tab icon)
-- utility/close             (close button)
-- utility/refresh           (refresh button)
-- utility/arrow-up          (increase, up)
-- utility/arrow-down        (decrease, down)
-- utility/arrow-left        (left)
-- utility/arrow-right       (right)
-
-> Note: Do NOT use utility/minus, utility/plus, utility/remove, utility/add, utility/tab_icon, utility/up_arrow, or utility/down_arrow. These do NOT exist in vanilla Factorio and will cause exceptions.
 
 If you need more icons, check the [Factorio Wiki: Prototype/Sprite](https://wiki.factorio.com/Prototype/Sprite#Sprites) or inspect the game's utility-sprites.png for available names.
 

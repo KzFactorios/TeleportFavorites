@@ -118,7 +118,7 @@ local function build_tabs_row(parent, active_tab)
     end
     -- Pass the localization key as a LocalisedString table for correct localization
     ---@diagnostic disable-next-line: assign-type-mismatch
-    local btn = GuiBase.create_button(tabs_flow, element_name, {caption_key}, style)
+    local btn = GuiBase.create_button(tabs_flow, element_name, {caption = caption_key}, style)
     btn.enabled = not is_active
     return btn
   end
@@ -277,6 +277,8 @@ local function render_compact_data_rows(parent, data, indent, font_size, row_ind
   visited = visited or {}
   local INDENT_STR = "  "
   local MAX_LINE_LEN = 80
+  local MAX_DEPTH = 8
+  local MAX_KEYS = 1000
   local function is_method(val)
     return type(val) == "function"
   end
@@ -287,16 +289,21 @@ local function render_compact_data_rows(parent, data, indent, font_size, row_ind
     set_label_font(lbl, font_size)
     return lbl
   end
-  
+
+  -- Check for excessive depth
+  if indent > MAX_DEPTH then
+    add_row(parent, string.rep(INDENT_STR, indent) .. "<max depth reached>", font_size, row_index)
+    return row_index + 1
+  end
+
   -- Check if this is userdata that we can serialize
   if type(data) == "userdata" then
     local serialized = serialize_chart_tag(data)
     if serialized ~= data then
-      -- Successfully serialized, process as table
       data = serialized
     end
   end
-  
+
   if type(data) ~= "table" then
     local valstr = tostring(data) .. " [" .. type(data) .. "]"
     if #valstr > MAX_LINE_LEN then
@@ -313,21 +320,25 @@ local function render_compact_data_rows(parent, data, indent, font_size, row_ind
     return row_index
   end
   if visited[data] then
-    add_row(parent, string.rep(INDENT_STR, indent) .. "<recursion>", font_size, row_index)
+    add_row(parent, string.rep(INDENT_STR, indent) .. "<circular reference>", font_size, row_index)
     return row_index + 1
   end
   visited[data] = true
-  -- Process each data entry with a row processor function
-  local function process_data_entry(v, k)
+  local key_count = 0
+  for k, v in pairs(data) do
+    key_count = key_count + 1
+    if key_count > MAX_KEYS then
+      add_row(parent, string.rep(INDENT_STR, indent) .. "<truncated: too many keys>", font_size, row_index)
+      row_index = row_index + 1
+      break
+    end
     if not is_method(v) then
-      -- Handle userdata serialization before processing
       if type(v) == "userdata" then
         local serialized = serialize_chart_tag(v)
         if serialized ~= v then
           v = serialized
         end
       end
-      
       local line, compact = rowline_parser(k, v, indent, MAX_LINE_LEN)
       if compact == true then
         add_row(parent, line, font_size, row_index)
@@ -343,11 +354,6 @@ local function render_compact_data_rows(parent, data, indent, font_size, row_ind
         row_index = row_index + 1
       end
     end
-  end
-
-  -- Apply processor to each data pair
-  for k, v in pairs(data) do
-    process_data_entry(v, k)
   end
   visited[data] = nil
   return row_index

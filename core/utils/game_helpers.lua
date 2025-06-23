@@ -9,7 +9,8 @@ Extracted from helpers_suite.lua for better organization and maintainability.
 local Constants = require("constants")
 local GPSUtils = require("core.utils.gps_utils")
 local SettingsAccess = require("core.utils.settings_access")
-local ErrorHandler = require("core.utils.error_handler")
+local TeleportUtils = require("core.utils.teleport_utils")
+local TileUtils = require("core.utils.tile_utils")
 
 ---@class GameHelpers
 local GameHelpers = {}
@@ -20,18 +21,7 @@ local GameHelpers = {}
 ---@param position MapPosition
 ---@return boolean appears_walkable
 local function appears_walkable(surface, position)
-  if not surface or not surface.get_tile or not position then return false end
-  
-  local tile = surface.get_tile(position.x, position.y)
-  if not tile or not tile.valid then return false end
-  
-  local tile_name = tile.name:lower()
-  -- Simple check for obviously non-walkable tiles
-  if tile_name:find("water") or tile_name:find("space") or tile_name:find("void") then
-    return false
-  end
-  
-  return true
+  return TileUtils.appears_walkable(surface, position)
 end
 
 
@@ -107,102 +97,27 @@ end
 
 function GameHelpers.safe_play_sound(player, sound)
   if player and player.valid and type(player.play_sound) == "function" and type(sound) == "table" then
-    local success, err = pcall(function() player.play_sound(sound, {}) end)
-    if not success then
-      -- Use ErrorHandler for consistent logging
-      ErrorHandler.debug_log("Failed to play sound for player", {
-        player_name = player.name or "unknown",
-        sound_path = sound.path or "unknown",
-        error_message = err
-      })
+    local success, err = pcall(function() player.play_sound(sound, {}) end)    if not success then
+      -- Log directly without using PlayerComm
+      pcall(function()
+        log("[TeleportFavorites] DEBUG: Failed to play sound for player | player_name=" .. 
+          (player.name or "unknown") .. " sound_path=" .. (sound.path or "unknown") .. 
+          " error_message=" .. tostring(err))
+      end)
     end
   end
 end
 
--- Player print (already present, but ensure DRY)
+-- Player print
 function GameHelpers.player_print(player, message)
   if player and player.valid and type(player.print) == "function" then
-    player.print(message)
+    pcall(function() player.print(message) end)
   end
 end
 
 -- ========================================
 -- SHARED TELEPORTATION UTILITIES
 -- ========================================
-
---- Teleport player to GPS location using strategy pattern with comprehensive error handling
----@param player LuaPlayer Player to teleport
----@param gps string GPS coordinates in 'xxx.yyy.s' format
----@param context TeleportContext? Optional teleportation context
----@return boolean success Whether teleportation was successful
-function GameHelpers.teleport_to_gps(player, gps, context)
-  if not player or not player.valid then
-    ErrorHandler.debug_log("Teleportation failed: Invalid player")
-    return false
-  end
-  
-  if not gps or type(gps) ~= "string" or gps == "" then
-    ErrorHandler.debug_log("Teleportation failed: Invalid GPS", { gps = gps })
-    GameHelpers.player_print(player, "Invalid GPS coordinates")
-    return false
-  end
-  
-  -- Use Tag.teleport_player_with_messaging for strategy-based teleportation
-  local Tag = require("core.tag.tag")
-  local result = Tag.teleport_player_with_messaging(player, gps, context)
-  
-  -- Convert result to boolean (success is typically Enum.ReturnStateEnum.SUCCESS)
-  local Enum = require("prototypes.enums.enum")
-  return result == Enum.ReturnStateEnum.SUCCESS
-end
-
---- Teleport player to a favorite slot with validation and error handling
----@param player LuaPlayer Player to teleport
----@param slot_number number Favorite slot number (1-10)
----@param context TeleportContext? Optional teleportation context
----@return boolean success Whether teleportation was successful
-function GameHelpers.teleport_to_favorite_slot(player, slot_number, context)
-  if not player or not player.valid then
-    ErrorHandler.debug_log("Favorite teleportation failed: Invalid player")
-    return false
-  end
-  
-  if not slot_number or type(slot_number) ~= "number" or slot_number < 1 or slot_number > 10 then
-    ErrorHandler.debug_log("Favorite teleportation failed: Invalid slot number", { slot_number = slot_number })
-    GameHelpers.player_print(player, "Invalid favorite slot number")
-    return false
-  end
-  
-  -- Get player favorites
-  local PlayerFavorites = require("core.favorite.player_favorites")
-  local FavoriteUtils = require("core.favorite.favorite")
-  
-  local player_favorites = PlayerFavorites.new(player)
-  if not player_favorites or not player_favorites.favorites then
-    ErrorHandler.debug_log("No favorites found for player", { player = player.name })
-    GameHelpers.player_print(player, {"tf-gui.no_favorites_available"})
-    return false
-  end
-  
-  -- Get the favorite at the specified slot
-  local favorite = player_favorites.favorites[slot_number]
-  if not favorite or FavoriteUtils.is_blank_favorite(favorite) then
-    GameHelpers.player_print(player, {"tf-gui.favorite_slot_empty"})
-    return false
-  end
-  
-  -- Teleport to the favorite's GPS location
-  local success = GameHelpers.teleport_to_gps(player, favorite.gps, context)
-  
-  ErrorHandler.debug_log("Teleport to favorite slot result", {
-    player = player.name,
-    slot = slot_number,
-    gps = favorite.gps,
-    success = success
-  })
-  
-  return success
-end
 
 --- Safe teleport with water tile detection and landing position finding
 ---@param player LuaPlayer Player to teleport
@@ -214,8 +129,12 @@ function GameHelpers.safe_teleport_to_gps(player, gps, custom_radius)
     force_safe = true,
     custom_radius = custom_radius
   }
-  
-  return GameHelpers.teleport_to_gps(player, gps, context)
+  local result = TeleportUtils.teleport_to_gps(player, gps, context, false)
+  if type(result) == "boolean" then
+    return result
+  else
+    return false
+  end
 end
 
 --- Teleport with vehicle awareness
@@ -227,8 +146,12 @@ function GameHelpers.vehicle_aware_teleport_to_gps(player, gps, allow_vehicle)
   local context = {
     allow_vehicle = allow_vehicle
   }
-  
-  return GameHelpers.teleport_to_gps(player, gps, context)
+  local result = TeleportUtils.teleport_to_gps(player, gps, context, false)
+  if type(result) == "boolean" then
+    return result
+  else
+    return false
+  end
 end
 
 --- Check if a tile at a position is a water tile
@@ -236,13 +159,7 @@ end
 ---@param position MapPosition Position to check
 ---@return boolean is_water_tile
 function GameHelpers.is_water_tile_at_position(surface, position)
-  if not surface or not surface.get_tile or not position then return false end
-  
-  local tile = surface.get_tile(position.x, position.y)
-  if not tile or not tile.valid then return false end
-  
-  local tile_name = tile.name:lower()
-  return tile_name:find("water") ~= nil
+  return TileUtils.is_water_tile_at_position(surface, position)
 end
 
 --- Find safe landing position near a potentially unsafe tile (like water)
@@ -252,13 +169,7 @@ end
 ---@param precision number? Search precision (default: 0.5)
 ---@return MapPosition? safe_position Safe position or nil if none found
 function GameHelpers.find_safe_landing_position(surface, position, search_radius, precision)
-  if not surface or not position then return nil end
-  
-  search_radius = search_radius or 16.0
-  precision = precision or 0.5
-  
-  -- Use Factorio's built-in collision detection to find a safe position
-  return surface:find_non_colliding_position("character", position, search_radius, precision)
+  return TileUtils.find_safe_landing_position(surface, position, search_radius, precision)
 end
 
 return GameHelpers

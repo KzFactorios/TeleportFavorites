@@ -49,6 +49,7 @@ API:
 
 local Cache = require("core.cache.cache")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
+local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 local Constants = require("constants")
 local Enum = require("prototypes.enums.enum")
 local ErrorHandler = require("core.utils.error_handler")
@@ -187,7 +188,7 @@ function handlers.on_open_tag_editor_custom_input(event)
     local tag_gps = gps
     -- Create temp chart tag if still no match
     if not nrm_tag and not nrm_chart_tag then
-      local temp_spec = ChartTagUtils.build_chart_tag_spec(normalized_pos, nil, player, nil, false)
+      local temp_spec = ChartTagSpecBuilder.build(normalized_pos, nil, player, nil, false)
       local tmp_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, player.surface, temp_spec, player)
       if tmp_chart_tag and tmp_chart_tag.valid then
         tag_gps = GPSUtils.gps_from_map_position(tmp_chart_tag.position, surface_index)
@@ -238,7 +239,7 @@ local function normalize_and_replace_chart_tag(chart_tag, player)
   if not position then return end
   if not basic_helpers.is_whole_number(position.x) or not basic_helpers.is_whole_number(position.y) then
     local position_pair = PositionUtils.create_position_pair(position)
-    local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(
+    local chart_tag_spec = ChartTagSpecBuilder.build(
       position_pair.new,
       chart_tag,
       player,
@@ -526,7 +527,7 @@ function handlers.on_chart_tag_removed(event)
     -- If deletion is not allowed (non-admin and other players have favorites), prevent it
     if has_other_players_favorites and not can_delete then
       -- Recreate the chart tag since it was already removed by the event      -- Create chart tag spec using centralized builder
-      local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(chart_tag.position, chart_tag, player, nil, true)
+      local chart_tag_spec = ChartTagSpecBuilder.build(chart_tag.position, chart_tag, player, nil, true)
 
       local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, chart_tag.surface, chart_tag_spec, player)
 

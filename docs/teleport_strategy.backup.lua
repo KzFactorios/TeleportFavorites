@@ -31,6 +31,7 @@ local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 local ErrorHandler = require("core.utils.error_handler")
 local Enum = require("prototypes.enums.enum")
 local LocaleUtils = require("core.utils.locale_utils")
+local PlayerComm = require("core.utils.player_communication")
 local TileUtils = require("core.utils.tile_utils")
 
 ---@class TeleportContext
@@ -40,6 +41,10 @@ local TileUtils = require("core.utils.tile_utils")
 ---@field custom_radius number? Custom teleportation radius
 
 -- Helper functions to avoid circular dependencies
+local function player_print(player, message)
+  PlayerComm.player_print(player, message)
+end
+
 local function is_water_tile_at_position(surface, position)
   return TileUtils.is_water_tile_at_position(surface, position)
 end
@@ -151,22 +156,28 @@ function StandardTeleportStrategy:execute(player, gps, context)
     ErrorHandler.debug_log("Standard teleport failed validation", { error = error_msg })
     return error_msg or LocaleUtils.get_error_string(player, "validation_failed")
   end
-    local position, pos_error = self:get_landing_position(player, gps)  if not position then    ErrorHandler.debug_log("Standard teleport failed position normalization", { error = pos_error })
+    local position, pos_error = self:get_landing_position(player, gps)
+  if not position then
+    ErrorHandler.debug_log("Standard teleport failed position normalization", { error = pos_error })
     local error_message = pos_error or LocaleUtils.get_error_string(player, "position_normalization_failed")
-    if player and player.valid then
-      player.print(error_message)
-    end
+    GameHelpers.player_print(player, error_message)
     return error_message
   end
-  -- Always find the safest landing position regardless of tile type
-  local final_position = position
-  local safe_position = TileUtils.find_safe_landing_position(player.surface, position, 16.0, 0.5)
-  if safe_position then
-    final_position = safe_position
-    ErrorHandler.debug_log("Using optimized landing position", { 
-      original = position, 
-      safe = safe_position 
-    })
+    -- Check if destination is on water and find safe landing spot  local final_position = position
+  if TileUtils.is_water_tile_at_position(player.surface, position) then
+    -- Find nearest walkable position for water tiles
+    local safe_position = TileUtils.find_safe_landing_position(player.surface, position, 16.0, 0.5)
+    if safe_position then
+      final_position = safe_position
+      ErrorHandler.debug_log("Water tile detected in standard teleport, using safe landing position", { 
+        original = position, 
+        safe = safe_position 
+      })
+    else
+      ErrorHandler.debug_log("Standard teleport: No safe position found near water tile")
+      PlayerComm.player_print(player, LocaleUtils.get_error_string(player, "no_safe_position"))
+      return LocaleUtils.get_error_string(player, "no_safe_position_available")
+    end
   end
     
   local teleport_success = player:teleport(final_position, player.surface, true)
@@ -223,30 +234,35 @@ function VehicleTeleportStrategy:execute(player, gps, context)
     ErrorHandler.debug_log("Vehicle teleport failed validation", { error = error_msg })
     return error_msg or LocaleUtils.get_error_string(player, "validation_failed")
   end
-    -- Check if player is actively driving (not just a passenger)
-  if _G.defines and player.riding_state and player.riding_state ~= _G.defines.riding.acceleration.nothing then    ErrorHandler.debug_log("Teleport blocked: Player is actively driving")
-    if player and player.valid then
-      player.print(LocaleUtils.get_error_string(player, "driving_teleport_blocked"))
-    end
+  
+  -- Check if player is actively driving (not just a passenger)
+  if _G.defines and player.riding_state and player.riding_state ~= _G.defines.riding.acceleration.nothing then
+    ErrorHandler.debug_log("Teleport blocked: Player is actively driving")
+    GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "driving_teleport_blocked"))
     return LocaleUtils.get_error_string(player, "teleport_blocked_driving")
   end
-  local position, pos_error = self:get_landing_position(player, gps)
-  if not position then    ErrorHandler.debug_log("Vehicle teleport failed position normalization", { error = pos_error })
+    local position, pos_error = self:get_landing_position(player, gps)
+  if not position then
+    ErrorHandler.debug_log("Vehicle teleport failed position normalization", { error = pos_error })
     local error_message = pos_error or LocaleUtils.get_error_string(player, "position_normalization_failed")
-    if player and player.valid then
-      player.print(error_message)
-    end
-    return error_message
+    GameHelpers.player_print(player, error_message)    return error_message
   end
-  -- Always find the safest landing position regardless of tile type
+    -- Check if destination is on water and find safe landing spot for vehicle
   local final_position = position
-  local safe_position = find_safe_landing_position(player.surface, position, 16.0, 0.5)
-  if safe_position then
-    final_position = safe_position
-    ErrorHandler.debug_log("Using optimized vehicle landing position", { 
-      original = position, 
-      safe = safe_position 
-    })
+  if GameHelpers.is_water_tile_at_position(player.surface, position) then
+    -- Find nearest walkable position for water tiles
+    local safe_position = GameHelpers.find_safe_landing_position(player.surface, position, 16.0, 0.5)
+    if safe_position then
+      final_position = safe_position
+      ErrorHandler.debug_log("Water tile detected in vehicle teleport, using safe landing position", { 
+        original = position, 
+        safe = safe_position 
+      })
+    else
+      ErrorHandler.debug_log("Vehicle teleport: No safe position found near water tile")
+      GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "no_safe_position"))
+      return LocaleUtils.get_error_string(player, "no_safe_position_available")
+    end
   end
   
   -- Teleport vehicle first, then player
@@ -307,23 +323,37 @@ function SafeTeleportStrategy:execute(player, gps, context)
   end
   
   local position, pos_error = self:get_landing_position(player, gps)
-  if not position then    ErrorHandler.debug_log("Safe teleport failed position normalization", { error = pos_error })    local error_message = pos_error or LocaleUtils.get_error_string(player, "position_normalization_failed")
-    if player and player.valid then
-      player.print(error_message)
-    end
+  if not position then
+    ErrorHandler.debug_log("Safe teleport failed position normalization", { error = pos_error })
+    local error_message = pos_error or LocaleUtils.get_error_string(player, "position_normalization_failed")
+    GameHelpers.player_print(player, error_message)
     return error_message
-  end  -- Enhanced safety checks for safe teleportation
+  end
+  -- Enhanced safety checks for safe teleportation
   -- Use a fixed safety radius since teleport radius setting is removed
   local safety_radius = (context and context.custom_radius) or 16.0 -- Default safety radius for finding safe positions
-  -- Always find the safest landing position
+    -- Check if destination is on water and find safe landing spot
   local final_position = position
-  local safe_position = find_safe_landing_position(player.surface, position, safety_radius, 0.5)
-  if safe_position then
-    final_position = safe_position
-    ErrorHandler.debug_log("Using optimized safe landing position", { 
-      original = position, 
-      safe = safe_position 
-    })
+  if GameHelpers.is_water_tile_at_position(player.surface, position) then
+    -- Find nearest walkable position for water tiles
+    local safe_position = GameHelpers.find_safe_landing_position(player.surface, position, safety_radius, 0.5)
+    if safe_position then
+      final_position = safe_position
+      ErrorHandler.debug_log("Water tile detected, using safe landing position", { 
+        original = position, 
+        safe = safe_position 
+      })
+    else
+      ErrorHandler.debug_log("Safe teleport: No safe position found near water tile")
+      GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "no_safe_position"))
+      return LocaleUtils.get_error_string(player, "no_safe_position_available")
+    end
+  else
+    -- For non-water tiles, still check for collision safety
+    local safe_position = GameHelpers.find_safe_landing_position(player.surface, position, safety_radius, 0.25)
+    if safe_position then
+      final_position = safe_position
+    end
   end
   -- Use the final position (either original or safe landing spot)
   local teleport_success

@@ -46,6 +46,7 @@ local BasicHelpers = require("core.utils.basic_helpers")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local Tag = require("core.tag.tag")
 local ValidationUtils = require("core.utils.validation_utils")
+local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 
 ---@class TagSync
 local TagSync = {}
@@ -143,7 +144,7 @@ function TagSync.add_new_chart_tag(player, normal_pos, text, icon)
     text = text
   })
   local success, result = pcall(function()    -- Create chart tag spec using centralized builder
-    local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(normal_pos, nil, player, text, true)
+    local chart_tag_spec = ChartTagSpecBuilder.build(normal_pos, nil, player, text, true)
     
     return ChartTagUtils.safe_add_chart_tag(game.forces["player"], player.surface, chart_tag_spec, player)
   end)

@@ -135,7 +135,7 @@ Yes, allow whatever signals are available in the current game. If a mod change r
 ```
 tag_editor_outer_frame (frame, vertical, tf_tag_editor_outer_frame)
 ├─ tag_editor_titlebar (flow, horizontal)
-│  ├─ (title label)
+│  ├─ tag_editor_title_label (label)
 │  └─ tag_editor_title_row_close (button)
 ├─ tag_editor_content_frame (frame, vertical, tf_tag_editor_content_frame)
 │  ├─ tag_editor_owner_row_frame (frame, horizontal, tf_owner_row_frame)
@@ -158,14 +158,9 @@ tag_editor_outer_frame (frame, vertical, tf_tag_editor_outer_frame)
    └─ last_row_confirm_button (button, tf_confirm_button)
 ```
 
-**Notes:**
-- The favorite button is now at the head of the teleport row (tag_editor_teleport_favorite_row).
-- The favorite row and both labels have been removed.
-- All element names and hierarchy now match the refactored code as of 2025-05-31.
-- Error row only appears when `tag_data.error_message` exists and is non-empty.
-
-## Icon Picker Limitation
-- The built-in Factorio signal/icon picker (used for icon selection) always requires the user to confirm their selection with a checkmark button. There is no property or style that allows auto-accepting the selection on click; this is a limitation of the Factorio engine as of 1.1.x.
+- The error row only appears when `tag_data.error_message` exists and is non-empty.
+- The favorite button is at the head of the teleport row.
+- All element names use the `{gui_context}_{purpose}_{type}` convention.
 
 ---
 

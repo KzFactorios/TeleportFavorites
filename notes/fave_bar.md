@@ -96,16 +96,20 @@ This convention is strictly enforced in both code and documentation. All event h
 ```
 fave_bar_frame (frame)
 └─ fave_bar_inner_flow (frame, invisible frame)
-    └─ fave_bar_toggle_flow (flow, horizontal)
-      └─ fave_bar_visible_btns_toggle (sprite-button)
+    ├─ fave_bar_toggle_flow (flow, horizontal)
+    │   └─ fave_bar_visible_btns_toggle (sprite-button)
     └─ fave_bar_slots_flow (flow, horizontal)
-          ├─ Constants.settings.FAVE_BAR_SLOT_PREFIX_1 (sprite-button)
-          ├─ Constants.settings.FAVE_BAR_SLOT_PREFIX_2 (sprite-button)
-          ├─ ...
-          └─ Constants.settings.FAVE_BAR_SLOT_PREFIX_ .. Constants.settings.MAX_FAVORITE_SLOTS (sprite-button)
+        ├─ fave_bar_slot_button_1 (sprite-button)
+        ├─ fave_bar_slot_button_2 (sprite-button)
+        ├─ ...
+        └─ fave_bar_slot_button_{MAX_FAVORITE_SLOTS} (sprite-button)
 ```
-- All element names use (for the most part) the `{gui_context}_{purpose}_{type}` convention.
-- The number of slot buttons depends on the user’s settings.
+- All element names use the `{gui_context}_{purpose}_{type}` convention.
+- The number of slot buttons depends on the user’s settings (`MAX_FAVORITE_SLOTS`).
+- The bar is always parented to the player's top GUI and strives to be the rightmost item.
+- The toggle button controls the visibility of the slot buttons container.
+- All GUI state and slot order is persisted per player.
+- Drag-and-drop, lock, and click actions are handled as described in the rest of this document.
 
 
 <!--

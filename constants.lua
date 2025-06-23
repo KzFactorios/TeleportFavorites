@@ -31,12 +31,8 @@ local Constants = {
     FAVORITES_ON = "favorites_on",   -- Setting name for enabling/disabling favorites feature
       -- Physics
     BOUNDING_BOX_TOLERANCE = 4,      -- Tolerance in tiles for bounding box calculations    
-    
-    -- Terrain Protection
-    TERRAIN_PROTECTION_DEFAULT = 3,  -- Default protection radius (for 3x3 area)
-    TERRAIN_PROTECTION_MIN = 0,      -- Minimum protection radius (0 = owner-only protection)
-    TERRAIN_PROTECTION_MAX = 9,      -- Maximum protection radius (for 19x19 area)
-      -- Text limits
+
+    -- Text limits
     -- Maximum character length for tag text
     TAG_TEXT_MAX_LENGTH = 256
   }

@@ -14,17 +14,6 @@ data:extend({
     default_value = true,
     order = "kd",
   },  {
-    name = "terrain-protection-radius",
-    type = "int-setting",
-    setting_type = "runtime-per-user",
-    default_value = Constants.settings.TERRAIN_PROTECTION_DEFAULT,
-    ---@diagnostic disable-next-line: assign-type-mismatch
-    minimum_value = Constants.settings.TERRAIN_PROTECTION_MIN,
-    ---@diagnostic disable-next-line: assign-type-mismatch
-    maximum_value = Constants.settings.TERRAIN_PROTECTION_MAX,
-    order = "ke",
-  },
-  {
     name = "chart-tag-click-radius",
     type = "int-setting",
     setting_type = "runtime-per-user",

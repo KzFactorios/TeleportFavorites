@@ -49,7 +49,7 @@ EventRegistrationDispatcher.register_all_events(script)
 -- Register specific event categories
 EventRegistrationDispatcher.register_core_events(script)
 EventRegistrationDispatcher.register_gui_events(script)
-EventRegistrationDispatcher.register_terrain_events(script)
+-- EventRegistrationDispatcher.register_terrain_events(script) -- REMOVED: No longer needed
 --]]
 
 local ErrorHandler = require("core.utils.error_handler")
@@ -328,22 +328,8 @@ end
 ---@param script table The Factorio script object
 ---@return boolean success
 function EventRegistrationDispatcher.register_terrain_events(script)
-  if not script or type(script.on_event) ~= "function" then
-    ErrorHandler.warn_log("Invalid script object for terrain events registration")
-    return false
-  end
-    ErrorHandler.debug_log("Registering terrain events")
-    local success = true
-  
-  -- Register chart tag terrain protection events (replaces old relocation system)
-  local terrain_success = pcall(ChartTagUtils.register_terrain_events, script)
-  if not terrain_success then
-    ErrorHandler.warn_log("Failed to register terrain protection events through ChartTagUtils")
-    success = false
-  end
-  ErrorHandler.debug_log("Terrain events registration complete", { success = success })
-  
-  return success
+  ErrorHandler.debug_log("register_terrain_events called, but terrain protection system is removed. No events registered.")
+  return true
 end
 
 --- Register observer lifecycle events

@@ -21,6 +21,7 @@ local AdminUtils = require("core.utils.admin_utils")
 local SettingsAccess = require("core.utils.settings_access")
 local TagEditorMoveMode = require("core.control.control_move_mode")
 local CollectionUtils = require("core.utils.collection_utils")
+local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 
 -- Observer Pattern Integration
 local GuiObserver = require("core.pattern.gui_observer")
@@ -147,7 +148,7 @@ local function update_chart_tag_fields(tag, tag_data, text, icon, player)
     end
   else
     -- Create new chart tag using ChartTagUtils - set ownership for final chart tag
-    local chart_tag_spec = ChartTagUtils.build_chart_tag_spec(map_position, nil, player, text, true)
+    local chart_tag_spec = ChartTagSpecBuilder.build(map_position, nil, player, text, true)
     -- Always set icon (can be nil for empty icons)
     if ValidationUtils.has_valid_icon(icon) then
       chart_tag_spec.icon = icon

@@ -11,6 +11,7 @@ You are a specialized Factorio mod development assistant. Apply this checklist r
 
 ## 0.000 USE IDIOMATIC FACTORIO V2.0+(latest) AS YOUR GUIDE TO IMPLEMENTATION WHENEVER POSSIBLE
 ## 0.001 DO NOT TRY TO DO TRANSLATIONS ON YOUR OWN. ADDING KEYS TO THE /EN FILES IS ALL THAT I EXPECT FROM THE AGENT
+## 0.002 DO NOT CREATE CODE BLOAT! BE EFFICIENT IN YOUR METHODOLOGIES. DO NOT COMMENT WHERE THE CODE SPEAKS FOR ITSELF
 
 ## 1. PRE-EDIT VALIDATION
 - [ ] Use `read_file` to see current content BEFORE editing
@@ -44,10 +45,17 @@ You are a specialized Factorio mod development assistant. Apply this checklist r
 - [ ] Preserve exact whitespace, indentation, and newlines
 - [ ] NO `...existing code...` comments in `oldString`
 
-## 6. TERMINAL COMMANDS (PowerShell)
-- [ ] Use `;` instead of `&&` for command chaining
+## 6. PowerShell Command Formatting
+
+This project uses Windows PowerShell as the default shell. When providing terminal commands, please follow these guidelines:
+
+- **DO NOT** use Bash-style command chaining with `&&`. This is not valid in PowerShell.
+- **DO** use semicolons (`;`) to chain commands in PowerShell: `command1; command2`
+- **DO** use PowerShell's pipeline operator (`|`) when appropriate: `command1 | command2`
+- **DO** use PowerShell's native cmdlets when possible: `Get-ChildItem`, `Test-Path`, etc.
+- **DO** access environment variables using `$env:VAR_NAME` syntax
+
 - [ ] Properly quote file paths for Windows
-- [ ] Example: `cd "v:\path"; command` NOT `cd "v:\path" && command`
 - [ ] Do not use `grep` in powershell commands
 - [ ] Empty pipe elements are not allowed
 - [ ] `lua -e "print('Testing...'); print('✅ Test passed!')"` is an example of an unnecessary command. I am not sure why the agent thinks these are necessary, but we are not documenting our project via the terminal. Do not use terminal commands to mark milestones.
