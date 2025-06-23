@@ -141,17 +141,30 @@ local function get_chart_tag_by_gps(gps)
   local surface_cache = ensure_surface_cache(surface_index)
   if not surface_cache then return nil end
   local match_chart_tag = surface_cache.chart_tags_mapped_by_gps[gps] or nil
-  if (match_chart_tag and not match_chart_tag.valid) then
-    match_chart_tag = nil
+  
+  -- Return nil if chart tag is invalid
+  if not match_chart_tag or not match_chart_tag.valid then
+    return nil
   end
-  -- Restore walkable position check if it was previously present
-  if match_chart_tag and match_chart_tag.position then
+  
+  -- Optional walkability check with debug logging
+  if match_chart_tag.position then
     local walkable = PositionUtils.is_walkable_position(surface, match_chart_tag.position)
     if not walkable then
       ErrorHandler.debug_log("Chart tag at GPS is not walkable", {gps = gps, position = match_chart_tag.position})
     end
   end
+  
   return match_chart_tag
+end
+
+--- Get GPS mapping table for a surface (for data viewer)
+---@param surface_index number
+---@return table<string, LuaCustomChartTag> gps_mapping Map of GPS strings to chart tags
+local function get_gps_mapping_for_surface(surface_index)
+  local surface_cache = ensure_surface_cache(surface_index)
+  if not surface_cache then return {} end
+  return surface_cache.chart_tags_mapped_by_gps or {}
 end
 
 
@@ -183,6 +196,7 @@ return {
   get_chart_tag_cache = get_chart_tag_cache,
   get_surface_chart_tags = get_chart_tag_cache, -- Alias for consistency
   get_chart_tag_by_gps = get_chart_tag_by_gps,
+  get_gps_mapping_for_surface = get_gps_mapping_for_surface,
   clear_surface_cache_chart_tags = clear_surface_cache_chart_tags,
   invalidate_surface_chart_tags = clear_surface_cache_chart_tags, -- Alias for consistency
   remove_chart_tag_from_cache_by_gps = remove_chart_tag_from_cache_by_gps,

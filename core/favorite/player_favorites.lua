@@ -349,20 +349,32 @@ function PlayerFavorites:update_gps_coordinates(old_gps, new_gps)
   end
 
   local any_updated = false
-
   for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
     local fav = self.favorites[i]
     if fav and not FavoriteUtils.is_blank_favorite(fav) and fav.gps == old_gps then
       fav.gps = new_gps
+      
+      -- CRITICAL: Also update the tag.gps if tag exists
+      if fav.tag and fav.tag.gps then
+        fav.tag.gps = new_gps
+      end
+      
       any_updated = true
     end
   end
-
   if any_updated then
     sync_to_storage(self)
 
     -- Notify observers of GPS update
     notify_observers_safe("favorites_gps_updated", {
+      player_index = self.player_index,
+      old_gps = old_gps,
+      new_gps = new_gps
+    })
+    
+    -- CRITICAL: Trigger cache_updated to rebuild favorites bar
+    notify_observers_safe("cache_updated", {
+      type = "favorites_gps_updated",
       player_index = self.player_index,
       old_gps = old_gps,
       new_gps = new_gps

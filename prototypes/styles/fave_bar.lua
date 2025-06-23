@@ -102,7 +102,7 @@ gui_style.tf_fave_bar_slot_number = {
     font_color = { r = 0.98, g = 0.66, b = 0.22, a = .7 },
     horizontal_align = "center",
     width=25,
-    top_padding = 14
+    top_padding = 16
 }
 
 return true

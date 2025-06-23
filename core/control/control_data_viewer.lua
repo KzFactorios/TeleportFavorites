@@ -23,19 +23,21 @@ local function load_tab_data(player, active_tab, font_size)
     state.top_key = "player_data"
   elseif active_tab == "surface_data" then
     state.data = Cache.get_surface_data(player.surface.index)
-    state.top_key = "surface_data"
-  elseif active_tab == "lookup" then
+    state.top_key = "surface_data"  elseif active_tab == "lookup" then
     -- Initialize Cache first to ensure Lookups is available
     Cache.init()
-    -- Create a safe view of chart tag data for display
-    local chart_tag_data = {}
+    -- Create a safe view of GPS mapping data for display
+    local gps_mapping_data = {}
+    
     for _, surface in pairs(game.surfaces) do
       if surface and surface.valid then
         local surface_index = surface.index
-        local chart_tags = Cache.Lookups.get_chart_tag_cache(surface_index)
-        if chart_tags and #chart_tags > 0 then
-          chart_tag_data["surface_" .. surface_index] = {}
-          for i, chart_tag in ipairs(chart_tags) do
+        
+        -- Build GPS mapping data
+        local gps_mapping = Cache.Lookups.get_gps_mapping_for_surface(surface_index)
+        if gps_mapping and next(gps_mapping) then
+          gps_mapping_data["surface_" .. surface_index] = {}
+          for gps, chart_tag in pairs(gps_mapping) do
             if chart_tag and chart_tag.valid then
               -- Create a safe serializable representation
               local safe_chart_tag = {
@@ -49,15 +51,16 @@ local function load_tab_data(player, active_tab, font_size)
                 surface_name = chart_tag.surface and tostring(chart_tag.surface.name) or "unknown",
                 valid = chart_tag.valid
               }
-              chart_tag_data["surface_" .. surface_index]["chart_tag_" .. i] = safe_chart_tag
+              gps_mapping_data["surface_" .. surface_index][gps] = safe_chart_tag
             end
           end
         end
       end
     end
+    
     state.data = {
-      chart_tags_by_surface = chart_tag_data,
-      cache_status = next(chart_tag_data) and "populated" or "empty"
+      chart_tags_mapped_by_gps = gps_mapping_data,
+      cache_status = next(gps_mapping_data) and "populated" or "empty"
     }
     state.top_key = "lookups"
   elseif active_tab == "all_data" then
