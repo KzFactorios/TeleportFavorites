@@ -17,6 +17,7 @@ Provides a unified API for all position-related operations throughout the mod.
 local basic_helpers = require("core.utils.basic_helpers")
 local Constants = require("constants")
 local ErrorHandler = require("core.utils.error_handler")
+local GameHelpers = require("core.utils.game_helpers")
 local GPSUtils = require("core.utils.gps_utils")
 local LocaleUtils = require("core.utils.locale_utils")
 local ValidationUtils = require("core.utils.validation_utils")
@@ -28,9 +29,8 @@ local PositionUtils = {}
 --- @param player LuaPlayer Player to print message to
 --- @param message string Message to print
 local function safe_player_print(player, message)
-  if player and player.valid and type(player.print) == "function" then
-    ---@diagnostic disable-next-line: param-type-mismatch, missing-parameter, assign-type-mismatch
-    player.print(message)
+  if player and player.valid then
+    GameHelpers.player_print(player, message)
   end
 end
 
@@ -133,15 +133,14 @@ function PositionUtils.is_walkable_position(surface, position)
   end
   -- Normalize position to whole numbers before tile checks
   local norm_pos = PositionUtils.normalize_position(position)
-  local tile = surface.get_tile(norm_pos.x, norm_pos.y)
-  local tile_info = {
+  local tile = surface.get_tile(norm_pos.x, norm_pos.y)  local tile_info = {
     surface=surface.name,
     surface_index=surface.index,
     orig_x=position.x, orig_y=position.y,
     norm_x=norm_pos.x, norm_y=norm_pos.y,
     tile_name=tile and tile.name or "<nil>",
     tile_prototype=tile and tile.prototype and tile.prototype.name or "<nil>",
-    tile_unique_id=tile and tile.prototype and tile.prototype.order or "<nil>"
+    tile_valid=tile and tile.valid or false
   }
   ErrorHandler.debug_log("[WALKABLE] Tile info", tile_info)
   if not tile or not tile.valid then 
@@ -331,13 +330,13 @@ function PositionUtils.is_valid_tag_position(player, map_position, skip_notifica
       ErrorHandler.warn_log("Position validation failed: " .. (player_error or "Invalid player"))
     end
     return false
-  end  -- Check if position is on water or space
-  if PositionUtils.is_water_tile(player.surface, map_position) then
-    if not skip_notification then
-      safe_player_print(player, "[TeleportFavorites] Cannot tag water tiles")
-    end
-    return false
-  end
+  end  -- Water tiles are now allowed for tagging (removed restriction)
+  -- if PositionUtils.is_water_tile(player.surface, map_position) then
+  --   if not skip_notification then
+  --     safe_player_print(player, "[TeleportFavorites] Cannot tag water tiles")
+  --   end
+  --   return false
+  -- end
     -- Space tile validation with space platform context
   if PositionUtils.is_space_tile(player.surface, map_position) then
     if PositionUtils.is_on_space_platform(player.surface) then
@@ -358,9 +357,10 @@ end
 ---@param player LuaPlayer
 ---@param map_position table
 ---@return boolean
-function PositionUtils.position_can_be_tagged(player, map_position)  -- Use consolidated validation helper for player and position checks
-  local valid, position, error_msg = ValidationUtils.validate_position_operation(player, 
-    GPSUtils.gps_from_map_position(map_position, player and player.surface and player.surface.index or 1))
+function PositionUtils.position_can_be_tagged(player, map_position)  
+  -- Use consolidated validation helper for player and position checks  local surface_index = tonumber((player and player.surface and player.surface.index) or 1)
+  local gps_string = GPSUtils.gps_from_map_position(map_position, surface_index)
+  local valid, position, error_msg = ValidationUtils.validate_position_operation(player, gps_string)
   if not valid then
     if error_msg then
       safe_player_print(player, "[TeleportFavorites] " .. error_msg)

@@ -255,7 +255,7 @@ local function build_teleport_favorite_row(parent, tag_data)
   local favorite_btn = GuiBase.create_icon_button(row, "tag_editor_is_favorite_button", star_state, { "tf-gui.favorite_tooltip" }, fave_style)
   local teleport_btn = GuiBase.create_icon_button(row, "tag_editor_teleport_button", "", { "tf-gui.teleport_tooltip" }, "tf_teleport_button")
 ---@diagnostic disable-next-line: assign-type-mismatch
-  teleport_btn.caption = { "tf-gui.teleport_to", tag_data.gps }
+  teleport_btn.caption = { "tf-gui.teleport_to", GPSUtils.coords_string_from_gps(tag_data.gps) }
   return row, favorite_btn, teleport_btn
 end
 

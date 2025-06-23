@@ -144,15 +144,32 @@ function StandardTeleportStrategy:execute(player, gps, context)
     ErrorHandler.debug_log("Standard teleport failed validation", { error = error_msg })
     return error_msg or LocaleUtils.get_error_string(player, "validation_failed")
   end
-  
-  local position, pos_error = self:get_landing_position(player, gps)
+    local position, pos_error = self:get_landing_position(player, gps)
   if not position then
     ErrorHandler.debug_log("Standard teleport failed position normalization", { error = pos_error })
     local error_message = pos_error or LocaleUtils.get_error_string(player, "position_normalization_failed")
     GameHelpers.player_print(player, error_message)
     return error_message
   end
-    local teleport_success = player:teleport(position, player.surface, true)
+    -- Check if destination is on water and find safe landing spot
+  local final_position = position
+  if GameHelpers.is_water_tile_at_position(player.surface, position) then
+    -- Find nearest walkable position for water tiles
+    local safe_position = GameHelpers.find_safe_landing_position(player.surface, position, 16.0, 0.5)
+    if safe_position then
+      final_position = safe_position
+      ErrorHandler.debug_log("Water tile detected in standard teleport, using safe landing position", { 
+        original = position, 
+        safe = safe_position 
+      })
+    else
+      ErrorHandler.debug_log("Standard teleport: No safe position found near water tile")
+      GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "no_safe_position"))
+      return LocaleUtils.get_error_string(player, "no_safe_position_available")
+    end
+  end
+    
+  local teleport_success = player:teleport(final_position, player.surface, true)
   if teleport_success then
     ErrorHandler.debug_log("Standard teleportation successful")
     return Enum.ReturnStateEnum.SUCCESS
@@ -217,16 +234,32 @@ function VehicleTeleportStrategy:execute(player, gps, context)
   if not position then
     ErrorHandler.debug_log("Vehicle teleport failed position normalization", { error = pos_error })
     local error_message = pos_error or LocaleUtils.get_error_string(player, "position_normalization_failed")
-    GameHelpers.player_print(player, error_message)
-    return error_message
+    GameHelpers.player_print(player, error_message)    return error_message
+  end
+    -- Check if destination is on water and find safe landing spot for vehicle
+  local final_position = position
+  if GameHelpers.is_water_tile_at_position(player.surface, position) then
+    -- Find nearest walkable position for water tiles
+    local safe_position = GameHelpers.find_safe_landing_position(player.surface, position, 16.0, 0.5)
+    if safe_position then
+      final_position = safe_position
+      ErrorHandler.debug_log("Water tile detected in vehicle teleport, using safe landing position", { 
+        original = position, 
+        safe = safe_position 
+      })
+    else
+      ErrorHandler.debug_log("Vehicle teleport: No safe position found near water tile")
+      GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "no_safe_position"))
+      return LocaleUtils.get_error_string(player, "no_safe_position_available")
+    end
   end
   
   -- Teleport vehicle first, then player
   local vehicle_success = true
   if player.vehicle and player.vehicle.valid then
-    vehicle_success = player.vehicle:teleport(position, player.surface, false)
+    vehicle_success = player.vehicle:teleport(final_position, player.surface, false)
   end
-  local player_success = player:teleport(position, player.surface, true)
+  local player_success = player:teleport(final_position, player.surface, true)
     if vehicle_success and player_success then
     ErrorHandler.debug_log("Vehicle teleportation successful")
     return Enum.ReturnStateEnum.SUCCESS
@@ -285,27 +318,42 @@ function SafeTeleportStrategy:execute(player, gps, context)
     GameHelpers.player_print(player, error_message)
     return error_message
   end
-  
   -- Enhanced safety checks for safe teleportation
-  local player_settings = settings_access:getPlayerSettings(player)
-  local safety_radius = (context and context.custom_radius) or (player_settings.tp_radius_tiles * 2) -- Double radius for extra safety
-    local safe_position = player.surface:find_non_colliding_position("character", position, safety_radius, 0.25)
-  if not safe_position then
-    ErrorHandler.debug_log("Safe teleport: No safe position found")
-    GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "no_safe_position"))
-    return LocaleUtils.get_error_string(player, "no_safe_position_available")
+  -- Use a fixed safety radius since teleport radius setting is removed
+  local safety_radius = (context and context.custom_radius) or 16.0 -- Default safety radius for finding safe positions
+    -- Check if destination is on water and find safe landing spot
+  local final_position = position
+  if GameHelpers.is_water_tile_at_position(player.surface, position) then
+    -- Find nearest walkable position for water tiles
+    local safe_position = GameHelpers.find_safe_landing_position(player.surface, position, safety_radius, 0.5)
+    if safe_position then
+      final_position = safe_position
+      ErrorHandler.debug_log("Water tile detected, using safe landing position", { 
+        original = position, 
+        safe = safe_position 
+      })
+    else
+      ErrorHandler.debug_log("Safe teleport: No safe position found near water tile")
+      GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "no_safe_position"))
+      return LocaleUtils.get_error_string(player, "no_safe_position_available")
+    end
+  else
+    -- For non-water tiles, still check for collision safety
+    local safe_position = GameHelpers.find_safe_landing_position(player.surface, position, safety_radius, 0.25)
+    if safe_position then
+      final_position = safe_position
+    end
   end
-  
-  -- Use the safer position
+  -- Use the final position (either original or safe landing spot)
   local teleport_success
   if player.driving and player.vehicle and player.vehicle.valid then
-    player.vehicle:teleport(safe_position, player.surface, false)
-    teleport_success = player:teleport(safe_position, player.surface, true)
+    player.vehicle:teleport(final_position, player.surface, false)
+    teleport_success = player:teleport(final_position, player.surface, true)
   else
-    teleport_success = player:teleport(safe_position, player.surface, true)
+    teleport_success = player:teleport(final_position, player.surface, true)
   end
     if teleport_success then
-    ErrorHandler.debug_log("Safe teleportation successful", { safe_position = safe_position })
+    ErrorHandler.debug_log("Safe teleportation successful", { final_position = final_position })
     return Enum.ReturnStateEnum.SUCCESS
   end
     ErrorHandler.debug_log("Safe teleport failed: Unforeseen circumstances")

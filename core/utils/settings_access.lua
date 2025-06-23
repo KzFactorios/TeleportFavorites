@@ -10,11 +10,10 @@ Features:
 
 API:
 - Settings:getPlayerSettings(player): Returns a table of settings for the given player (or defaults).
-  - teleport_radius (integer): Teleportation radius (default: Constants.settings.TELEPORT_RADIUS_DEFAULT)
-                              Bounded by Constants.settings.TELEPORT_RADIUS_MIN and TELEPORT_RADIUS_MAX
   - favorites_on (boolean): Whether the favorites bar is enabled (default: true)
   - destination_msg_on (boolean): Whether to show destination messages (default: true)
   -- map_reticle_on removed - functionality no longer exists
+  -- teleport_radius removed - no longer needed
 
 Error Handling:
 - Returns default values if player or player.mod_settings is nil
@@ -30,50 +29,21 @@ local Settings = {}
 
 --- Returns a table of per-player mod settings, with defaults if not set
 --- @param player LuaPlayer|nil The player to get settings for
---- @return table settings { teleport_radius: integer, favorites_on: boolean, destination_msg_on: boolean }
+--- @return table settings { favorites_on: boolean, destination_msg_on: boolean }
 function Settings:getPlayerSettings(player)-- Initialize with default values from Constants
   local settings = {
-    teleport_radius = Constants.settings.TELEPORT_RADIUS_DEFAULT,
     favorites_on = true,
     destination_msg_on = true,
     -- map_reticle_on removed - functionality no longer exists
+    -- teleport_radius removed - no longer needed
   }
   
   -- Return defaults if player or mod_settings are nil
   if not (player and player.mod_settings) then 
     return settings 
   end
-
   local mod_settings = player.mod_settings
-  -- Get teleport radius setting with validation
-  local t_radius = mod_settings["teleport-radius"]
-  if t_radius and t_radius.value ~= nil then
-    -- Start with the default value as a number
-    local radius_value = settings.teleport_radius
-    
-    -- Try to convert the setting value to a number if it's not nil
-    if t_radius.value ~= nil then
-      local converted = tonumber(t_radius.value)
-      if converted ~= nil then
-        -- If we successfully converted to a number, use it
-        radius_value = math.floor(converted)
-      end
-    end
-    
-    -- Manually enforce the min/max bounds for type safety
-    -- These are defined in constants.lua as numbers already
-    local min = Constants.settings.TELEPORT_RADIUS_MIN
-    if type(min) == "number" and radius_value < min then
-      radius_value = min
-    end
-    
-    local max = Constants.settings.TELEPORT_RADIUS_MAX
-    if type(max) == "number" and radius_value > max then
-      radius_value = max
-    end
-    
-    settings.teleport_radius = radius_value
-  end
+  
   -- Get favorites on/off setting
   local f_on = mod_settings["favorites-on"]
   if f_on and f_on.value ~= nil then 

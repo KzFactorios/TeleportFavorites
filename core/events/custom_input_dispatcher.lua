@@ -39,6 +39,10 @@ local on_gui_closed_handler = require("core.events.on_gui_closed_handler")
 local handlers = require("core.events.handlers")
 local GameHelpers = require("core.utils.game_helpers")
 local ErrorHandler = require("core.utils.error_handler")
+local PlayerFavorites = require("core.favorite.player_favorites")
+local FavoriteUtils = require("core.favorite.favorite")
+local Enum = require("prototypes.enums.enum")
+local GPSUtils = require("core.utils.gps_utils")
 
 
 ---@class CustomInputDispatcher
@@ -75,6 +79,24 @@ end
 
 -- Default custom input handlers (private to avoid global pollution)
 ---@type table<string, function>
+
+--- Helper function to handle teleporting to a favorite slot
+---@param event table The custom input event
+---@param slot_number number The favorite slot number (1-10)
+local function handle_teleport_to_favorite_slot(event, slot_number)
+  local player = game.get_player(event.player_index)
+  if not player or not player.valid then return end
+  
+  -- Use the shared teleportation utility
+  local success = GameHelpers.teleport_to_favorite_slot(player, slot_number)
+  
+  ErrorHandler.debug_log("Teleport to favorite slot via hotkey", {
+    player = player.name,
+    slot = slot_number,
+    success = success
+  })
+end
+
 local default_custom_input_handlers = {
   ["dv-toggle-data-viewer"] = control_data_viewer.on_toggle_data_viewer,
   ["tf-undo-last-action"] = function(event)
@@ -90,6 +112,17 @@ local default_custom_input_handlers = {
       GameHelpers.player_print(player, {"tf-command.nothing_to_undo"})
     end
   end,
+  -- Teleport to favorite slot handlers (Ctrl+1 through Ctrl+0)
+  [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "1"] = function(event) handle_teleport_to_favorite_slot(event, 1) end,
+  [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "2"] = function(event) handle_teleport_to_favorite_slot(event, 2) end,
+  [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "3"] = function(event) handle_teleport_to_favorite_slot(event, 3) end,
+  [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "4"] = function(event) handle_teleport_to_favorite_slot(event, 4) end,
+  [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "5"] = function(event) handle_teleport_to_favorite_slot(event, 5) end,
+  [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "6"] = function(event) handle_teleport_to_favorite_slot(event, 6) end,
+  [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "7"] = function(event) handle_teleport_to_favorite_slot(event, 7) end,
+  [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "8"] = function(event) handle_teleport_to_favorite_slot(event, 8) end,
+  [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "9"] = function(event) handle_teleport_to_favorite_slot(event, 9) end,
+  [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "10"] = function(event) handle_teleport_to_favorite_slot(event, 10) end,
   -- Add more custom input handlers here as needed
 }
 

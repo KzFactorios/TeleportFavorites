@@ -43,16 +43,10 @@ end
 function GameHelpers.get_nearest_chart_tag_to_click_position(player, map_position, search_radius)
   if not player then return nil end
   
-  -- Ensure collision_radius is always a number
-  local collision_radius = Constants.settings.TELEPORT_RADIUS_DEFAULT
+  -- Use chart tag click radius instead of teleport radius
+  local collision_radius = Constants.settings.CHART_TAG_CLICK_RADIUS
   if search_radius and type(search_radius) == "number" then
     collision_radius = search_radius
-  else
-    local player_settings = SettingsAccess:getPlayerSettings(player)
-    local radius_value = player_settings.teleport_radius
-    if type(radius_value) == "number" then
-      collision_radius = radius_value
-    end
   end
   
   -- Create collision detection area centered on the map position
@@ -100,18 +94,15 @@ local function cya_teleport(player, pos)
 end
 
 function GameHelpers.safe_teleport(player, pos)
-  -- Do not print msg if player has the setting turned off
-  local player_settings = SettingsAccess:getPlayerSettings(player)
-  -- Default to true for safety
-  local player_approves_dest_messaging = player_settings and type(player_settings.destination_msg_on) == "boolean" and player_settings.destination_msg_on or true
+  -- Legacy function - convert position to GPS and use strategy-based teleportation
+  if not player or not player.valid or not pos then return false end
   
-  local teleport_success = cya_teleport(player, pos)
-
-  if teleport_success and player_approves_dest_messaging then
-    GameHelpers.player_print(player, { "tf-gui.teleported_to", player.name, GPSUtils.coords_string_from_map_position(pos) })
-  elseif not teleport_success and player_approves_dest_messaging then
-    GameHelpers.player_print(player, "tf-gui.teleport_failed")
-  end
+  -- Convert position to GPS format
+  local surface_index = player.surface and player.surface.index or 1
+  local gps = GPSUtils.gps_from_map_position(pos, surface_index)
+  
+  -- Use the new strategy-based safe teleportation
+  return GameHelpers.safe_teleport_to_gps(player, gps)
 end
 
 function GameHelpers.safe_play_sound(player, sound)
@@ -133,6 +124,141 @@ function GameHelpers.player_print(player, message)
   if player and player.valid and type(player.print) == "function" then
     player.print(message)
   end
+end
+
+-- ========================================
+-- SHARED TELEPORTATION UTILITIES
+-- ========================================
+
+--- Teleport player to GPS location using strategy pattern with comprehensive error handling
+---@param player LuaPlayer Player to teleport
+---@param gps string GPS coordinates in 'xxx.yyy.s' format
+---@param context TeleportContext? Optional teleportation context
+---@return boolean success Whether teleportation was successful
+function GameHelpers.teleport_to_gps(player, gps, context)
+  if not player or not player.valid then
+    ErrorHandler.debug_log("Teleportation failed: Invalid player")
+    return false
+  end
+  
+  if not gps or type(gps) ~= "string" or gps == "" then
+    ErrorHandler.debug_log("Teleportation failed: Invalid GPS", { gps = gps })
+    GameHelpers.player_print(player, "Invalid GPS coordinates")
+    return false
+  end
+  
+  -- Use Tag.teleport_player_with_messaging for strategy-based teleportation
+  local Tag = require("core.tag.tag")
+  local result = Tag.teleport_player_with_messaging(player, gps, context)
+  
+  -- Convert result to boolean (success is typically Enum.ReturnStateEnum.SUCCESS)
+  local Enum = require("prototypes.enums.enum")
+  return result == Enum.ReturnStateEnum.SUCCESS
+end
+
+--- Teleport player to a favorite slot with validation and error handling
+---@param player LuaPlayer Player to teleport
+---@param slot_number number Favorite slot number (1-10)
+---@param context TeleportContext? Optional teleportation context
+---@return boolean success Whether teleportation was successful
+function GameHelpers.teleport_to_favorite_slot(player, slot_number, context)
+  if not player or not player.valid then
+    ErrorHandler.debug_log("Favorite teleportation failed: Invalid player")
+    return false
+  end
+  
+  if not slot_number or type(slot_number) ~= "number" or slot_number < 1 or slot_number > 10 then
+    ErrorHandler.debug_log("Favorite teleportation failed: Invalid slot number", { slot_number = slot_number })
+    GameHelpers.player_print(player, "Invalid favorite slot number")
+    return false
+  end
+  
+  -- Get player favorites
+  local PlayerFavorites = require("core.favorite.player_favorites")
+  local FavoriteUtils = require("core.favorite.favorite")
+  
+  local player_favorites = PlayerFavorites.new(player)
+  if not player_favorites or not player_favorites.favorites then
+    ErrorHandler.debug_log("No favorites found for player", { player = player.name })
+    GameHelpers.player_print(player, {"tf-gui.no_favorites_available"})
+    return false
+  end
+  
+  -- Get the favorite at the specified slot
+  local favorite = player_favorites.favorites[slot_number]
+  if not favorite or FavoriteUtils.is_blank_favorite(favorite) then
+    GameHelpers.player_print(player, {"tf-gui.favorite_slot_empty"})
+    return false
+  end
+  
+  -- Teleport to the favorite's GPS location
+  local success = GameHelpers.teleport_to_gps(player, favorite.gps, context)
+  
+  ErrorHandler.debug_log("Teleport to favorite slot result", {
+    player = player.name,
+    slot = slot_number,
+    gps = favorite.gps,
+    success = success
+  })
+  
+  return success
+end
+
+--- Safe teleport with water tile detection and landing position finding
+---@param player LuaPlayer Player to teleport
+---@param gps string GPS coordinates in 'xxx.yyy.s' format
+---@param custom_radius number? Custom safety radius for finding safe positions
+---@return boolean success Whether teleportation was successful
+function GameHelpers.safe_teleport_to_gps(player, gps, custom_radius)
+  local context = {
+    force_safe = true,
+    custom_radius = custom_radius
+  }
+  
+  return GameHelpers.teleport_to_gps(player, gps, context)
+end
+
+--- Teleport with vehicle awareness
+---@param player LuaPlayer Player to teleport
+---@param gps string GPS coordinates in 'xxx.yyy.s' format
+---@param allow_vehicle boolean Whether to allow vehicle teleportation
+---@return boolean success Whether teleportation was successful
+function GameHelpers.vehicle_aware_teleport_to_gps(player, gps, allow_vehicle)
+  local context = {
+    allow_vehicle = allow_vehicle
+  }
+  
+  return GameHelpers.teleport_to_gps(player, gps, context)
+end
+
+--- Check if a tile at a position is a water tile
+---@param surface LuaSurface Surface to check
+---@param position MapPosition Position to check
+---@return boolean is_water_tile
+function GameHelpers.is_water_tile_at_position(surface, position)
+  if not surface or not surface.get_tile or not position then return false end
+  
+  local tile = surface.get_tile(position.x, position.y)
+  if not tile or not tile.valid then return false end
+  
+  local tile_name = tile.name:lower()
+  return tile_name:find("water") ~= nil
+end
+
+--- Find safe landing position near a potentially unsafe tile (like water)
+---@param surface LuaSurface Surface to search on
+---@param position MapPosition Original position
+---@param search_radius number? Search radius (default: 16.0)
+---@param precision number? Search precision (default: 0.5)
+---@return MapPosition? safe_position Safe position or nil if none found
+function GameHelpers.find_safe_landing_position(surface, position, search_radius, precision)
+  if not surface or not position then return nil end
+  
+  search_radius = search_radius or 16.0
+  precision = precision or 0.5
+  
+  -- Use Factorio's built-in collision detection to find a safe position
+  return surface:find_non_colliding_position("character", position, search_radius, precision)
 end
 
 return GameHelpers

@@ -108,7 +108,8 @@ end
 local function handle_teleport(event, player, fav, slot, did_drag)
   if event.button == defines.mouse_button_type.left and not event.control and not did_drag then
     if fav and not FavoriteUtils.is_blank_favorite(fav) then
-      GameHelpers.safe_teleport(player, gps_core.map_position_from_gps(fav.gps))
+      -- Use the shared teleportation utility for water-tile safe teleportation
+      GameHelpers.safe_teleport_to_gps(player, fav.gps)
       return true
     end
   end

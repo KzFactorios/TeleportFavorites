@@ -187,14 +187,7 @@ function EventRegistrationDispatcher.register_core_events(script)
               fave_bar.destroy(player)
             end
           end
-          return
-        end-- Handle changes to the teleport radius
-        if event.setting == "teleport-radius" then
-          ErrorHandler.debug_log("Teleport radius setting changed", {
-            player_index = event.player_index
-          })
-          return
-        end
+          return        end
 
         -- Handle changes to the destination message setting
         if event.setting == "destination-msg-on" then

@@ -11,15 +11,7 @@ local Enum = require("prototypes.enums.enum")
 --- @field settings table<string, number|string|boolean> Configuration settings
 local Constants = {
   PREFIX = "tf_",
-  
-  settings = {
-    -- Teleport settings
-    TELEPORT_RADIUS_DEFAULT = 8,     -- Default radius for teleportation search in tiles
-    TELEPORT_RADIUS_MIN = 1,         -- Minimum allowed teleport radius
-    TELEPORT_RADIUS_MAX = 32,        -- Maximum allowed teleport radius
-    TELEPORT_PRECISION = 2,          -- Step length in tiles. Lower values (0.5) are more precise but slower, 
-                                     -- higher values (2-5) are faster but may miss positions in dense areas
-    
+    settings = {
     -- Chart tag settings
     CHART_TAG_CLICK_RADIUS = 10,    -- Radius in tiles for detecting chart tag clicks on the map
     
@@ -49,11 +41,5 @@ local Constants = {
     TAG_TEXT_MAX_LENGTH = 256
   }
 }
-
--- Validate critical settings
-assert(Constants.settings.TELEPORT_RADIUS_DEFAULT >= Constants.settings.TELEPORT_RADIUS_MIN,
-       "Default teleport radius cannot be less than minimum")
-assert(Constants.settings.TELEPORT_RADIUS_DEFAULT <= Constants.settings.TELEPORT_RADIUS_MAX,
-       "Default teleport radius cannot be greater than maximum")
 
 return Constants
