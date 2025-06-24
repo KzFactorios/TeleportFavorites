@@ -82,7 +82,7 @@ UIEnums.Sprites = {
 
   -- Interface elements
   LIST_VIEW = "utility/list_view",
-  LOCK = "utility/lock",
+  LOCK = "tf_slot_lock",
   PIN = "tf_tag_in_map_view_small",
   PLAY = "utility/play",
   SEARCH = "utility/search_icon",

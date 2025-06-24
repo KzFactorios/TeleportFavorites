@@ -193,6 +193,7 @@ local function handle_shift_left_click(event, player, fav, slot, favorites)  -- 
       return success
     elseif is_locked_favorite(fav) then
       GameHelpers.player_print(player, lstr("tf-gui.fave_bar_locked_cant_drag", slot))
+      return true -- Return true to prevent further processing like teleportation
     end
   end
   return false

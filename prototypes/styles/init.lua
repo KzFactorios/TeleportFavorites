@@ -167,7 +167,7 @@ gui_style.slot_orange_favorite_off = {
 
 gui_style.slot_orange_favorite_on = {
   type = "button_style",
-  --parent = "slot_orange",
+  parent = "yellow_slot_button",
   width = 40,
   height = 40,
   padding = 1,
