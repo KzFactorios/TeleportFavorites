@@ -27,7 +27,7 @@ Main Functions:
     Sets state, tooltips, and styles for all controls after construction.
 --]]
 
-local Cache = require("core.cache.cache")
+
 local Enum = require("prototypes.enums.enum")
 local GuiBase = require("gui.gui_base")
 local GuiUtils = require("core.utils.gui_utils")
@@ -37,7 +37,10 @@ local ValidationUtils = require("core.utils.validation_utils")
 local ErrorHandler = require("core.utils.error_handler")
 local Cache = require("core.cache.cache")
 local AdminUtils = require("core.utils.admin_utils")
-local CollectionUtils = require("core.utils.collection_utils")
+local GameHelpers = require("core.utils.game_helpers")
+local PlayerFavorites = require("core.favorite.player_favorites")
+local FavoriteUtils = require("core.favorite.favorite")
+local Constants = require("constants")
 
 
 local tag_editor = {}
@@ -77,7 +80,19 @@ local function setup_tag_editor_ui(refs, tag_data, player)
   -- Set button enablement
   if refs.icon_btn then GuiUtils.set_button_state(refs.icon_btn, is_owner) end
   if refs.teleport_btn then GuiUtils.set_button_state(refs.teleport_btn, true) end
-  if refs.favorite_btn then GuiUtils.set_button_state(refs.favorite_btn, true) end
+
+  -- Favorite button: disable if at max favorites for this surface
+  local player_faves = PlayerFavorites.new(player)
+  local at_max_faves = player_faves:available_slots() == 0
+  if refs.favorite_btn then
+    if at_max_faves and not (tag_data and tag_data.is_favorite) then
+      GuiUtils.set_button_state(refs.favorite_btn, false)
+      refs.favorite_btn.tooltip = { "tf-gui.max_favorites_warning" }
+    else
+      GuiUtils.set_button_state(refs.favorite_btn, true)
+      refs.favorite_btn.tooltip = { "tf-gui.favorite_tooltip" }
+    end
+  end
   if refs.rich_text_input then GuiUtils.set_button_state(refs.rich_text_input, is_owner) end
 
   -- Disable move/delete for temp (yet-to-be-created) tags: if tag_data.tag or tag_data.chart_tag are not nil, it's a temp tag
@@ -111,7 +126,10 @@ local function setup_tag_editor_ui(refs, tag_data, player)
   if refs.move_btn then refs.move_btn.tooltip = { "tf-gui.move_tooltip" } end
   if refs.delete_btn then refs.delete_btn.tooltip = { "tf-gui.delete_tooltip" } end
   if refs.teleport_btn then refs.teleport_btn.tooltip = { "tf-gui.teleport_tooltip" } end
-  if refs.favorite_btn then refs.favorite_btn.tooltip = { "tf-gui.favorite_tooltip" } end
+  -- Only set favorite_btn tooltip if not already set by max check above
+  if refs.favorite_btn and not (at_max_faves and not (tag_data and tag_data.is_favorite)) then
+    refs.favorite_btn.tooltip = { "tf-gui.favorite_tooltip" }
+  end
   if refs.confirm_btn then refs.confirm_btn.tooltip = { "tf-gui.confirm_tooltip" } end
   if refs.cancel_btn then refs.cancel_btn.tooltip = { "tf-gui.cancel_tooltip" } end
 
@@ -154,7 +172,7 @@ function tag_editor.build_confirmation_dialog(player, opts)
     direction = "vertical",
     style = "tf_confirm_dialog_frame",
     force_auto_center = true, -- idiomatic for modal overlays
-    modal = true -- idiomatic: blocks interaction with other GUIs
+    modal = true              -- idiomatic: blocks interaction with other GUIs
   }
   frame.auto_center = true
   frame.visible = true
@@ -172,7 +190,7 @@ function tag_editor.build_confirmation_dialog(player, opts)
   GuiBase.create_label(frame, "tag_editor_tf_confirm_dialog_label", message, "tf_dlg_confirm_title")
 
   -- Button row: idiomatic horizontal flow with left/right flows for true alignment
-  local btn_row = frame.add{
+  local btn_row = frame.add {
     type = "flow",
     name = "tag_editor_tf_confirm_dialog_btn_row",
     direction = "horizontal",
@@ -181,7 +199,7 @@ function tag_editor.build_confirmation_dialog(player, opts)
   btn_row.style.horizontally_stretchable = true
 
   -- Left-aligned flow for Cancel
-  local left_flow = btn_row.add{
+  local left_flow = btn_row.add {
     type = "flow",
     name = "tag_editor_tf_confirm_dialog_left_flow",
     direction = "horizontal"
@@ -189,7 +207,7 @@ function tag_editor.build_confirmation_dialog(player, opts)
   left_flow.style.horizontally_stretchable = false
 
   -- Right-aligned flow for Confirm
-  local right_flow = btn_row.add{
+  local right_flow = btn_row.add {
     type = "flow",
     name = "tag_editor_tf_confirm_dialog_right_flow",
     direction = "horizontal"
@@ -197,18 +215,18 @@ function tag_editor.build_confirmation_dialog(player, opts)
   right_flow.style.horizontally_stretchable = true
   right_flow.style.horizontal_align = "right"
 
-  local cancel_btn = left_flow.add{
+  local cancel_btn = left_flow.add {
     type = "button",
     name = "tf_confirm_dialog_cancel_btn",
-    caption = {"tf-gui.confirm_delete_cancel"},
+    caption = { "tf-gui.confirm_delete_cancel" },
     style = "back_button"
   }
   cancel_btn.tags = { action = "cancel_delete" }
 
-  local confirm_btn = right_flow.add{
+  local confirm_btn = right_flow.add {
     type = "button",
     name = "tf_confirm_dialog_confirm_btn",
-    caption = {"tf-gui.confirm_delete_confirm"},
+    caption = { "tf-gui.confirm_delete_confirm" },
     style = "tf_dlg_confirm_button"
   }
   confirm_btn.tags = { action = "confirm_delete" }
@@ -238,9 +256,11 @@ local function build_owner_row(parent, tag_data)
     "", "tf_tag_editor_owner_label") -- Add buttons to the button flow
   local button_flow = GuiBase.create_hflow(row_frame, "tag_editor_button_flow")
   ---@diagnostic disable-next-line: param-type-mismatch
-  local move_button = GuiBase.create_icon_button(button_flow, "tag_editor_move_button", Enum.SpriteEnum.MOVE, { "tf-gui.move_tooltip" }, "tf_move_button")
+  local move_button = GuiBase.create_icon_button(button_flow, "tag_editor_move_button", Enum.SpriteEnum.MOVE,
+    { "tf-gui.move_tooltip" }, "tf_move_button")
   ---@diagnostic disable-next-line: param-type-mismatch
-  local delete_button = GuiBase.create_icon_button(button_flow, "tag_editor_delete_button", Enum.SpriteEnum.TRASH, { "tf-gui.delete_tooltip" }, "tf_delete_button")
+  local delete_button = GuiBase.create_icon_button(button_flow, "tag_editor_delete_button", Enum.SpriteEnum.TRASH,
+    { "tf-gui.delete_tooltip" }, "tf_delete_button")
 
   return row_frame, label, move_button, delete_button
 end
@@ -252,9 +272,11 @@ local function build_teleport_favorite_row(parent, tag_data)
   local is_favorite = tag_data and tag_data.is_favorite == true
   local star_state = is_favorite and Enum.SpriteEnum.STAR or Enum.SpriteEnum.STAR_DISABLED
   local fave_style = is_favorite and "slot_orange_favorite_on" or "slot_orange_favorite_off"
-  local favorite_btn = GuiBase.create_icon_button(row, "tag_editor_is_favorite_button", star_state, { "tf-gui.favorite_tooltip" }, fave_style)
-  local teleport_btn = GuiBase.create_icon_button(row, "tag_editor_teleport_button", "", { "tf-gui.teleport_tooltip" }, "tf_teleport_button")
----@diagnostic disable-next-line: assign-type-mismatch
+  local favorite_btn = GuiBase.create_icon_button(row, "tag_editor_is_favorite_button", star_state,
+    { "tf-gui.favorite_tooltip" }, fave_style)
+  local teleport_btn = GuiBase.create_icon_button(row, "tag_editor_teleport_button", "", { "tf-gui.teleport_tooltip" },
+    "tf_teleport_button")
+  ---@diagnostic disable-next-line: assign-type-mismatch
   teleport_btn.caption = { "tf-gui.teleport_to", GPSUtils.coords_string_from_gps(tag_data.gps) }
   return row, favorite_btn, teleport_btn
 end
@@ -262,7 +284,8 @@ end
 local function build_rich_text_row(parent, tag_data)
   local row = GuiBase.create_hflow(parent, "tag_editor_rich_text_row")
   -- Centralized icon validation and sprite path building
-  local sprite_path, used_fallback, debug_info = GuiUtils.get_validated_sprite_path(tag_data.icon, { fallback = Enum.SpriteEnum.PIN, log_context = { context = "tag_editor", gps = tag_data.gps } })
+  local sprite_path, used_fallback, debug_info = GuiUtils.get_validated_sprite_path(tag_data.icon,
+    { fallback = Enum.SpriteEnum.PIN, log_context = { context = "tag_editor", gps = tag_data.gps } })
   local icon_btn = GuiBase.create_element("choose-elem-button", row, {
     name = "tag_editor_icon_button",
     tooltip = { "tf-gui.icon_tooltip" },
@@ -272,7 +295,8 @@ local function build_rich_text_row(parent, tag_data)
     sprite = sprite_path
   })
   if used_fallback then
-    ErrorHandler.debug_log("[TAG_EDITOR] Fallback icon used for tag editor icon button", { sprite_path = sprite_path, debug_info = debug_info })
+    ErrorHandler.debug_log("[TAG_EDITOR] Fallback icon used for tag editor icon button",
+      { sprite_path = sprite_path, debug_info = debug_info })
   end
   -- Create textbox and set value from storage (tag_data)
   local text_input = GuiBase.create_textbox(row, "tag_editor_rich_text_input",
@@ -405,6 +429,22 @@ function tag_editor.update_confirm_button_state(player, tag_data)
   local can_confirm = has_text or has_icon
 
   GuiUtils.set_button_state(confirm_btn, can_confirm)
+end
+
+-- Intercept favorite add attempts to show warning if at max
+local old_add_favorite = PlayerFavorites.add_favorite
+function PlayerFavorites:add_favorite(gps)
+  local max_faves = 0
+  for i = 1, #self.favorites do
+    if not FavoriteUtils.is_blank_favorite(self.favorites[i]) then
+      max_faves = max_faves + 1
+    end
+  end
+  if max_faves >= Constants.settings.MAX_FAVORITE_SLOTS then
+    GameHelpers.player_print(self.player, { "tf-gui.max_favorites_warning" })
+    return nil, "No available slots (maximum " .. Constants.settings.MAX_FAVORITE_SLOTS .. " favorites)"
+  end
+  return old_add_favorite(self, gps)
 end
 
 return tag_editor

@@ -66,6 +66,7 @@ local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local tag_editor = require("gui.tag_editor.tag_editor")
 local AdminUtils = require("core.utils.admin_utils")
 local ChartTagOwnershipManager = require("core.control.chart_tag_ownership_manager")
+local CursorUtils = require("core.utils.cursor_utils")
 
 
 local handlers = {}
@@ -122,6 +123,7 @@ end
 --- Handles right-click on the chart view to open tag editor
 ---@param event table Event data containing player_index and cursor_position
 function handlers.on_open_tag_editor_custom_input(event)
+  
   ErrorHandler.debug_log("Tag editor custom input handler called", {
     player_index = event.player_index,
     cursor_position = event.cursor_position
@@ -138,6 +140,15 @@ function handlers.on_open_tag_editor_custom_input(event)
       render_mode = player.render_mode,
       chart_mode = defines.render_mode.chart
     })
+    return
+  end
+
+  -- Prevent tag editor from opening if player is in drag mode
+  local player_data = Cache.get_player_data(player)
+  if player_data and player_data.drag_favorite and player_data.drag_favorite.active then
+    ErrorHandler.debug_log("Tag editor handler: drag mode active, cancelling drag and suppressing tag editor", { player_index = player.index })
+    CursorUtils.end_drag_favorite(player)
+    player.play_sound{path = "utility/cancel"}
     return
   end
 

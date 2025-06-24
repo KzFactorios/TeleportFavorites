@@ -410,4 +410,15 @@ function PlayerFavorites.update_gps_for_all_players(old_gps, new_gps, acting_pla
   return affected_players
 end
 
+--- Returns the number of available (blank) favorite slots
+function PlayerFavorites:available_slots()
+  local count = 0
+  for i = 1, #self.favorites do
+    if FavoriteUtils.is_blank_favorite(self.favorites[i]) then
+      count = count + 1
+    end
+  end
+  return count
+end
+
 return PlayerFavorites

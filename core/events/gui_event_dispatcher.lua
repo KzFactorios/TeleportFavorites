@@ -162,7 +162,7 @@ function M.register_gui_handlers(script)
       -- Global/utility buttons (not tied to a specific GUI)
       -- Ignore clicks on blank/empty favorite slots
 
-        ErrorHandler.debug_log("[DISPATCH] Check for blank fave. end if blank", { element = element.name })
+      ErrorHandler.debug_log("[DISPATCH] Check for blank fave. end if blank", { element = element.name })
       if is_blank_fave_bar_slot_button(element, player) then
         if CursorUtils.is_dragging_favorite(player) then
           control_fave_bar.on_fave_bar_gui_click(event)

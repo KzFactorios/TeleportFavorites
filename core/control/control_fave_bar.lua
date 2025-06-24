@@ -122,13 +122,22 @@ local function handle_request_to_open_tag_editor(event, player, fav, slot)
   if event.button == defines.mouse_button_type.right then
     -- Check if player is currently in a drag operation
     local is_dragging, _ = CursorUtils.is_dragging_favorite(player)
+    local player_data = Cache.get_player_data(player)
     if is_dragging then
-      -- Don't open tag editor during drag operations
-      return false
+      ErrorHandler.debug_log("[FAVE_BAR] Right-click detected during drag, canceling drag operation", { player = player.name })
+      CursorUtils.end_drag_favorite(player)
+      GameHelpers.player_print(player, {"tf-gui.fave_bar_drag_canceled"})
+      return true
     end
-    
+
+    -- Respect suppress_tag_editor flag
+    if player_data.suppress_tag_editor and player_data.suppress_tag_editor.tick == game.tick then
+      ErrorHandler.debug_log("[FAVE_BAR] Suppress tag editor due to drag cancellation", { player = player.name })
+      return true
+    end
+
+    -- Only open tag editor if not in drag mode
     if fav and not FavoriteUtils.is_blank_favorite(fav) then
-      -- removed extra gps argument
       open_tag_editor_from_favorite(player, fav)
       return true
     end
@@ -273,10 +282,15 @@ local function handle_drag_drop(slots, src_idx, dest_idx)
         start_idx, end_idx = dest_idx, src_idx - 1
     end
 
-    -- Check for locked slots in the cascade path (excluding src and dest)
+    -- Check for locked slots or blanks in the cascade path (excluding src and dest)
     for i = start_idx, end_idx, step do
         if slots[i].locked then
             -- Abort if cascade would overwrite a locked slot
+            return slots
+        end
+        if slots[i].gps == BLANK_GPS then
+            -- Abort cascade if a blank favorite is encountered
+            ErrorHandler.debug_log("[FAVE_BAR] Cascade stopped at blank favorite", { index = i })
             return slots
         end
     end
@@ -498,6 +512,19 @@ local function handle_visible_fave_btns_toggle_click(player)
   slots_row.visible = not currently_visible
 end
 
+local function handle_map_right_click(event, player)
+  if event.button == defines.mouse_button_type.right then
+    local is_dragging = CursorUtils.is_dragging_favorite(player)
+    if is_dragging then
+      ErrorHandler.debug_log("[FAVE_BAR] Right-click detected on map during drag, canceling drag operation", { player = player.name })
+      CursorUtils.end_drag_favorite(player)
+      GameHelpers.player_print(player, {"tf-gui.fave_bar_drag_canceled"})
+      return true
+    end
+  end
+  return false
+end
+
 --- Handle favorites bar GUI click events
 local function on_fave_bar_gui_click(event)
   local element = event.element
@@ -523,6 +550,11 @@ local function on_fave_bar_gui_click(event)
     is_dragging = CursorUtils.is_dragging_favorite(player)
   })
 
+  -- Handle right-click on map during drag mode
+  if element.name == "map" then
+    if handle_map_right_click(event, player) then return end
+  end
+
   if element.name:find("^fave_bar_slot_") then
     ErrorHandler.debug_log("[FAVE_BAR] Handling slot click", {
       slot = element.name:match("fave_bar_slot_(%d+)"),
@@ -535,6 +567,13 @@ local function on_fave_bar_gui_click(event)
   end
 
   if element.name == "fave_bar_visible_btns_toggle" then
+    if CursorUtils.is_dragging_favorite(player) then
+      ErrorHandler.debug_log("[FAVE_BAR] Drag mode canceled due to toggle button click", { player = player.name })
+      CursorUtils.end_drag_favorite(player)
+      GameHelpers.player_print(player, {"tf-gui.fave_bar_drag_canceled"})
+      return
+    end
+
     local success, err = pcall(handle_visible_fave_btns_toggle_click, player)
     if not success then
       ErrorHandler.debug_log("Handle visible fave buttons toggle failed", {

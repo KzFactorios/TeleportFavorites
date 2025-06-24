@@ -203,7 +203,7 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
     local btn = GuiUtils.create_slot_button(parent, "fave_bar_slot_" .. i, tostring(btn_icon), tooltip, { style = style })
     if btn and btn.valid then
       -- Set caption to slot number for visual consistency
-      btn.caption = tostring(i)
+      --btn.caption = " " --tostring(i)
       -- Also add child label for visual consistency with project standards
       GuiBase.create_label(btn, "tf_fave_bar_slot_number_" .. tostring(i), tostring(i), "tf_fave_bar_slot_number")
     end
@@ -243,6 +243,66 @@ function fave_bar.destroy(player)
   
   local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
   GuiUtils.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
+end
+
+function fave_bar.handle_toggle_button_click(player, element)
+  if not player or not player.valid then return end
+  local player_data = Cache.get_player_data(player)
+
+  -- Check if drag mode is active
+  if player_data.drag_favorite and player_data.drag_favorite.active then
+    ErrorHandler.debug_log("[FAVE_BAR] Drag mode canceled due to toggle button click", { player = player.name })
+    player_data.drag_favorite.active = false
+    player_data.drag_favorite.source_slot = nil
+
+    -- Prevent event propagation
+    return true
+  end
+
+  return false
+end
+
+function fave_bar.cancel_drag_mode(player, reason)
+  if not player or not player.valid then return end
+  local player_data = Cache.get_player_data(player)
+
+  -- Check if drag mode is active
+  if player_data.drag_favorite and player_data.drag_favorite.active then
+    ErrorHandler.debug_log("[FAVE_BAR] Drag mode canceled", { player = player.name, reason = reason })
+    player_data.drag_favorite.active = false
+    player_data.drag_favorite.source_slot = nil
+
+    -- Prevent event propagation
+    return true
+  end
+
+  return false
+end
+
+-- Update the GUI click handling
+function fave_bar.on_gui_click(event)
+  local player = game.get_player(event.player_index)
+  if not player or not player.valid then return end
+
+  local element = event.element
+  if not element or not element.valid then return end
+
+  -- Prioritize drag mode cancellation for right-click
+  if event.button == defines.mouse_button_type.right then
+    if fave_bar.cancel_drag_mode(player, "right-click") then
+      return
+    end
+  end
+
+  -- Prioritize drag mode cancellation for toggle button click
+  if element.name == "fave_bar_visible_btns_toggle" then
+    if fave_bar.cancel_drag_mode(player, "toggle button click") then
+      return
+    end
+  end
+
+  -- Handle other GUI events after drag mode cancellation
+  -- ...existing code...
 end
 
 return fave_bar
