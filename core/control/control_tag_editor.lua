@@ -6,11 +6,10 @@
 local tag_editor = require("gui.tag_editor.tag_editor")
 local Cache = require("core.cache.cache")
 local GuiUtils = require("core.utils.gui_utils")
-local GameHelpers = require("core.utils.game_helpers")
 local GPSUtils = require("core.utils.gps_utils")
 local Constants = require("constants")
 local Enum = require("prototypes.enums.enum")
-local PositionUtils = require("core.utils.position_utils")
+local GameHelpers = require("core.utils.game_helpers")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local LocaleUtils = require("core.utils.locale_utils")
@@ -20,7 +19,6 @@ local ValidationUtils = require("core.utils.validation_utils")
 local AdminUtils = require("core.utils.admin_utils")
 local SettingsAccess = require("core.utils.settings_access")
 local TagEditorMoveMode = require("core.control.control_move_mode")
-local CollectionUtils = require("core.utils.collection_utils")
 local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 
 -- Observer Pattern Integration
@@ -28,6 +26,12 @@ local GuiObserver = require("core.pattern.gui_observer")
 local GuiEventBus = GuiObserver.GuiEventBus
 
 local M = {}
+
+local function safe_player_print(player, message)
+  if player and player.valid and type(player.print) == "function" then
+    pcall(function() player.print(message) end)
+  end
+end
 
 local function refresh_tag_editor(player, tag_data)
   Cache.set_tag_editor_data(player, tag_data)
@@ -62,7 +66,7 @@ local function handle_favorite_operations(player, tag, is_favorite)
     local favorite, error_msg = player_favorites:add_favorite(tag.gps)
     if not favorite then
       local error_text = error_msg or "Unknown error"
-      GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "failed_add_favorite", { error_text }))
+      safe_player_print(player, LocaleUtils.get_error_string(player, "failed_add_favorite", { error_text }))
       return false
     end
   elseif not is_favorite and currently_is_favorite then
@@ -70,7 +74,7 @@ local function handle_favorite_operations(player, tag, is_favorite)
     local success, error_msg = player_favorites:remove_favorite(tag.gps)
     if not success then
       local error_text = error_msg or "Unknown error"
-      GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "failed_remove_favorite", { error_text }))
+      safe_player_print(player, LocaleUtils.get_error_string(player, "failed_remove_favorite", { error_text }))
       return false
     end
   end
@@ -341,7 +345,7 @@ local function handle_confirm_btn(player, element, tag_data)
     gps = tag.gps
   })
   close_tag_editor(player)
-  GameHelpers.player_print(player, { "tf-command.tag_editor_confirmed" })
+  safe_player_print(player, { "tf-command.tag_editor_confirmed" })
 end
 
 local function unregister_move_handlers(script)
@@ -495,7 +499,7 @@ end
 
 local function handle_teleport_btn(player, map_position)
   if not player or not map_position then return end
-  GameHelpers.safe_teleport(player, map_position)
+  GameHelpers.safe_teleport_to_gps(player, GPSUtils.gps_from_map_position(map_position, player.surface.index))
   close_tag_editor(player)
 end
 

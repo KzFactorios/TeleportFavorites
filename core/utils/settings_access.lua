@@ -71,5 +71,20 @@ function Settings:getPlayerSettings(player)-- Initialize with default values fro
   return settings
 end
 
+--- Get the chart tag click radius for a player (with fallback to default)
+--- @param player LuaPlayer
+--- @return number click_radius
+function Settings.get_chart_tag_click_radius(player)
+  local default = tonumber(Constants.settings.CHART_TAG_CLICK_RADIUS) or 10
+  if not player or not player.valid then return default end
+  local player_settings = settings.get_player_settings(player)
+  local setting = player_settings and player_settings["chart-tag-click-radius"]
+  if setting and setting.value then
+    local value = tonumber(setting.value)
+    if value then return value end
+  end
+  return default
+end
+
 return Settings
 

@@ -5,12 +5,16 @@
 local GPSUtils = require("core.utils.gps_utils")
 local Cache = require("core.cache.cache")
 local LocaleUtils = require("core.utils.locale_utils")
-local GuiUtils = require("core.utils.gui_utils")
 local Tag = require("core.tag.tag")
-local GameHelpers = require("core.utils.game_helpers")
 local PositionUtils = require("core.utils.position_utils")
 
 local M = {}
+
+local function safe_player_print(player, message)
+  if player and player.valid and type(player.print) == "function" then
+    pcall(function() player.print(message) end)
+  end
+end
 
 --- Enter move mode: set flag, show instructions, refresh UI
 function M.enter_move_mode(player, tag_data, refresh_tag_editor, script)
@@ -50,12 +54,12 @@ function M.enter_move_mode(player, tag_data, refresh_tag_editor, script)
       if player and player.valid then
         -- Use correct locale key and string for player_print
         local msg = LocaleUtils.get_error_string(player, "invalid_location_chosen") or "[TeleportFavorites] Invalid location selected."
-        GameHelpers.player_print(player, msg)
+        safe_player_print(player, msg)
         local ok, err = pcall(function()
-          GameHelpers.safe_play_sound(player, {path = "utility/cannot_build"})
+          -- GameHelpers.safe_play_sound(player, {path = "utility/cannot_build"})
         end)
         if not ok then
-          GameHelpers.player_print(player, "[TeleportFavorites] Could not play error sound: " .. tostring(err))
+          safe_player_print(player, "[TeleportFavorites] Could not play error sound: " .. tostring(err))
         end
       end
       return
@@ -68,12 +72,12 @@ function M.enter_move_mode(player, tag_data, refresh_tag_editor, script)
       refresh_tag_editor(player, tag_data)
       if player and player.valid then
         local msg = LocaleUtils.get_error_string(player, "invalid_location_chosen") or "[TeleportFavorites] Invalid location selected."
-        GameHelpers.player_print(player, msg)
+        safe_player_print(player, msg)
         local ok, err = pcall(function()
-          GameHelpers.safe_play_sound(player, {path = "utility/cannot_build"})
+          -- GameHelpers.safe_play_sound(player, {path = "utility/cannot_build"})
         end)
         if not ok then
-          GameHelpers.player_print(player, "[TeleportFavorites] Could not play error sound: " .. tostring(err))
+          safe_player_print(player, "[TeleportFavorites] Could not play error sound: " .. tostring(err))
         end
       end
       return

@@ -17,13 +17,18 @@ Provides a unified API for all GUI operations throughout the mod.
 local ErrorHandler = require("core.utils.error_handler")
 local basic_helpers = require("core.utils.basic_helpers")
 local GuiBase = require("gui.gui_base")
-local GameHelpers = require("core.utils.game_helpers")
 local LocaleUtils = require("core.utils.locale_utils")
 local Enum = require("prototypes.enums.enum")
 local GPSUtils = require("core.utils.gps_utils")
 
 ---@class GuiUtils
 local GuiUtils = {}
+
+local function safe_player_print(player, message)
+  if player and player.valid and type(player.print) == "function" then
+    pcall(function() player.print(message) end)
+  end
+end
 
 -- ========================================
 -- GUI ELEMENT CREATION AND MANAGEMENT
@@ -42,13 +47,13 @@ function GuiUtils.handle_error(player, message, level, log_to_console)
   if player and player.valid then
     if level == 'error' then
       local prefix = LocaleUtils.get_error_string(player, "error_prefix")
-      GameHelpers.player_print(player, { '', '[color=red]', prefix, ' ', msg, '[/color]' })
+      safe_player_print(player, { '', '[color=red]', prefix, ' ', msg, '[/color]' })
     elseif level == 'warn' then
       local prefix = LocaleUtils.get_error_string(player, "warn_prefix")
-      GameHelpers.player_print(player, { '', '[color=orange]', prefix, ' ', msg, '[/color]' })
+      safe_player_print(player, { '', '[color=orange]', prefix, ' ', msg, '[/color]' })
     else
       local prefix = LocaleUtils.get_error_string(player, "info_prefix")
-      GameHelpers.player_print(player, { '', '[color=white]', prefix, ' ', msg, '[/color]' })
+      safe_player_print(player, { '', '[color=white]', prefix, ' ', msg, '[/color]' })
     end
   end
   
@@ -297,6 +302,7 @@ end
 ---@param sprite_path string Sprite path to debug
 ---@return table debug_info Sprite debug information
 function GuiUtils.debug_sprite_info(sprite_path)
+  if not sprite_path then return {} end
   local info = {
     path = sprite_path,
     exists = GuiUtils.validate_sprite(sprite_path),

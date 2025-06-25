@@ -8,8 +8,6 @@ local FavoriteUtils = require("core.favorite.favorite")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local Cache = require("core.cache.cache")
 local tag_editor = require("gui.tag_editor.tag_editor")
-local gps_core = require("core.utils.gps_utils")
-local GameHelpers = require("core.utils.game_helpers")
 local GuiUtils = require("core.utils.gui_utils")
 local ErrorHandler = require("core.utils.error_handler")
 local LocaleUtils = require("core.utils.locale_utils")
@@ -26,6 +24,12 @@ local function lstr(key, ...)
 end
 
 local CursorUtils = require("core.utils.cursor_utils")
+
+local function safe_player_print(player, message)
+  if player and player.valid and type(player.print) == "function" then
+    pcall(function() player.print(message) end)
+  end
+end
 
 local function is_locked_favorite(fav)
   -- Defensive: treat nil as not locked
@@ -48,14 +52,14 @@ local function reorder_favorites(player, favorites, drag_index, slot)
   -- Use PlayerFavorites move_favorite method instead of manual array manipulation  
   local success, error_msg = favorites:move_favorite(drag_index, slot)
   if not success then
-    GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "failed_reorder_favorite", {error_msg or LocaleUtils.get_error_string(player, "unknown_error")}))
+    safe_player_print(player, LocaleUtils.get_error_string(player, "failed_reorder_favorite", {error_msg or LocaleUtils.get_error_string(player, "unknown_error")}))
     end_drag(player)
     return false
   end
 
   -- Rebuild the entire favorites bar to reflect new order
   fave_bar.build(player)
-  GameHelpers.player_print(player, lstr("tf-gui.fave_bar_reordered", drag_index, slot))
+  safe_player_print(player, lstr("tf-gui.fave_bar_reordered", drag_index, slot))
   end_drag(player)
   return true
 end

@@ -14,14 +14,12 @@ Provides a unified API for all chart tag operations throughout the mod.
 ]]
 
 local ErrorHandler = require("core.utils.error_handler")
-local basic_helpers = require("core.utils.basic_helpers")
 local GPSUtils = require("core.utils.gps_utils")
 local PositionUtils = require("core.utils.position_utils")
 local Cache = require("core.cache.cache")
-local RichTextFormatter = require("core.utils.rich_text_formatter")
-local GameHelpers = require("core.utils.game_helpers")
 local Constants = require("constants")
 local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
+local settings_access = require("core.utils.settings_access")
 
 ---@class ChartTagUtils
 local ChartTagUtils = {}
@@ -46,7 +44,7 @@ local last_clicked_chart_tags = {}
 ---@param player LuaPlayer Player context
 ---@param cursor_position MapPosition Position to check
 ---@return LuaCustomChartTag? chart_tag Found chart tag or nil
-function ChartTagUtils.find_chart_tag_at_position(player, cursor_position)
+function ChartTagUtils.find_closest_chart_tag_to_position(player, cursor_position)
   if not player or not player.valid or not cursor_position then return nil end
 
   -- Only detect clicks while in map mode
@@ -56,6 +54,7 @@ function ChartTagUtils.find_chart_tag_at_position(player, cursor_position)
   -- First check the cache to see if we have chart tags loaded
   local surface_index = player.surface.index
   local force_tags = Cache.Lookups.get_chart_tag_cache(surface_index)
+
   -- If cache appears empty, try invalidating it once to trigger refresh
   if not force_tags or #force_tags == 0 then
     Cache.Lookups.invalidate_surface_chart_tags(surface_index)
@@ -71,16 +70,9 @@ function ChartTagUtils.find_chart_tag_at_position(player, cursor_position)
   if not force_tags or #force_tags == 0 then
     return nil
   end
+  
   -- Get click radius from player settings
-  local click_radius = Constants.settings.CHART_TAG_CLICK_RADIUS
-  local player_settings = settings.get_player_settings(player)
-  local setting = player_settings["chart-tag-click-radius"]
-  if setting and setting.value then
-    local value = tonumber(setting.value)
-    if value then
-      click_radius = value
-    end
-  end
+  local click_radius = settings_access.get_chart_tag_click_radius(player)
 
   -- Find the closest chart tag within detection radius
   local closest_tag = nil
@@ -125,7 +117,7 @@ function ChartTagUtils.handle_map_click(event)
   end
 
   -- Try to find chart tag at cursor position
-  local clicked_chart_tag = ChartTagUtils.find_chart_tag_at_position(player, cursor_position)
+  local clicked_chart_tag = ChartTagUtils.find_closest_chart_tag_to_position(player, cursor_position)
 
   -- Store last clicked tag for this player
   last_clicked_chart_tags[player.index] = clicked_chart_tag
@@ -218,7 +210,7 @@ function ChartTagUtils.safe_add_chart_tag(force, surface, spec, player)
   -- Use existing chart tag reuse system instead of collision detection
   local existing_chart_tag = nil
   if player and player.valid then
-    existing_chart_tag = ChartTagUtils.find_chart_tag_at_position(player, spec.position)
+    existing_chart_tag = ChartTagUtils.find_closest_chart_tag_to_position(player, spec.position)
   end
 
   if existing_chart_tag and existing_chart_tag.valid then

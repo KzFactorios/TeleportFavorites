@@ -24,6 +24,8 @@ local control_data_viewer = require("core.control.control_data_viewer")
 -- Import event handling components
 local event_registration_dispatcher = require("core.events.event_registration_dispatcher")
 local handlers = require("core.events.handlers")
+-- Import error handler for logging
+local ErrorHandler = require("core.utils.error_handler")
 
 local gui_observer = nil
 local did_run_fave_bar_startup = false
@@ -50,12 +52,12 @@ script.on_load(handlers.on_load)
 
 -- KEEP THIS CODE for development (disabled in production)
 -- Instantly skip any cutscene (including intro) for all players
-script.on_event(defines.events.on_cutscene_started, function(event)
-  -- Cutscene skipping disabled due to API compatibility issues
-  -- If needed in development, uncomment and implement for faster testing
-  local player = game.players[event.player_index]
-  player.exit_cutscene()
-end)
+--script.on_event(defines.events.on_cutscene_started, function(event)
+-- Cutscene skipping disabled due to API compatibility issues
+-- If needed in development, uncomment and implement for faster testing
+--  local player = game.players[event.player_index]
+--  player.exit_cutscene()
+--end)
 
 -- Register all mod events through centralized dispatcher
 event_registration_dispatcher.register_all_events(script)
@@ -68,6 +70,38 @@ script.on_event(defines.events.on_tick, function(event)
     if gui_observer and gui_observer.GuiEventBus and gui_observer.GuiEventBus.register_player_observers then
       for _, player in pairs(game.players) do
         gui_observer.GuiEventBus.register_player_observers(player)
+        local freeplay = remote.interfaces["freeplay"]
+        if freeplay and freeplay["set_skip_intro"] then
+          remote.call("freeplay", "set_skip_intro", true)
+        end
+        
+        -- Hide skip_cutscene_label in any GUI position if it exists
+        if player.valid and player.name == "kurtzilla" then
+          local success, err = pcall(function()
+            -- Check in all possible GUI positions where the label might exist
+            for _, gui_type in pairs({"left", "center", "relative", "goal"}) do
+              -- Check if this GUI type exists and safely access it
+              if player.gui[gui_type] then
+                local skip_label = player.gui[gui_type]["skip_cutscene_label"] 
+                if skip_label and skip_label.valid then
+                  skip_label.visible = false
+                  ErrorHandler.debug_log("[STARTUP] Hidden skip_cutscene_label", {
+                    player = player.name,
+                    gui_type = gui_type
+                  })
+                  break -- Found and hidden the label, no need to check other locations
+                end
+              end
+            end
+          end)
+          
+          if not success then
+            ErrorHandler.warn_log("[STARTUP] Error while hiding skip_cutscene_label", {
+              player = player.name,
+              error = tostring(err)
+            })
+          end
+        end
       end
     end
     -- Remove this handler after first run

@@ -7,7 +7,7 @@ Consolidated position utilities combining all position-related functionality.
 
 This module consolidates:
 - position_helpers.lua - Position validation and tagging checks
-- position_normalizer.lua - Position normalization utilities  
+- position_normalizer.lua - Position normalization utilities
 - position_validator.lua - Position validation and correction
 - terrain_validator.lua - Terrain validation and position finding
 
@@ -17,7 +17,6 @@ Provides a unified API for all position-related operations throughout the mod.
 local basic_helpers = require("core.utils.basic_helpers")
 local Constants = require("constants")
 local ErrorHandler = require("core.utils.error_handler")
-local GameHelpers = require("core.utils.game_helpers")
 local GPSUtils = require("core.utils.gps_utils")
 local LocaleUtils = require("core.utils.locale_utils")
 local ValidationUtils = require("core.utils.validation_utils")
@@ -29,8 +28,8 @@ local PositionUtils = {}
 --- @param player LuaPlayer Player to print message to
 --- @param message string Message to print
 local function safe_player_print(player, message)
-  if player and player.valid then
-    GameHelpers.player_print(player, message)
+  if player and player.valid and type(player.print) == "function" then
+    pcall(function() player.print(message) end)
   end
 end
 
@@ -52,8 +51,8 @@ end
 ---@param position MapPosition
 ---@return boolean
 function PositionUtils.needs_normalization(position)
-  return position and (not basic_helpers.is_whole_number(position.x) or 
-                      not basic_helpers.is_whole_number(position.y))
+  return position and (not basic_helpers.is_whole_number(position.x) or
+    not basic_helpers.is_whole_number(position.y))
 end
 
 --- Create old/new position pair for tracking position changes
@@ -61,7 +60,7 @@ end
 ---@return table {old: MapPosition, new: MapPosition}
 function PositionUtils.create_position_pair(position)
   return {
-    old = {x = position.x, y = position.y},
+    old = { x = position.x, y = position.y },
     new = {
       x = basic_helpers.normalize_index(position.x),
       y = basic_helpers.normalize_index(position.y)
@@ -96,8 +95,8 @@ function PositionUtils.is_water_tile(surface, position)
   -- Check tile name for water patterns - most reliable method
   local tile_name = tile.name
   local name = tile_name:lower()
-  if name:find("water") or name:find("deepwater") or name:find("shallow%-water") or 
-     name == "water" or name == "deepwater" or name == "shallow-water" then
+  if name:find("water") or name:find("deepwater") or name:find("shallow%-water") or
+      name == "water" or name == "deepwater" or name == "shallow-water" then
     return true
   end
   return false
@@ -127,25 +126,29 @@ end
 ---@param position MapPosition
 ---@return boolean is_walkable
 function PositionUtils.is_walkable_position(surface, position)
-  if not surface or not position then 
-    ErrorHandler.debug_log("[WALKABLE] Invalid surface or position", {surface=surface and surface.name, position=position})
-    return false 
+  if not surface or not position then
+    ErrorHandler.debug_log("[WALKABLE] Invalid surface or position",
+      { surface = surface and surface.name, position = position })
+    return false
   end
   -- Normalize position to whole numbers before tile checks
   local norm_pos = PositionUtils.normalize_position(position)
-  local tile = surface.get_tile(norm_pos.x, norm_pos.y)  local tile_info = {
-    surface=surface.name,
-    surface_index=surface.index,
-    orig_x=position.x, orig_y=position.y,
-    norm_x=norm_pos.x, norm_y=norm_pos.y,
-    tile_name=tile and tile.name or "<nil>",
-    tile_prototype=tile and tile.prototype and tile.prototype.name or "<nil>",
-    tile_valid=tile and tile.valid or false
+  local tile = surface.get_tile(norm_pos.x, norm_pos.y)
+  local tile_info = {
+    surface = surface.name,
+    surface_index = surface.index,
+    orig_x = position.x,
+    orig_y = position.y,
+    norm_x = norm_pos.x,
+    norm_y = norm_pos.y,
+    tile_name = tile and tile.name or "<nil>",
+    tile_prototype = tile and tile.prototype and tile.prototype.name or "<nil>",
+    tile_valid = tile and tile.valid or false
   }
   ErrorHandler.debug_log("[WALKABLE] Tile info", tile_info)
-  if not tile or not tile.valid then 
+  if not tile or not tile.valid then
     ErrorHandler.debug_log("[WALKABLE] Invalid tile", tile_info)
-    return false 
+    return false
   end
   if PositionUtils.is_water_tile(surface, norm_pos) then
     ErrorHandler.debug_log("[WALKABLE] Position is water", tile_info)
@@ -176,25 +179,25 @@ end
 ---@return MapPosition? valid_position
 function PositionUtils.find_nearest_walkable_position(surface, center_position, max_radius, player)
   if not surface or not surface.valid or not center_position then return nil end
-  
+
   max_radius = max_radius or 20
-    -- Check the original position first - might already be valid
+  -- Check the original position first - might already be valid
   if PositionUtils.is_walkable_position(surface, center_position) then
     return center_position
   end
-  
+
   -- Search in expanding spiral pattern (more efficient than square pattern)
   local directions = {
-    {x = 1, y = 0},  -- right    {x = 0, y = 1},  -- down
-    {x = -1, y = 0}, -- left
+    { x = 1,  y = 0 }, -- right    {x = 0, y = 1},  -- down
+    { x = -1, y = 0 }, -- left
     -- up
-    {x = 0, y = -1}
+    { x = 0,  y = -1 }
   }
-  
+
   local x, y = center_position.x, center_position.y
   local dir_index = 1
   local steps = 1
-    for radius = 1, max_radius do
+  for radius = 1, max_radius do
     -- Two segments per radius level
     for _ = 1, 2 do
       for _ = 1, steps do
@@ -202,32 +205,32 @@ function PositionUtils.find_nearest_walkable_position(surface, center_position, 
         if dir_index > #directions then
           dir_index = 1
         end
-        
+
         -- Get current direction safely        local current_dir = directions[dir_index]
         if not current_dir then
           -- Safety break if directions array is malformed
           break
         end
-        
+
         -- Move in the current direction
         x = x + current_dir.x
         y = y + current_dir.y
-        
-        local check_pos = {x = x, y = y}
-          -- Check if this position is walkable
+
+        local check_pos = { x = x, y = y }
+        -- Check if this position is walkable
         if PositionUtils.is_walkable_position(surface, check_pos) then
           return check_pos
         end
       end
-      
+
       -- Change direction
       dir_index = (dir_index % 4) + 1
     end
-    
+
     -- Increase step count for next radius
     steps = steps + 1
   end
-  
+
   -- No valid position found within search radius
   return nil
 end
@@ -241,19 +244,19 @@ end
 ---@return MapPosition? valid_position
 function PositionUtils.find_valid_position_in_box(surface, center_position, tolerance, player)
   if not surface or not surface.valid or not center_position then return nil end
-  
+
   local box_tolerance = tolerance or 4
   if Constants.settings.BOUNDING_BOX_TOLERANCE then
     box_tolerance = tonumber(Constants.settings.BOUNDING_BOX_TOLERANCE) or 4
   end
-  
+
   -- Normalize the center position first
   local normalized_pos = PositionUtils.normalize_position(center_position)
-    -- Check if normalized position is already valid
+  -- Check if normalized position is already valid
   if PositionUtils.is_walkable_position(surface, normalized_pos) then
     return normalized_pos
   end
-  
+
   -- Create bounding box for pathfinding search
   local bounding_box = {
     left_top = {
@@ -265,18 +268,18 @@ function PositionUtils.find_valid_position_in_box(surface, center_position, tole
       y = normalized_pos.y + box_tolerance
     }
   }
-  
+
   -- Try Factorio's pathfinding using bounding box method
-  local pathfinding_pos = surface:find_non_colliding_position_in_box("character", bounding_box, 1.0)
-    if pathfinding_pos and PositionUtils.is_walkable_position(surface, pathfinding_pos) then
+  local pathfinding_pos = surface.find_non_colliding_position_in_box("character", bounding_box, 1.0, false)
+  if pathfinding_pos and PositionUtils.is_walkable_position(surface, pathfinding_pos) then
     -- Normalize the pathfinding result and verify it's still valid
     local normalized_path_pos = PositionUtils.normalize_position(pathfinding_pos)
-    
+
     if PositionUtils.is_walkable_position(surface, normalized_path_pos) then
       return normalized_path_pos
     end
   end
-  
+
   return nil
 end
 
@@ -289,26 +292,26 @@ end
 ---@return MapPosition? valid_position
 function PositionUtils.find_valid_position(surface, center_position, search_radius, player)
   if not surface or not surface.valid or not center_position then return nil end
-  
+
   -- Ensure coordinates are numbers
   if type(center_position.x) ~= "number" or type(center_position.y) ~= "number" then
     return nil
   end
-  
+
   search_radius = search_radius or 50
-    -- Strategy 1: Try bounding box method first (faster, more precise)
+  -- Strategy 1: Try bounding box method first (faster, more precise)
   local box_result = PositionUtils.find_valid_position_in_box(surface, center_position, nil, player)
   if box_result then
     return box_result
   end
-    -- Strategy 2: Fall back to spiral search for wider coverage
+  -- Strategy 2: Fall back to spiral search for wider coverage
   -- Limit spiral search to reasonable size
   local spiral_radius = math.min(search_radius, 20)
   local spiral_result = PositionUtils.find_nearest_walkable_position(surface, center_position, spiral_radius, player)
   if spiral_result then
     return spiral_result
   end
-  
+
   -- No valid position found with any method
   return nil
 end
@@ -330,26 +333,26 @@ function PositionUtils.is_valid_tag_position(player, map_position, skip_notifica
       ErrorHandler.warn_log("Position validation failed: " .. (player_error or "Invalid player"))
     end
     return false
-  end  -- Water tiles are now allowed for tagging (removed restriction)
+  end -- Water tiles are now allowed for tagging (removed restriction)
   -- if PositionUtils.is_water_tile(player.surface, map_position) then
   --   if not skip_notification then
   --     safe_player_print(player, "[TeleportFavorites] Cannot tag water tiles")
   --   end
   --   return false
   -- end
-    -- Space tile validation with space platform context
+  -- Space tile validation with space platform context
   if PositionUtils.is_space_tile(player.surface, map_position) then
     if PositionUtils.is_on_space_platform(player.surface) then
       -- Space tiles are valid on space platforms
       return true
-    else      -- Space tiles are invalid on regular surfaces
+    else -- Space tiles are invalid on regular surfaces
       if not skip_notification then
         safe_player_print(player, "[TeleportFavorites] Cannot tag space tiles")
       end
       return false
     end
   end
-  
+
   return true
 end
 
@@ -357,7 +360,7 @@ end
 ---@param player LuaPlayer
 ---@param map_position table
 ---@return boolean
-function PositionUtils.position_can_be_tagged(player, map_position)  
+function PositionUtils.position_can_be_tagged(player, map_position)
   -- Use consolidated validation helper for player and position checks  local surface_index = tonumber((player and player.surface and player.surface.index) or 1)
   local gps_string = GPSUtils.gps_from_map_position(map_position, surface_index)
   local valid, position, error_msg = ValidationUtils.validate_position_operation(player, gps_string)
@@ -372,7 +375,7 @@ function PositionUtils.position_can_be_tagged(player, map_position)
     safe_player_print(player, LocaleUtils.get_error_string(player, "invalid_position"))
     return false
   end
-  
+
   return PositionUtils.is_valid_tag_position(player, position, false)
 end
 
@@ -381,12 +384,13 @@ end
 ---@param gps string The GPS string of the destination
 function PositionUtils.print_teleport_event_message(player, gps)
   if not player or not player.valid then return end
-    local surface_index = GPSUtils.get_surface_index_from_gps(gps) or 1
-  local coords = GPSUtils.coords_string_from_gps(gps)-- Always show coords if available, otherwise fallback to GPS string
+  local surface_index = GPSUtils.get_surface_index_from_gps(gps) or 1
+  local coords = GPSUtils.coords_string_from_gps(gps) -- Always show coords if available, otherwise fallback to GPS string
   if coords and coords ~= "" then
-    safe_player_print(player, LocaleUtils.get_gui_string(player, "teleported_to_surface", {coords, tostring(surface_index)}))
+    safe_player_print(player,
+      LocaleUtils.get_gui_string(player, "teleported_to_surface", { coords, tostring(surface_index) }))
   else
-    safe_player_print(player, LocaleUtils.get_gui_string(player, "teleported_to_gps", {gps}))
+    safe_player_print(player, LocaleUtils.get_gui_string(player, "teleported_to_gps", { gps }))
   end
 end
 
@@ -409,16 +413,16 @@ function PositionUtils.move_tag_to_selected_position(player, tag, chart_tag, new
     ErrorHandler.warn_log("Move tag failed: Invalid player")
     return false
   end
-  
+
   if not new_position or type(new_position.x) ~= "number" or type(new_position.y) ~= "number" then
     ErrorHandler.warn_log("Move tag failed: Invalid position")
     return false
   end
-  
+
   -- Normalize the target position
   local normalized_position = PositionUtils.normalize_position(new_position)
   local surface_index = tonumber(player.surface.index) or 1
-  
+
   -- First check if the position is valid for tagging
   if not PositionUtils.is_valid_tag_position(player, normalized_position, true) then
     -- Position is invalid (water, space, uncharted, etc.)
@@ -429,16 +433,16 @@ function PositionUtils.move_tag_to_selected_position(player, tag, chart_tag, new
         tag = tag,
         chart_tag = chart_tag
       }
-      
+
       -- Let the callback handle the invalid position (e.g., show dialog)
       callback("invalid_position", tag_data)
     end
     return false
   end
-  
+
   -- Position is valid - proceed with the move
   local new_gps = GPSUtils.gps_from_map_position(normalized_position, surface_index)
-  
+
   -- If we have a callback, use it for the successful move
   if callback then
     local tag_data = {
@@ -449,18 +453,18 @@ function PositionUtils.move_tag_to_selected_position(player, tag, chart_tag, new
     callback("move", tag_data)
     return true
   end
-  
+
   -- Fallback: direct move without callback (only if tag exists)
   local old_gps = tag and tag.gps or "unknown"
   tag.gps = new_gps
-  
+
   ErrorHandler.debug_log("Tag moved to selected position", {
     player = player.name,
     old_gps = old_gps,
     new_gps = new_gps,
     position = normalized_position
   })
-  
+
   return true
 end
 

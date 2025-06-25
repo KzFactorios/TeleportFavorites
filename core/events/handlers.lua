@@ -170,7 +170,7 @@ function handlers.on_open_tag_editor_custom_input(event)
     local gps = GPSUtils.gps_from_map_position(normalized_pos, surface_index)
     local nrm_tag = Cache.get_tag_by_gps(player, gps)
     local nrm_chart_tag = nrm_tag and nrm_tag.chart_tag or nil
-    local click_radius = Constants.settings.CHART_TAG_CLICK_RADIUS or 1
+    local click_radius = Settings.get_chart_tag_click_radius(player)
 
     -- Search for nearby chart tags if no tag match
     if not nrm_tag then

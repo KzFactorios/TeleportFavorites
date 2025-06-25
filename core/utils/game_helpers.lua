@@ -34,7 +34,7 @@ function GameHelpers.get_nearest_chart_tag_to_click_position(player, map_positio
   if not player then return nil end
   
   -- Use chart tag click radius instead of teleport radius
-  local collision_radius = Constants.settings.CHART_TAG_CLICK_RADIUS
+  local collision_radius = SettingsAccess.get_chart_tag_click_radius(player)
   if search_radius and type(search_radius) == "number" then
     collision_radius = search_radius
   end
@@ -81,18 +81,6 @@ local function cya_teleport(player, pos)
     end
   end
   return false
-end
-
-function GameHelpers.safe_teleport(player, pos)
-  -- Legacy function - convert position to GPS and use strategy-based teleportation
-  if not player or not player.valid or not pos then return false end
-  
-  -- Convert position to GPS format
-  local surface_index = player.surface and player.surface.index or 1
-  local gps = GPSUtils.gps_from_map_position(pos, surface_index)
-  
-  -- Use the new strategy-based safe teleportation
-  return GameHelpers.safe_teleport_to_gps(player, gps)
 end
 
 function GameHelpers.safe_play_sound(player, sound)
