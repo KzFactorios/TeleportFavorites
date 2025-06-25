@@ -351,7 +351,8 @@ function SafeTeleportStrategy:execute(player, gps, context)
   end
 
   local teleport_success = false
-  -- Use the final position (either original or safe landing spot)  local teleport_success
+  -- Use the final position (either original or safe landing spot)
+  local teleport_success
   if player.driving and player.vehicle and player.vehicle.valid then
     player.vehicle:teleport(final_position, player.surface, false)
     teleport_success = player.teleport(final_position, player.surface, true)

@@ -7,6 +7,7 @@ local data_viewer = require("gui.data_viewer.data_viewer")
 local Cache = require("core.cache.cache")
 local GuiUtils = require("core.utils.gui_utils")
 local ErrorHandler = require("core.utils.error_handler")
+local PositionUtils = require("core.utils.position_utils")
 
 
 local M = {}
@@ -23,7 +24,8 @@ local function load_tab_data(player, active_tab, font_size)
     state.top_key = "player_data"
   elseif active_tab == "surface_data" then
     state.data = Cache.get_surface_data(player.surface.index)
-    state.top_key = "surface_data"  elseif active_tab == "lookup" then
+    state.top_key = "surface_data"
+  elseif active_tab == "lookup" then
     -- Initialize Cache first to ensure Lookups is available
     Cache.init()
     -- Create a safe view of GPS mapping data for display
@@ -41,7 +43,7 @@ local function load_tab_data(player, active_tab, font_size)
             if chart_tag and chart_tag.valid then
               -- Create a safe serializable representation
               local safe_chart_tag = {
-                position = chart_tag.position and require("core.utils.position_utils").normalize_if_needed(chart_tag.position) or {},
+                position = chart_tag.position and PositionUtils.normalize_if_needed(chart_tag.position) or {},
                 text = tostring(chart_tag.text or ""),
                 icon = chart_tag.icon and {
                   name = tostring(chart_tag.icon.name or ""),
@@ -78,7 +80,8 @@ end
 ---@param show_flying_text boolean?
 local function rebuild_data_viewer(player, main_flow, active_tab, font_size, show_flying_text)
   local state = load_tab_data(player, active_tab, font_size)
-  GuiUtils.safe_destroy_frame(main_flow, "data_viewer_frame")  data_viewer.build(player, main_flow, state)
+  GuiUtils.safe_destroy_frame(main_flow, "data_viewer_frame")
+  data_viewer.build(player, main_flow, state)
   
   if show_flying_text then
     data_viewer.show_refresh_notification(player)
@@ -135,11 +138,13 @@ end
 
 function M.on_toggle_data_viewer(event)
   local player = game.get_player(event.player_index)
-  if not player or not player.valid then return end  local main_flow = get_or_create_gui_flow_from_gui_top(player)
+  if not player or not player.valid then return end
+  local main_flow = get_or_create_gui_flow_from_gui_top(player)
   local frame = GuiUtils.find_child_by_name(main_flow, "data_viewer_frame")
   local pdata = Cache.get_player_data(player)
   pdata.data_viewer_settings = pdata.data_viewer_settings or {}
-  local active_tab = pdata.data_viewer_settings.active_tab or "player_data"  local font_size = pdata.data_viewer_settings.font_size or 12
+  local active_tab = pdata.data_viewer_settings.active_tab or "player_data"
+  local font_size = pdata.data_viewer_settings.font_size or 12
   
   if frame and frame.valid ~= false then
     GuiUtils.safe_destroy_frame(main_flow, "data_viewer_frame")

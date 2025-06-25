@@ -5,13 +5,14 @@ TeleportFavorites Factorio Mod
 -----------------------------
 Consolidated GUI utilities combining all GUI-related functionality.
 
-This module consolidates:
-- gui_helpers.lua - GUI element creation, error handling, and state management
-- style_helpers.lua - Dynamic style creation and management  
-- rich_text_formatter.lua - Rich text formatting for notifications and displays
-- sprite_debugger.lua - Sprite validation and debugging utilities
+This module consolidates and delegates to specialized GUI modules:
+- gui_validation.lua - Element validation and safety operations
+- gui_styling.lua - Dynamic style creation and management  
+- gui_formatting.lua - Rich text formatting for notifications and displays
+- gui_accessibility.lua - Accessibility helpers and screen reader support
 
 Provides a unified API for all GUI operations throughout the mod.
+Maintains backward compatibility while delegating to focused modules.
 ]]
 
 local ErrorHandler = require("core.utils.error_handler")
@@ -20,6 +21,12 @@ local GuiBase = require("gui.gui_base")
 local LocaleUtils = require("core.utils.locale_utils")
 local Enum = require("prototypes.enums.enum")
 local GPSUtils = require("core.utils.gps_utils")
+
+-- Import specialized GUI modules
+local GuiValidation = require("core.utils.gui_validation")
+local GuiStyling = require("core.utils.gui_styling")
+local GuiFormatting = require("core.utils.gui_formatting")
+local GuiAccessibility = require("core.utils.gui_accessibility")
 
 ---@class GuiUtils
 local GuiUtils = {}
@@ -31,7 +38,45 @@ local function safe_player_print(player, message)
 end
 
 -- ========================================
--- GUI ELEMENT CREATION AND MANAGEMENT
+-- DELEGATED FUNCTIONS TO SPECIALIZED MODULES
+-- ========================================
+
+-- Validation and state management (delegate to GuiValidation)
+GuiUtils.validate_gui_element = GuiValidation.validate_gui_element
+GuiUtils.set_element_visibility = GuiValidation.set_element_visibility
+GuiUtils.set_element_text = GuiValidation.set_element_text
+GuiUtils.apply_style_properties = GuiValidation.apply_style_properties
+GuiUtils.safe_destroy_frame = GuiValidation.safe_destroy_frame
+GuiUtils.set_button_state = GuiValidation.set_button_state
+GuiUtils.handle_error = GuiValidation.handle_error
+GuiUtils.show_error_label = GuiValidation.show_error_label
+GuiUtils.clear_error_label = GuiValidation.clear_error_label
+GuiUtils.get_gui_frame_by_element = GuiValidation.get_gui_frame_by_element
+GuiUtils.find_child_by_name = GuiValidation.find_child_by_name
+GuiUtils.validate_sprite = GuiValidation.validate_sprite
+GuiUtils.debug_sprite_info = GuiValidation.debug_sprite_info
+
+-- Style creation and management (delegate to GuiStyling)
+GuiUtils.extend_style = GuiStyling.extend_style
+GuiUtils.create_tinted_button_styles = GuiStyling.create_tinted_button_styles
+GuiUtils.create_font_styles = GuiStyling.create_font_styles
+GuiUtils.create_slot_button = GuiStyling.create_slot_button
+
+-- Formatting and rich text (delegate to GuiFormatting)
+GuiUtils.format_gps = GuiFormatting.format_gps
+GuiUtils.format_chart_tag = GuiFormatting.format_chart_tag
+GuiUtils.position_change_notification = GuiFormatting.position_change_notification
+GuiUtils.deletion_prevention_notification = GuiFormatting.deletion_prevention_notification
+-- Removed: tag_relocated_notification - terrain change monitoring removed from codebase
+GuiUtils.build_favorite_tooltip = GuiFormatting.build_favorite_tooltip
+
+-- Accessibility helpers (delegate to GuiAccessibility)
+GuiUtils.create_accessible_tooltip = GuiAccessibility.create_accessible_tooltip
+GuiUtils.add_accessibility_attributes = GuiAccessibility.add_accessibility_attributes
+GuiUtils.get_or_create_gui_flow_from_gui_top = GuiAccessibility.get_or_create_gui_flow_from_gui_top
+
+-- ========================================
+-- REMAINING LEGACY FUNCTIONS (TO BE MOVED)
 -- ========================================
 
 --- Centralized error handling and user feedback for GUI operations
@@ -541,31 +586,7 @@ function GuiUtils.deletion_prevention_notification(chart_tag)
   return LocaleUtils.get_error_string(nil, "tag_deletion_prevented", {icon_str .. tag_text .. " " .. position_str})
 end
 
---- Generate a tag relocation notification message for terrain changes
----@param chart_tag LuaCustomChartTag Chart tag that was relocated
----@param old_position MapPosition Previous position
----@param new_position MapPosition New position
----@return string relocation_message Formatted relocation message
-function GuiUtils.tag_relocated_notification(chart_tag, old_position, new_position)
-  if not chart_tag or not chart_tag.valid or not old_position or not new_position then
-    return LocaleUtils.get_error_string(nil, "invalid_relocation_data_fallback")
-  end
-  
-  local surface_index = chart_tag.surface and chart_tag.surface.index or 1
-  local tag_text = chart_tag.text or ""
-  local icon_str = ""
-  
-  if chart_tag.icon and chart_tag.icon.type and chart_tag.icon.name then
-    icon_str = string.format("[img=%s/%s] ", chart_tag.icon.type, chart_tag.icon.name)
-  end
-  
-  local old_position_str = string.format("[gps=%d,%d,%d]", 
-    math.floor(old_position.x), math.floor(old_position.y), surface_index)
-  local new_position_str = string.format("[gps=%d,%d,%d]", 
-    math.floor(new_position.x), math.floor(new_position.y), surface_index)
-  
-  return LocaleUtils.get_error_string(nil, "tag_relocated_terrain", {icon_str .. tag_text, old_position_str, new_position_str})
-end
+-- Removed tag_relocated_notification function - terrain change monitoring removed from codebase
 
 -- ========================================
 -- GUI STATE MANAGEMENT

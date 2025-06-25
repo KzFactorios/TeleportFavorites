@@ -26,6 +26,8 @@ local GuiUtils = require("core.utils.gui_utils")
 local GameHelpers = require("core.utils.game_helpers")
 local Enum = require("prototypes.enums.enum")
 local ErrorHandler = require("core.utils.error_handler")
+local DataParsingHelpers = require("gui.data_viewer.data_parsing_helpers")
+local DataViewerGuiBuilders = require("gui.data_viewer.data_viewer_gui_builders")
 
 
 local data_viewer = {}
@@ -88,76 +90,6 @@ local function render_table_tree(parent, data, indent, visited, font_size, row_i
   end
   visited[data] = nil
   return row_index
-end
-
--- Builds the titlebar for the data viewer window
--- Builds the titlebar for the data viewer window using shared helpers
-local function build_titlebar(parent) --(parent, name, title, close_button_name, drag_handle_target)
-  local _tb, title_label, _cb = GuiBase.create_titlebar(parent, "data_viewer_titlebar", "data_viewer_close_btn")
-  ---@diagnostic disable-next-line: assign-type-mismatch
-  if title_label ~= nil then title_label.caption = { "tf-gui.data_viewer_title" } end
-  return
-end
-
--- Helper to build the tab row and tab actions as per new hierarchy
-local function build_tabs_row(parent, active_tab)
-  local tabs_flow = GuiBase.create_hflow(parent, "data_viewer_tabs_flow")
-  local tab_defs = {
-    { "data_viewer_player_data_tab",  "tf-gui.tab_player_data",  "player_data" },
-    { "data_viewer_surface_data_tab", "tf-gui.tab_surface_data", "surface_data" },
-    { "data_viewer_lookup_tab",       "tf-gui.tab_lookups",      "lookup" },
-    { "data_viewer_all_data_tab",     "tf-gui.tab_all_data",     "all_data" }
-  } -- Functional approach to tab creation
-  
-  local function create_tab_button(def, index)
-    local element_name, caption_key, tab_key = def[1], def[2], def[3]
-    local is_active = (tab_key == active_tab)
-    local style = (index > 1) and "tf_data_viewer_tab_button_margin" or "tf_data_viewer_tab_button"
-    if is_active then
-      style = "tf_data_viewer_tab_button_active"
-    end
-    -- Pass the localization key as a LocalisedString table for correct localization
-    ---@diagnostic disable-next-line: assign-type-mismatch
-    local btn = GuiBase.create_button(tabs_flow, element_name, {caption = caption_key}, style)
-    btn.enabled = not is_active
-    return btn
-  end
-  
-  -- Process each tab definition with the creation function
-  for i, def in ipairs(tab_defs) do
-    create_tab_button(def, i)
-  end
-  -- Create filler widget to push action buttons to the right
-  GuiBase.create_empty_widget(tabs_flow, "data_viewer_tabs_filler", "tf_draggable_space_header")
-
-  -- Create actions flow for font size and refresh buttons
-  local actions_flow = GuiBase.create_hflow(tabs_flow, "data_viewer_tab_actions_flow", "tf_data_viewer_actions_flow")
-  local font_size_flow = GuiBase.create_hflow(actions_flow, "data_viewer_actions_font_size_flow",
-    "tf_data_viewer_font_size_flow")
-
-  -- Create font size buttons
-  local font_down_btn = GuiUtils.create_slot_button(font_size_flow, "data_viewer_actions_font_down_btn",
-    Enum.SpriteEnum.ARROW_DOWN,
-    { "tf-gui.font_minus_tooltip" }, { style = "tf_data_viewer_font_size_button_minus" })
-  local font_up_btn = GuiUtils.create_slot_button(font_size_flow, "data_viewer_actions_font_up_btn",
-    Enum.SpriteEnum.ARROW_UP,
-    { "tf-gui.font_plus_tooltip" }, { style = "tf_data_viewer_font_size_button_plus" })
-
-  -- Create refresh button
-  local refresh_btn = GuiUtils.create_slot_button(actions_flow, "data_viewer_tab_actions_refresh_data_btn",
-    Enum.SpriteEnum.REFRESH,
-    { "tf-gui.refresh_tooltip" }, { style = "tf_data_viewer_font_size_button_refresh" })
-
-  -- Debug: Verify buttons were created
-  ErrorHandler.debug_log("Data viewer action buttons created", {
-    font_down_valid = font_down_btn and font_down_btn.valid,
-    font_up_valid = font_up_btn and font_up_btn.valid,
-    refresh_valid = refresh_btn and refresh_btn.valid,
-    font_down_sprite = font_down_btn and font_down_btn.sprite,
-    font_up_sprite = font_up_btn and font_up_btn.sprite,
-    refresh_sprite = refresh_btn and refresh_btn.sprite
-  })
-  return tabs_flow
 end
 
 -- Helper to parse a table row into a compact string, combining simple tables onto one line
@@ -360,14 +292,9 @@ local function render_compact_data_rows(parent, data, indent, font_size, row_ind
 end
 
 function data_viewer.build(player, parent, state)
-  if not (state and parent and player) then
-    ErrorHandler.debug_log("Data viewer build failed: missing requirements", {
-      has_state = state ~= nil,
-      has_parent = parent ~= nil,
-      has_player = player ~= nil
-    })
-    return
-  end
+  -- Use GUI builders helper for initial validation and frame creation
+  local frame = DataViewerGuiBuilders.build_main_frame(parent, state, player)
+  if not frame then return end
 
   local n = 0
   if state.data and type(state.data) == "table" then
@@ -386,33 +313,19 @@ function data_viewer.build(player, parent, state)
   -- Ensure data and top_key are defined from state
   local data = state and state.data
   local top_key = state and state.top_key
-
   local font_size = (state and state.font_size) or 10
-  -- Main dialog frame (resizable)
-  local frame = GuiBase.create_frame(parent, Enum.GuiEnum.GUI_FRAME.DATA_VIEWER, "vertical", "tf_data_viewer_frame")
-  frame.caption = ""
-  -- Remove debug label at the very top
-  -- frame.add{type="label", caption="[TF DEBUG] Data Viewer GUI visible for player: "..(player and player.name or "nil"), style="data_viewer_row_odd_label"}
-  -- Titlebar
-  build_titlebar(frame)
-  -- Inner flow (vertical, invisible_frame)
-  -- Tabs row (with tab actions)
+
+  -- Build GUI components using helpers
+  DataViewerGuiBuilders.build_titlebar(frame)
+  
+  -- Inner flow and tabs
   local inner_flow = GuiBase.create_frame(frame, "data_viewer_inner_flow", "vertical", "invisible_frame")
-  build_tabs_row(inner_flow, state.active_tab)
+  DataViewerGuiBuilders.build_tabs_row(inner_flow, state.active_tab)
 
-  -- Content area: vertical flow, then table
-  local content_flow = GuiBase.create_vflow(inner_flow, "data_viewer_content_flow")
+  -- Content area and data table
+  local content_flow, data_table = DataViewerGuiBuilders.build_content_area(inner_flow)
 
-  -- Table for data rows (single column for compactness)
-  local data_table = GuiBase.create_element("table", content_flow, {
-    name = "data_viewer_table",
-    column_count = 1,
-    style = "tf_data_viewer_table"
-  })
-
-  -- REMOVE DEBUG LABEL: Remove debug_data_str label
-  -- data_table.add{type="label", caption=debug_data_str, style="data_viewer_row_even_label"}  -- Patch: If data is nil or empty, always show top_key = { } and closing brace, never [NO DATA TO DISPLAY]
-  -- Add debug logging to understand why data might appear empty
+  -- Handle data display logic
   ErrorHandler.debug_log("Data viewer data check", {
     data_is_nil = data == nil,
     data_type = type(data),
@@ -421,32 +334,17 @@ function data_viewer.build(player, parent, state)
   })
   
   if data == nil or (type(data) == "table" and next(data) == nil) then
-    if not top_key then
-      top_key = "player_data"
-    end
-
-    ErrorHandler.debug_log("Data viewer showing empty data structure", {
-      top_key = top_key,
-      reason = data == nil and "data_is_nil" or "table_is_empty"
-    })
-
-    local style = "data_viewer_row_odd_label"
-    local lbl = GuiBase.create_label(data_table, "data_top_key_empty", top_key .. " = {", style)
-    set_label_font(lbl, font_size)
-    -- Note: font_color and top_margin are not settable on LuaStyle
-    local lbl2 = GuiBase.create_label(data_table, "data_closing_brace_empty", "}", "data_viewer_row_even_label")
-    set_label_font(lbl2, font_size)
-    -- Note: font_color and top_margin are not settable on LuaStyle
+    DataViewerGuiBuilders.display_empty_data(data_table, top_key, font_size)
     return frame
   end
 
-  -- Defensive: ensure top_key is always set
+  -- Render actual data content
   if not top_key then top_key = "player_data" end
+  
   -- Show the top-level key and render the data as a tree under it
   local style = "data_viewer_row_odd_label"
   local lbl = GuiBase.create_label(data_table, "data_top_key", top_key .. " = {", style)
   set_label_font(lbl, font_size)
-  -- Note: font_color and top_margin are not settable on LuaStyle
 
   local row_start = 1
   local row_end = 1
@@ -455,7 +353,6 @@ function data_viewer.build(player, parent, state)
     if row_end == row_start then
       local no_data_lbl2 = GuiBase.create_label(data_table, "no_data_table", "[NO DATA TO DISPLAY]",
         "data_viewer_row_even_label")
-      -- Note: font_color is not settable on LuaStyle
     end
   else
     -- For non-table data, just show the value as a single line

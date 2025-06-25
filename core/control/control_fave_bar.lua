@@ -351,15 +351,9 @@ end
 --- - Tag editor opening
 --- - Visibility toggle
 ---@param event table The GUI click event containing element, player_index, button, etc.
-local function on_fave_bar_gui_click(event)
-  local element = event.element
-  if not element or not element.valid then return end
-  local player = game.get_player(event.player_index)
-  if not player or not player.valid then return end
-
-  -- Log detailed information about the click before any processing
+local function log_click_event(event, player)
   ErrorHandler.debug_log("[FAVE_BAR] on_fave_bar_gui_click entry point", {
-    element_name = element.name,
+    element_name = event.element.name,
     player = player.name,
     raw_button_value = event.button,
     button_type = event.button == 1 and "LEFT_CLICK" or 
@@ -374,6 +368,42 @@ local function on_fave_bar_gui_click(event)
     control_pressed = event.control,
     is_dragging = CursorUtils.is_dragging_favorite(player)
   })
+end
+
+local function handle_slot_click_event(event, player)
+  ErrorHandler.debug_log("[FAVE_BAR] Handling slot click", {
+    slot = event.element.name:match("fave_bar_slot_(%d+)"),
+    player = player.name,
+    button = event.button
+  })
+  local favorites = PlayerFavorites.new(player)
+  handle_favorite_slot_click(event, player, favorites)
+end
+
+local function handle_toggle_button_click(event, player)
+  if CursorUtils.is_dragging_favorite(player) then
+    ErrorHandler.debug_log("[FAVE_BAR] Drag mode canceled due to toggle button click", { player = player.name })
+    CursorUtils.end_drag_favorite(player)
+    GameHelpers.player_print(player, {"tf-gui.fave_bar_drag_canceled"})
+    return
+  end
+
+  local success, err = pcall(handle_visible_fave_btns_toggle_click, player)
+  if not success then
+    ErrorHandler.debug_log("Handle visible fave buttons toggle failed", {
+      player = player.name,
+      error = err
+    })
+  end
+end
+
+local function on_fave_bar_gui_click(event)
+  local element = event.element
+  if not element or not element.valid then return end
+  local player = game.get_player(event.player_index)
+  if not player or not player.valid then return end
+
+  log_click_event(event, player)
 
   -- Handle right-click on map during drag mode
   if element.name == "map" then
@@ -381,31 +411,12 @@ local function on_fave_bar_gui_click(event)
   end
 
   if element.name:find("^fave_bar_slot_") then
-    ErrorHandler.debug_log("[FAVE_BAR] Handling slot click", {
-      slot = element.name:match("fave_bar_slot_(%d+)"),
-      player = player.name,
-      button = event.button
-    })
-    local favorites = PlayerFavorites.new(player)
-    handle_favorite_slot_click(event, player, favorites)
+    handle_slot_click_event(event, player)
     return
   end
 
   if element.name == "fave_bar_visible_btns_toggle" then
-    if CursorUtils.is_dragging_favorite(player) then
-      ErrorHandler.debug_log("[FAVE_BAR] Drag mode canceled due to toggle button click", { player = player.name })
-      CursorUtils.end_drag_favorite(player)
-      GameHelpers.player_print(player, {"tf-gui.fave_bar_drag_canceled"})
-      return
-    end
-
-    local success, err = pcall(handle_visible_fave_btns_toggle_click, player)
-    if not success then
-      ErrorHandler.debug_log("Handle visible fave buttons toggle failed", {
-        player = player.name,
-        error = err
-      })
-    end
+    handle_toggle_button_click(event, player)
   end
 end
 

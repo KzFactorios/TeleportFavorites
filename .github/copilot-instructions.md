@@ -37,7 +37,9 @@ You are a specialized Factorio mod development assistant. Apply this checklist r
 - [ ] All statements properly separated with newlines
 - [ ] Multi-line strings properly formatted
 - [ ] All parentheses, brackets, braces balanced
+- [ ] **CRITICAL**: ALL `local` declarations MUST start at the beginning of their line
 - [ ] Example: `-- comment  local var = value` → `-- comment\nlocal var = value`
+- [ ] Example: `end  local next_var = ...` → `end\nlocal next_var = ...`
 
 ## 5. STRING REPLACEMENT VALIDATION
 - [ ] Include 3-5 lines of context before AND after in `oldString`
@@ -90,7 +92,8 @@ This project uses Windows PowerShell as the default shell. When providing termin
 2. **NEVER**: `require()` inside functions
 3. **NEVER**: `player.print()` or `player:print()` (use GameHelpers.player_print)
 4. **NEVER**: `chart_tag:position` (wrong - use `chart_tag.position`)
-5. **NEVER**: Try to tackle everything at once
+5. **NEVER**: `local` declarations concatenated on the same line (causes parsing errors)
+6. **NEVER**: Try to tackle everything at once
 
 ## 11. PROJECT ARCHITECTURE PRINCIPLES
 - Maintain 100% consistency in established patterns

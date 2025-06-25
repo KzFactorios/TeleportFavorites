@@ -14,6 +14,7 @@ local Constants = {
     settings = {
     -- Chart tag settings
     CHART_TAG_CLICK_RADIUS = 10,    -- Radius in tiles for detecting chart tag clicks on the map
+    CHART_TAG_TEXT_MAX_LENGTH = 1024, -- Maximum length for chart tag text (1024 chars)
     
     -- UI settings
     DEFAULT_SNAP_SCALE = 1,          -- Scale factor for position snapping

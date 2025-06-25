@@ -26,6 +26,10 @@ local event_registration_dispatcher = require("core.events.event_registration_di
 local handlers = require("core.events.handlers")
 -- Import error handler for logging
 local ErrorHandler = require("core.utils.error_handler")
+-- Import enhanced error handler with debug levels
+local Logger = require("core.utils.enhanced_error_handler")
+-- Import debug commands for runtime control
+local DebugCommands = require("core.commands.debug_commands")
 
 local gui_observer = nil
 local did_run_fave_bar_startup = false
@@ -44,6 +48,19 @@ if log then log("[TeleportFavorites] control.lua loaded") end
 
 -- Custom on_init to allow easy toggling of intro cutscene skip
 local function custom_on_init()
+  -- Initialize debug system first
+  Logger.initialize()
+  
+  -- Register debug commands
+  DebugCommands.register_commands()
+  
+  -- Set debug mode based on development indicators
+  if storage and storage._tf_debug_mode then
+    Logger.info("Development mode detected - enabling debug logging")
+  else
+    Logger.info("Production mode - using minimal logging")
+  end
+  
   handlers.on_init()
 end
 
@@ -111,5 +128,25 @@ end)
 
 -- Register the TeleportFavorites interface for testing
 remote.add_interface("TeleportFavorites", {
-  test_button_values = require("tests.test_button_values").log_button_values
+  test_button_values = require("tests.test_button_values").log_button_values,
+  test_debug_commands = function(player_name)
+    local player = game.get_player(player_name)
+    if not player then return end
+    
+    local DebugCommandsTest = require("tests.test_debug_commands")
+    local results = DebugCommandsTest.run_all_tests(player)
+    DebugCommandsTest.print_results(player, results)
+    
+    return results
+  end,
+  test_performance_monitor = function(player_name)
+    local player = game.get_player(player_name)
+    if not player then return end
+    
+    local PerfMonitorTest = require("tests.test_dev_performance_monitor")
+    local results = PerfMonitorTest.run_all_tests(player)
+    PerfMonitorTest.print_results(player, results)
+    
+    return results
+  end
 })

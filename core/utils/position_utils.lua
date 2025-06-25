@@ -207,7 +207,8 @@ function PositionUtils.find_nearest_walkable_position(surface, center_position, 
           dir_index = 1
         end
 
-        -- Get current direction safely        local current_dir = directions[dir_index]
+        -- Get current direction safely
+        local current_dir = directions[dir_index]
         if not current_dir then
           -- Safety break if directions array is malformed
           break
@@ -362,7 +363,8 @@ end
 ---@param map_position table
 ---@return boolean
 function PositionUtils.position_can_be_tagged(player, map_position)
-  -- Use consolidated validation helper for player and position checks  local surface_index = tonumber((player and player.surface and player.surface.index) or 1)
+  -- Use consolidated validation helper for player and position checks
+  local surface_index = tonumber((player and player.surface and player.surface.index) or 1)
   local gps_string = GPSUtils.gps_from_map_position(map_position, surface_index)
   local valid, position, error_msg = ValidationUtils.validate_position_operation(player, gps_string)
   if not valid then

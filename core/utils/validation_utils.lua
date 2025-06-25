@@ -16,6 +16,7 @@ Provides a unified API for all validation operations throughout the mod.
 local ErrorHandler = require("core.utils.error_handler")
 local basic_helpers = require("core.utils.basic_helpers")
 local GPSUtils = require("core.utils.gps_utils")
+local constants = require("constants")
 
 ---@class ValidationUtils
 local ValidationUtils = {}
@@ -544,6 +545,31 @@ function ValidationUtils.validate_not_empty(value, field_name)
   
   if type(value) == "table" and next(value) == nil then
     return false, field_name .. " cannot be an empty table"
+  end
+  
+  return true, nil
+end
+
+--- Validate text length for chart tags and other user inputs
+---@param text string|nil The text to validate
+---@param max_length number? Maximum allowed length (defaults to CHART_TAG_TEXT_MAX_LENGTH)
+---@param field_name string? Field name for error messages (defaults to "Text")
+---@return boolean is_valid
+---@return string? error_message
+function ValidationUtils.validate_text_length(text, max_length, field_name)
+  max_length = max_length or (constants.settings.CHART_TAG_TEXT_MAX_LENGTH --[[@as number]])
+  field_name = field_name or "Text"
+  
+  if text == nil then
+    text = ""
+  end
+  
+  if type(text) ~= "string" then
+    return false, field_name .. " must be a string"
+  end
+  
+  if #text > max_length then
+    return false, field_name .. " exceeds maximum length of " .. max_length .. " characters"
   end
   
   return true, nil

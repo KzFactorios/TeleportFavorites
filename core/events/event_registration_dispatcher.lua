@@ -116,6 +116,10 @@ function EventRegistrationDispatcher.register_core_events(script)
   
   -- Core lifecycle events
   local core_events = {
+    [defines.events.on_tick] = {
+      handler = handlers.on_tick,
+      name = "on_tick"
+    },
     [defines.events.on_player_created] = {
       handler = function(event)
         handlers.on_player_created(event)

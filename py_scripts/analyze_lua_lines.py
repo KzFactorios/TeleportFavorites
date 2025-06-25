@@ -15,7 +15,27 @@ import os
 import re
 from pathlib import Path
 from collections import defaultdict
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, NamedTuple
+
+class FileAnalysis(NamedTuple):
+    """Results of analyzing a single file."""
+    path: str
+    total_lines: int
+    annotation_lines: int
+    code_lines: int
+
+def is_annotation_line(line: str) -> bool:
+    """
+    Check if a line is an annotation (---@param, ---@return, etc.)
+    
+    Args:
+        line: The line to check
+        
+    Returns:
+        True if the line is an annotation, False otherwise
+    """
+    stripped = line.strip()
+    return stripped.startswith('---@')
 
 def is_comment_or_blank_line(line: str) -> bool:
     """
@@ -44,15 +64,15 @@ def is_comment_or_blank_line(line: str) -> bool:
     
     return False
 
-def count_lua_lines(file_path: Path) -> int:
+def count_lua_lines(file_path: Path) -> Tuple[int, int]:
     """
-    Count non-comment, non-blank lines in a Lua file.
+    Count lines in a Lua file, separating annotations from regular code.
     
     Args:
         file_path: Path to the Lua file
         
     Returns:
-        Number of code lines
+        Tuple of (total_lines, annotation_lines) where total_lines includes annotations
     """
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -64,12 +84,13 @@ def count_lua_lines(file_path: Path) -> int:
                 lines = f.readlines()
         except Exception as e:
             print(f"Warning: Could not read {file_path}: {e}")
-            return 0
+            return 0, 0
     except Exception as e:
         print(f"Warning: Could not read {file_path}: {e}")
-        return 0
+        return 0, 0
     
-    code_lines = 0
+    total_lines = 0
+    annotation_lines = 0
     in_multiline_comment = False
     
     for line in lines:
@@ -79,8 +100,11 @@ def count_lua_lines(file_path: Path) -> int:
         if '--[[' in stripped and not in_multiline_comment:
             # Check if this is an annotation block (starts with ---@)
             if stripped.startswith('---@') or (stripped.startswith('--[[') and '---@' in stripped):
-                # This is an annotation block, don't skip it
-                pass
+                # This is an annotation block, count it
+                if is_annotation_line(line):
+                    annotation_lines += 1
+                total_lines += 1
+                continue
             else:
                 # Check if comment starts and ends on same line
                 if ']]' in stripped and stripped.index(']]') > stripped.index('--[['):
@@ -96,13 +120,19 @@ def count_lua_lines(file_path: Path) -> int:
                 in_multiline_comment = False
             continue
         
+        # Check for annotations first (these count as code)
+        if is_annotation_line(line):
+            annotation_lines += 1
+            total_lines += 1
+            continue
+        
         # Skip regular comments and blank lines
         if is_comment_or_blank_line(line):
             continue
         
-        code_lines += 1
+        total_lines += 1
     
-    return code_lines
+    return total_lines, annotation_lines
 
 def should_exclude_file(file_path: Path, project_root: Path) -> bool:
     """
@@ -132,7 +162,7 @@ def should_exclude_file(file_path: Path, project_root: Path) -> bool:
     
     return False
 
-def analyze_lua_files(project_root: str) -> Tuple[List[Tuple[str, int]], Dict[str, int], int]:
+def analyze_lua_files(project_root: str) -> Tuple[List[FileAnalysis], Dict[str, Tuple[int, int]], int, int]:
     """
     Analyze all Lua files in the project.
     
@@ -140,12 +170,13 @@ def analyze_lua_files(project_root: str) -> Tuple[List[Tuple[str, int]], Dict[st
         project_root: Root directory of the project
         
     Returns:
-        Tuple of (file_results, folder_totals, grand_total)
+        Tuple of (file_results, folder_totals, grand_total_lines, grand_total_annotations)
     """
     project_path = Path(project_root)
     file_results = []
-    folder_totals = defaultdict(int)
-    grand_total = 0
+    folder_totals = defaultdict(lambda: [0, 0])  # [total_lines, annotation_lines]
+    grand_total_lines = 0
+    grand_total_annotations = 0
     
     # Find all .lua files
     lua_files = list(project_path.rglob('*.lua'))
@@ -156,64 +187,88 @@ def analyze_lua_files(project_root: str) -> Tuple[List[Tuple[str, int]], Dict[st
             continue
         
         # Count lines in the file
-        line_count = count_lua_lines(lua_file)
+        total_lines, annotation_lines = count_lua_lines(lua_file)
+        code_lines = total_lines - annotation_lines
         
         # Get relative path for display
         relative_path = lua_file.relative_to(project_path)
         relative_path_str = str(relative_path).replace('\\', '/')
         
         # Add to results
-        file_results.append((relative_path_str, line_count))
+        file_results.append(FileAnalysis(
+            path=relative_path_str,
+            total_lines=total_lines,
+            annotation_lines=annotation_lines,
+            code_lines=code_lines
+        ))
         
         # Add to folder totals
         folder = relative_path.parent if relative_path.parent != Path('.') else Path('root')
         folder_key = str(folder).replace('\\', '/') if str(folder) != '.' else 'root'
-        folder_totals[folder_key] += line_count
+        folder_totals[folder_key][0] += total_lines
+        folder_totals[folder_key][1] += annotation_lines
         
-        # Add to grand total
-        grand_total += line_count
+        # Add to grand totals
+        grand_total_lines += total_lines
+        grand_total_annotations += annotation_lines
     
-    # Sort files by line count (descending)
-    file_results.sort(key=lambda x: x[1], reverse=True)
+    # Sort files by total line count (descending)
+    file_results.sort(key=lambda x: x.total_lines, reverse=True)
     
-    return file_results, dict(folder_totals), grand_total
+    # Convert folder_totals to regular dict with tuples
+    folder_totals_dict = {k: (v[0], v[1]) for k, v in folder_totals.items()}
+    
+    return file_results, folder_totals_dict, grand_total_lines, grand_total_annotations
 
-def print_analysis_report(file_results: List[Tuple[str, int]], 
-                         folder_totals: Dict[str, int], 
-                         grand_total: int):
+def print_analysis_report(file_results: List[FileAnalysis], 
+                         folder_totals: Dict[str, Tuple[int, int]], 
+                         grand_total_lines: int,
+                         grand_total_annotations: int):
     """
     Print the analysis report.
     
     Args:
-        file_results: List of (file_path, line_count) tuples
-        folder_totals: Dictionary of folder totals
-        grand_total: Total lines across all files
+        file_results: List of FileAnalysis objects
+        folder_totals: Dictionary of folder totals (total_lines, annotation_lines)
+        grand_total_lines: Total lines across all files
+        grand_total_annotations: Total annotation lines across all files
     """
+    grand_total_code = grand_total_lines - grand_total_annotations
+    annotation_percentage = (grand_total_annotations / grand_total_lines * 100) if grand_total_lines > 0 else 0
+    
     print("TeleportFavorites Mod - Lua Code Analysis")
     print("=" * 50)
     print(f"Total files analyzed: {len(file_results)}")
-    print(f"Grand total lines of code: {grand_total:,}")
+    print(f"Grand total lines: {grand_total_lines:,}")
+    print(f"  - Code lines: {grand_total_code:,}")
+    print(f"  - Annotation lines: {grand_total_annotations:,} ({annotation_percentage:.1f}%)")
     print()
     
     # Folder totals first (sorted by total lines)
     print("TOTALS BY FOLDER (Most to Least)")
-    print("-" * 40)
-    sorted_folders = sorted(folder_totals.items(), key=lambda x: x[1], reverse=True)
-    for folder, total in sorted_folders:
-        print(f"{total:5,} lines - {folder}/")
+    print("-" * 50)
+    sorted_folders = sorted(folder_totals.items(), key=lambda x: x[1][0], reverse=True)
+    for folder, (total_lines, annotation_lines) in sorted_folders:
+        code_lines = total_lines - annotation_lines
+        ann_pct = (annotation_lines / total_lines * 100) if total_lines > 0 else 0
+        print(f"{total_lines:5,} lines ({code_lines:,} code, {annotation_lines:,} annotations {ann_pct:.1f}%) - {folder}/")
     
     print()
     
     # Files by line count (most to least)
     print("FILES BY LINE COUNT (Most to Least)")
-    print("-" * 50)
-    for file_path, line_count in file_results:
-        print(f"{line_count:5,} lines - {file_path}")
+    print("-" * 60)
+    for file_analysis in file_results:
+        ann_pct = (file_analysis.annotation_lines / file_analysis.total_lines * 100) if file_analysis.total_lines > 0 else 0
+        print(f"{file_analysis.total_lines:5,} lines ({file_analysis.code_lines:,} code, {file_analysis.annotation_lines:,} ann {ann_pct:4.1f}%) - {file_analysis.path}")
     
     print()
-    print(f"GRAND TOTAL: {grand_total:,} lines of Lua code")
-    print("(Excluding comments and blank lines, but including annotations like ---@param, ---@return, etc.)")
+    print(f"GRAND TOTAL: {grand_total_lines:,} lines of Lua")
+    print(f"  Code lines: {grand_total_code:,}")
+    print(f"  Annotation lines: {grand_total_annotations:,} ({annotation_percentage:.1f}%)")
+    print("(Excluding regular comments and blank lines)")
     print("(Excluding test files)")
+    print("(Annotations are lines starting with ---@param, ---@return, etc.)")
 
 def main():
     """Main function to run the analysis."""
@@ -227,8 +282,8 @@ def main():
     print()
     
     try:
-        file_results, folder_totals, grand_total = analyze_lua_files(project_root)
-        print_analysis_report(file_results, folder_totals, grand_total)
+        file_results, folder_totals, grand_total_lines, grand_total_annotations = analyze_lua_files(project_root)
+        print_analysis_report(file_results, folder_totals, grand_total_lines, grand_total_annotations)
         
     except Exception as e:
         print(f"Error during analysis: {e}")

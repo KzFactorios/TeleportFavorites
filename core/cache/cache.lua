@@ -48,6 +48,7 @@ storage = {
 local mod_version = require("core.utils.version")
 local FavoriteUtils = require("core.favorite.favorite")
 local Constants = require("constants")
+local ErrorHandler = require("core.utils.error_handler") -- Use basic error handler to avoid circular dependency
 local GPSUtils = require("core.utils.gps_utils")
 local Lookups = require("core.cache.lookups")
 local PositionUtils = require("core.utils.position_utils")
@@ -210,16 +211,45 @@ end
 ---@param player LuaPlayer
 ---@return table --data table (persistent)
 function Cache.get_player_data(player)
-  if not player then return {} end
-  return init_player_data(player)
+  if not player then 
+    -- Use basic error handler to avoid circular dependency
+    return {} 
+  end
+  
+  -- Simple timing without circular dependency
+  local start_tick = game.tick
+  local result = init_player_data(player)
+  local duration = game.tick - start_tick
+  
+  if duration > 3 then
+    ErrorHandler.debug_log("Slow cache operation", {
+      operation = "get_player_data",
+      duration_ticks = duration,
+      player_index = player.index
+    })
+  end
+  
+  return result
 end
 
 ---@param player LuaPlayer
 -- Returns the player's favorites array, or an empty table if not found.
 ---@return table[]
 function Cache.get_player_favorites(player)
+  local start_tick = game.tick
   local player_data = Cache.get_player_data(player)
   local favorites = player_data.surfaces[player.surface.index].favorites or {}
+  local duration = game.tick - start_tick
+  
+  if duration > 3 then
+    ErrorHandler.debug_log("Slow cache operation", {
+      operation = "get_player_favorites",
+      duration_ticks = duration,
+      player_index = player.index,
+      surface_index = player.surface.index
+    })
+  end
+  
   return favorites
 end
 

@@ -282,11 +282,10 @@ local function build_teleport_favorite_row(parent, tag_data)
   return row, favorite_btn, teleport_btn
 end
 
-local function build_rich_text_row(parent, tag_data)
-  local row = GuiBase.create_hflow(parent, "tag_editor_rich_text_row")
-  -- Centralized icon validation and sprite path building
+local function create_icon_button(row, tag_data)
   local sprite_path, used_fallback, debug_info = GuiUtils.get_validated_sprite_path(tag_data.icon,
     { fallback = Enum.SpriteEnum.PIN, log_context = { context = "tag_editor", gps = tag_data.gps } })
+  
   local icon_btn = GuiBase.create_element("choose-elem-button", row, {
     name = "tag_editor_icon_button",
     tooltip = { "tf-gui.icon_tooltip" },
@@ -295,13 +294,24 @@ local function build_rich_text_row(parent, tag_data)
     signal = tag_data.icon,
     sprite = sprite_path
   })
+  
   if used_fallback then
     ErrorHandler.debug_log("[TAG_EDITOR] Fallback icon used for tag editor icon button",
       { sprite_path = sprite_path, debug_info = debug_info })
   end
-  -- Create textbox and set value from storage (tag_data)
-  local text_input = GuiBase.create_textbox(row, "tag_editor_rich_text_input",
+  
+  return icon_btn
+end
+
+local function create_text_input(row, tag_data)
+  return GuiBase.create_textbox(row, "tag_editor_rich_text_input",
     tag_data.text or "", "tf_tag_editor_text_input", true)
+end
+
+local function build_rich_text_row(parent, tag_data)
+  local row = GuiBase.create_hflow(parent, "tag_editor_rich_text_row")
+  local icon_btn = create_icon_button(row, tag_data)
+  local text_input = create_text_input(row, tag_data)
   return row, icon_btn, text_input
 end
 

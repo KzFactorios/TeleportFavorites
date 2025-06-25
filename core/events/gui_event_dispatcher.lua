@@ -46,6 +46,7 @@ gui_event_dispatcher.register_gui_handlers(script)
 
 local control_fave_bar = require("core.control.control_fave_bar")
 local control_tag_editor = require("core.control.control_tag_editor")
+local DebugCommands = require("core.commands.debug_commands")
 local Constants = require("constants")
 local Enum = require("prototypes.enums.enum")
 local ErrorHandler = require("core.utils.error_handler")
@@ -160,6 +161,13 @@ function M.register_gui_handlers(script)
       if not element or not element.valid then return end 
         
       -- Global/utility buttons (not tied to a specific GUI)
+      -- Check for debug level buttons first
+      if element.name and string.match(element.name, "^tf_debug_set_level_") then
+        ErrorHandler.debug_log("[DISPATCH] Routing to DebugCommands.on_debug_level_button_click", { element = element.name })
+        DebugCommands.on_debug_level_button_click(event)
+        return true
+      end
+      
       -- Ignore clicks on blank/empty favorite slots
 
       ErrorHandler.debug_log("[DISPATCH] Check for blank fave. end if blank", { element = element.name })

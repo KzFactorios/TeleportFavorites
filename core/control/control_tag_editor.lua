@@ -584,8 +584,32 @@ local function on_tag_editor_gui_text_changed(event)
 
   if element.name == "tag_editor_rich_text_input" then
     local tag_data = Cache.get_tag_editor_data(player) or {}
-    tag_data.text = (element.text or ""):gsub("%s+$", "")
+    local raw_text = element.text or ""
+    local trimmed_text = raw_text:gsub("%s+$", "")
+    
+    -- Validate text length
+    local is_valid, error_msg = ValidationUtils.validate_text_length(trimmed_text, nil, "Chart tag text")
+    if not is_valid then
+      -- Store error in tag_data and revert to previous valid text
+      tag_data.error_message = error_msg
+      if tag_data.text then
+        element.text = tag_data.text
+      else
+        element.text = ""
+      end
+    else
+      -- Clear any previous error and store the valid text
+      tag_data.error_message = nil
+      tag_data.text = trimmed_text
+    end
+    
     Cache.set_tag_editor_data(player, tag_data)
+    -- Update error display if there's an error
+    if tag_data.error_message then
+      tag_editor.update_error_message(player, tag_data.error_message)
+    else
+      tag_editor.update_error_message(player, nil)
+    end
     -- Update confirm button state based on new text content
     tag_editor.update_confirm_button_state(player, tag_data)
   end
