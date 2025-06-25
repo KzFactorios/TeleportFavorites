@@ -383,7 +383,9 @@ function Cache.create_tag_editor_data(options)
     search_radius = 1,
     -- Delete confirmation state
     delete_mode = false,
-    pending_delete = false
+    pending_delete = false,
+    -- Move mode state
+    move_mode = false
   }
 
   if not options or type(options) ~= "table" then

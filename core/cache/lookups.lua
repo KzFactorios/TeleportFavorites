@@ -55,43 +55,41 @@ local function ensure_surface_cache(surface_index)
   local cache = ensure_cache()
   cache.surfaces[surface_idx] = cache.surfaces[surface_idx] or {}
 
-  -- Always fetch chart tags to ensure fresh data
-  local surface = game.surfaces[surface_idx]
-  if surface then
-    cache.surfaces[surface_idx].chart_tags = game.forces["player"].find_chart_tags(surface) or {}
-  else
-    cache.surfaces[surface_idx].chart_tags = {}
+  -- Lazy loading: only fetch chart tags if cache doesn't exist or is empty
+  if not cache.surfaces[surface_idx].chart_tags or #cache.surfaces[surface_idx].chart_tags == 0 then
+    local surface = game.surfaces[surface_idx]
+    if surface then
+      cache.surfaces[surface_idx].chart_tags = game.forces["player"].find_chart_tags(surface) or {}
+    else
+      cache.surfaces[surface_idx].chart_tags = {}
+    end
   end
   
-  -- Always rebuild the GPS mapping
-  cache.surfaces[surface_idx].chart_tags_mapped_by_gps = {}
-
-  -- Only rebuild the GPS map if it's empty and we have chart tags
+  -- Lazy loading: only rebuild GPS mapping if not exists
   if not cache.surfaces[surface_idx].chart_tags_mapped_by_gps then
     cache.surfaces[surface_idx].chart_tags_mapped_by_gps = {}
-  end
-  -- Check if we need to rebuild the GPS mapping (avoid using # on tables)
-  local chart_tags = cache.surfaces[surface_idx].chart_tags
-  local gps_map = cache.surfaces[surface_idx].chart_tags_mapped_by_gps
-  local map_count = 0
-  for _ in pairs(gps_map) do map_count = map_count + 1 end  if #chart_tags > 0 and map_count == 0 then
-    -- Rebuild the GPS mapping using functional approach
-    local function build_gps_mapping(chart_tag)
-      if chart_tag and chart_tag.valid and chart_tag.position and surface_idx then
-        -- Ensure surface_idx is properly typed as uint
-        local surface_index_uint = tonumber(surface_idx) --[[@as uint]]
-        -- Cast to number for gps_from_map_position function
-        local surface_index_number = surface_index_uint --[[@as number]]
-        local gps = GPSUtils.gps_from_map_position(chart_tag.position, surface_index_number)
-        if gps and gps ~= "" then
-          gps_map[gps] = chart_tag
+    
+    -- Only build GPS mapping if we have chart tags
+    local chart_tags = cache.surfaces[surface_idx].chart_tags
+    if chart_tags and #chart_tags > 0 then
+      -- Rebuild the GPS mapping using functional approach
+      local function build_gps_mapping(chart_tag)
+        if chart_tag and chart_tag.valid and chart_tag.position and surface_idx then
+          -- Ensure surface_idx is properly typed as uint
+          local surface_index_uint = tonumber(surface_idx) --[[@as uint]]
+          -- Cast to number for gps_from_map_position function
+          local surface_index_number = surface_index_uint --[[@as number]]
+          local gps = GPSUtils.gps_from_map_position(chart_tag.position, surface_index_number)
+          if gps and gps ~= "" then
+            cache.surfaces[surface_idx].chart_tags_mapped_by_gps[gps] = chart_tag
+          end
         end
       end
-    end
 
-    -- Process each chart tag with the mapping function
-    for _, chart_tag in ipairs(chart_tags) do
-      build_gps_mapping(chart_tag)
+      -- Process each chart tag with the mapping function
+      for _, chart_tag in ipairs(chart_tags) do
+        build_gps_mapping(chart_tag)
+      end
     end
   end
 

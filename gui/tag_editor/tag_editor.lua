@@ -187,6 +187,7 @@ function tag_editor.build_confirmation_dialog(player, opts)
   else
     message = { "tf-gui.confirm_delete_message" }
   end
+  ---@diagnostic disable-next-line: param-type-mismatch
   GuiBase.create_label(frame, "tag_editor_tf_confirm_dialog_label", message, "tf_dlg_confirm_title")
 
   -- Button row: idiomatic horizontal flow with left/right flows for true alignment
@@ -431,20 +432,232 @@ function tag_editor.update_confirm_button_state(player, tag_data)
   GuiUtils.set_button_state(confirm_btn, can_confirm)
 end
 
--- Intercept favorite add attempts to show warning if at max
-local old_add_favorite = PlayerFavorites.add_favorite
-function PlayerFavorites:add_favorite(gps)
-  local max_faves = 0
-  for i = 1, #self.favorites do
-    if not FavoriteUtils.is_blank_favorite(self.favorites[i]) then
-      max_faves = max_faves + 1
+-- Partial update functions for specific UI elements without full rebuild
+
+--- Update only the error message display without rebuilding the entire tag editor
+---@param player LuaPlayer
+---@param message string? Error message to display, nil/empty to hide
+function tag_editor.update_error_message(player, message)
+  local outer_frame = GuiUtils.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+  if not outer_frame then return end
+
+  local error_row_frame = GuiUtils.find_child_by_name(outer_frame, "tag_editor_error_row_frame")
+  local error_label = error_row_frame and GuiUtils.find_child_by_name(error_row_frame, "error_row_error_message")
+
+  local should_show_error = message and BasicHelpers.trim(message) ~= ""
+
+  if should_show_error then
+    -- Create error row if it doesn't exist
+    if not error_row_frame then
+      local content_frame = GuiUtils.find_child_by_name(outer_frame, "tag_editor_content_frame")
+      if content_frame then
+        error_row_frame = GuiBase.create_frame(outer_frame, "tag_editor_error_row_frame", "vertical",
+          "tf_tag_editor_error_row_frame")
+        error_label = GuiBase.create_label(error_row_frame, "error_row_error_message", message or "",
+          "tf_tag_editor_error_label")
+      end
+    else
+      -- Update existing error label
+      if error_label then
+        error_label.caption = message
+        error_label.visible = true
+      end
+    end
+    
+    if error_row_frame then
+      error_row_frame.visible = true
+    end
+  else
+    -- Hide error row
+    if error_row_frame then
+      error_row_frame.visible = false
     end
   end
-  if max_faves >= Constants.settings.MAX_FAVORITE_SLOTS then
-    GameHelpers.player_print(self.player, { "tf-gui.max_favorites_warning" })
-    return nil, "No available slots (maximum " .. Constants.settings.MAX_FAVORITE_SLOTS .. " favorites)"
+end
+
+--- Update button states without rebuilding the entire tag editor
+---@param player LuaPlayer
+---@param tag_data table Current tag data
+function tag_editor.update_button_states(player, tag_data)
+  local outer_frame = GuiUtils.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+  if not outer_frame then return end
+
+  -- Get all button references
+  local icon_btn = GuiUtils.find_child_by_name(outer_frame, "tag_editor_icon_button")
+  local teleport_btn = GuiUtils.find_child_by_name(outer_frame, "tag_editor_teleport_button")
+  local favorite_btn = GuiUtils.find_child_by_name(outer_frame, "tag_editor_is_favorite_button")
+  local move_btn = GuiUtils.find_child_by_name(outer_frame, "tag_editor_move_button")
+  local delete_btn = GuiUtils.find_child_by_name(outer_frame, "tag_editor_delete_button")
+  local confirm_btn = GuiUtils.find_child_by_name(outer_frame, "last_row_confirm_button")
+  local rich_text_input = GuiUtils.find_child_by_name(outer_frame, "tag_editor_rich_text_input")
+
+  -- Determine ownership and permissions
+  local tag = tag_data.tag
+  local is_owner = false
+  local can_delete = false
+
+  if tag and tag.chart_tag then
+    is_owner = tag.chart_tag.last_user and tag.chart_tag.last_user.name == player.name or false
+    can_delete = is_owner
+    if can_delete and tag.faved_by_players then
+      for _, player_index in ipairs(tag.faved_by_players) do
+        if player_index ~= player.index then
+          can_delete = false
+          break
+        end
+      end
+    end
   end
-  return old_add_favorite(self, gps)
+
+  -- Admin override
+  if AdminUtils.is_admin(player) then
+    is_owner = true
+  end
+
+  -- Update button states
+  if icon_btn then GuiUtils.set_button_state(icon_btn, is_owner) end
+  if teleport_btn then GuiUtils.set_button_state(teleport_btn, true) end
+  if rich_text_input then GuiUtils.set_button_state(rich_text_input, is_owner) end
+
+  -- Favorite button with max check
+  local player_faves = PlayerFavorites.new(player)
+  local at_max_faves = player_faves:available_slots() == 0
+  if favorite_btn then
+    if at_max_faves and not (tag_data and tag_data.is_favorite) then
+      GuiUtils.set_button_state(favorite_btn, false)
+      ---@diagnostic disable-next-line: assign-type-mismatch
+      favorite_btn.tooltip = { "tf-gui.max_favorites_warning" }
+    else
+      GuiUtils.set_button_state(favorite_btn, true)
+      ---@diagnostic disable-next-line: assign-type-mismatch
+      favorite_btn.tooltip = { "tf-gui.favorite_tooltip" }
+    end
+  end
+
+  -- Move and delete buttons
+  local is_temp_tag = (not tag_data.chart_tag) or
+      (type(tag_data.chart_tag) == "userdata" and not tag_data.chart_tag.valid)
+  if move_btn then
+    local in_chart_mode = (player.render_mode == defines.render_mode.chart)
+    local can_move = is_owner and in_chart_mode and not is_temp_tag
+    GuiUtils.set_button_state(move_btn, can_move)
+  end
+
+  if delete_btn then
+    GuiUtils.set_button_state(delete_btn, is_owner and can_delete and not is_temp_tag)
+  end
+
+  -- Confirm button
+  if confirm_btn then
+    local has_text = tag_data.text and tag_data.text ~= ""
+    local has_icon = ValidationUtils.has_valid_icon(tag_data.icon)
+    local can_confirm = has_text or has_icon
+    GuiUtils.set_button_state(confirm_btn, can_confirm)
+  end
+
+  -- Move mode overrides - disable all controls except cancel
+  if tag_data.move_mode then
+    if icon_btn then GuiUtils.set_button_state(icon_btn, false) end
+    if teleport_btn then GuiUtils.set_button_state(teleport_btn, false) end
+    if favorite_btn then GuiUtils.set_button_state(favorite_btn, false) end
+    if rich_text_input then GuiUtils.set_button_state(rich_text_input, false) end
+    if move_btn then GuiUtils.set_button_state(move_btn, false) end
+    if delete_btn then GuiUtils.set_button_state(delete_btn, false) end
+    if confirm_btn then GuiUtils.set_button_state(confirm_btn, false) end
+  end
+end
+
+--- Update field validation styling without rebuilding
+---@param player LuaPlayer
+---@param field_name string Name of field ("text" or "icon")
+---@param validation_state table Validation result with errors/warnings
+function tag_editor.update_field_validation(player, field_name, validation_state)
+  local outer_frame = GuiUtils.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+  if not outer_frame then return end
+
+  if field_name == "text" then
+    local text_input = GuiUtils.find_child_by_name(outer_frame, "tag_editor_rich_text_input")
+    if text_input then
+      -- Update text field styling based on validation
+      if validation_state.error then
+        ---@diagnostic disable-next-line: assign-type-mismatch
+        text_input.style = "tf_tag_editor_text_input_error"
+        text_input.tooltip = validation_state.error
+      elseif validation_state.warning then
+        ---@diagnostic disable-next-line: assign-type-mismatch
+        text_input.style = "tf_tag_editor_text_input_warning"
+        text_input.tooltip = validation_state.warning
+      else
+        ---@diagnostic disable-next-line: assign-type-mismatch
+        text_input.style = "tf_tag_editor_text_input"
+        ---@diagnostic disable-next-line: assign-type-mismatch
+        text_input.tooltip = { "tf-gui.text_tooltip" }
+      end
+    end
+  elseif field_name == "icon" then
+    local icon_btn = GuiUtils.find_child_by_name(outer_frame, "tag_editor_icon_button")
+    if icon_btn then
+      -- Update icon button styling based on validation
+      if validation_state.error then
+        icon_btn.tooltip = validation_state.error
+      elseif validation_state.warning then
+        icon_btn.tooltip = validation_state.warning
+      else
+        ---@diagnostic disable-next-line: assign-type-mismatch
+        icon_btn.tooltip = { "tf-gui.icon_tooltip" }
+      end
+    end
+  end
+end
+
+--- Update move mode visual feedback without rebuilding
+---@param player LuaPlayer
+---@param move_mode_active boolean Whether move mode is active
+function tag_editor.update_move_mode_visuals(player, move_mode_active)
+  local outer_frame = GuiUtils.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+  if not outer_frame then return end
+
+  local inner_frame = GuiUtils.find_child_by_name(outer_frame, "tag_editor_content_inner_frame")
+  
+  if inner_frame then
+    if move_mode_active then
+      ---@diagnostic disable-next-line: assign-type-mismatch
+      inner_frame.tooltip = { "tf-gui.move_mode_active" }
+    else
+      inner_frame.tooltip = nil
+    end
+  end
+
+  -- Update button states for move mode
+  local tag_data = Cache.get_player_data(player).tag_editor_data
+  if tag_data then
+    tag_data.move_mode = move_mode_active
+    tag_editor.update_button_states(player, tag_data)
+  end
+end
+
+--- Update favorite button state and icon without rebuilding
+---@param player LuaPlayer
+---@param is_favorite boolean Whether the tag is currently favorited
+function tag_editor.update_favorite_state(player, is_favorite)
+  local outer_frame = GuiUtils.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+  if not outer_frame then return end
+
+  local favorite_btn = GuiUtils.find_child_by_name(outer_frame, "tag_editor_is_favorite_button")
+  if favorite_btn then
+    local star_state = is_favorite and Enum.SpriteEnum.STAR or Enum.SpriteEnum.STAR_DISABLED
+    local fave_style = is_favorite and "slot_orange_favorite_on" or "slot_orange_favorite_off"
+    
+    favorite_btn.sprite = star_state
+    ---@diagnostic disable-next-line: assign-type-mismatch
+    favorite_btn.style = fave_style
+  end
+
+  -- Update tag data
+  local tag_data = Cache.get_player_data(player).tag_editor_data
+  if tag_data then
+    tag_data.is_favorite = is_favorite
+  end
 end
 
 return tag_editor

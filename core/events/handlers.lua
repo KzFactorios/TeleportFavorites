@@ -48,25 +48,60 @@ API:
 -- Centralized event handler implementations for TeleportFavorites
 
 local Cache = require("core.cache.cache")
-local ChartTagUtils = require("core.utils.chart_tag_utils")
-local Constants = require("constants")
-local Enum = require("prototypes.enums.enum")
-local ErrorHandler = require("core.utils.error_handler")
 local fave_bar = require("gui.favorites_bar.fave_bar")
-local GameHelpers = require("core.utils.game_helpers")
-local basic_helpers = require("core.utils.basic_helpers")
-local GPSUtils = require("core.utils.gps_utils")
-local PlayerFavorites = require("core.favorite.player_favorites")
 local PositionUtils = require("core.utils.position_utils")
-local RichTextFormatter = require("core.utils.rich_text_formatter")
-local Settings = require("core.utils.settings_access")
-local Tag = require("core.tag.tag")
-local tag_destroy_helper = require("core.tag.tag_destroy_helper")
-local tag_editor = require("gui.tag_editor.tag_editor")
-local AdminUtils = require("core.utils.admin_utils")
-local ChartTagOwnershipManager = require("core.control.chart_tag_ownership_manager")
+local GPSUtils = require("core.utils.gps_utils")
+local ErrorHandler = require("core.utils.error_handler")
+local Enum = require("prototypes.enums.enum")
+local GameHelpers = require("core.utils.game_helpers")
+local ChartTagSpecBuilder = require("core.tag.chart_tag_spec_builder")
 local CursorUtils = require("core.utils.cursor_utils")
+local TagDestroyHelper = require("core.tag.tag_destroy_helper")
+local ControlDataViewer = require("core.control.control_data_viewer")
+local TELEPORT_TELEPORTFAVORITES_ITEM_PREFIXSUFFIX = require("prototypes.item.inventory").TELEPORT_TELEPORTFAVORITES_ITEM_PREFIXSUFFIX
 
+--- Reset transient player states on join/rejoin
+--- Ensures clean state regardless of how player previously left the game
+---@param player LuaPlayer
+local function reset_transient_player_states(player)
+  if not player or not player.valid then return end
+  
+  local player_data = Cache.get_player_data(player)
+  
+  -- Reset drag mode state
+  if player_data.drag_favorite then
+    player_data.drag_favorite.active = false
+    player_data.drag_favorite.source_slot = nil
+    player_data.drag_favorite.favorite = nil
+    ErrorHandler.debug_log("Reset drag mode state on player join", {
+      player = player.name,
+      player_index = player.index
+    })
+  end
+  
+  -- Reset move mode state in tag editor
+  if player_data.tag_editor_data then
+    if player_data.tag_editor_data.move_mode then
+      player_data.tag_editor_data.move_mode = false
+      ErrorHandler.debug_log("Reset move mode state on player join", {
+        player = player.name,
+        player_index = player.index
+      })
+    end
+    -- Clear any error messages from previous session
+    player_data.tag_editor_data.error_message = ""
+  end
+  
+  -- Clear cursor to remove any leftover selection tools
+  pcall(function()
+    player.clear_cursor()
+  end)
+  
+  ErrorHandler.debug_log("Transient player states reset on join", {
+    player = player.name,
+    player_index = player.index
+  })
+end
 
 local handlers = {}
 
@@ -103,6 +138,9 @@ function handlers.on_player_created(event)
     ErrorHandler.debug_log("Player creation handler: invalid player")
     return
   end
+
+  -- Reset transient states to ensure clean startup
+  reset_transient_player_states(player)
 
   -- Only register GUI observers; let observer trigger the initial bar build
   local ok, gui_observer = pcall(require, "core.pattern.gui_observer")

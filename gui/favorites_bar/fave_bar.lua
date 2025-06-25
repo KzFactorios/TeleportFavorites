@@ -258,41 +258,136 @@ function fave_bar.destroy(player)
   if not player or not player.valid then return end
 
   local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
+  if not main_flow or not main_flow.valid then return end
+
   GuiUtils.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
 end
 
-function fave_bar.handle_toggle_button_click(player, element)
+-- Enhanced partial update functions for favorites bar
+
+--- Update a single slot button without rebuilding the entire row
+---@param player LuaPlayer
+---@param slot_index number Slot index (1-based)
+function fave_bar.update_single_slot(player, slot_index)
   if not player or not player.valid then return end
-  local player_data = Cache.get_player_data(player)
-
-  -- Check if drag mode is active
-  if player_data.drag_favorite and player_data.drag_favorite.active then
-    ErrorHandler.debug_log("[FAVE_BAR] Drag mode canceled due to toggle button click", { player = player.name })
-    player_data.drag_favorite.active = false
-    player_data.drag_favorite.source_slot = nil
-
-    -- Prevent event propagation
-    return true
+  
+  local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
+  local bar_frame = GuiUtils.find_child_by_name(main_flow, "fave_bar_frame")
+  local bar_flow = bar_frame and GuiUtils.find_child_by_name(bar_frame, "fave_bar_flow")
+  local slots_frame = bar_flow and GuiUtils.find_child_by_name(bar_flow, "fave_bar_slots_flow")
+  
+  if not slots_frame then return end
+  
+  local slot_button = GuiUtils.find_child_by_name(slots_frame, "fave_bar_slot_" .. slot_index)
+  if not slot_button then return end
+  
+  -- Get player favorites and current slot data
+  local pfaves = Cache.get_player_favorites(player)
+  local fav = pfaves[slot_index]
+  if fav then
+    fav = FavoriteRuntimeUtils.rehydrate_favorite(player, fav)
   end
-
-  return false
+  
+  -- Update button properties
+  ---@diagnostic disable-next-line: param-type-mismatch
+  if fav and not FavoriteUtils.is_blank_favorite(fav) then
+    local icon = fav.tag and fav.tag.chart_tag and fav.tag.chart_tag.icon or nil
+    local btn_icon, used_fallback, debug_info = GuiUtils.get_validated_sprite_path(icon,
+      { fallback = Enum.SpriteEnum.PIN, log_context = { slot = slot_index, fav_gps = fav.gps, fav_tag = fav.tag } })
+    
+    slot_button.sprite = btn_icon
+    slot_button.tooltip = GuiUtils.build_favorite_tooltip(fav, { slot = slot_index }) or { "tf-gui.fave_slot_tooltip", slot_index }
+    
+    -- Update style based on lock state
+    if fav.locked then
+      ---@diagnostic disable-next-line: assign-type-mismatch
+      slot_button.style = "tf_slot_button_locked"
+    else
+      ---@diagnostic disable-next-line: assign-type-mismatch
+      slot_button.style = "tf_slot_button_smallfont"
+    end
+  else
+    -- Blank slot
+    slot_button.sprite = ""
+    ---@diagnostic disable-next-line: assign-type-mismatch
+    slot_button.tooltip = { "tf-gui.favorite_slot_empty" }
+    ---@diagnostic disable-next-line: assign-type-mismatch
+    slot_button.style = "tf_slot_button_smallfont"
+  end
 end
 
-function fave_bar.cancel_drag_mode(player, reason)
+--- Update lock state styling for a specific slot
+---@param player LuaPlayer
+---@param slot_index number Slot index (1-based) 
+---@param locked boolean Lock state
+function fave_bar.update_slot_lock_state(player, slot_index, locked)
   if not player or not player.valid then return end
-  local player_data = Cache.get_player_data(player)
-
-  -- Check if drag mode is active
-  if player_data.drag_favorite and player_data.drag_favorite.active then
-    ErrorHandler.debug_log("[FAVE_BAR] Drag mode canceled", { player = player.name, reason = reason })
-    player_data.drag_favorite.active = false
-    player_data.drag_favorite.source_slot = nil
-
-    -- Prevent event propagation
-    return true
+  
+  local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
+  local bar_frame = GuiUtils.find_child_by_name(main_flow, "fave_bar_frame")
+  local bar_flow = bar_frame and GuiUtils.find_child_by_name(bar_frame, "fave_bar_flow")
+  local slots_frame = bar_flow and GuiUtils.find_child_by_name(bar_flow, "fave_bar_slots_flow")
+  
+  if not slots_frame then return end
+  
+  local slot_button = GuiUtils.find_child_by_name(slots_frame, "fave_bar_slot_" .. slot_index)
+  if not slot_button then return end
+  
+  -- Update style based on lock state
+  if locked then
+    ---@diagnostic disable-next-line: assign-type-mismatch
+    slot_button.style = "tf_slot_button_locked"
+  else
+    ---@diagnostic disable-next-line: assign-type-mismatch
+    slot_button.style = "tf_slot_button_smallfont"
   end
+end
 
-  return false
+--- Update drag visual styling for slots
+---@param player LuaPlayer
+---@param drag_state table? Drag state with source_slot and active flag
+function fave_bar.update_drag_visuals(player, drag_state)
+  if not player or not player.valid then return end
+  
+  local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
+  local bar_frame = GuiUtils.find_child_by_name(main_flow, "fave_bar_frame")
+  local bar_flow = bar_frame and GuiUtils.find_child_by_name(bar_frame, "fave_bar_flow")
+  local slots_frame = bar_flow and GuiUtils.find_child_by_name(bar_flow, "fave_bar_slots_flow")
+  
+  if not slots_frame then return end
+  
+  local max_slots = Constants.settings.MAX_FAVORITE_SLOTS or 10
+  
+  -- Update all slot buttons to show/hide drag styling
+  for i = 1, max_slots do
+    local slot_button = GuiUtils.find_child_by_name(slots_frame, "fave_bar_slot_" .. i)
+    if slot_button then
+      if drag_state and drag_state.active and drag_state.source_slot == i then
+        -- Source slot being dragged - add drag styling
+        ---@diagnostic disable-next-line: assign-type-mismatch
+        slot_button.style = "tf_slot_button_drag_source"
+      else
+        -- Reset to normal styling (will be updated by single slot update if needed)
+        fave_bar.update_single_slot(player, i)
+      end
+    end
+  end
+end
+
+--- Update toggle button visibility state
+---@param player LuaPlayer
+---@param slots_visible boolean Whether slots should be visible
+function fave_bar.update_toggle_state(player, slots_visible)
+  if not player or not player.valid then return end
+  
+  local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
+  local bar_frame = GuiUtils.find_child_by_name(main_flow, "fave_bar_frame")
+  local bar_flow = bar_frame and GuiUtils.find_child_by_name(bar_frame, "fave_bar_flow")
+  local slots_frame = bar_flow and GuiUtils.find_child_by_name(bar_flow, "fave_bar_slots_flow")
+  
+  if slots_frame then
+    slots_frame.visible = slots_visible
+  end
 end
 
 -- Update the GUI click handling

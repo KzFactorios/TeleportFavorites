@@ -120,11 +120,21 @@ function GuiEventBus.process_notifications()
   
   local processed_count = 0
   local error_count = 0
-    while #GuiEventBus._notification_queue > 0 do
+  
+  -- Run periodic cleanup every 100 notifications or every 10 minutes
+  local should_cleanup = (#GuiEventBus._notification_queue > 0 and 
+                         (#GuiEventBus._notification_queue % 100 == 0 or 
+                          game.tick % 36000 == 0)) -- 10 minutes
+  
+  if should_cleanup then
+    GuiEventBus.periodic_cleanup()
+  end
+  
+  while #GuiEventBus._notification_queue > 0 do
     local notification = table.remove(GuiEventBus._notification_queue, 1)
     local observers = GuiEventBus._observers[notification.type] or {}
     
-    -- Clean up invalid observers
+    -- Clean up invalid observers for this specific event type
     GuiEventBus.cleanup_observers(notification.type)
     
     for _, observer in ipairs(observers) do
@@ -174,6 +184,149 @@ function GuiEventBus.cleanup_observers(event_type)
       event_type = event_type,
       cleaned_count = cleaned_count
     })
+  end
+end
+
+--- Clean up observers for a specific player (more targeted than cleanup_all)
+---@param player LuaPlayer|nil The player whose observers should be cleaned up
+function GuiEventBus.cleanup_player_observers(player)
+  if not player then return end
+  
+  local player_index = player.index
+  local player_name = player.name
+  local total_cleaned = 0
+  
+  for event_type, observers in pairs(GuiEventBus._observers) do
+    local cleaned_count = 0
+    for i = #observers, 1, -1 do
+      local observer = observers[i]
+      -- Enhanced cleanup: match by player index OR if observer's player is invalid
+      if observer and (
+        (observer.player and observer.player.index == player_index) or
+        (observer.player and not observer.player.valid) or
+        not observer:is_valid()
+      ) then
+        table.remove(observers, i)
+        cleaned_count = cleaned_count + 1
+      end
+    end
+    total_cleaned = total_cleaned + cleaned_count
+  end
+  
+  if total_cleaned > 0 then
+    ErrorHandler.debug_log("Cleaned up player-specific observers", {
+      player = player_name,
+      player_index = player_index,
+      cleaned_count = total_cleaned
+    })
+  end
+end
+
+--- Aggressive cleanup: Remove observers older than specified ticks
+---@param max_age_ticks number Maximum age in ticks before cleanup (default: 30 minutes = 108000 ticks)
+function GuiEventBus.cleanup_old_observers(max_age_ticks)
+  max_age_ticks = max_age_ticks or 108000 -- 30 minutes default (reduced from 1 hour)
+  local current_tick = game.tick
+  local total_cleaned = 0
+  
+  for event_type, observers in pairs(GuiEventBus._observers) do
+    local cleaned_count = 0
+    for i = #observers, 1, -1 do
+      local observer = observers[i]
+      if observer then
+        local should_remove = false
+        
+        -- Remove if observer is invalid
+        if not observer:is_valid() then
+          should_remove = true
+        
+        -- Remove if observer is too old
+        elseif observer.created_tick and (current_tick - observer.created_tick) > max_age_ticks then
+          should_remove = true
+        
+        -- Remove if observer's player is disconnected and observer is older than 5 minutes
+        elseif observer.player and not observer.player.connected and 
+               observer.created_tick and (current_tick - observer.created_tick) > 18000 then -- 5 minutes
+          should_remove = true
+        end
+        
+        if should_remove then
+          table.remove(observers, i)
+          cleaned_count = cleaned_count + 1
+        end
+      end
+    end
+    total_cleaned = total_cleaned + cleaned_count
+  end
+  
+  if total_cleaned > 0 then
+    ErrorHandler.debug_log("Cleaned up old observers", {
+      max_age_ticks = max_age_ticks,
+      cleaned_count = total_cleaned
+    })
+  end
+end
+
+--- Periodic cleanup that runs during notification processing
+function GuiEventBus.periodic_cleanup()
+  -- Clean up invalid observers more frequently
+  for event_type in pairs(GuiEventBus._observers) do
+    GuiEventBus.cleanup_observers(event_type)
+  end
+  
+  -- Clean up old observers more aggressively (1+ hours)
+  GuiEventBus.cleanup_old_observers(216000) -- 1 hour
+  
+  -- Clear excessive notification queue if it gets too large
+  if #GuiEventBus._notification_queue > 100 then
+    ErrorHandler.warn_log("Notification queue too large, clearing old notifications", {
+      queue_size = #GuiEventBus._notification_queue
+    })
+    -- Keep only the most recent 50 notifications
+    local recent_notifications = {}
+    for i = math.max(1, #GuiEventBus._notification_queue - 49), #GuiEventBus._notification_queue do
+      table.insert(recent_notifications, GuiEventBus._notification_queue[i])
+    end
+    GuiEventBus._notification_queue = recent_notifications
+  end
+  
+  -- Additional memory optimization: remove empty observer arrays
+  for event_type, observers in pairs(GuiEventBus._observers) do
+    if #observers == 0 then
+      GuiEventBus._observers[event_type] = nil
+    end
+  end
+end
+
+--- Schedule regular periodic cleanup (independent of notification processing)
+--- This ensures memory cleanup even during quiet periods
+function GuiEventBus.schedule_periodic_cleanup()
+  local current_tick = game.tick
+  
+  -- Schedule cleanup every 5 minutes (18000 ticks)
+  if current_tick % 18000 == 0 then
+    GuiEventBus.cleanup_old_observers(108000) -- Clean up observers older than 30 minutes
+    
+    -- Additional aggressive cleanup every 15 minutes
+    if current_tick % 54000 == 0 then
+      -- Clean up any observers with invalid/disconnected players
+      for event_type, observers in pairs(GuiEventBus._observers) do
+        local cleaned_count = 0
+        for i = #observers, 1, -1 do
+          local observer = observers[i]
+          if observer and observer.player and (not observer.player.valid or not observer.player.connected) then
+            table.remove(observers, i)
+            cleaned_count = cleaned_count + 1
+          end
+        end
+        if cleaned_count > 0 then
+          ErrorHandler.debug_log("Scheduled cleanup removed disconnected observers", {
+            event_type = event_type,
+            cleaned_count = cleaned_count
+          })
+        end
+      end
+    end
   end
 end
 
@@ -342,6 +495,50 @@ function GuiEventBus.register_player_observers(player)
   -- Register NotificationObserver for invalid_chart_tag events
   local notification_observer = NotificationObserver:new(player)
   GuiEventBus.subscribe("invalid_chart_tag", notification_observer)
+end
+
+--- Clean up observers for a disconnected player (more aggressive than player leave)
+---@param player_index uint The index of the disconnected player
+function GuiEventBus.cleanup_disconnected_player_observers(player_index)
+  if not player_index then return end
+  
+  local total_cleaned = 0
+  
+  for event_type, observers in pairs(GuiEventBus._observers) do
+    local cleaned_count = 0
+    for i = #observers, 1, -1 do
+      local observer = observers[i]
+      if observer then
+        local should_remove = false
+        
+        -- Remove if observer belongs to disconnected player
+        if observer.player and observer.player.index == player_index then
+          should_remove = true
+        
+        -- Remove if observer's player is invalid/nil
+        elseif not observer.player or not observer.player.valid then
+          should_remove = true
+        
+        -- Remove if observer itself is invalid
+        elseif not observer:is_valid() then
+          should_remove = true
+        end
+        
+        if should_remove then
+          table.remove(observers, i)
+          cleaned_count = cleaned_count + 1
+        end
+      end
+    end
+    total_cleaned = total_cleaned + cleaned_count
+  end
+  
+  if total_cleaned > 0 then
+    ErrorHandler.debug_log("Cleaned up disconnected player observers", {
+      player_index = player_index,
+      cleaned_count = total_cleaned
+    })
+  end
 end
 
 return {

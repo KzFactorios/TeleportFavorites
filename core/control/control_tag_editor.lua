@@ -41,7 +41,9 @@ end
 
 local function show_tag_editor_error(player, tag_data, message)
   tag_data.error_message = message
-  refresh_tag_editor(player, tag_data)
+  -- Use partial update instead of full rebuild for error messages
+  tag_editor.update_error_message(player, message)
+  Cache.set_tag_editor_data(player, tag_data)
 end
 
 local function update_favorite_state(player, tag, is_favorite)
@@ -50,6 +52,9 @@ local function update_favorite_state(player, tag, is_favorite)
   local tag_data = Cache.get_tag_editor_data(player) or {}
   tag_data.is_favorite = is_favorite
   Cache.set_tag_editor_data(player, tag_data)
+  
+  -- Use partial update instead of full rebuild for favorite state
+  tag_editor.update_favorite_state(player, is_favorite)
 end
 
 local function handle_favorite_operations(player, tag, is_favorite)
@@ -387,7 +392,8 @@ local function handle_favorite_btn(player, tag_data)
 
   -- Update the tag_data and refresh the UI to show new state
   Cache.set_tag_editor_data(player, tag_data)
-  refresh_tag_editor(player, tag_data)
+  -- Use partial update instead of full rebuild for favorite toggle
+  tag_editor.update_favorite_state(player, tag_data.is_favorite)
 end
 
 local function handle_delete_confirm(player)

@@ -458,17 +458,145 @@ function data_viewer.build(player, parent, state)
       -- Note: font_color is not settable on LuaStyle
     end
   else
-    local no_data_lbl3 = GuiBase.create_label(data_table, "no_data_other", "[NO DATA TO DISPLAY]",
-      "data_viewer_row_even_label")
-    -- Note: font_color is not settable on LuaStyle
+    -- For non-table data, just show the value as a single line
+    local val_str = tostring(data) .. " [" .. type(data) .. "]"
+    local lbl = GuiBase.create_label(data_table, "data_single_value", "  " .. val_str, "data_viewer_row_even_label")
+    set_label_font(lbl, font_size)
   end
 
-  local lbl2 = GuiBase.create_label(data_table, "data_closing_brace", "}", "data_viewer_row_even_label")
+  -- Closing brace
+  local lbl2 = GuiBase.create_label(data_table, "data_closing_brace", "}", "data_viewer_row_odd_label")
   set_label_font(lbl2, font_size)
-  -- Note: font_color and top_margin are not settable on LuaStyle
 
-  -- Always return the frame so the GUI is built
   return frame
+end
+
+-- Partial update functions for data viewer
+
+--- Update only the content panel without rebuilding tabs and controls
+---@param player LuaPlayer
+---@param data table Data to display
+---@param font_size number Font size to use
+---@param top_key string Top-level key name
+function data_viewer.update_content_panel(player, data, font_size, top_key)
+  local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
+  local frame = GuiUtils.find_child_by_name(main_flow, Enum.GuiEnum.GUI_FRAME.DATA_VIEWER)
+  if not frame then return end
+
+  local content_flow = GuiUtils.find_child_by_name(frame, "data_viewer_content_flow")
+  if not content_flow then return end
+
+  -- Remove existing data table
+  local existing_table = GuiUtils.find_child_by_name(content_flow, "data_viewer_table")
+  if existing_table then
+    existing_table.destroy()
+  end
+
+  -- Create new data table
+  local data_table = GuiBase.create_element("table", content_flow, {
+    name = "data_viewer_table",
+    column_count = 1,
+    style = "tf_data_viewer_table"
+  })
+
+  -- Populate with data
+  if data == nil or (type(data) == "table" and next(data) == nil) then
+    if not top_key then top_key = "player_data" end
+    
+    local style = "data_viewer_row_odd_label"
+    local lbl = GuiBase.create_label(data_table, "data_top_key_empty", top_key .. " = {", style)
+    set_label_font(lbl, font_size)
+    local lbl2 = GuiBase.create_label(data_table, "data_closing_brace_empty", "}", "data_viewer_row_even_label")
+    set_label_font(lbl2, font_size)
+  else
+    -- Show the top-level key and render the data
+    if not top_key then top_key = "player_data" end
+    local style = "data_viewer_row_odd_label"
+    local lbl = GuiBase.create_label(data_table, "data_top_key", top_key .. " = {", style)
+    set_label_font(lbl, font_size)
+
+    local row_start = 1
+    local row_end = 1
+    if type(data) == "table" then
+      row_end = render_compact_data_rows(data_table, data, 0, font_size, row_start, nil, true)
+      if row_end == row_start then
+        local no_data_lbl2 = GuiBase.create_label(data_table, "no_data_table", "[NO DATA TO DISPLAY]",
+          "data_viewer_row_even_label")
+      end
+    else
+      -- For non-table data, just show the value as a single line
+      local val_str = tostring(data) .. " [" .. type(data) .. "]"
+      local lbl = GuiBase.create_label(data_table, "data_single_value", "  " .. val_str, "data_viewer_row_even_label")
+      set_label_font(lbl, font_size)
+    end
+
+    -- Closing brace
+    local lbl2 = GuiBase.create_label(data_table, "data_closing_brace", "}", "data_viewer_row_odd_label")
+    set_label_font(lbl2, font_size)
+  end
+end
+
+--- Update font size for existing content without full rebuild
+---@param player LuaPlayer
+---@param new_font_size number New font size to apply
+function data_viewer.update_font_size(player, new_font_size)
+  local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
+  local frame = GuiUtils.find_child_by_name(main_flow, Enum.GuiEnum.GUI_FRAME.DATA_VIEWER)
+  if not frame then return end
+
+  local data_table = GuiUtils.find_child_by_name(frame, "data_viewer_table")
+  if not data_table then return end
+
+  -- Update font size for all existing labels in the data table
+  for _, child in pairs(data_table.children) do
+    if child.type == "label" then
+      set_label_font(child, new_font_size)
+    end
+  end
+end
+
+--- Update tab selection state without rebuilding content
+---@param player LuaPlayer
+---@param active_tab string Active tab name
+function data_viewer.update_tab_selection(player, active_tab)
+  local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
+  local frame = GuiUtils.find_child_by_name(main_flow, Enum.GuiEnum.GUI_FRAME.DATA_VIEWER)
+  if not frame then return end
+
+  local tabs_flow = GuiUtils.find_child_by_name(frame, "data_viewer_tabs_flow")
+  if not tabs_flow then return end
+
+  -- Tab button name to tab key mapping
+  local tab_mapping = {
+    ["data_viewer_player_data_tab"] = "player_data",
+    ["data_viewer_surface_data_tab"] = "surface_data", 
+    ["data_viewer_lookup_tab"] = "lookup",
+    ["data_viewer_all_data_tab"] = "all_data"
+  }
+
+  -- Update each tab button's enabled state and style
+  for button_name, tab_key in pairs(tab_mapping) do
+    local tab_button = GuiUtils.find_child_by_name(tabs_flow, button_name)
+    if tab_button then
+      local is_active = (tab_key == active_tab)
+      tab_button.enabled = not is_active
+      
+      -- Update style based on active state
+      if is_active then
+        ---@diagnostic disable-next-line: assign-type-mismatch
+        tab_button.style = "tf_data_viewer_tab_button_active"
+      else
+        -- Determine if this is the first button for styling
+        if button_name == "data_viewer_player_data_tab" then
+          ---@diagnostic disable-next-line: assign-type-mismatch
+          tab_button.style = "tf_data_viewer_tab_button"
+        else
+          ---@diagnostic disable-next-line: assign-type-mismatch
+          tab_button.style = "tf_data_viewer_tab_button_margin"
+        end
+      end
+    end
+  end
 end
 
 --- Show notification when data is refreshed

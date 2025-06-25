@@ -137,6 +137,35 @@ function EventRegistrationDispatcher.register_core_events(script)
         -- Also setup observers for joined players
         local player = game.get_player(event.player_index)
         if player and player.valid then
+          -- Reset transient states for rejoining players
+          -- This handles cases where cleanup on leave may have failed
+          local Cache = require("core.cache.cache")
+          local ErrorHandler = require("core.utils.error_handler")
+          local player_data = Cache.get_player_data(player)
+          
+          -- Reset drag mode state
+          if player_data.drag_favorite then
+            player_data.drag_favorite.active = false
+            player_data.drag_favorite.source_slot = nil
+            player_data.drag_favorite.favorite = nil
+          end
+          
+          -- Reset move mode state
+          if player_data.tag_editor_data and player_data.tag_editor_data.move_mode then
+            player_data.tag_editor_data.move_mode = false
+            player_data.tag_editor_data.error_message = ""
+          end
+          
+          -- Clear cursor
+          pcall(function()
+            player.clear_cursor()
+          end)
+          
+          ErrorHandler.debug_log("Transient states reset for rejoining player", {
+            player = player.name,
+            player_index = player.index
+          })
+          
           -- Import gui_observer safely
           local success, gui_observer = pcall(require, "core.pattern.gui_observer")
           if success and gui_observer.GuiEventBus and gui_observer.GuiEventBus.register_player_observers then
@@ -151,28 +180,136 @@ function EventRegistrationDispatcher.register_core_events(script)
       name = "on_player_changed_surface"
     },    [defines.events.on_player_left_game] = {
       handler = function(event)
+        -- Get the leaving player before handling chart tag ownership
+        local leaving_player = game.get_player(event.player_index)
+        local ErrorHandler = require("core.utils.error_handler")
+        
         -- Handle chart tag ownership reset
         local ChartTagOwnershipManager = require("core.control.chart_tag_ownership_manager")
         ChartTagOwnershipManager.on_player_left_game(event)
         
-        -- Clean up observers when players leave
+        -- Reset drag mode and move mode states for leaving player
+        if leaving_player and leaving_player.valid then
+          -- Reset drag mode state
+          local Cache = require("core.cache.cache")
+          local player_data = Cache.get_player_data(leaving_player)
+          if player_data and player_data.drag_favorite and player_data.drag_favorite.active then
+            local CursorUtils = require("core.utils.cursor_utils")
+            CursorUtils.end_drag_favorite(leaving_player)
+            ErrorHandler.debug_log("Reset drag mode for leaving player", {
+              player = leaving_player.name,
+              player_index = leaving_player.index
+            })
+          end
+          
+          -- Reset move mode state and clear cursor
+          pcall(function()
+            leaving_player.clear_cursor()
+          end)
+          
+          -- Reset any tag editor move mode states
+          local tag_data = Cache.get_tag_editor_data(leaving_player)
+          -- Check if move_mode exists and is true (move_mode is dynamically set)
+          local move_mode_active = tag_data.move_mode
+          if move_mode_active then
+            tag_data.move_mode = false
+            Cache.set_tag_editor_data(leaving_player, tag_data)
+            ErrorHandler.debug_log("Reset move mode for leaving player", {
+              player = leaving_player.name,
+              player_index = leaving_player.index
+            })
+          end
+          
+          -- Clear any error messages to prevent persistence across sessions
+          tag_data.error_message = ""
+          Cache.set_tag_editor_data(leaving_player, tag_data)
+          ErrorHandler.debug_log("Cleared tag editor state for leaving player", {
+            player = leaving_player.name,
+            player_index = leaving_player.index
+          })
+        end
+        
+        -- Enhanced cleanup for leaving player using targeted methods
         local success, gui_observer = pcall(require, "core.pattern.gui_observer")
-        if success and gui_observer.GuiEventBus and gui_observer.GuiEventBus.cleanup_all then
-          gui_observer.GuiEventBus.cleanup_all()
+        if success and gui_observer.GuiEventBus then
+          if leaving_player and leaving_player.valid and gui_observer.GuiEventBus.cleanup_player_observers then
+            -- Use targeted player cleanup
+            gui_observer.GuiEventBus.cleanup_player_observers(leaving_player)
+          elseif gui_observer.GuiEventBus.cleanup_disconnected_player_observers then
+            -- Use disconnected player cleanup if player is no longer valid
+            gui_observer.GuiEventBus.cleanup_disconnected_player_observers(event.player_index)
+          elseif gui_observer.GuiEventBus.cleanup_all then
+            -- Final fallback to global cleanup
+            gui_observer.GuiEventBus.cleanup_all()
+          end
         end
       end,
       name = "on_player_left_game"
     },
     [defines.events.on_player_removed] = {
       handler = function(event)
+        -- Get the removed player before handling chart tag ownership
+        local removed_player = game.get_player(event.player_index)
+        local ErrorHandler = require("core.utils.error_handler")
+        
         -- Handle chart tag ownership reset
         local ChartTagOwnershipManager = require("core.control.chart_tag_ownership_manager")
         ChartTagOwnershipManager.on_player_removed(event)
         
-        -- Clean up observers when players are removed
+        -- Reset drag mode and move mode states for removed player
+        if removed_player and removed_player.valid then
+          -- Reset drag mode state
+          local Cache = require("core.cache.cache")
+          local player_data = Cache.get_player_data(removed_player)
+          if player_data and player_data.drag_favorite and player_data.drag_favorite.active then
+            local CursorUtils = require("core.utils.cursor_utils")
+            CursorUtils.end_drag_favorite(removed_player)
+            ErrorHandler.debug_log("Reset drag mode for removed player", {
+              player = removed_player.name,
+              player_index = removed_player.index
+            })
+          end
+          
+          -- Reset move mode state and clear cursor
+          pcall(function()
+            removed_player.clear_cursor()
+          end)
+          
+          -- Reset any tag editor move mode states
+          local tag_data = Cache.get_tag_editor_data(removed_player)
+          -- Check if move_mode exists and is true (move_mode is dynamically set)
+          local move_mode_active = tag_data.move_mode
+          if move_mode_active then
+            tag_data.move_mode = false
+            Cache.set_tag_editor_data(removed_player, tag_data)
+            ErrorHandler.debug_log("Reset move mode for removed player", {
+              player = removed_player.name,
+              player_index = removed_player.index
+            })
+          end
+          
+          -- Clear any error messages to prevent persistence across sessions
+          tag_data.error_message = ""
+          Cache.set_tag_editor_data(removed_player, tag_data)
+          ErrorHandler.debug_log("Cleared tag editor state for removed player", {
+            player = removed_player.name,
+            player_index = removed_player.index
+          })
+        end
+        
+        -- Enhanced cleanup for removed player using targeted methods
         local success, gui_observer = pcall(require, "core.pattern.gui_observer")
-        if success and gui_observer.GuiEventBus and gui_observer.GuiEventBus.cleanup_all then
-          gui_observer.GuiEventBus.cleanup_all()
+        if success and gui_observer.GuiEventBus then
+          if removed_player and removed_player.valid and gui_observer.GuiEventBus.cleanup_player_observers then
+            -- Use targeted player cleanup
+            gui_observer.GuiEventBus.cleanup_player_observers(removed_player)
+          elseif gui_observer.GuiEventBus.cleanup_disconnected_player_observers then
+            -- Use disconnected player cleanup if player is no longer valid
+            gui_observer.GuiEventBus.cleanup_disconnected_player_observers(event.player_index)
+          elseif gui_observer.GuiEventBus.cleanup_all then
+            -- Final fallback to global cleanup
+            gui_observer.GuiEventBus.cleanup_all()
+          end
         end
       end,
       name = "on_player_removed"
@@ -212,6 +349,22 @@ function EventRegistrationDispatcher.register_core_events(script)
       name = "on_chart_tag_removed"
     }
   }
+  
+  -- Add scheduled GUI observer cleanup (every 5 minutes = 18000 ticks)
+  local success, err = pcall(function()
+    script.on_nth_tick(18000, function(event)
+      local gui_observer_success, gui_observer = pcall(require, "core.pattern.gui_observer")
+      if gui_observer_success and gui_observer.GuiEventBus and gui_observer.GuiEventBus.schedule_periodic_cleanup then
+        gui_observer.GuiEventBus.schedule_periodic_cleanup()
+      end
+    end)
+  end)
+  
+  if not success then
+    ErrorHandler.warn_log("Failed to register periodic GUI observer cleanup", { error = err })
+  else
+    ErrorHandler.debug_log("Registered periodic GUI observer cleanup (every 5 minutes)")
+  end
   
   -- Register each core event with safety wrapper
   for event_type, event_config in pairs(core_events) do

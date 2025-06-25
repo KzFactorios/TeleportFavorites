@@ -96,8 +96,8 @@ local function update_font_size(player, main_flow, delta)
   local new_size = math.max(6, math.min(24, cur_size + delta))
   pdata.data_viewer_settings.font_size = new_size
   
-  local active_tab = pdata.data_viewer_settings.active_tab or "player_data"
-  rebuild_data_viewer(player, main_flow, active_tab, new_size)
+  -- Use partial update instead of full rebuild for font size changes
+  data_viewer.update_font_size(player, new_size)
 end
 
 --- Find currently active tab from GUI elements
@@ -177,22 +177,30 @@ function M.on_data_viewer_gui_click(event)
   if element.name == "data_viewer_player_data_tab" then
     pdata.data_viewer_settings.active_tab = "player_data"
     local font_size = pdata.data_viewer_settings.font_size or 12
-    rebuild_data_viewer(player, main_flow, "player_data", font_size)
+    data_viewer.update_tab_selection(player, "player_data")
+    local state = load_tab_data(player, "player_data", font_size)
+    data_viewer.update_content_panel(player, state.data, font_size, state.top_key)
     return
   elseif element.name == "data_viewer_surface_data_tab" then
     pdata.data_viewer_settings.active_tab = "surface_data"
     local font_size = pdata.data_viewer_settings.font_size or 12
-    rebuild_data_viewer(player, main_flow, "surface_data", font_size)
+    data_viewer.update_tab_selection(player, "surface_data")
+    local state = load_tab_data(player, "surface_data", font_size)
+    data_viewer.update_content_panel(player, state.data, font_size, state.top_key)
     return
   elseif element.name == "data_viewer_lookup_tab" then
     pdata.data_viewer_settings.active_tab = "lookup"
     local font_size = pdata.data_viewer_settings.font_size or 12
-    rebuild_data_viewer(player, main_flow, "lookup", font_size)
+    data_viewer.update_tab_selection(player, "lookup")
+    local state = load_tab_data(player, "lookup", font_size)
+    data_viewer.update_content_panel(player, state.data, font_size, state.top_key)
     return
   elseif element.name == "data_viewer_all_data_tab" then
     pdata.data_viewer_settings.active_tab = "all_data"
     local font_size = pdata.data_viewer_settings.font_size or 12
-    rebuild_data_viewer(player, main_flow, "all_data", font_size)
+    data_viewer.update_tab_selection(player, "all_data")
+    local state = load_tab_data(player, "all_data", font_size)
+    data_viewer.update_content_panel(player, state.data, font_size, state.top_key)
     return
   end
     -- Handle refresh button click in data viewer
@@ -203,7 +211,11 @@ function M.on_data_viewer_gui_click(event)
     -- Use the stored active tab instead of trying to detect from GUI
     local active_tab = pdata.data_viewer_settings.active_tab or "player_data"
     local font_size = pdata.data_viewer_settings.font_size or 12
-    rebuild_data_viewer(player, main_flow, active_tab, font_size, true)
+    
+    -- Use partial update instead of full rebuild for refresh
+    local state = load_tab_data(player, active_tab, font_size)
+    data_viewer.update_content_panel(player, state.data, font_size, state.top_key)
+    data_viewer.show_refresh_notification(player)
     
     -- Notify observers of data refresh
     local success, gui_observer = pcall(require, "core.pattern.gui_observer")

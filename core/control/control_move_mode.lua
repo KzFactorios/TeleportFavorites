@@ -117,4 +117,39 @@ function M.enter_move_mode(player, tag_data, refresh_tag_editor, script)
   script.on_event(defines.events.on_player_selected_area, on_move)
 end
 
+--- Cancel move mode and clean up state
+---@param player LuaPlayer
+---@param tag_data table
+---@param refresh_tag_editor function
+---@param script table
+function M.cancel_move_mode(player, tag_data, refresh_tag_editor, script)
+  if not player or not player.valid or not tag_data then return end
+  
+  -- Reset move mode state
+  tag_data.move_mode = false
+  tag_data.error_message = ""
+  
+  -- Clear cursor and remove selection tool
+  pcall(function()
+    player.clear_cursor()
+  end)
+  
+  -- Update cache and refresh UI
+  local Cache = require("core.cache.cache")
+  Cache.set_tag_editor_data(player, tag_data)
+  if refresh_tag_editor then
+    refresh_tag_editor(player, tag_data)
+  end
+  
+  -- Clean up event handler to prevent memory leak
+  if script and script.on_event then
+    script.on_event(defines.events.on_player_selected_area, nil)
+  end
+  
+  require("core.utils.error_handler").debug_log("Move mode canceled and cleaned up", {
+    player = player.name,
+    player_index = player.index
+  })
+end
+
 return M
