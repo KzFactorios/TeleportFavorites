@@ -3,6 +3,26 @@
 ## Overview
 This document defines the coding standards and best practices for the TeleportFavorites mod. All contributors should follow these guidelines to ensure code quality, maintainability, and consistency.
 
+```
+┌───────────────────────────────────────────────────────┐
+│              Coding Standards Overview                │
+├───────────────────────────┬───────────────────────────┤
+│ ⚠️ Critical Rules        │ Best Practices            │
+├───────────────────────────┼───────────────────────────┤
+│ • All requires at TOP     │ • Follow EmmyLua style    │
+│ • Never inside functions  │ • Document public APIs    │
+│ • Never at end of files   │ • Max 100 chars per line  │
+│ • Storage as source       │ • Descriptive naming      │
+│   of truth pattern        │ • Localize all strings    │
+│ • Input → Storage → UI   │ • Test all key functions  │
+├───────────────────────────┴───────────────────────────┤
+│ Commit & Review Process:                              │
+│ • Lint before commit                                  │
+│ • Run tests before submitting                         │
+│ • Document all changes                                │
+└───────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## Require Statements Policy

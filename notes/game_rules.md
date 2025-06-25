@@ -28,6 +28,20 @@ end
 
 ## Permission System
 
+```
+┌───────────────────────────────────────────────┐
+│            Permissions & Ownership            │
+├─────────────────────┬─────────────────────────┤
+│   Regular Player    │          Admin          │
+├─────────────────────┼─────────────────────────┤
+│ ✓ Edit if owner     │ ✓ Edit any chart tag    │
+│ ✓ Edit if unclaimed │ ✓ Delete any chart tag  │
+│ ✓ Delete if owner   │ ✓ Bypass all ownership  │
+│   AND no favorites  │   restrictions          │
+│   by other players  │                         │
+└─────────────────────┴─────────────────────────┘
+```
+
 ### Regular Player Permissions
 
 #### Tag Editing Permissions

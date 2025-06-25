@@ -7,6 +7,28 @@ The favorites bar (fave_bar) is a persistent, player-specific GUI element that p
 - The parent element is `fave_bar_frame`, which contains two horizontal containers:
   - `fave_bar_toggle_flow`: Holds the `fave_bar_visible_btns_toggle` button (red star icon). Clicking toggles visibility of the favorite buttons container. State is persisted in `storage.players[player_index].toggle_fave_bar_buttons`.
   - `fave_bar_slots_flow` container: Contains `MAX_FAVORITE_SLOTS` slot buttons, each representing a favorite. Each slot button:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                      Favorites Bar                      │
+├───────┬───────┬───────┬───────┬───────┬───────┬─────────┤
+│Toggle │  #1   │  #2   │  #3   │  #4   │  ...  │  #0     │
+│Button │ (Icon)│ (Icon)│ (Icon)│       │       │         │
+├───────┴───────┴───────┴───────┴───────┴───────┴─────────┤
+│       Interactions:                                     │
+│       ┌───────────────┬──────────────────────────────┐  │
+│       │  Left-click   │ Teleport to location         │  │
+│       ├───────────────┼──────────────────────────────┤  │
+│       │  Right-click  │ Open tag editor              │  │
+│       ├───────────────┼──────────────────────────────┤  │
+│       │ Ctrl+Left-    │ Toggle locked state          │  │
+│       │  click        │ (lock icon appears)          │  │
+│       ├───────────────┼──────────────────────────────┤  │
+│       │ Drag-and-drop │ Reorder favorites            │  │
+│       │               │ (locked cannot be moved)      │  │
+│       └───────────────┴──────────────────────────────┘  │
+└─────────────────────────────────────────────────────────┘
+```
     - Shows the icon for the matched chart_tag, or `utility/pin` if none.
     - Tooltip: First line is GPS (without surface), second line is chart_tag text (trimmed to 50 chars, see constant), no second line if no text.
     - Caption: Slot number (1-0), small font.

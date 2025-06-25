@@ -2,6 +2,34 @@
 
 The Data Viewer is a developer utility for inspecting mod storage in real time. It should be robust, performant, and idiomatic for Factorio 2.0, using the builder and command patterns for GUI and event handling. The viewer is intended for debugging and development, not for end users.
 
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Data Viewer                                          [X]  │
+├─────────────────────────────────────────────────────────────┤
+│┌───────────┐┌────────────┐┌───────────┐┌─────────────┐┌───┐│
+││Player Data││Surface Data││  Lookups  ││  All Data   ││+/-││
+│└───────────┘└────────────┘└───────────┘└─────────────┘└───┘│
+├─────────────────────────────────────────────────────────────┤
+││                                                         ↑ ││
+││ storage = {                                             │ ││
+││   players = {                                           │ ││
+││     [1] = {                                             │ ││
+││       player_name = "Engineer1",                        │ ││
+││       render_mode = "game",                             │ ││
+││       data_viewer_settings = {                          │ ││
+││         active_tab = "player_data",                     │ ││
+││         font_size = 12                                  │ ││
+││       },                                                │ ││
+││       ...                                               │ ││
+││     }                                                   │ ││
+││   }                                                     │ ││
+││ }                                                       ↓ ││
+│└─────────────────────────────────────────────────────────┘│
+├─────────────────────────────────────────────────────────────┤
+│         [Refresh]                                [Close]    │
+└─────────────────────────────────────────────────────────────┘
+```
+
 ## Core Features
 - **Location:** Lives in the top GUI, below the favorites bar.
 - **Tabs:** Four tab buttons at the top: `player_data`, `surface_data`, `lookups`, `all_data`.

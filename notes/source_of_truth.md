@@ -69,6 +69,18 @@ local text = tag_data.text  -- Always current from storage
 3. **Button Click** → Load current `tag_editor_data` → Execute action using stored values
 4. **UI Refresh** → Rebuild GUI from `tag_editor_data` values only
 
+```
+┌───────────────┐     ┌──────────────┐     ┌────────────────────┐
+│  User Input   │────>│ Event Handler │────>│ Immediate Storage  │
+│ (GUI Element) │     │              │     │       Save         │
+└───────────────┘     └──────────────┘     └──────────┬─────────┘
+                                                     │
+┌───────────────┐     ┌──────────────┐     ┌─────────▼─────────┐
+│   UI Refresh  │<────│Business Logic│<────│   Read from       │
+│ (if needed)   │     │              │     │ Storage for Logic │
+└───────────────┘     └──────────────┘     └──────────────────┘
+```
+
 This pattern ensures storage and UI never get out of sync because UI elements never hold authoritative state.
 
 ---

@@ -18,6 +18,26 @@ This document provides a high-level overview of the mod's goals, architecture, a
 
 ## Design Patterns and Architecture
 
+```
+┌────────────────────────────────────────────────────────────┐
+│                 TeleportFavorites Architecture             │
+├────────────────┬──────────────────┬─────────────────────┬──┤
+│   GUI Layer    │  Event Handlers  │  Business Logic     │  │
+│                │                  │                     │  │
+│ - Tag Editor   │ - Input Events   │ - Tag Management    │  │
+│ - Favorites Bar│ - Button Clicks  │ - Favorite Logic    │  │
+│ - Data Viewer  │ - Mouse Events   │ - Teleport Strategy │  │
+├────────────────┴──────────────────┴─────────────────────┤  │
+│              Cache / Storage (Source of Truth)          │  │
+├──────────────────────────────────────────────────────┬──┤  │
+│               Surface-Aware Data:                    │  │  │
+│ - Player Favorites                                   │  │  │
+│ - Chart Tags                                         │  │  │
+│ - Tag Editor Data                                    │  │  │
+│ - Player Settings                                    │  │  │
+└──────────────────────────────────────────────────────┴──┴──┘
+```
+
 ### Storage as Source of Truth Pattern
 
 The mod implements a strict "storage as source of truth" pattern for all GUI state management:

@@ -7,6 +7,34 @@ Defines the persistent and runtime data structures for the mod, including player
 
 ## Top-Level Schema
 
+```
+┌────────────────────────────────────────────────────────────┐
+│                    Data Schema Overview                    │
+├────────────────────────┬───────────────────────────────────┤
+│  Persistent Storage    │        Runtime Cache              │
+│     (storage)          │      (_G["Lookups"])              │
+├────────────────────────┼───────────────────────────────────┤
+│ ┌──────────────────┐   │  ┌───────────────────────┐        │
+│ │ players          │   │  │ surfaces              │        │
+│ │  └─[player_index]│   │  │  └─[surface_index]    │        │
+│ │     ├─player_name│   │  │     ├─chart_tags      │        │
+│ │     ├─render_mode│   │  │     └─chart_tags_     │        │
+│ │     ├─tag_editor_│   │  │        mapped_by_gps  │        │
+│ │     │  data      │   │  └───────────────────────┘        │
+│ │     └─surfaces   │   │                                   │
+│ │        └─[index] │   │                                   │
+│ │           └─favo│   │                                   │
+│ │             rites│   │                                   │
+│ └──────────────────┘   │                                   │
+│ ┌──────────────────┐   │                                   │
+│ │ surfaces         │   │                                   │
+│ │  └─[index]       │   │                                   │
+│ │     └─tags       │   │                                   │
+│ │        └─[gps]   │   │                                   │
+│ └──────────────────┘   │                                   │
+└────────────────────────┴───────────────────────────────────┘
+```
+
 ### Persistent Storage (`storage` table)
 ```lua
 storage = {

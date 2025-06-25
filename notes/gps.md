@@ -5,6 +5,28 @@
   - `yyy`: Y coordinate (may be negative, always zero-padded to a number of digits equal to `Constants.settings.GPS_PAD_NUMBER` (default: 3), sign included if negative)
   - `s`: Surface index (always an integer, always positive, never padded)
 - **Padding:** The X and Y values are always zero-padded to `Constants.settings.GPS_PAD_NUMBER` digits (e.g. `099`, `-001`). For values with more digits than the pad number, all digits are shown (e.g. `2048`, `-6000`).
+
+```
+┌───────────────────────────────────────────────────────────┐
+│                     GPS String Format                     │
+├───────────────┬───────────────────┬───────────────────────┤
+│      xxx      │        yyy        │          s            │
+│  X Coordinate │   Y Coordinate    │    Surface Index      │
+│ (Zero-padded) │  (Zero-padded)    │   (Not padded)        │
+├───────────────┴───────────────────┴───────────────────────┤
+│                                                           │
+│    "099.100.1"     "010.005.1"      "-123.456.2"          │
+│                                                           │
+└───────────────────────────────────────────────────────────┘
+
+┌─────────────────────┬───────────────────────────────────┐
+│ TeleportFavorites   │        Vanilla Factorio           │
+│      Format         │            Format                 │
+├─────────────────────┼───────────────────────────────────┤
+│    "099.100.1"      │      "[gps=99,100,1]"             │
+│    "-010.005.2"     │      "[gps=-10,5,2]"              │
+└─────────────────────┴───────────────────────────────────┘
+```
 - **Negative numbers:** When a GPS string is constructed from a table or parsed from vanilla format, negative numbers may appear without padding (e.g. `-123.456.1`). This is valid and canonical for Factorio, and is the expected output for negative values. Do not expect negative numbers to be zero-padded after the minus sign.
 - **Valid examples:**
   - `-123.456.1`      (x=-123, y=456, s=1)

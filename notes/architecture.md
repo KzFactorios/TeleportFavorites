@@ -54,6 +54,18 @@ This policy applies to all Lua modules in the codebase.
 4. **sync tag:** Ensures multiplayer and surface consistency.
 5. **GUI Update:** Observers update the GUI to reflect changes.
 
+```
+┌─────────────┐     ┌────────────────┐     ┌───────────────┐
+│   Player    │     │  GUI/Event     │     │  Core Logic   │
+│   Action    │────>│  Handler       │────>│  (via Cache)  │
+└─────────────┘     └────────────────┘     └───────┬───────┘
+                                                  │
+┌─────────────┐     ┌────────────────┐     ┌──────▼────────┐
+│    GUI      │     │    Observer    │     │   Tag Sync    │
+│   Update    │<────│    Pattern     │<────│               │
+└─────────────┘     └────────────────┘     └───────────────┘
+```
+
 ---
 
 ## Key Patterns

@@ -2,6 +2,38 @@
 
 The tag editor is a modal GUI for creating, editing, moving, and deleting map tags and their associated favorites. It is designed for multiplayer, surface-aware, and robust operation, and should closely mimic the vanilla "add tag" dialog in Factorio 2.0, with additional features for favorites and tag management. The GUI is built using the builder pattern for construction and the command pattern for user/event handling. It is auto-centered, screen-anchored, and only active in chart or chart_zoomed_in modes (except when opened from the favorites bar in game mode).
 
+```
+┌─────────────────────────────────────────────────────────┐
+│  Tag Editor                                       [X]   │
+├─────────────────────────────────────────────────────────┤
+│  Owner: Engineer1                       [Move] [Delete] │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  [★] [Teleport]                                        │
+│                                                         │
+│  [Icon] [                Text Input                  ]  │
+│                                                         │
+├─────────────────────────────────────────────────────────┤
+│  Error message appears here when needed                 │
+├─────────────────────────────────────────────────────────┤
+│                                          [Confirm]      │
+└─────────────────────────────────────────────────────────┘
+
+Button States:
+┌─────────────────┬─────────────────────────────────────┐
+│     Button      │         Enabled When                │
+├─────────────────┼─────────────────────────────────────┤
+│ Close [X]       │ Always                              │
+│ Move            │ Player is owner & in chart mode     │
+│ Delete          │ Player is owner & no other favs     │
+│ Favorite [★]    │ Always or when slots available      │
+│ Teleport        │ Always                              │
+│ Icon            │ Player is owner                     │
+│ Text Input      │ Player is owner                     │
+│ Confirm         │ Icon set OR text not blank          │
+└─────────────────┴─────────────────────────────────────┘
+```
+
 ## Storage as Source of Truth Pattern
 
 **CRITICAL:** The tag editor follows the "storage as source of truth" pattern. All GUI state is stored in `tag_editor_data` and immediately persisted on any user input change.
@@ -158,6 +190,26 @@ tag_editor_outer_frame (frame, vertical, tf_tag_editor_outer_frame)
    └─ last_row_confirm_button (button, tf_confirm_button)
 ```
 
+```
+┌────────────────────────────────────────────────────────┐
+│              Tag Editor Event/Data Flow                │
+├───────────────┐                   ┌───────────────────┐
+│  GUI Element  │                   │  tag_editor_data  │
+│  Interactions │                   │  (Storage)        │
+├───────────────┘                   └───────────────────┘
+│                                                        │
+│  ┌─────────────┐     ┌─────────────────┐    ┌────────┐ │
+│  │ User Input  │────>│ Event Handler   │───>│ Save   │ │
+│  │             │     │                 │    │ to     │ │
+│  └─────────────┘     └─────────────────┘    │Storage │ │
+│                                             └───┬────┘ │
+│  ┌─────────────┐     ┌─────────────────┐        │      │
+│  │ UI Updated  │<────│ Business Logic  │<───────┘      │
+│  │             │     │                 │               │
+│  └─────────────┘     └─────────────────┘               │
+└────────────────────────────────────────────────────────┘
+```
+
 - The error row only appears when `tag_data.error_message` exists and is non-empty.
 - The favorite button is at the head of the teleport row.
 - All element names use the `{gui_context}_{purpose}_{type}` convention.
@@ -177,6 +229,25 @@ This convention is strictly enforced in both code and documentation. All event h
 ---
 
 ## Event Filtering and Handling
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                   Event Handling Flow                   │
+├─────────────────┬─────────────────────┬─────────────────┤
+│ Event Received  │  Element Name Check │  Player Context │
+│                 │   tag_editor_*      │     Check       │
+└─────────┬───────┴──────────┬──────────┴────────┬────────┘
+          │                  │                   │
+          v                  v                   v
+┌─────────────────────────────────────────────────────────┐
+│                 Command Pattern Handler                 │
+│                                                         │
+│  Each user action = One command object                  │
+│  Each command validates context/state                   │
+│  Surface-aware execution                                │
+│  Multiplayer-safe operations                            │
+└─────────────────────────────────────────────────────────┘
+```
 
 The tag editor uses robust event filtering:
 - All event handlers check the element name prefix (`tag_editor_`) to ensure only relevant events are processed.
