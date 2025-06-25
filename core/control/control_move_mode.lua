@@ -41,10 +41,13 @@ function M.enter_move_mode(player, tag_data, refresh_tag_editor, script)
       -- Calculate center of selected area
       local left_top = event.area.left_top
       local right_bottom = event.area.right_bottom
-      pos = {
-        x = (left_top.x + right_bottom.x) / 2,
-        y = (left_top.y + right_bottom.y) / 2
-      }
+      local x = (left_top.x + right_bottom.x) / 2
+      local y = (left_top.y + right_bottom.y) / 2
+      if not require("core.utils.basic_helpers").is_whole_number(x) or not require("core.utils.basic_helpers").is_whole_number(y) then
+        x = require("core.utils.basic_helpers").normalize_index(x)
+        y = require("core.utils.basic_helpers").normalize_index(y)
+      end
+      pos = { x = x, y = y }
     end
 
     if not pos then

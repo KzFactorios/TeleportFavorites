@@ -89,8 +89,8 @@ end
 ---@return boolean is_water
 function PositionUtils.is_water_tile(surface, position)
   if not surface or not surface.get_tile then return false end
-  local x, y = position.x, position.y
-  local tile = surface.get_tile(x, y)
+  local norm_pos = PositionUtils.needs_normalization(position) and PositionUtils.normalize_position(position) or position
+  local tile = surface.get_tile(norm_pos.x, norm_pos.y)
   if not tile or not tile.valid then return false end
   -- Check tile name for water patterns - most reliable method
   local tile_name = tile.name
@@ -109,7 +109,8 @@ end
 ---@return boolean is_space
 function PositionUtils.is_space_tile(surface, position)
   if not surface or not surface.get_tile then return false end
-  local tile = surface.get_tile(position.x, position.y)
+  local norm_pos = PositionUtils.needs_normalization(position) and PositionUtils.normalize_position(position) or position
+  local tile = surface.get_tile(norm_pos.x, norm_pos.y)
   if not tile or not tile.valid then return false end
   -- Check tile name for space patterns
   local tile_name = tile.name

@@ -41,7 +41,7 @@ local function load_tab_data(player, active_tab, font_size)
             if chart_tag and chart_tag.valid then
               -- Create a safe serializable representation
               local safe_chart_tag = {
-                position = chart_tag.position and { x = chart_tag.position.x, y = chart_tag.position.y } or {},
+                position = chart_tag.position and require("core.utils.position_utils").normalize_if_needed(chart_tag.position) or {},
                 text = tostring(chart_tag.text or ""),
                 icon = chart_tag.icon and {
                   name = tostring(chart_tag.icon.name or ""),

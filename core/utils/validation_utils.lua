@@ -140,11 +140,10 @@ function ValidationUtils.validate_position_structure(position)
   if not position or type(position) ~= "table" then
     return false, "Position must be a table"
   end
-  
-  if type(position.x) ~= "number" or type(position.y) ~= "number" then
+  local norm_pos = require("core.utils.position_utils").normalize_position(position)
+  if type(norm_pos.x) ~= "number" or type(norm_pos.y) ~= "number" then
     return false, "Position must have numeric x and y coordinates"
   end
-  
   return true, nil
 end
 
@@ -156,11 +155,10 @@ end
 function ValidationUtils.validate_position_range(position, max_distance)
   -- Factorio's practical world limit
   max_distance = max_distance or 2000000
-  
-  if math.abs(position.x) > max_distance or math.abs(position.y) > max_distance then
+  local norm_pos = require("core.utils.position_utils").normalize_position(position)
+  if math.abs(norm_pos.x) > max_distance or math.abs(norm_pos.y) > max_distance then
     return false, "Position is outside reasonable world bounds"
   end
-  
   return true, nil
 end
 
@@ -175,18 +173,16 @@ function ValidationUtils.validate_position_for_tagging(player, position)
   if not player_valid then
     return false, player_error
   end
-  
   local pos_valid, pos_error = ValidationUtils.validate_position_structure(position)
   if not pos_valid then
     return false, pos_error
   end
-  
+  local norm_pos = require("core.utils.position_utils").normalize_position(position)
   -- Check if chunk is charted
-  local chunk = { x = math.floor(position.x / 32), y = math.floor(position.y / 32) }
-  if not player.force:is_chunk_charted(player.surface, chunk) then
+  local chunk = { x = math.floor(norm_pos.x / 32), y = math.floor(norm_pos.y / 32) }
+  if not player.surface:is_chunk_charted(chunk) then
     return false, "Position is not in charted territory"
   end
-  
   return true, nil
 end
 

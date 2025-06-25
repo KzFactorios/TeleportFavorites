@@ -14,10 +14,9 @@ local TileUtils = {}
 ---@return boolean is_water_tile
 function TileUtils.is_water_tile_at_position(surface, position)
   if not surface or not surface.get_tile or not position then return false end
-  
-  local tile = surface.get_tile(position.x, position.y)
+  local norm_pos = require("core.utils.position_utils").normalize_position(position)
+  local tile = surface.get_tile(norm_pos.x, norm_pos.y)
   if not tile or not tile.valid then return false end
-  
   local tile_name = tile.name:lower()
   return tile_name:find("water") ~= nil
 end
@@ -28,16 +27,14 @@ end
 ---@return boolean appears_walkable
 function TileUtils.appears_walkable(surface, position)
   if not surface or not surface.get_tile or not position then return false end
-  
-  local tile = surface.get_tile(position.x, position.y)
+  local norm_pos = require("core.utils.position_utils").normalize_position(position)
+  local tile = surface.get_tile(norm_pos.x, norm_pos.y)
   if not tile or not tile.valid then return false end
-  
   local tile_name = tile.name:lower()
   -- Simple check for obviously non-walkable tiles
   if tile_name:find("water") or tile_name:find("space") or tile_name:find("void") then
     return false
   end
-  
   return true
 end
 

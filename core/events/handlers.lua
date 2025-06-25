@@ -49,7 +49,6 @@ API:
 
 local Cache = require("core.cache.cache")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
-local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 local Constants = require("constants")
 local Enum = require("prototypes.enums.enum")
 local ErrorHandler = require("core.utils.error_handler")
@@ -116,14 +115,12 @@ function handlers.on_player_changed_surface(event)
   ---@diagnostic disable-next-line: param-type-mismatch
   local player = game.get_player(event.player_index)
   if not player or not player.valid then return end
-
   fave_bar.build(player)
 end
 
 --- Handles right-click on the chart view to open tag editor
 ---@param event table Event data containing player_index and cursor_position
 function handlers.on_open_tag_editor_custom_input(event)
-  
   ErrorHandler.debug_log("Tag editor custom input handler called", {
     player_index = event.player_index,
     cursor_position = event.cursor_position
@@ -146,26 +143,29 @@ function handlers.on_open_tag_editor_custom_input(event)
   -- Prevent tag editor from opening if player is in drag mode
   local player_data = Cache.get_player_data(player)
   if player_data and player_data.drag_favorite and player_data.drag_favorite.active then
-    ErrorHandler.debug_log("Tag editor handler: drag mode active, cancelling drag and suppressing tag editor", { player_index = player.index })
+    ErrorHandler.debug_log("Tag editor handler: drag mode active, cancelling drag and suppressing tag editor",
+      { player_index = player.index })
     CursorUtils.end_drag_favorite(player)
-    player.play_sound{path = "utility/cancel"}
-    return
-  end
-
-  local tag_editor_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TAG_EDITOR]
-  if tag_editor_frame and tag_editor_frame.valid then
+    player.play_sound { path = "utility/cancel" }
     return
   end
 
   local cursor_position = event.cursor_position
+  local tag_editor_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TAG_EDITOR]
+  if tag_editor_frame and tag_editor_frame.valid then
+    return
+  end
   if not cursor_position or not (cursor_position.x and cursor_position.y) then
     return
   end
+
+  local surface_index = player.surface.index
+  local normalized_pos = PositionUtils.normalize_if_needed(cursor_position)
+  ErrorHandler.debug_log("Tag editor: Starting GPS conversion", { cursor_position = normalized_pos })
   ErrorHandler.debug_log("Tag editor: Starting GPS conversion", { cursor_position = cursor_position })
 
-  -- Utility: Find or create tag_data for tag editor (was in on_open_tag_editor_custom_input)
-  local function find_or_create_tag_data(player, cursor_position)
-    local surface_index = player.surface.index
+  -- Utility: Find or create tag_data for tag editor
+  local function find_or_create_tag_data(player, cursor_position, surface_index)
     local normalized_pos = PositionUtils.normalize_position(cursor_position)
     local gps = GPSUtils.gps_from_map_position(normalized_pos, surface_index)
     local nrm_tag = Cache.get_tag_by_gps(player, gps)
@@ -178,8 +178,9 @@ function handlers.on_open_tag_editor_custom_input(event)
       local min_distance = click_radius
       for _, tag in pairs(force_tags) do
         if tag and tag.valid then
-          local dx = math.abs(tag.position.x - normalized_pos.x)
-          local dy = math.abs(tag.position.y - normalized_pos.y)
+          local tag_pos = PositionUtils.normalize_if_needed(tag.position)
+          local dx = math.abs(tag_pos.x - normalized_pos.x)
+          local dy = math.abs(tag_pos.y - normalized_pos.y)
           if dx <= click_radius and dy <= click_radius then
             local distance = math.sqrt(dx * dx + dy * dy)
             if distance < min_distance then
@@ -227,20 +228,13 @@ function handlers.on_open_tag_editor_custom_input(event)
   end
 
   -- Use helper for tag lookup and tag_data creation
-  local tag_data = find_or_create_tag_data(player, cursor_position)
+  local tag_data = find_or_create_tag_data(player, cursor_position, surface_index)
   Cache.set_tag_editor_data(player, tag_data)
   tag_editor.build(player)
-  ErrorHandler.debug_log("Tag editor: Successfully completed")
-
-  -- Debugging: Log detailed information for tag editor opening
-  ErrorHandler.debug_log("[TAG_EDITOR] Tag editor open debug", {
-    cursor_position = cursor_position,
-    normalized_pos = PositionUtils.normalize_position(cursor_position),
-    gps = GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index),
-    nrm_tag_gps = Cache.get_tag_by_gps(player, GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)) and Cache.get_tag_by_gps(player, GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)).gps or nil,
-    nrm_chart_tag_position = Cache.get_tag_by_gps(player, GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)) and Cache.get_tag_by_gps(player, GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)).chart_tag and Cache.get_tag_by_gps(player, GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)).chart_tag.position or nil,
-    gps_from_chart_tag_position = Cache.get_tag_by_gps(player, GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)) and Cache.get_tag_by_gps(player, GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)).chart_tag and Cache.get_tag_by_gps(player, GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)).chart_tag.position and GPSUtils.gps_from_map_position(PositionUtils.normalize_position(Cache.get_tag_by_gps(player, GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), player.surface.index)).chart_tag.position), player.surface.index) or nil
-  })
+  -- Debugging: Log detailed information for tag editor opening (efficient, no repeated lookups)
+  local debug_tag = Cache.get_tag_by_gps(player,
+    GPSUtils.gps_from_map_position(PositionUtils.normalize_position(cursor_position), surface_index))
+  local debug_chart_tag = debug_tag and debug_tag.chart_tag or nil
 end
 
 -- Utility: Normalize and replace chart tag (was duplicated in on_chart_tag_added/on_chart_tag_modified)
@@ -257,7 +251,8 @@ local function normalize_and_replace_chart_tag(chart_tag, player)
       true
     )
     local surface_index = chart_tag.surface and chart_tag.surface.index or 1
-    local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player and player.force or chart_tag.force, chart_tag.surface, chart_tag_spec, player)
+    local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player and player.force or chart_tag.force, chart_tag.surface,
+      chart_tag_spec, player)
     if new_chart_tag and new_chart_tag.valid then
       chart_tag.destroy()
       Cache.Lookups.invalidate_surface_chart_tags(surface_index)
@@ -312,7 +307,6 @@ local function is_valid_tag_modification(event, player)
   -- Log admin action if this is an admin override
   if is_admin_override then
     AdminUtils.log_admin_action(player, "modify_chart_tag", event.tag, {
-      modification_type = "external_edit"
     })
   end
 
@@ -350,22 +344,22 @@ end
 ---@param player LuaPlayer|nil Player context
 local function update_tag_and_cleanup(old_gps, new_gps, event, player)
   if not old_gps or not new_gps then return end
-  
+
   -- Validate player for Cache.get_tag_by_gps call
-  if not player or not player.valid then 
+  if not player or not player.valid then
     ErrorHandler.debug_log("Cannot update tag: invalid player", { old_gps = old_gps, new_gps = new_gps })
-    return 
+    return
   end
-  
+
   local old_chart_tag = Cache.Lookups.get_chart_tag_by_gps(old_gps)
   local new_chart_tag = Cache.Lookups.get_chart_tag_by_gps(new_gps) -- Ensure new chart tag exists
   if not new_chart_tag then
     local surface_index = (event.tag.surface and event.tag.surface.index) or player.surface.index
     Cache.Lookups.invalidate_surface_chart_tags(surface_index)
-    new_chart_tag = Cache.Lookups.get_chart_tag_by_gps(new_gps)
-    if not new_chart_tag then
-      error("[TeleportFavorites] Failed to find or create new chart tag after modification.")
-    end
+      ErrorHandler.raise({
+        key = "error.failed_create_chart_tag_after_modification",
+        default = "[TeleportFavorites] Failed to find or create new chart tag after modification."
+      })
   end
 
   -- Get or create tag object
@@ -377,7 +371,7 @@ local function update_tag_and_cleanup(old_gps, new_gps, event, player)
   -- Update tag with new coordinates and chart tag reference
   old_tag.gps = new_gps
   old_tag.chart_tag = new_chart_tag
-  
+
   -- CRITICAL: Update the surface mapping table from old GPS to new GPS
   local surface_index = GPSUtils.get_surface_index_from_gps(old_gps)
   if surface_index and old_gps ~= new_gps then
@@ -405,15 +399,15 @@ end
 local function update_favorites_gps(old_gps, new_gps, acting_player)
   if not old_gps or not new_gps then return end
   local acting_player_index = acting_player and acting_player.valid and acting_player.index or nil
-  
+
   -- Update ALL players including the acting player
   local all_affected_players = PlayerFavorites.update_gps_for_all_players(old_gps, new_gps, nil) -- Pass nil to include all players
-  
+
   -- Also update the acting player's favorites explicitly if not already included
   if acting_player and acting_player.valid then
     local acting_player_favorites = PlayerFavorites.new(acting_player)
     local acting_player_updated = acting_player_favorites:update_gps_coordinates(old_gps, new_gps)
-    
+
     -- Add acting player to affected list if they were updated and not already included
     local acting_player_already_included = false
     for _, player in ipairs(all_affected_players) do
@@ -422,12 +416,12 @@ local function update_favorites_gps(old_gps, new_gps, acting_player)
         break
       end
     end
-    
+
     if acting_player_updated and not acting_player_already_included then
       table.insert(all_affected_players, acting_player)
     end
   end
-  
+
   -- Notify all affected players (excluding the acting player from notifications)
   local notification_players = {}
   for _, player in ipairs(all_affected_players) do
@@ -435,7 +429,7 @@ local function update_favorites_gps(old_gps, new_gps, acting_player)
       table.insert(notification_players, player)
     end
   end
-  
+
   if #notification_players > 0 then
     local old_position = GPSUtils.map_position_from_gps(old_gps)
     local new_position = GPSUtils.map_position_from_gps(new_gps)
@@ -507,15 +501,15 @@ function handlers.on_chart_tag_removed(event)
   if chart_tag and not chart_tag.icon and (not chart_tag.text or chart_tag.text == "") then return end
 
   local surface_index = (chart_tag.surface and chart_tag.surface.index) or 1
-  local gps = GPSUtils.gps_from_map_position(chart_tag.position, surface_index)  -- Get the player who is removing the chart tag
+  local gps = GPSUtils.gps_from_map_position(chart_tag.position, surface_index) -- Get the player who is removing the chart tag
   local player = game.get_player(event.player_index)
   if not player or not player.valid then
     Cache.Lookups.invalidate_surface_chart_tags(surface_index)
     return
   end
-  local tag = Cache.get_tag_by_gps(player, gps)-- Check if this tag has favorites from other players
+  local tag = Cache.get_tag_by_gps(player, gps) -- Check if this tag has favorites from other players
   if tag and tag.faved_by_players and #tag.faved_by_players > 0 then
-    if not player or not player.valid then                                                                     -- No valid player to handle the removal, just clear the cache
+    if not player or not player.valid then      -- No valid player to handle the removal, just clear the cache
       Cache.Lookups.invalidate_surface_chart_tags(surface_index)
       return
     end

@@ -29,11 +29,10 @@ caption_label: Use this style for any other labels in the subheader
 --]]
 
 -- Load GUI styles for each major GUI
+
 require("prototypes.styles.fave_bar")
 require("prototypes.styles.tag_editor")
 require("prototypes.styles.data_viewer")
-local Constants = require("constants")
-local Enum = require("prototypes.enums.enum")
 
 
 local Styles = {}
@@ -143,17 +142,17 @@ gui_style.slot_orange = {
   default_graphical_set = {
     -- originally default_graphical_set
     base = { position = { 236, 200 }, corner_size = 8 },
-    shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT)
+    shadow = Styles.rounded_button_glow({r=0.5,g=0.3,b=0.1,a=0.5})
   },
   hovered_graphical_set = {
     -- originally hovered_graphical_set
     base = { position = { 236, 216 }, corner_size = 8 },   -- Example hover position
-    shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT),
-    glow = Styles.default_glow(Enum.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
+    shadow = Styles.rounded_button_glow({r=0.5,g=0.3,b=0.1,a=0.5}),
+    glow = Styles.default_glow({r=1,g=0.5,b=0,a=0.5}, 0.5)
   },
   clicked_graphical_set = {
     base = { position = { 236, 232 }, corner_size = 8 },   -- Example clicked position
-    shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT)
+    shadow = Styles.rounded_button_glow({r=0.5,g=0.3,b=0.1,a=0.5})
   },
 }
 
@@ -181,7 +180,7 @@ gui_style.slot_orange_favorite_on = {
   hovered_graphical_set = {
     -- originally hovered_graphical_set
     base = { position = { 202, 199 }, corner_size = 8 },   -- Example hover position
-    shadow = Styles.rounded_button_glow(Enum.ColorEnum.DEFAULT_DIRT),
+    shadow = Styles.rounded_button_glow({r=0.5,g=0.3,b=0.1,a=0.5}),
     glow = Styles.default_glow(Enum.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
   },
   clicked_graphical_set = {
@@ -205,23 +204,23 @@ gui_style.tf_orange_button = {
   default_graphical_set =
   {
     base = { position = { 34, 17 }, corner_size = 8 },
-    shadow = Enum.ColorEnum.DEFAULT_DIRT
+    shadow = {r=0.5,g=0.3,b=0.1,a=0.5}
   },
   hovered_graphical_set =
   {
     base = { position = { 202, 199 }, corner_size = 8 },
-    shadow = Enum.ColorEnum.DEFAULT_DIRT,
-    glow = Styles.default_glow(Enum.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
+    shadow = {r=0.5,g=0.3,b=0.1,a=0.5},
+    glow = Styles.default_glow({r=1,g=0.5,b=0,a=0.5}, 0.5)
   },
   clicked_graphical_set =
   {
     base = { position = { 352, 17 }, corner_size = 8 },
-    shadow = Enum.ColorEnum.DEFAULT_DIRT
+    shadow = {r=0.5,g=0.3,b=0.1,a=0.5}
   },
   disabled_graphical_set =
   {
     base = { position = { 368, 17 }, corner_size = 8 },
-    shadow = Enum.ColorEnum.DEFAULT_DIRT
+    shadow = {r=0.5,g=0.3,b=0.1,a=0.5}
   }
 }
 
@@ -233,7 +232,7 @@ gui_style.tf_frame_title = {
   minimal_width = 60,                 -- Minimum space for title text
   single_line = true,                 -- Ensure single line for title
   horizontal_align = "left",          -- Left-align the title text
-  font_color = Enum.ColorEnum.CAPTION
+  font_color = {r=1,g=1,b=1,a=1}
 }
 
 gui_style.tf_titlebar_draggable = {

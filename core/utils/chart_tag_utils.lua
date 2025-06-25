@@ -28,10 +28,6 @@ local ChartTagUtils = {}
 -- CHART TAG SPECIFICATION BUILDING
 -- ========================================
 
--- DEPRECATED: Use ChartTagSpecBuilder.build instead. This is kept for legacy only.
-function ChartTagUtils.build_chart_tag_spec(position, source_chart_tag, player, text, set_ownership)
-  return ChartTagSpecBuilder.build(position, source_chart_tag, player, text, set_ownership)
-end
 
 -- ========================================
 -- CHART TAG CLICK DETECTION
