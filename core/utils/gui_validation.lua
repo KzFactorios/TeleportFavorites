@@ -14,16 +14,30 @@ Functions:
 - safe_destroy_frame() - Safe GUI frame destruction
 ]]
 
-local ErrorHandler = require("core.utils.error_handler")
+local Logger = require("core.utils.enhanced_error_handler")
+local GameHelpers = require("core.utils.game_helpers")
+local LocaleUtils = require("core.utils.locale_utils")
+local GuiBase = require("gui.gui_base")
 
 ---@class GuiValidation
 local GuiValidation = {}
+
+--- Generic validator for GUI elements (Factorio runtime objects)
+---@param element LuaGuiElement|nil
+---@param type_name string
+---@return boolean is_valid, string? error_message
+function GuiValidation.validate_gui_runtime_element(element, type_name)
+  if not element then return false, type_name .. " is nil" end
+  if not element.valid then return false, type_name .. " is not valid" end
+  return true, nil
+end
 
 --- Validate GUI element exists and is valid
 ---@param element LuaGuiElement? Element to validate
 ---@return boolean is_valid True if element is valid
 function GuiValidation.validate_gui_element(element)
-  return element ~= nil and element.valid == true
+  local is_valid = GuiValidation.validate_gui_runtime_element(element, "GUI element")
+  return is_valid
 end
 
 --- Set GUI element visibility with validation
@@ -75,7 +89,7 @@ function GuiValidation.apply_style_properties(element, style_props)
   end)
   
   if not success then
-    ErrorHandler.debug_log("Failed to apply style properties", {
+    Logger.debug_log("Failed to apply style properties", {
       element_name = element.name or "<no name>",
       element_type = element.type or "<no type>",
       error = error_msg
@@ -102,14 +116,14 @@ end
 ---@param style_overrides table? Style properties to override
 function GuiValidation.set_button_state(element, enabled, style_overrides)
   if not element or not element.valid then
-    ErrorHandler.debug_log("set_button_state: element is nil or invalid")
+    Logger.debug_log("set_button_state: element is nil or invalid")
     return
   end
   
   if not (element.type == "button" or element.type == "sprite-button" or 
           element.type == "textfield" or element.type == "text-box" or 
           element.type == "choose-elem-button") then
-    ErrorHandler.debug_log("set_button_state: Unexpected element type", {
+    Logger.debug_log("set_button_state: Unexpected element type", {
       type = element.type,
       name = element.name
     })
@@ -136,33 +150,24 @@ end
 ---@param level string? Error level: 'error', 'info', or 'warn' (default: 'error')
 ---@param log_to_console boolean? Whether to log to console (default: true)
 function GuiValidation.handle_error(player, message, level, log_to_console)
-  local LocaleUtils = require("core.utils.locale_utils")
-  local ErrorHandler = require("core.utils.error_handler")
-  
   level = level or 'error'
   log_to_console = log_to_console ~= false
   local msg = (type(message) == 'table' and table.concat(message, ' ')) or tostring(message)
-  
-  local function safe_player_print(player, message)
-    if player and player.valid and type(player.print) == "function" then
-      pcall(function() player.print(message) end)
-    end
-  end
-  
+
   -- Notify player if available
   if player and player.valid then
     if level == 'error' then
       local prefix = LocaleUtils.get_error_string(player, "error_prefix")
-      safe_player_print(player, { '', '[color=red]', prefix, ' ', msg, '[/color]' })
+      GameHelpers.player_print(player, { '', '[color=red]', prefix, ' ', msg, '[/color]' })
     elseif level == 'warn' then
       local prefix = LocaleUtils.get_error_string(player, "warn_prefix")
-      safe_player_print(player, { '', '[color=orange]', prefix, ' ', msg, '[/color]' })
+      GameHelpers.player_print(player, { '', '[color=orange]', prefix, ' ', msg, '[/color]' })
     else
       local prefix = LocaleUtils.get_error_string(player, "info_prefix")
-      safe_player_print(player, { '', '[color=white]', prefix, ' ', msg, '[/color]' })
+      GameHelpers.player_print(player, { '', '[color=white]', prefix, ' ', msg, '[/color]' })
     end
   end
-  
+
   if log_to_console then
     local log_msg = '[TeleportFavorites][' .. level:upper() .. '] ' .. msg
     ErrorHandler.debug_log(log_msg)
@@ -173,12 +178,15 @@ end
 ---@param parent LuaGuiElement Parent GUI element
 ---@param message string Error message to display
 function GuiValidation.show_error_label(parent, message)
-  local LocaleUtils = require("core.utils.locale_utils")
-  
   if not parent or not parent.valid then return end
-  local error_label = parent["tf_error_label"]
-  if not error_label then
-    local GuiBase = require("gui.gui_base")
+  local error_label = nil
+  for _, child in pairs(parent.children) do
+    if child.name == "tf_error_label" then
+      error_label = child
+      break
+    end
+  end
+  if not error_label or not error_label.valid then
     error_label = GuiBase.create_label(parent, "tf_error_label", "", "tf_error_label")
   end
   error_label.caption = message and LocaleUtils.get_string(nil, message) or ""
@@ -189,11 +197,18 @@ end
 ---@param parent LuaGuiElement Parent GUI element
 function GuiValidation.clear_error_label(parent)
   if not parent or not parent.valid then return end
-  local error_label = parent["tf_error_label"]
-  if error_label and error_label.valid then
-    error_label.visible = false
-    error_label.caption = ""
+  local error_label = nil
+  for _, child in pairs(parent.children) do
+    if child.name == "tf_error_label" and child.valid then
+      error_label = child
+      break
+    end
   end
+  if not error_label or not error_label.valid then
+    error_label = GuiBase.create_label(parent, "tf_error_label", "", "tf_error_label")
+  end
+  error_label.visible = false
+  error_label.caption = nil
 end
 
 -- ========================================
@@ -205,26 +220,24 @@ end
 ---@return LuaGuiElement|nil Top-level frame or nil if not found
 function GuiValidation.get_gui_frame_by_element(element)
   if not element or not element.valid then return nil end
-  
   local current = element
   local iterations = 0
   local max_iterations = 20
-  
   while current and current.valid and iterations < max_iterations do
     iterations = iterations + 1
-    
     if current.type == "frame" then
       local name = current.name or ""
       if name:find("tag_editor_outer_frame") or 
+         name:find("tag_editor_frame") or
          name:find("data_viewer_outer_frame") or
+         name:find("data_viewer_frame") or
          name:find("fave_bar_outer_frame") then
         return current
       end
     end
-    
+    if not current.parent then break end
     current = current.parent
   end
-  
   return nil
 end
 
@@ -322,6 +335,55 @@ function GuiValidation.debug_sprite_info(sprite_path)
   end
   
   return info
+end
+
+--- Get a validated sprite path for an icon, with fallback and debug info
+---@param icon string|table|nil Icon definition (string path or table)
+---@param opts table? Options: fallback (string), allow_blank (bool), log_context (table)
+---@return string sprite_path Valid sprite path (never blank unless allow_blank)
+---@return boolean used_fallback True if fallback was used
+---@return table debug_info Debug info for logging
+function GuiValidation.get_validated_sprite_path(icon, opts)
+  opts = opts or {}
+  local fallback = opts.fallback or "utility/unknown"
+  local allow_blank = opts.allow_blank or false
+  local log_context = opts.log_context or {}
+  local sprite_path, used_fallback, debug_info
+  used_fallback = false
+  debug_info = { original_icon = icon, fallback = fallback }
+
+  if not icon or icon == "" then
+    sprite_path = allow_blank and "" or fallback
+    used_fallback = not allow_blank
+    debug_info.reason = "icon is nil or blank"
+  elseif type(icon) == "string" then
+    sprite_path = icon
+  elseif type(icon) == "table" then
+    if icon.type and icon.type ~= "" and icon.name and icon.name ~= "" then
+      sprite_path = icon.type .. "/" .. icon.name
+    elseif icon.name and icon.name ~= "" then
+      sprite_path = icon.name
+    else
+      sprite_path = fallback
+      used_fallback = true
+      debug_info.reason = "icon table missing type or name"
+    end
+  else
+    sprite_path = fallback
+    used_fallback = true
+    debug_info.reason = "icon is not string or table"
+  end
+
+  local is_valid, error_msg = GuiValidation.validate_sprite(sprite_path)
+  if not is_valid then
+    debug_info.reason = (debug_info.reason or "") .. (error_msg and (": " .. error_msg) or "")
+    sprite_path = fallback
+    used_fallback = true
+  end
+
+  debug_info.log_context = log_context
+
+  return sprite_path, used_fallback, debug_info
 end
 
 return GuiValidation

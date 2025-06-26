@@ -93,7 +93,7 @@ UIEnums.Sprites = {
   HEART = "virtual-signal/signal-heart",
   STAR = "virtual-signal/signal-star",
   STAR_DISABLED = "tf_star_disabled",
-  QUESTION_MARK = "utility/questionmark"
+  QUESTION_MARK = "utility/questionmark",
 }
 
 -- ========================================

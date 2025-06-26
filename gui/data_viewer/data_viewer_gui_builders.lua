@@ -39,14 +39,18 @@ function DataViewerGuiBuilders.build_main_frame(parent, state, player)
   end
 
   -- Main dialog frame (resizable)
-  local frame = GuiBase.create_frame(parent, Enum.GuiEnum.GUI_FRAME.DATA_VIEWER, "vertical", "tf_data_viewer_frame")
+  local frame = parent.add{
+    type = "frame",
+    name = Enum.GuiEnum.GUI_FRAME.DATA_VIEWER,
+    direction = "vertical",
+    style = "tf_data_viewer_frame",
+    tags = { parent_gui = Enum.GuiEnum.GUI_FRAME.DATA_VIEWER }
+  }
   -- Leave caption empty for now
-  
   ErrorHandler.debug_log("Data viewer main frame created", {
     player_name = player.name,
     frame_name = frame.name
   })
-  
   return frame
 end
 
@@ -54,29 +58,22 @@ end
 ---@param parent LuaGuiElement Frame to add titlebar to
 ---@return LuaGuiElement titlebar Titlebar element
 function DataViewerGuiBuilders.build_titlebar(parent)
-  local titlebar = GuiBase.create_named_element({
-    type = "hflow",
-    parent = parent,
+  local titlebar = GuiBase.create_named_element("flow", parent, {
     name = "data_viewer_titlebar",
-    style = "tf_data_viewer_titlebar_flow"
+    style = "tf_data_viewer_titlebar_flow",
+    direction = "horizontal"
   })
 
-  GuiBase.create_named_element({
-    type = "label",
-    parent = titlebar,
+  GuiBase.create_named_element("label", titlebar, {
     name = "data_viewer_title",
     caption = "TeleportFavorites Data Viewer",
     style = "tf_data_viewer_title_label"
   })
-  GuiBase.create_named_element({
-    type = "empty-widget",
-    parent = titlebar,
+  GuiBase.create_named_element("empty-widget", titlebar, {
     name = "data_viewer_titlebar_spacer",
     style = "tf_data_viewer_titlebar_spacer"
   })
-  GuiBase.create_named_element({
-    type = "sprite-button",
-    parent = titlebar,
+  GuiBase.create_named_element("sprite-button", titlebar, {
     name = "data_viewer_close_btn",
     sprite = Enum.SpriteEnum.CLOSE,
     style = "tf_data_viewer_close_button",
@@ -90,10 +87,9 @@ end
 ---@param active_tab string Currently active tab name
 ---@return LuaGuiElement tabs_flow Tabs container element
 function DataViewerGuiBuilders.build_tabs_row(parent, active_tab)
-  local tabs_flow = GuiBase.create_named_element({
-    type = "hflow",
-    parent = parent,
-    name = "data_viewer_tabs_flow"
+  local tabs_flow = GuiBase.create_named_element("flow", parent, {
+    name = "data_viewer_tabs_flow",
+    direction = "horizontal"
   })
 
   local tabs = {
@@ -105,9 +101,7 @@ function DataViewerGuiBuilders.build_tabs_row(parent, active_tab)
 
   -- Tab buttons
   for _, tab in ipairs(tabs) do
-    GuiBase.create_named_element({
-      type = "button",
-      parent = tabs_flow,
+    GuiBase.create_named_element("button", tabs_flow, {
       name = "data_viewer_" .. tab.name .. "_tab",
       caption = tab.caption,
       tooltip = tab.tooltip,
@@ -116,23 +110,19 @@ function DataViewerGuiBuilders.build_tabs_row(parent, active_tab)
   end
 
   -- Font controls (batch)
-  local font_controls = GuiBase.create_named_element({
-    type = "hflow",
-    parent = tabs_flow,
-    name = "font_size_controls"
+  local font_controls = GuiBase.create_named_element("flow", tabs_flow, {
+    name = "font_size_controls",
+    direction = "horizontal"
   })
   for _, def in ipairs({
     {type = "label", name = "font_size_label", caption = "Font Size:"},
     {type = "button", name = "data_viewer_actions_font_down_btn", caption = "-", style = "tf_data_viewer_font_size_button_minus", tooltip = "Decrease font size"},
     {type = "button", name = "data_viewer_actions_font_up_btn", caption = "+", style = "tf_data_viewer_font_size_button_plus", tooltip = "Increase font size"}
   }) do
-    def.parent = font_controls
-    GuiBase.create_named_element(def)
+    GuiBase.create_named_element(def.type, font_controls, def)
   end
 
-  GuiBase.create_named_element({
-    type = "sprite-button",
-    parent = tabs_flow,
+  GuiBase.create_named_element("sprite-button", tabs_flow, {
     name = "data_viewer_tab_actions_refresh_data_btn",
     sprite = Enum.SpriteEnum.REFRESH,
     style = "tf_data_viewer_refresh_button",

@@ -17,12 +17,15 @@
 
 local PlayerFavorites = require("core.favorite.player_favorites")
 local FavoriteUtils = require("core.favorite.favorite")
+local FavoriteSlotUtils = require("core.favorite.favorite_slot_utils")
 local fave_bar = require("gui.favorites_bar.fave_bar")
-local GuiUtils = require("core.utils.gui_utils")
+local GuiValidation = require("core.utils.gui_validation")
+local GuiAccessibility = require("core.utils.gui_accessibility")
 local ErrorHandler = require("core.utils.error_handler")
 local SlotInteractionHandlers = require("core.control.slot_interaction_handlers")
 local DragDropUtils = require("core.utils.drag_drop_utils")
 local GameHelpers = require("core.utils.game_helpers")
+local SharedUtils = require("core.control.control_shared_utils")
 
 -- Observer Pattern Integration
 local GuiObserver = require("core.pattern.gui_observer")
@@ -30,32 +33,7 @@ local GuiEventBus = GuiObserver.GuiEventBus
 
 local M = {}
 
---- Create a localized string table for GUI messages
----@param key string The localization key
----@param ... any Additional parameters for the localized string
----@return table localized_string
-local function lstr(key, ...)
-  return { key, ... }
-end
-
 local CursorUtils = require("core.utils.cursor_utils")
-
---- Safe print to player with error handling
----@param player LuaPlayer The player to print to
----@param message string|table The message to print
-local function safe_player_print(player, message)
-  if player and player.valid and type(player.print) == "function" then
-    pcall(function() player.print(message) end)
-  end
-end
-
---- Check if a favorite is locked
----@param fav table The favorite to check
----@return boolean is_locked
-local function is_locked_favorite(fav)
-  -- Defensive: treat nil as not locked
-  return fav and fav.locked == true
-end
 
 --- Reorder favorites using modular handlers
 ---@param player LuaPlayer The player
@@ -76,13 +54,6 @@ local function open_tag_editor_from_favorite(player, favorite)
   SlotInteractionHandlers.open_tag_editor_from_favorite(player, favorite)
 end
 
---- Check if a favorite can be dragged using modular handlers
----@param fav table The favorite to check
----@return boolean can_drag
-local function can_start_drag(fav)
-  return SlotInteractionHandlers.can_start_drag(fav)
-end
-
 --- Handle drag start operation
 ---@param event table The GUI event
 ---@param player LuaPlayer The player
@@ -90,7 +61,7 @@ end
 ---@param slot number The slot number
 ---@return boolean handled
 local function handle_drag_start(event, player, fav, slot)
-  if event.button == defines.mouse_button_type.left and not event.control and can_start_drag(fav) then
+  if event.button == defines.mouse_button_type.left and not event.control and FavoriteSlotUtils.can_start_drag(fav) then
     return CursorUtils.start_drag_favorite(player, fav, slot)
   end
   return false
@@ -235,8 +206,8 @@ local function handle_favorite_slot_click(event, player, favorites)
         local target_fav = favorites.favorites[slot]
         
         -- Check if target slot is locked
-        if is_locked_favorite(target_fav) then
-          GameHelpers.player_print(player, lstr("tf-gui.fave_bar_locked_cant_target", slot))
+        if target_fav and FavoriteSlotUtils.is_locked_favorite(target_fav) then
+          GameHelpers.player_print(player, SharedUtils.lstr("tf-gui.fave_bar_locked_cant_target", slot))
           GameHelpers.safe_play_sound(player, { path = "utility/cannot_build" })
           end_drag(player)
           ErrorHandler.debug_log("[FAVE_BAR] Target slot is locked, canceling drag")
@@ -249,12 +220,14 @@ local function handle_favorite_slot_click(event, player, favorites)
           to_slot = slot
         })
         
-        local success = reorder_favorites(player, favorites, source_slot, slot)
-        if success then
-          ErrorHandler.debug_log("[FAVE_BAR] Drop successful via direct reordering")
-          return
-        else
-          ErrorHandler.debug_log("[FAVE_BAR] Direct reordering failed")
+        if source_slot and slot then
+          local success = reorder_favorites(player, favorites, source_slot, slot)
+          if success then
+            ErrorHandler.debug_log("[FAVE_BAR] Drop successful via direct reordering")
+            return
+          else
+            ErrorHandler.debug_log("[FAVE_BAR] Direct reordering failed")
+          end
         end
       else
         -- Dropping onto the same slot, just end the drag
@@ -286,7 +259,7 @@ local function handle_favorite_slot_click(event, player, favorites)
   if fav == nil then return end
   
   -- Check for blank favorite (different handling)
-  if FavoriteUtils.is_blank_favorite(fav) then
+  if FavoriteSlotUtils.is_blank_favorite(fav) then
     -- For blank favorites, only allow drag targets (no teleport/etc)
     return
   end
@@ -311,10 +284,10 @@ end
 
 --- Handle toggle button for favorites bar visibility
 ---@param player LuaPlayer The player
-local function handle_visible_fave_btns_toggle_click(player)
-  local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
+local function handle_toggle_button_click(player)
+  local main_flow = GuiAccessibility.get_or_create_gui_flow_from_gui_top(player)
   if not main_flow or not main_flow.valid then return end
-  local slots_row = GuiUtils.find_child_by_name(main_flow, "fave_bar_slots_flow")
+  local slots_row = GuiValidation.find_child_by_name(main_flow, "fave_bar_slots_flow")
   if not slots_row or not slots_row.valid then
     return
   end
@@ -370,33 +343,6 @@ local function log_click_event(event, player)
   })
 end
 
-local function handle_slot_click_event(event, player)
-  ErrorHandler.debug_log("[FAVE_BAR] Handling slot click", {
-    slot = event.element.name:match("fave_bar_slot_(%d+)"),
-    player = player.name,
-    button = event.button
-  })
-  local favorites = PlayerFavorites.new(player)
-  handle_favorite_slot_click(event, player, favorites)
-end
-
-local function handle_toggle_button_click(event, player)
-  if CursorUtils.is_dragging_favorite(player) then
-    ErrorHandler.debug_log("[FAVE_BAR] Drag mode canceled due to toggle button click", { player = player.name })
-    CursorUtils.end_drag_favorite(player)
-    GameHelpers.player_print(player, {"tf-gui.fave_bar_drag_canceled"})
-    return
-  end
-
-  local success, err = pcall(handle_visible_fave_btns_toggle_click, player)
-  if not success then
-    ErrorHandler.debug_log("Handle visible fave buttons toggle failed", {
-      player = player.name,
-      error = err
-    })
-  end
-end
-
 local function on_fave_bar_gui_click(event)
   local element = event.element
   if not element or not element.valid then return end
@@ -411,22 +357,16 @@ local function on_fave_bar_gui_click(event)
   end
 
   if element.name:find("^fave_bar_slot_") then
-    handle_slot_click_event(event, player)
+    handle_favorite_slot_click(event, player, favorites)
     return
   end
 
   if element.name == "fave_bar_visible_btns_toggle" then
-    handle_toggle_button_click(event, player)
+    handle_toggle_button_click(player)
   end
 end
 
 M.on_fave_bar_gui_click = on_fave_bar_gui_click
 M.on_fave_bar_gui_click_impl = on_fave_bar_gui_click
-
---- Register favorites bar event handlers (deprecated: use central dispatcher)
---- @param script table The Factorio script object
-function M.register(script)
-  -- Deprecated: do not register directly. Use central dispatcher in control.lua
-end
 
 return M

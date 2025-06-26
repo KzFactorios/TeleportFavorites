@@ -29,7 +29,6 @@ Supported Event Categories:
 - GUI Events: clicks, text changes, element changes, confirmations
 - Custom Input Events: keyboard shortcuts and key bindings
 - Chart Events: tag creation, modification, removal
-- Terrain Events: tile building, mining, terrain changes
 - Observer Events: player join/leave, cleanup operations
 
 Event Handler Requirements:
@@ -49,7 +48,6 @@ EventRegistrationDispatcher.register_all_events(script)
 -- Register specific event categories
 EventRegistrationDispatcher.register_core_events(script)
 EventRegistrationDispatcher.register_gui_events(script)
--- EventRegistrationDispatcher.register_terrain_events(script) -- REMOVED: No longer needed
 --]]
 
 local ErrorHandler = require("core.utils.error_handler")
@@ -57,6 +55,7 @@ local GameHelpers = require("core.utils.game_helpers")
 local Settings = require("core.utils.settings_access")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
+local Cache = require("core.cache.cache")
 
 ---@class EventRegistrationDispatcher
 local EventRegistrationDispatcher = {}
@@ -143,8 +142,6 @@ function EventRegistrationDispatcher.register_core_events(script)
         if player and player.valid then
           -- Reset transient states for rejoining players
           -- This handles cases where cleanup on leave may have failed
-          local Cache = require("core.cache.cache")
-          local ErrorHandler = require("core.utils.error_handler")
           local player_data = Cache.get_player_data(player)
           
           -- Reset drag mode state
@@ -481,14 +478,6 @@ function EventRegistrationDispatcher.register_custom_input_events(script)
   return success
 end
 
---- Register terrain and chart tag related events
----@param script table The Factorio script object
----@return boolean success
-function EventRegistrationDispatcher.register_terrain_events(script)
-  ErrorHandler.debug_log("register_terrain_events called, but terrain protection system is removed. No events registered.")
-  return true
-end
-
 --- Register observer lifecycle events
 ---@param script table The Factorio script object
 ---@return boolean success
@@ -540,7 +529,6 @@ function EventRegistrationDispatcher.register_all_events(script)
   results.core = EventRegistrationDispatcher.register_core_events(script)
   results.gui = EventRegistrationDispatcher.register_gui_events(script)
   results.custom_input = EventRegistrationDispatcher.register_custom_input_events(script)
-  results.terrain = EventRegistrationDispatcher.register_terrain_events(script)
   results.observer = EventRegistrationDispatcher.register_observer_events(script)
   results.data_viewer = EventRegistrationDispatcher.register_data_viewer_events(script)
   

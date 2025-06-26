@@ -84,7 +84,6 @@ Look for the "TeleportFavorites" section in the game's Mod Settings menu!
 - **Toggle Favorites Bar**: Enable/disable the favorites feature. Teleportation is still functional
 - **Hotkeys**: Customize teleport hotkeys (1-0) for your favorites
 - **Destination Messages**: Toggle on/off messages that display when you teleport to a location
-- **Terrain Protection Radius**: Control the protected area around your chart tags
 
 
 ## ❓ Frequently Asked Questions

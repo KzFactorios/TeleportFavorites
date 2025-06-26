@@ -8,14 +8,12 @@ Consolidated chart tag utilities combining all chart tag operations.
 This module consolidates:
 - chart_tag_spec_builder.lua - Chart tag specification creation
 - chart_tag_click_detector.lua - Chart tag click detection and handling
-- chart_tag_terrain_handler.lua - Terrain change detection and chart tag relocation
 
 Provides a unified API for all chart tag operations throughout the mod.
 ]]
 
 local ErrorHandler = require("core.utils.error_handler")
 local GPSUtils = require("core.utils.gps_utils")
-local PositionUtils = require("core.utils.position_utils")
 local Cache = require("core.cache.cache")
 local Constants = require("constants")
 local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
@@ -129,47 +127,6 @@ function ChartTagUtils.handle_map_click(event)
   end
 
   return clicked_chart_tag
-end
-
--- ========================================
--- CHART TAG TERRAIN HANDLING
--- ========================================
-
---- Check if a chart tag is on water
----@param chart_tag LuaCustomChartTag
----@param surface LuaSurface? Optional surface override
----@return boolean is_on_water
-function ChartTagUtils.is_chart_tag_on_water(chart_tag, surface)
-  if not chart_tag or not chart_tag.valid then return false end
-  surface = surface or chart_tag.surface
-  if not surface or not surface.valid then return false end
-
-  return PositionUtils.is_water_tile(surface, chart_tag.position)
-end
-
---- Check if a chart tag is on space
----@param chart_tag LuaCustomChartTag
----@param surface LuaSurface? Optional surface override
----@return boolean is_on_space
-function ChartTagUtils.is_chart_tag_on_space(chart_tag, surface)
-  if not chart_tag or not chart_tag.valid then return false end
-  surface = surface or chart_tag.surface
-  if not surface or not surface.valid then return false end
-
-  return PositionUtils.is_space_tile(surface, chart_tag.position)
-end
-
---- Find a valid position near a chart tag for relocation
----@param chart_tag LuaCustomChartTag
----@param search_radius number Search radius for valid position
----@param player LuaPlayer? Player context for validation
----@return MapPosition? valid_position
-function ChartTagUtils.find_valid_position_near_chart_tag(chart_tag, search_radius, player)
-  if not chart_tag or not chart_tag.valid then return nil end
-  local surface = chart_tag.surface
-  if not surface or not surface.valid then return nil end
-
-  return PositionUtils.find_valid_position(surface, chart_tag.position, search_radius or 20)
 end
 
 -- ========================================

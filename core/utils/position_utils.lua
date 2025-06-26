@@ -9,29 +9,21 @@ This module consolidates:
 - position_helpers.lua - Position validation and tagging checks
 - position_normalizer.lua - Position normalization utilities
 - position_validator.lua - Position validation and correction
-- terrain_validator.lua - Terrain validation and position finding
 
 Provides a unified API for all position-related operations throughout the mod.
 ]]
 
+local PositionTileHelpers = require("core.utils.position_tile_helpers")
 local basic_helpers = require("core.utils.basic_helpers")
 local Constants = require("constants")
 local ErrorHandler = require("core.utils.error_handler")
 local GPSUtils = require("core.utils.gps_utils")
 local LocaleUtils = require("core.utils.locale_utils")
 local ValidationUtils = require("core.utils.validation_utils")
+local Logger = require("core.utils.enhanced_error_handler")
 
 ---@class PositionUtils
 local PositionUtils = {}
-
---- Local player print function to avoid circular dependencies
---- @param player LuaPlayer Player to print message to
---- @param message string Message to print
-local function safe_player_print(player, message)
-  if player and player.valid and type(player.print) == "function" then
-    pcall(function() player.print(message) end)
-  end
-end
 
 -- ========================================
 -- POSITION NORMALIZATION
@@ -42,17 +34,14 @@ end
 ---@param map_position MapPosition
 ---@return MapPosition normalized_position
 function PositionUtils.normalize_position(map_position)
-  local x = tonumber(basic_helpers.normalize_index(map_position.x or 0)) or 0
-  local y = tonumber(basic_helpers.normalize_index(map_position.y or 0)) or 0
-  return { x = x, y = y }
+  return PositionTileHelpers.normalize_position(map_position)
 end
 
 --- Check if a position needs normalization
 ---@param position MapPosition
 ---@return boolean
 function PositionUtils.needs_normalization(position)
-  return position and (not basic_helpers.is_whole_number(position.x) or
-    not basic_helpers.is_whole_number(position.y))
+  return PositionTileHelpers.needs_normalization(position)
 end
 
 --- Create old/new position pair for tracking position changes
@@ -146,24 +135,24 @@ function PositionUtils.is_walkable_position(surface, position)
     tile_prototype = tile and tile.prototype and tile.prototype.name or "<nil>",
     tile_valid = tile and tile.valid or false
   }
-  ErrorHandler.debug_log("[WALKABLE] Tile info", tile_info)
+  Logger.debug_log("[WALKABLE] Tile info", tile_info)
   if not tile or not tile.valid then
-    ErrorHandler.debug_log("[WALKABLE] Invalid tile", tile_info)
+    Logger.debug_log("[WALKABLE] Invalid tile", tile_info)
     return false
   end
   if PositionUtils.is_water_tile(surface, norm_pos) then
-    ErrorHandler.debug_log("[WALKABLE] Position is water", tile_info)
+    Logger.debug_log("[WALKABLE] Position is water", tile_info)
     return false
   end
   if PositionUtils.is_space_tile(surface, norm_pos) then
-    ErrorHandler.debug_log("[WALKABLE] Position is space/void", tile_info)
+    Logger.debug_log("[WALKABLE] Position is space/void", tile_info)
     return false
   end
   if PositionUtils.is_on_space_platform(surface) then
-    ErrorHandler.debug_log("[WALKABLE] Surface is space platform", tile_info)
+    Logger.debug_log("[WALKABLE] Surface is space platform", tile_info)
     return false
   end
-  ErrorHandler.debug_log("[WALKABLE] Position is walkable", tile_info)
+  Logger.debug_log("[WALKABLE] Position is walkable", tile_info)
   return true
 end
 
@@ -365,7 +354,8 @@ end
 function PositionUtils.position_can_be_tagged(player, map_position)
   -- Use consolidated validation helper for player and position checks
   local surface_index = tonumber((player and player.surface and player.surface.index) or 1)
-  local gps_string = GPSUtils.gps_from_map_position(map_position, surface_index)
+  -- Fix: Pass surface_index as number to GPSUtils.gps_from_map_position
+  local gps_string = GPSUtils.gps_from_map_position(map_position, tonumber(surface_index) or 1)
   local valid, position, error_msg = ValidationUtils.validate_position_operation(player, gps_string)
   if not valid then
     if error_msg then
@@ -461,7 +451,7 @@ function PositionUtils.move_tag_to_selected_position(player, tag, chart_tag, new
   local old_gps = tag and tag.gps or "unknown"
   tag.gps = new_gps
 
-  ErrorHandler.debug_log("Tag moved to selected position", {
+  Logger.debug_log("Tag moved to selected position", {
     player = player.name,
     old_gps = old_gps,
     new_gps = new_gps,

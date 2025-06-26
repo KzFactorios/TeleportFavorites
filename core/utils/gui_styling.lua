@@ -16,6 +16,9 @@ Functions:
 ---@class GuiStyling
 local GuiStyling = {}
 
+local GuiBase = require("gui.gui_base")
+local Enum = require("prototypes.enums.enum")
+
 --- Extend a base style with override properties
 ---@param base_style table Base style to extend
 ---@param overrides table Properties to override/add
@@ -135,17 +138,13 @@ end
 ---@param parent LuaGuiElement Parent GUI element
 ---@param name string Button name
 ---@param icon string|nil Icon sprite path
----@param tooltip string|nil Button tooltip
+---@param tooltip LocalisedString|string|nil Button tooltip
 ---@param opts table? Options table with style overrides
 ---@return LuaGuiElement Created button element
 function GuiStyling.create_slot_button(parent, name, icon, tooltip, opts)
-  local GuiBase = require("gui.gui_base")
-  local Enum = require("prototypes.enums.enum")
-  
   opts = opts or {}
   local style = opts.style or "tf_fave_slot_button"
-  local sprite = icon or Enum.SpriteEnum.EMPTY
-  
+  local sprite = icon or ""
   local button = GuiBase.create_sprite_button(parent, name, sprite, tooltip, style)
   
   -- Apply any style overrides

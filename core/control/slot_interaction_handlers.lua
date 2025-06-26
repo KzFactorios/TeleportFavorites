@@ -19,49 +19,27 @@
 -- - Maintain proper error handling and logging
 
 local FavoriteUtils = require("core.favorite.favorite")
+local FavoriteSlotUtils = require("core.favorite.favorite_slot_utils")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local Cache = require("core.cache.cache")
 local tag_editor = require("gui.tag_editor.tag_editor")
-local GuiUtils = require("core.utils.gui_utils")
+local GuiValidation = require("core.utils.gui_validation")
+local GuiAccessibility = require("core.utils.gui_accessibility")
 local ErrorHandler = require("core.utils.error_handler")
 local LocaleUtils = require("core.utils.locale_utils")
-local FavoriteRuntimeUtils = require("core.utils.favorite_utils")
 local CursorUtils = require("core.utils.cursor_utils")
 local DragDropUtils = require("core.utils.drag_drop_utils")
 local GameHelpers = require("core.utils.game_helpers")
+local SharedUtils = require("core.control.control_shared_utils")
 
 ---@class SlotInteractionHandlers
 local SlotInteractionHandlers = {}
-
---- Create a localized string table for GUI messages
----@param key string The localization key
----@param ... any Additional parameters for the localized string
----@return table localized_string
-local function lstr(key, ...)
-  return { key, ... }
-end
-
---- Safe print to player with error handling
----@param player LuaPlayer The player to print to
----@param message string|table The message to print
-local function safe_player_print(player, message)
-  if player and player.valid and type(player.print) == "function" then
-    pcall(function() player.print(message) end)
-  end
-end
-
---- Check if a favorite is locked
----@param fav table The favorite to check
----@return boolean is_locked
-local function is_locked_favorite(fav)
-  return fav and fav.locked == true
-end
 
 --- Check if a favorite can be dragged
 ---@param fav table The favorite to check
 ---@return boolean can_drag
 function SlotInteractionHandlers.can_start_drag(fav)
-  return fav and not FavoriteUtils.is_blank_favorite(fav) and not is_locked_favorite(fav)
+  return fav and not FavoriteSlotUtils.is_blank_favorite(fav) and not FavoriteSlotUtils.is_locked_favorite(fav)
 end
 
 --- Handle teleportation to a favorite
@@ -98,15 +76,15 @@ function SlotInteractionHandlers.handle_toggle_lock(event, player, fav, slot, fa
     end
     
     -- Update the slot row to reflect lock state change
-    local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
-    local bar_frame = GuiUtils.find_child_by_name(main_flow, "fave_bar_frame")
-    local bar_flow = bar_frame and GuiUtils.find_child_by_name(bar_frame, "fave_bar_flow")
+    local main_flow = GuiAccessibility.get_or_create_gui_flow_from_gui_top(player)
+    local bar_frame = GuiValidation.find_child_by_name(main_flow, "fave_bar_frame")
+    local bar_flow = bar_frame and GuiValidation.find_child_by_name(bar_frame, "fave_bar_flow")
     if bar_flow then
       fave_bar.update_slot_row(player, bar_flow)
     end
     
     local lock_state = fav.locked and "locked" or "unlocked"
-    GameHelpers.player_print(player, lstr("tf-gui.fave_bar_lock_toggled", slot, lock_state))
+    GameHelpers.player_print(player, SharedUtils.lstr("tf-gui.fave_bar_lock_toggled", slot, lock_state))
     return true
   end
   return false
@@ -126,7 +104,7 @@ function SlotInteractionHandlers.handle_shift_left_click(event, player, fav, slo
       slot = slot,
       can_drag = SlotInteractionHandlers.can_start_drag(fav),
       fav_is_blank = FavoriteUtils.is_blank_favorite(fav),
-      fav_is_locked = is_locked_favorite(fav)
+      fav_is_locked = FavoriteSlotUtils.is_locked_favorite(fav)
     })
     
     if SlotInteractionHandlers.can_start_drag(fav) then
@@ -137,8 +115,8 @@ function SlotInteractionHandlers.handle_shift_left_click(event, player, fav, slo
         slot = slot
       })
       return success
-    elseif is_locked_favorite(fav) then
-      GameHelpers.player_print(player, lstr("tf-gui.fave_bar_locked_cant_drag", slot))
+    elseif FavoriteSlotUtils.is_locked_favorite(fav) then
+      GameHelpers.player_print(player, SharedUtils.lstr("tf-gui.fave_bar_locked_cant_drag", slot))
       return true -- Prevent further processing like teleportation
     end
   end
@@ -152,7 +130,7 @@ function SlotInteractionHandlers.open_tag_editor_from_favorite(player, favorite)
   if not favorite then return end
   
   -- Rehydrate the favorite to ensure all runtime fields are present
-  favorite = FavoriteRuntimeUtils.rehydrate_favorite(player, favorite)
+  favorite = FavoriteUtils.rehydrate_favorite(player, favorite)
   
   -- Create initial tag data from favorite
   local tag_data = Cache.create_tag_editor_data({
@@ -249,15 +227,15 @@ end
 function SlotInteractionHandlers.reorder_favorites(player, favorites, drag_index, slot)
   local success, error_msg = favorites:move_favorite(drag_index, slot)
   if not success then
-    safe_player_print(player, LocaleUtils.get_error_string(player, "failed_reorder_favorite", 
+    GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "failed_reorder_favorite", 
       {error_msg or LocaleUtils.get_error_string(player, "unknown_error")}))
     CursorUtils.end_drag_favorite(player)
     return false
   end
-  
+
   -- Rebuild the entire favorites bar to reflect new order
   fave_bar.build(player)
-  safe_player_print(player, lstr("tf-gui.fave_bar_reordered", drag_index, slot))
+  GameHelpers.player_print(player, SharedUtils.lstr("tf-gui.fave_bar_reordered", drag_index, slot))
   CursorUtils.end_drag_favorite(player)
   return true
 end

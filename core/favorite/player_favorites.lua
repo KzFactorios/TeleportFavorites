@@ -46,9 +46,7 @@ local GuiObserver = require("core.pattern.gui_observer")
 
 -- Observer Pattern Integration
 local function notify_observers_safe(event_type, data)
-  if GuiObserver and GuiObserver.GuiEventBus then
-    GuiObserver.GuiEventBus.notify(event_type, data)
-  end
+  GuiObserver.GuiEventBus.notify(event_type, data)
 end
 
 -- Use Cache.sanitize_for_storage to sanitize tags for favorites

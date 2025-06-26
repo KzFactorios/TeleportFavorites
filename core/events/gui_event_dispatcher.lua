@@ -52,7 +52,7 @@ local Enum = require("prototypes.enums.enum")
 local ErrorHandler = require("core.utils.error_handler")
 local control_data_viewer = require("core.control.control_data_viewer")
 local Cache = require("core.cache.cache")
-local GuiUtils = require("core.utils.gui_utils")
+local GuiValidation = require("core.utils.gui_validation")
 local GameHelpers = require("core.utils.game_helpers")
 local CursorUtils = require("core.utils.cursor_utils")
 local FavoriteUtils = require("core.favorite.favorite")
@@ -185,7 +185,7 @@ function M.register_gui_handlers(script)
         return true
       end
       
-      local parent_gui = GuiUtils.get_gui_frame_by_element(element)
+      local parent_gui = GuiValidation.get_gui_frame_by_element(element)
       ErrorHandler.debug_log("[DISPATCH] parent_gui detected",
         { element = element.name, parent_gui = parent_gui and parent_gui.name or "<nil>" })
       ErrorHandler.debug_log("GUI Event Dispatcher: Frame detection result", {
@@ -288,7 +288,7 @@ function M.register_gui_handlers(script)
     if not event or not event.element then return end
     -- Handle icon picker changes in tag editor
     local element = event.element
-    local parent_gui = GuiUtils.get_gui_frame_by_element(element)
+    local parent_gui = GuiValidation.get_gui_frame_by_element(element)
     if parent_gui and parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
       control_tag_editor.on_tag_editor_gui_elem_changed(event)
     end
@@ -300,7 +300,7 @@ function M.register_gui_handlers(script)
     if not event or not event.element then return end
     -- Handle confirmation dialog events in tag editor
     local element = event.element
-    local parent_gui = GuiUtils.get_gui_frame_by_element(element)
+    local parent_gui = GuiValidation.get_gui_frame_by_element(element)
     if parent_gui and parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
       control_tag_editor.on_tag_editor_gui_click(event, script)
     end

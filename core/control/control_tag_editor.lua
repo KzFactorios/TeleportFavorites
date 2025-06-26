@@ -5,11 +5,11 @@
 
 local tag_editor = require("gui.tag_editor.tag_editor")
 local Cache = require("core.cache.cache")
-local GuiUtils = require("core.utils.gui_utils")
+local GuiValidation = require("core.utils.gui_validation")
+local GameHelpers = require("core.utils.game_helpers")
 local GPSUtils = require("core.utils.gps_utils")
 local Constants = require("constants")
 local Enum = require("prototypes.enums.enum")
-local GameHelpers = require("core.utils.game_helpers")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local LocaleUtils = require("core.utils.locale_utils")
@@ -20,6 +20,8 @@ local AdminUtils = require("core.utils.admin_utils")
 local SettingsAccess = require("core.utils.settings_access")
 local TagEditorMoveMode = require("core.control.control_move_mode")
 local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
+local SharedUtils = require("core.control.control_shared_utils")
+local GuiPartialUpdateUtils = require("core.control.gui_partial_update_utils")
 
 -- Observer Pattern Integration
 local GuiObserver = require("core.pattern.gui_observer")
@@ -27,22 +29,19 @@ local GuiEventBus = GuiObserver.GuiEventBus
 
 local M = {}
 
-local function safe_player_print(player, message)
-  if player and player.valid and type(player.print) == "function" then
-    pcall(function() player.print(message) end)
-  end
-end
-
 local function refresh_tag_editor(player, tag_data)
-  Cache.set_tag_editor_data(player, tag_data)
-  GuiUtils.safe_destroy_frame(player.gui.screen, "tag_editor_frame")
-  tag_editor.build(player)
+  SharedUtils.refresh_gui_with_cache(
+    function(p, d) Cache.set_tag_editor_data(p, d) end,
+    function(p) GuiValidation.safe_destroy_frame(p.gui.screen, "tag_editor_frame") end,
+    function(p) tag_editor.build(p) end,
+    player, tag_data
+  )
 end
 
 local function show_tag_editor_error(player, tag_data, message)
   tag_data.error_message = message
   -- Use partial update instead of full rebuild for error messages
-  tag_editor.update_error_message(player, message)
+  GuiPartialUpdateUtils.update_error_message(tag_editor.update_error_message, player, message)
   Cache.set_tag_editor_data(player, tag_data)
 end
 
@@ -52,9 +51,8 @@ local function update_favorite_state(player, tag, is_favorite)
   local tag_data = Cache.get_tag_editor_data(player) or {}
   tag_data.is_favorite = is_favorite
   Cache.set_tag_editor_data(player, tag_data)
-  
   -- Use partial update instead of full rebuild for favorite state
-  tag_editor.update_favorite_state(player, is_favorite)
+  GuiPartialUpdateUtils.update_state(tag_editor.update_favorite_state, player, is_favorite)
 end
 
 local function handle_favorite_operations(player, tag, is_favorite)
@@ -71,7 +69,7 @@ local function handle_favorite_operations(player, tag, is_favorite)
     local favorite, error_msg = player_favorites:add_favorite(tag.gps)
     if not favorite then
       local error_text = error_msg or "Unknown error"
-      safe_player_print(player, LocaleUtils.get_error_string(player, "failed_add_favorite", { error_text }))
+      GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "failed_add_favorite", { error_text }))
       return false
     end
   elseif not is_favorite and currently_is_favorite then
@@ -79,7 +77,7 @@ local function handle_favorite_operations(player, tag, is_favorite)
     local success, error_msg = player_favorites:remove_favorite(tag.gps)
     if not success then
       local error_text = error_msg or "Unknown error"
-      safe_player_print(player, LocaleUtils.get_error_string(player, "failed_remove_favorite", { error_text }))
+      GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "failed_remove_favorite", { error_text }))
       return false
     end
   end
@@ -197,7 +195,7 @@ local function update_chart_tag_fields(tag, tag_data, text, icon, player)
   end
 
   -- Notify observers of tag modification
-  GuiEventBus.notify("tag_modified", {
+  require("core.control.control_shared_utils").notify_observer("tag_modified", {
     player = player,
     gps = tag.gps,
     tag = tag,
@@ -224,17 +222,14 @@ local function close_tag_editor(player)
     end
   end
   Cache.set_tag_editor_data(player, {})
-  GuiUtils.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+  GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
   player.opened = nil
 end
 
 local function handle_confirm_btn(player, element, tag_data)
   ErrorHandler.debug_log("[TAG_EDITOR] handle_confirm_btn: entry", {
-    player = player and player.name or "<nil>",
-    tag_data_gps = tag_data and tag_data.gps or "<nil>",
-    text = tag_data and tag_data.text or "<nil>",
-    icon = tag_data and tag_data.icon or "<nil>",
-    is_favorite = tag_data and tag_data.is_favorite or "<nil>"
+    gps = tag_data and tag_data.gps,
+    is_favorite = tag_data and tag_data.is_favorite
   })
   -- Removed: GuiEventBus.register_player_observers(player)
   ErrorHandler.debug_log("[TAG_EDITOR] handle_confirm_btn called", {
@@ -328,7 +323,7 @@ local function handle_confirm_btn(player, element, tag_data)
     player = player and player.name or "<nil>",
     gps = tag.gps
   })
-  GuiEventBus.notify(event_type, {
+  SharedUtils.notify_observer(event_type, {
     player = player,
     gps = tag.gps,
     tag = tag,
@@ -336,11 +331,11 @@ local function handle_confirm_btn(player, element, tag_data)
     is_new = is_new_tag
   })
   -- Fire multiplayer-safe tag collection changed event
-  GuiEventBus.notify("tag_collection_changed", {
+  SharedUtils.notify_observer("tag_collection_changed", {
     gps = tag.gps
   })
   -- Fire cache_updated event for DataObserver
-  GuiEventBus.notify("cache_updated", {
+  SharedUtils.notify_observer("cache_updated", {
     type = "tag_editor_confirmed",
     gps = tag.gps
   })
@@ -350,7 +345,7 @@ local function handle_confirm_btn(player, element, tag_data)
     gps = tag.gps
   })
   close_tag_editor(player)
-  safe_player_print(player, { "tf-command.tag_editor_confirmed" })
+  GameHelpers.player_print(player, { "tf-command.tag_editor_confirmed" })
 end
 
 local function unregister_move_handlers(script)
@@ -363,6 +358,10 @@ local function handle_move_btn(player, tag_data, script)
 end
 
 local function handle_favorite_btn(player, tag_data)
+  ErrorHandler.debug_log("[TAG_EDITOR] handle_favorite_btn: entry", {
+    gps = tag_data and tag_data.gps,
+    is_favorite = tag_data and tag_data.is_favorite
+  })
   -- Validate player first
   if not player or not player.valid then
     ErrorHandler.debug_log("Handle favorite button - invalid player", {
@@ -383,17 +382,15 @@ local function handle_favorite_btn(player, tag_data)
   end
 
   tag_data.is_favorite = not tag_data.is_favorite
-
-  ErrorHandler.debug_log("Favorite button toggled", {
-    player = (player and player.valid and player.name) or "unknown",
-    new_state = tag_data.is_favorite,
-    gps = tag_data.tag and tag_data.tag.gps or tag_data.gps
+  ErrorHandler.debug_log("[TAG_EDITOR] handle_favorite_btn: toggled", {
+    gps = tag_data and tag_data.gps,
+    is_favorite = tag_data and tag_data.is_favorite
   })
 
   -- Update the tag_data and refresh the UI to show new state
   Cache.set_tag_editor_data(player, tag_data)
   -- Use partial update instead of full rebuild for favorite toggle
-  tag_editor.update_favorite_state(player, tag_data.is_favorite)
+  GuiPartialUpdateUtils.update_state(tag_editor.update_favorite_state, player, tag_data.is_favorite)
 end
 
 local function handle_delete_confirm(player)
@@ -401,7 +398,7 @@ local function handle_delete_confirm(player)
   local tag_data = Cache.get_tag_editor_data(player)
   if not tag_data then
     -- No cached data, just close the dialogs
-    GuiUtils.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
+    GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
     close_tag_editor(player)
     return
   end
@@ -410,7 +407,7 @@ local function handle_delete_confirm(player)
   local tag = tag_data.tag
   if not tag then
     -- Close both confirmation dialog and tag editor
-    GuiUtils.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
+    GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
     close_tag_editor(player)
     -- Reset delete mode
     Cache.reset_tag_editor_delete_mode(player)
@@ -421,7 +418,7 @@ local function handle_delete_confirm(player)
   local can_delete, is_owner, is_admin_override, reason = AdminUtils.can_delete_chart_tag(player, tag.chart_tag, tag)
 
   if not can_delete then
-    GuiUtils.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
+    GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
     show_tag_editor_error(player, tag_data, reason or LocaleUtils.get_error_string(player, "tag_deletion_forbidden"))
     -- Reset delete mode
     Cache.reset_tag_editor_delete_mode(player)
@@ -443,19 +440,19 @@ local function handle_delete_confirm(player)
   tag_destroy_helper.destroy_tag_and_chart_tag(tag, tag.chart_tag)
 
   -- Notify observers of tag deletion
-  GuiEventBus.notify("tag_deleted", {
+  SharedUtils.notify_observer("tag_deleted", {
     player = player,
     gps = tag_gps,
     type = "tag_deleted",
     deleted_by = player.name
   })
   -- Fire multiplayer-safe tag collection changed event
-  GuiEventBus.notify("tag_collection_changed", {
+  SharedUtils.notify_observer("tag_collection_changed", {
     gps = tag_gps
   })
 
   -- Close both dialogs
-  GuiUtils.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
+  GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
   close_tag_editor(player)
   -- Reset delete mode
   Cache.reset_tag_editor_delete_mode(player)
@@ -469,8 +466,8 @@ end
 
 local function handle_delete_cancel(player)
   -- User cancelled deletion - close confirmation dialog and return to tag editor
-  GuiUtils.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
-  player.opened = GuiUtils.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+  GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
+  player.opened = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
   -- Reset delete mode
   Cache.reset_tag_editor_delete_mode(player)
 end
@@ -484,7 +481,7 @@ local function handle_delete_btn(player, tag_data)
   if not player or not player.valid then return end
 
   -- Always destroy any existing confirmation dialog before creating a new one
-  GuiUtils.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
+  GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
 
   -- Set delete mode in tag_editor_data
   Cache.set_tag_editor_delete_mode(player, true)
@@ -496,7 +493,7 @@ local function handle_delete_btn(player, tag_data)
 
   -- DO NOT set player.opened to the confirm dialog!
   -- Keep player.opened as the tag editor frame so it remains modal and open
-  player.opened = GuiUtils.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+  player.opened = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
   ErrorHandler.debug_log("Confirmation dialog opened successfully", {
     player_name = player.name,
     frame_lua_type = type(frame)
@@ -551,7 +548,7 @@ local function on_tag_editor_gui_click(event, script)
     tag_data.icon = new_icon
     Cache.set_tag_editor_data(player, tag_data)
     -- Update confirm button state based on new icon selection
-    tag_editor.update_confirm_button_state(player, tag_data)
+    GuiPartialUpdateUtils.update_state(tag_editor.update_confirm_button_state, player, tag_data)
     return
   end
   -- Handle confirmation dialog buttons without checking button type
@@ -611,7 +608,7 @@ local function on_tag_editor_gui_text_changed(event)
       tag_editor.update_error_message(player, nil)
     end
     -- Update confirm button state based on new text content
-    tag_editor.update_confirm_button_state(player, tag_data)
+    GuiPartialUpdateUtils.update_state(tag_editor.update_confirm_button_state, player, tag_data)
   end
 end
 
@@ -639,7 +636,7 @@ local function on_tag_editor_gui_elem_changed(event)
     })
 
     -- Update confirm button state based on new icon selection
-    tag_editor.update_confirm_button_state(player, tag_data)
+    GuiPartialUpdateUtils.update_state(tag_editor.update_confirm_button_state, player, tag_data)
   end
 end
 

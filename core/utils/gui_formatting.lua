@@ -11,7 +11,6 @@ Functions:
 - format_chart_tag() - Format chart tag for rich text display
 - position_change_notification() - Generate position change notification
 - deletion_prevention_notification() - Format deletion prevention message
-- Removed: tag_relocated_notification() - terrain change monitoring removed from codebase
 - build_favorite_tooltip() - Build tooltip for favorites
 ]]
 
@@ -39,25 +38,12 @@ function GuiFormatting.format_chart_tag(chart_tag, label)
   if not chart_tag or not chart_tag.valid then
     return LocaleUtils.get_error_string(nil, "invalid_chart_tag_fallback")
   end
-  
   local text = label or chart_tag.text or ""
-  local position_str = ""
-  
-  ---@diagnostic disable-next-line: undefined-field
-  if chart_tag.position then
-    position_str = string.format("[gps=%d,%d,%d]", 
-      math.floor(chart_tag.position.x), 
-      math.floor(chart_tag.position.y), 
-      chart_tag.surface.index)
-  end
-  
-  -- Format the icon if present
-  local icon_str = ""
-  ---@diagnostic disable-next-line: undefined-field
-  if chart_tag.icon and chart_tag.icon.type and chart_tag.icon.name then
-    icon_str = string.format("[img=%s/%s]", chart_tag.icon.type, chart_tag.icon.name)
-  end
-  
+  local position_str = string.format("[gps=%d,%d,%d]",
+    math.floor(chart_tag.position.x),
+    math.floor(chart_tag.position.y),
+    chart_tag.surface.index)
+  local icon_str = chart_tag.icon and string.format("[img=%s/%s]", chart_tag.icon.type, chart_tag.icon.name) or ""
   return string.format("%s %s %s", icon_str, text, position_str)
 end
 
@@ -71,29 +57,21 @@ function GuiFormatting.position_change_notification(player, chart_tag, old_posit
   if not player or not player.valid or not old_position or not new_position then
     return LocaleUtils.get_error_string(player, "invalid_position_change_fallback")
   end
-  
   local surface_index = player.surface.index
-  local old_gps = string.format("[gps=%d,%d,%d]", 
+  local old_gps = string.format("[gps=%d,%d,%d]",
     math.floor(old_position.x),
     math.floor(old_position.y),
     surface_index)
-  
-  local new_gps = string.format("[gps=%d,%d,%d]", 
+  local new_gps = string.format("[gps=%d,%d,%d]",
     math.floor(new_position.x),
     math.floor(new_position.y),
     surface_index)
-  
   local tag_text = ""
   local icon_str = ""
   if chart_tag and chart_tag.valid then
     tag_text = chart_tag.text or ""
-    
-    ---@diagnostic disable-next-line: undefined-field
-    if chart_tag.icon and chart_tag.icon.type and chart_tag.icon.name then
-      icon_str = string.format("[img=%s/%s] ", chart_tag.icon.type, chart_tag.icon.name)
-    end
+    icon_str = chart_tag.icon and string.format("[img=%s/%s] ", chart_tag.icon.type, chart_tag.icon.name) or ""
   end
-  
   return LocaleUtils.get_error_string(player, "location_changed", {icon_str .. tag_text, old_gps, new_gps})
 end
 
@@ -104,28 +82,14 @@ function GuiFormatting.deletion_prevention_notification(chart_tag)
   if not chart_tag or not chart_tag.valid then
     return LocaleUtils.get_error_string(nil, "invalid_chart_tag_fallback")
   end
-  
   local tag_text = chart_tag.text or ""
-  local icon_str = ""
-  
-  ---@diagnostic disable-next-line: undefined-field
-  if chart_tag.icon and chart_tag.icon.type and chart_tag.icon.name then
-    icon_str = string.format("[img=%s/%s] ", chart_tag.icon.type, chart_tag.icon.name)
-  end
-  
-  local position_str = ""
-  ---@diagnostic disable-next-line: undefined-field
-  if chart_tag.position then
-    position_str = string.format("[gps=%d,%d,%d]", 
-      math.floor(chart_tag.position.x), 
-      math.floor(chart_tag.position.y), 
-      chart_tag.surface.index)
-  end
-  
+  local icon_str = chart_tag.icon and string.format("[img=%s/%s] ", chart_tag.icon.type, chart_tag.icon.name) or ""
+  local position_str = string.format("[gps=%d,%d,%d]",
+    math.floor(chart_tag.position.x),
+    math.floor(chart_tag.position.y),
+    chart_tag.surface.index)
   return LocaleUtils.get_error_string(nil, "tag_deletion_prevented", {icon_str .. tag_text .. " " .. position_str})
 end
-
--- Removed tag_relocated_notification function - terrain change monitoring removed from codebase
 
 --- Build tooltip for favorites
 ---@param fav table Favorite object

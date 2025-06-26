@@ -107,7 +107,7 @@ gui_style.tf_slot_button_locked = {
 gui_style.tf_fave_bar_slot_number = {
     type = "label_style",
     font = "technology-slot-level-font",
-    font_color = { r = 0.98, g = 0.66, b = 0.22, a = 0.9 },
+    font_color = { r = 0.98, g = 0.66, b = 0.22, a = 0.7 },
     horizontal_align = "center",
     width = 25,
     top_padding = 16

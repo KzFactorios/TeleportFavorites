@@ -6,6 +6,8 @@ A utility module for tile-related functions to break circular dependencies.
 This module is imported by teleport_strategy.lua but has no other dependencies.
 ]]
 
+local PositionTileHelpers = require("core.utils.position_tile_helpers")
+
 local TileUtils = {}
 
 --- Check if a tile at a position is a water tile
@@ -14,7 +16,7 @@ local TileUtils = {}
 ---@return boolean is_water_tile
 function TileUtils.is_water_tile_at_position(surface, position)
   if not surface or not surface.get_tile or not position then return false end
-  local norm_pos = require("core.utils.position_utils").normalize_position(position)
+  local norm_pos = PositionTileHelpers.normalize_position(position)
   local tile = surface.get_tile(norm_pos.x, norm_pos.y)
   if not tile or not tile.valid then return false end
   local tile_name = tile.name:lower()
@@ -27,7 +29,7 @@ end
 ---@return boolean appears_walkable
 function TileUtils.appears_walkable(surface, position)
   if not surface or not surface.get_tile or not position then return false end
-  local norm_pos = require("core.utils.position_utils").normalize_position(position)
+  local norm_pos = PositionTileHelpers.normalize_position(position)
   local tile = surface.get_tile(norm_pos.x, norm_pos.y)
   if not tile or not tile.valid then return false end
   local tile_name = tile.name:lower()

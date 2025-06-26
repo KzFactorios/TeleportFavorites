@@ -21,13 +21,13 @@ Functions:
 --]]
 
 local GuiBase = require("gui.gui_base")
-local Cache = require("core.cache.cache")
-local GuiUtils = require("core.utils.gui_utils")
+local GuiValidation = require("core.utils.gui_validation")
+local GuiAccessibility = require("core.utils.gui_accessibility")
 local GameHelpers = require("core.utils.game_helpers")
 local Enum = require("prototypes.enums.enum")
 local ErrorHandler = require("core.utils.error_handler")
-local DataParsingHelpers = require("gui.data_viewer.data_parsing_helpers")
 local DataViewerGuiBuilders = require("gui.data_viewer.data_viewer_gui_builders")
+local DataParsingHelpers = require("gui.data_viewer.data_parsing_helpers")
 
 
 local data_viewer = {}
@@ -100,115 +100,6 @@ local function render_table_tree(parent, data, indent, visited, font_size, row_i
   return row_index
 end
 
--- Helper to parse a table row into a compact string, combining simple tables onto one line
-local function rowline_parser(key, value, indent, max_line_len)
-  local INDENT_STR = "    " -- Increased indent to 4 spaces
-  indent = indent or 0
-  max_line_len = max_line_len or 80
-  local prefix = string.rep(INDENT_STR, indent)
-  
-  -- Check if this is userdata that we can serialize
-  if type(value) == "userdata" then
-    local serialized = serialize_chart_tag(value)
-    if serialized ~= value then
-      -- Successfully serialized, treat as table
-      value = serialized
-    end
-  end
-  
-  if type(value) ~= "table" then
-    local valstr = tostring(value)
-    if type(value) ~= "string" and type(value) ~= "number" then valstr = valstr .. " [" .. type(value) .. "]" end
-    local line = prefix .. tostring(key) .. " = " .. valstr
-    return line, false
-  end
-  -- If table is empty
-  local n = 0; for _ in pairs(value) do n = n + 1 end
-  if n == 0 then
-    return prefix .. tostring(key) .. " = {}", true
-  end
-
-  -- If table is shallow and all scalars, combine onto one line
-  local parts = {}
-  local all_scalar = true
-  -- Process each table entry to build compact representation
-  local function process_table_entry(v, k)
-    -- Also check for userdata in table entries
-    if type(v) == "userdata" then
-      local serialized = serialize_chart_tag(v)
-      if serialized ~= v then
-        v = serialized
-      end
-    end
-    
-    if type(v) == "table" or type(v) == "function" then
-      all_scalar = false
-      -- Stop processing
-      return false
-    end
-    local valstr = tostring(v)
-    if type(v) ~= "string" and type(v) ~= "number" then
-      valstr = valstr .. " [" .. type(v) .. "]"
-    end
-    table.insert(parts, tostring(k) .. " = " .. valstr)
-    -- Continue processing
-    return true
-  end
-
-  -- Process entries until we find a non-scalar or finish all
-  for k, v in pairs(value) do
-    if not process_table_entry(v, k) then break end
-  end
-  if all_scalar and #parts > 0 then
-    local line = prefix .. tostring(key) .. " = { " .. table.concat(parts, ", ") .. " }"
-    if #line <= max_line_len then
-      return line, true
-    end
-  end
-  -- Otherwise, not compactable
-  return prefix .. tostring(key) .. " = {", false
-end
-
--- Serialize LuaCustomChartTag userdata into a readable table format
-local function serialize_chart_tag(chart_tag)
-  if not chart_tag or type(chart_tag) ~= "userdata" then
-    return chart_tag
-  end
-  
-  -- Check if this is a LuaCustomChartTag by checking for known methods
-  local success, result = pcall(function()
-    if chart_tag.valid then      -- Convert all properties to basic types to avoid nested userdata
-      local chart_tag_text = tostring(chart_tag.text or "")
-      local serialized = {
-        position = chart_tag.position and { x = chart_tag.position.x, y = chart_tag.position.y } or {},
-        text = chart_tag_text == "" and "[No Text]" or chart_tag_text,
-        icon = chart_tag.icon and {
-          name = tostring(chart_tag.icon.name or ""),
-          type = tostring(chart_tag.icon.type or "")
-        } or {},
-        last_user = chart_tag.last_user and chart_tag.last_user.name or "",
-        surface_name = chart_tag.surface and tostring(chart_tag.surface.name) or "unknown",
-        surface_index = chart_tag.surface and tonumber(chart_tag.surface.index) or 0,
-        valid = chart_tag.valid,
-        object_name = "LuaCustomChartTag"
-      }
-      return serialized
-    else
-      return {
-        valid = false,
-        object_name = "LuaCustomChartTag (invalid)"
-      }
-    end
-  end)
-  
-  if success then
-    return result
-  else
-    -- If not a chart tag, return original value
-    return chart_tag
-  end
-end
-
 -- Render the data as a compact, hierarchical, property-only table with alternating row colors, indentation, and line wrapping
 local function render_compact_data_rows(parent, data, indent, font_size, row_index, visited, force_white)
   indent = indent or 0
@@ -238,7 +129,7 @@ local function render_compact_data_rows(parent, data, indent, font_size, row_ind
 
   -- Check if this is userdata that we can serialize
   if type(data) == "userdata" then
-    local serialized = serialize_chart_tag(data)
+    local serialized = DataParsingHelpers.serialize_chart_tag(data)
     if serialized ~= data then
       data = serialized
     end
@@ -274,12 +165,12 @@ local function render_compact_data_rows(parent, data, indent, font_size, row_ind
     end
     if not is_method(v) then
       if type(v) == "userdata" then
-        local serialized = serialize_chart_tag(v)
+        local serialized = DataParsingHelpers.serialize_chart_tag(v)
         if serialized ~= v then
           v = serialized
         end
       end
-      local line, compact = rowline_parser(k, v, indent, MAX_LINE_LEN)
+      local line, compact = DataParsingHelpers.parse_row_line(k, v, indent, MAX_LINE_LEN)
       if compact == true then
         add_row(parent, line, font_size, row_index)
         row_index = row_index + 1
@@ -434,15 +325,15 @@ end
 ---@param font_size number Font size to use
 ---@param top_key string Top-level key name
 function data_viewer.update_content_panel(player, data, font_size, top_key)
-  local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
-  local frame = GuiUtils.find_child_by_name(main_flow, Enum.GuiEnum.GUI_FRAME.DATA_VIEWER)
+  local main_flow = GuiAccessibility.get_or_create_gui_flow_from_gui_top(player)
+  local frame = GuiValidation.find_child_by_name(main_flow, Enum.GuiEnum.GUI_FRAME.DATA_VIEWER)
   if not frame then return end
 
-  local content_flow = GuiUtils.find_child_by_name(frame, "data_viewer_content_flow")
+  local content_flow = GuiValidation.find_child_by_name(frame, "data_viewer_content_flow")
   if not content_flow then return end
 
   -- Remove existing data table
-  local existing_table = GuiUtils.find_child_by_name(content_flow, "data_viewer_table")
+  local existing_table = GuiValidation.find_child_by_name(content_flow, "data_viewer_table")
   if existing_table then
     existing_table.destroy()
   end
@@ -495,11 +386,11 @@ end
 ---@param player LuaPlayer
 ---@param new_font_size number New font size to apply
 function data_viewer.update_font_size(player, new_font_size)
-  local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
-  local frame = GuiUtils.find_child_by_name(main_flow, Enum.GuiEnum.GUI_FRAME.DATA_VIEWER)
+  local main_flow = GuiAccessibility.get_or_create_gui_flow_from_gui_top(player)
+  local frame = GuiValidation.find_child_by_name(main_flow, Enum.GuiEnum.GUI_FRAME.DATA_VIEWER)
   if not frame then return end
 
-  local data_table = GuiUtils.find_child_by_name(frame, "data_viewer_table")
+  local data_table = GuiValidation.find_child_by_name(frame, "data_viewer_table")
   if not data_table then return end
 
   -- Update font size for all existing labels in the data table
@@ -514,11 +405,11 @@ end
 ---@param player LuaPlayer
 ---@param active_tab string Active tab name
 function data_viewer.update_tab_selection(player, active_tab)
-  local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
-  local frame = GuiUtils.find_child_by_name(main_flow, Enum.GuiEnum.GUI_FRAME.DATA_VIEWER)
+  local main_flow = GuiAccessibility.get_or_create_gui_flow_from_gui_top(player)
+  local frame = GuiValidation.find_child_by_name(main_flow, Enum.GuiEnum.GUI_FRAME.DATA_VIEWER)
   if not frame then return end
 
-  local tabs_flow = GuiUtils.find_child_by_name(frame, "data_viewer_tabs_flow")
+  local tabs_flow = GuiValidation.find_child_by_name(frame, "data_viewer_tabs_flow")
   if not tabs_flow then return end
 
   -- Tab button name to tab key mapping
@@ -531,7 +422,7 @@ function data_viewer.update_tab_selection(player, active_tab)
 
   -- Update each tab button's enabled state and style
   for button_name, tab_key in pairs(tab_mapping) do
-    local tab_button = GuiUtils.find_child_by_name(tabs_flow, button_name)
+    local tab_button = GuiValidation.find_child_by_name(tabs_flow, button_name)
     if tab_button then
       local is_active = (tab_key == active_tab)
       tab_button.enabled = not is_active

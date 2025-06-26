@@ -85,7 +85,7 @@ function ErrorHandler.handle_error(result, player, should_print)
     -- Instead we'll use a dynamic approach that bypasses the static analyzer
     local print_fn = player.print
     if type(print_fn) == "function" then
-      pcall(print_fn, player, "[TeleportFavorites] " .. (result.message or "Unknown error"))
+      pcall(print_fn, player, {"", "[TeleportFavorites] ", (result.message or "Unknown error")})
     end
   end
   

@@ -20,8 +20,7 @@ when disabled in production.
 ]]
 
 local DebugConfig = require("core.utils.debug_config")
-local ErrorHandler = require("core.utils.error_handler") -- Use basic error handler to avoid circular dependency
-local GameHelpers = require("core.utils.game_helpers")
+local ErrorHandler = require("core.utils.error_handler") -- Use basic error handler to avoicircular dependency
 
 ---@class DevPerformanceMonitor
 local DevPerformanceMonitor = {}
@@ -230,48 +229,48 @@ end
 ---@param player LuaPlayer Player to show dashboard to
 function DevPerformanceMonitor.show_performance_dashboard(player)
   if not is_monitoring_active() then
-    GameHelpers.player_print(player, "Performance monitoring is disabled. Enable DEBUG level to use.")
+    safe_player_print(player, "Performance monitoring is disabled. Enable DEBUG level to use.")
     return
   end
   
   local summary = DevPerformanceMonitor.get_performance_summary()
   
-  GameHelpers.player_print(player, "=== TeleportFavorites Development Performance Dashboard ===")
-  GameHelpers.player_print(player, "Monitoring since tick: " .. (summary.monitoring_since or 0))
-  GameHelpers.player_print(player, "Current tick: " .. summary.current_tick)
-  GameHelpers.player_print(player, "")
+  safe_player_print(player, "=== TeleportFavorites Development Performance Dashboard ===")
+  safe_player_print(player, "Monitoring since tick: " .. (summary.monitoring_since or 0))
+  safe_player_print(player, "Current tick: " .. summary.current_tick)
+  safe_player_print(player, "")
   
-  GameHelpers.player_print(player, "Recent Operations (" .. summary.recent_operations_count .. " total):")
-  GameHelpers.player_print(player, "  Average duration: " .. string.format("%.2f", summary.average_operation_duration) .. " ticks")
-  GameHelpers.player_print(player, "  Slow operations (>3 ticks): " .. summary.slow_operations_count)
-  GameHelpers.player_print(player, "  GUI operations: " .. summary.gui_operations_count)
-  GameHelpers.player_print(player, "")
+  safe_player_print(player, "Recent Operations (" .. summary.recent_operations_count .. " total):")
+  safe_player_print(player, "  Average duration: " .. string.format("%.2f", summary.average_operation_duration) .. " ticks")
+  safe_player_print(player, "  Slow operations (>3 ticks): " .. summary.slow_operations_count)
+  safe_player_print(player, "  GUI operations: " .. summary.gui_operations_count)
+  safe_player_print(player, "")
   
-  GameHelpers.player_print(player, "Cache Performance:")
-  GameHelpers.player_print(player, "  Total lookups: " .. summary.cache_stats.lookups)
-  GameHelpers.player_print(player, "  Cache hits: " .. summary.cache_stats.hits)
-  GameHelpers.player_print(player, "  Cache misses: " .. summary.cache_stats.misses)
-  GameHelpers.player_print(player, "  Hit rate: " .. string.format("%.1f%%", summary.cache_hit_rate * 100))
-  GameHelpers.player_print(player, "")
+  safe_player_print(player, "Cache Performance:")
+  safe_player_print(player, "  Total lookups: " .. summary.cache_stats.lookups)
+  safe_player_print(player, "  Cache hits: " .. summary.cache_stats.hits)
+  safe_player_print(player, "  Cache misses: " .. summary.cache_stats.misses)
+  safe_player_print(player, "  Hit rate: " .. string.format("%.1f%%", summary.cache_hit_rate * 100))
+  safe_player_print(player, "")
   
-  GameHelpers.player_print(player, "Memory Snapshots: " .. summary.memory_snapshots_count)
+  safe_player_print(player, "Memory Snapshots: " .. summary.memory_snapshots_count)
   
   if #summary.recent_slow_operations > 0 then
-    GameHelpers.player_print(player, "")
-    GameHelpers.player_print(player, "Recent Slow Operations:")
+    safe_player_print(player, "")
+    safe_player_print(player, "Recent Slow Operations:")
     for i, op in ipairs(summary.recent_slow_operations) do
       if i <= 5 then -- Show only top 5
         local context_str = ""
         if op.context and op.context.gui_name then
           context_str = " (GUI: " .. op.context.gui_name .. ")"
         end
-        GameHelpers.player_print(player, "  " .. (op.name or "unknown") .. ": " .. 
+        safe_player_print(player, "  " .. (op.name or "unknown") .. ": " .. 
                                          (op.duration_ticks or 0) .. " ticks" .. context_str)
       end
     end
   end
   
-  GameHelpers.player_print(player, "========================================")
+  safe_player_print(player, "========================================")
 end
 
 --- Reset performance data (useful for testing)

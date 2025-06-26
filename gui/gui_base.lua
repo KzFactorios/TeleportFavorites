@@ -36,7 +36,8 @@ local GuiBase = {}
 local function get_gui_frame_by_element(element)
     if not element or not element.valid then return nil end
 
-    local current = element
+    local current ---@type LuaGuiElement?  -- allow nil
+    current = element
     while current and current.valid do
         if current.type == "frame" then
             return current
@@ -49,6 +50,18 @@ end
 --- NOTE: All requires MUST be at the top of the file. Do NOT move requires inside functions to avoid circular dependencies.
 --- This is a strict project policy. See notes/architecture.md and coding_standards.md for rationale.
 --- gui_base.lua MUST NOT require any control/event modules (e.g., control_fave_bar, control_tag_editor). It is a pure GUI helper module.
+
+--- Create a sprite button with icon, tooltip, and style.
+--- @param parent LuaGuiElement: Parent element
+--- @param name string: Name of the button
+--- @param sprite string: Icon sprite path
+--- @param tooltip LocalisedString|string|nil: Tooltip for the button
+--- @param style string: Optional style name (default: 'tf_slot_button')
+--- @param enabled? boolean|nil: Optional, default true
+--- @return LuaGuiElement: The created button
+function GuiBase.create_sprite_button(parent, name, sprite, tooltip, style, enabled)
+    return GuiBase.create_icon_button(parent, name, sprite, tooltip, style, enabled)
+end
 
 --- Factory for creating GUI elements with type and options
 --- @param element_type string: The type of GUI element (e.g., 'frame', 'label', 'sprite-button', etc.)
@@ -97,7 +110,7 @@ end
 --- @param parent LuaGuiElement: Parent element
 --- @param name string: Name of the button
 --- @param sprite string: Icon sprite path
---- @param tooltip any: Tooltip for the button
+--- @param tooltip LocalisedString|string|nil: Tooltip for the button
 --- @param style string: Optional style name (default: 'tf_slot_button')
 --- @param enabled? boolean|nil: Optional, default true
 --- @return LuaGuiElement: The created button
@@ -290,13 +303,30 @@ end
 
 --- Create a GUI element with common options (name, style, caption, sprite, tooltip)
 function GuiBase.create_named_element(type, parent, opts)
-  local elem = parent.add{type=type, name=opts.name, style=opts.style}
-  if opts.caption then elem.caption = opts.caption end
-  if opts.sprite then elem.sprite = opts.sprite end
-  if opts.tooltip then elem.tooltip = opts.tooltip end
+  if not parent or not parent.valid then
+    ErrorHandler.debug_log("create_named_element: invalid parent", { type = type, opts = opts })
+    return nil
+  end
+  if not opts or not opts.name then
+    ErrorHandler.debug_log("create_named_element: missing opts or name", { type = type, parent = parent and parent.name or "nil", opts = opts })
+    return nil
+  end
+  local elem, err = nil, nil
+  local ok, result = pcall(function()
+    return parent.add{type=type, name=opts.name, style=opts.style}
+  end)
+  if ok then
+    elem = result
+  else
+    ErrorHandler.debug_log("create_named_element: parent.add failed", { type = type, parent = parent.name, opts = opts, error = result })
+    return nil
+  end
+  if elem then
+    if opts.caption then elem.caption = opts.caption end
+    if opts.sprite then elem.sprite = opts.sprite end
+    if opts.tooltip then elem.tooltip = opts.tooltip end
+  end
   return elem
 end
-
--- Removed: get_or_create_gui_flow_from_gui_top - moved to GuiUtils
 
 return GuiBase

@@ -208,16 +208,30 @@ gui_style.tf_tag_editor_error_row_frame = {
 }
 
 -- Error message label style - wrap text and stretch vertically
-gui_style.tf_tag_editor_error_label = {
+-- Used for all error labels in the mod (favorites bar, tag editor, etc.)
+gui_style.tf_error_label = {
   type = "label_style",
   parent = "label",
   font = "default-bold",
-  font_color = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 }, -- White text for better contrast on red background
+  font_color = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
   horizontally_stretchable = "on",
   vertically_stretchable = "on",
   single_line = false,
   minimal_width = 264,
-  minimal_height = 54 -- Increased minimum height for wrapped text
+  minimal_height = 54
+}
+
+-- Existing tag editor error label style (for backward compatibility)
+gui_style.tf_tag_editor_error_label = {
+  type = "label_style",
+  parent = "label",
+  font = "default-bold",
+  font_color = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
+  horizontally_stretchable = "on",
+  vertically_stretchable = "on",
+  single_line = false,
+  minimal_width = 264,
+  minimal_height = 54
 }
 
 -- Confirm dialog frame style (for modal confirm/cancel)

@@ -93,7 +93,7 @@ function DataParsingHelpers.parse_row_line(key, value, indent, max_line_len)
   local INDENT_STR = "    " -- 4 spaces for indentation
   indent = indent or 0
   max_line_len = max_line_len or 80
-  local prefix = string.rep(INDENT_STR, indent)
+  local prefix = string.rep(INDENT_STR, math.floor(indent))
   
   -- Check if this is userdata that we can serialize
   if type(value) == "userdata" then

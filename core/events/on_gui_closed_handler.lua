@@ -45,7 +45,7 @@ new conditional branches in the main handler function.
 --]]
 
 local control_tag_editor = require("core.control.control_tag_editor")
-local GuiUtils = require("core.utils.gui_utils")
+local GuiValidation = require("core.utils.gui_validation")
 local Enum = require("prototypes.enums.enum")
 
 --- Handle on_gui_closed events for TeleportFavorites modal GUIs
@@ -58,24 +58,24 @@ local function on_gui_closed(event)
   if not player or not player.valid then return end
   
   -- If the confirmation dialog is open, close it and do NOT close the tag editor
-  local confirm_dialog = GuiUtils.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
+  local confirm_dialog = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
   if confirm_dialog and confirm_dialog.valid then
     confirm_dialog.destroy()
     -- Restore modal focus to the tag editor
-    local tag_editor_frame = GuiUtils.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+    local tag_editor_frame = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
     if tag_editor_frame and tag_editor_frame.valid then
       player.opened = tag_editor_frame
     end
     return
   end
   -- Otherwise, close the tag editor if present
-  local tag_editor_frame = GuiUtils.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+  local tag_editor_frame = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
   if tag_editor_frame and tag_editor_frame.valid and tag_editor_frame.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
     control_tag_editor.close_tag_editor(player)
     return
   end
     -- Future GUI handlers can be added here:
-  -- local data_viewer_frame = GuiUtils.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.DATA_VIEWER)
+  -- local data_viewer_frame = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.DATA_VIEWER)
   -- if data_viewer_frame and data_viewer_frame.valid then
   --   control_data_viewer.close_data_viewer(player)
   --   return

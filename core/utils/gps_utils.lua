@@ -209,12 +209,11 @@ function GPSUtils.position_can_be_tagged(player, map_position)
   end
     -- Check if the chunk is charted
   local chunk = { x = math.floor(map_position.x / 32), y = math.floor(map_position.y / 32) }
-  if not player.force:is_chunk_charted(player.surface, chunk) then
+  if not player.force.is_chunk_charted(player.surface, chunk) then
     return false, "You are trying to create a tag in uncharted territory"
   end  
   -- Water/space tiles are now allowed for tagging (removed restriction)
   -- Check for water/space tiles using basic tile checking
-  -- Note: This is simplified - full terrain validation should use PositionUtils
   -- local tile = player.surface.get_tile(map_position.x, map_position.y)
   -- if tile and tile.valid then
   --   local tile_name = tile.name:lower()

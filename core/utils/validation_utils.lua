@@ -13,11 +13,6 @@ This module consolidates:
 Provides a unified API for all validation operations throughout the mod.
 ]]
 
-local ErrorHandler = require("core.utils.error_handler")
-local basic_helpers = require("core.utils.basic_helpers")
-local GPSUtils = require("core.utils.gps_utils")
-local constants = require("constants")
-
 ---@class ValidationUtils
 local ValidationUtils = {}
 
@@ -30,15 +25,7 @@ local ValidationUtils = {}
 ---@return boolean is_valid
 ---@return string? error_message
 function ValidationUtils.validate_player(player)
-  if not player then
-    return false, "Player is nil"
-  end
-  
-  if not player.valid then
-    return false, "Player is not valid"
-  end
-  
-  return true, nil
+  return ValidationUtils.validate_factorio_object(player, "Player")
 end
 
 --- Extended player validation for position operations
@@ -179,9 +166,9 @@ function ValidationUtils.validate_position_for_tagging(player, position)
     return false, pos_error
   end
   local norm_pos = require("core.utils.position_utils").normalize_position(position)
-  -- Check if chunk is charted
+  -- Check if chunk is charted (dot syntax, correct API)
   local chunk = { x = math.floor(norm_pos.x / 32), y = math.floor(norm_pos.y / 32) }
-  if not player.surface:is_chunk_charted(chunk) then
+  if not player.force.is_chunk_charted(player.surface, chunk) then
     return false, "Position is not in charted territory"
   end
   return true, nil
@@ -196,15 +183,7 @@ end
 ---@return boolean is_valid
 ---@return string? error_message
 function ValidationUtils.validate_chart_tag(chart_tag)
-  if not chart_tag then
-    return false, "Chart tag is nil"
-  end
-  
-  if not chart_tag.valid then
-    return false, "Chart tag is not valid"
-  end
-  
-  return true, nil
+  return ValidationUtils.validate_factorio_object(chart_tag, "Chart tag")
 end
 
 --- Validate chart tag with position check
@@ -241,19 +220,7 @@ end
 ---@return boolean is_valid
 ---@return string? error_message
 function ValidationUtils.validate_tag_structure(tag)
-  if not tag or type(tag) ~= "table" then
-    return false, "Tag must be a table"
-  end
-  
-  if not tag.gps or type(tag.gps) ~= "string" then
-    return false, "Tag must have a valid GPS string"
-  end
-  
-  if not tag.faved_by_players or type(tag.faved_by_players) ~= "table" then
-    return false, "Tag must have a faved_by_players array"
-  end
-  
-  return true, nil
+  return ValidationUtils.validate_table_fields(tag, {"gps", "faved_by_players"}, "Tag")
 end
 
 --- Validate tag using GPS patterns
@@ -286,19 +253,7 @@ end
 ---@return boolean is_valid
 ---@return string? error_message
 function ValidationUtils.validate_signal_structure(signal)
-  if not signal or type(signal) ~= "table" then
-    return false, "Signal must be a table"
-  end
-  
-  if not signal.type or type(signal.type) ~= "string" then
-    return false, "Signal must have a valid type string"
-  end
-  
-  if not signal.name or type(signal.name) ~= "string" then
-    return false, "Signal must have a valid name string"
-  end
-  
-  return true, nil
+  return ValidationUtils.validate_table_fields(signal, {"type", "name"}, "Signal")
 end
 
 --- Validate icon for chart tags
@@ -358,15 +313,7 @@ end
 ---@return boolean is_valid
 ---@return string? error_message
 function ValidationUtils.validate_surface(surface)
-  if not surface then
-    return false, "Surface is nil"
-  end
-  
-  if not surface.valid then
-    return false, "Surface is not valid"
-  end
-  
-  return true, nil
+  return ValidationUtils.validate_factorio_object(surface, "Surface")
 end
 
 --- Validate force object
@@ -374,15 +321,7 @@ end
 ---@return boolean is_valid
 ---@return string? error_message
 function ValidationUtils.validate_force(force)
-  if not force then
-    return false, "Force is nil"
-  end
-  
-  if not force.valid then
-    return false, "Force is not valid"
-  end
-  
-  return true, nil
+  return ValidationUtils.validate_factorio_object(force, "Force")
 end
 
 -- ========================================
@@ -591,6 +530,33 @@ function ValidationUtils.validate_range(value, min_val, max_val, field_name)
     return false, field_name .. " must be between " .. min_val .. " and " .. max_val
   end
   
+  return true, nil
+end
+
+--- Generic validator for Factorio runtime objects (player, surface, force, chart_tag, etc.)
+---@param obj table|nil
+---@param type_name string
+---@return boolean is_valid, string? error_message
+function ValidationUtils.validate_factorio_object(obj, type_name)
+  if not obj then return false, type_name .. " is nil" end
+  if not obj.valid then return false, type_name .. " is not valid" end
+  return true, nil
+end
+
+--- Validate required fields on a table
+---@param tbl table|nil
+---@param required_fields string[]
+---@param type_name string
+---@return boolean is_valid, string? error_message
+function ValidationUtils.validate_table_fields(tbl, required_fields, type_name)
+  if not tbl or type(tbl) ~= "table" then
+    return false, type_name .. " must be a table"
+  end
+  for _, field in ipairs(required_fields) do
+    if tbl[field] == nil then
+      return false, type_name .. " missing required field: " .. field
+    end
+  end
   return true, nil
 end
 

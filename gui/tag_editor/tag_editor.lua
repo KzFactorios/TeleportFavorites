@@ -30,7 +30,8 @@ Main Functions:
 
 local Enum = require("prototypes.enums.enum")
 local GuiBase = require("gui.gui_base")
-local GuiUtils = require("core.utils.gui_utils")
+local GuiValidation = require("core.utils.gui_validation")
+local GuiFormatting = require("core.utils.gui_formatting")
 local GPSUtils = require("core.utils.gps_utils")
 local BasicHelpers = require("core.utils.basic_helpers")
 local ValidationUtils = require("core.utils.validation_utils")
@@ -49,7 +50,7 @@ local tag_editor = {}
 -- This function now only sets state, tooltips, and styles. It does NOT create any elements.
 local function set_btn_state_and_tooltip(btn, enabled, tooltip)
   if btn then
-    GuiUtils.set_button_state(btn, enabled)
+    GuiValidation.set_button_state(btn, enabled)
     if tooltip then btn.tooltip = tooltip end
   end
 end
@@ -139,13 +140,13 @@ local function setup_tag_editor_ui(refs, tag_data, player)
 
   -- In move mode, disable all controls except cancel
   if tag_data.move_mode then
-    if refs.icon_btn then GuiUtils.set_button_state(refs.icon_btn, false) end
-    if refs.teleport_btn then GuiUtils.set_button_state(refs.teleport_btn, false) end
-    if refs.favorite_btn then GuiUtils.set_button_state(refs.favorite_btn, false) end
-    if refs.rich_text_input then GuiUtils.set_button_state(refs.rich_text_input, false) end
-    if refs.move_btn then GuiUtils.set_button_state(refs.move_btn, false) end
-    if refs.delete_btn then GuiUtils.set_button_state(refs.delete_btn, false) end
-    if refs.confirm_btn then GuiUtils.set_button_state(refs.confirm_btn, false) end
+    if refs.icon_btn then GuiValidation.set_button_state(refs.icon_btn, false) end
+    if refs.teleport_btn then GuiValidation.set_button_state(refs.teleport_btn, false) end
+    if refs.favorite_btn then GuiValidation.set_button_state(refs.favorite_btn, false) end
+    if refs.rich_text_input then GuiValidation.set_button_state(refs.rich_text_input, false) end
+    if refs.move_btn then GuiValidation.set_button_state(refs.move_btn, false) end
+    if refs.delete_btn then GuiValidation.set_button_state(refs.delete_btn, false) end
+    if refs.confirm_btn then GuiValidation.set_button_state(refs.confirm_btn, false) end
     -- Optionally, enable a cancel move button if present
   end
 end
@@ -177,6 +178,8 @@ function tag_editor.build_confirmation_dialog(player, opts)
     message = { "tf-gui.confirm_delete_message" }
   end
   ---@diagnostic disable-next-line: param-type-mismatch
+  ---@type LocalisedString
+  message = message
   GuiBase.create_label(frame, "tag_editor_tf_confirm_dialog_label", message, "tf_dlg_confirm_title")
 
   -- Button row: idiomatic horizontal flow with left/right flows for true alignment
@@ -247,34 +250,37 @@ local function build_owner_row(parent, tag_data)
   local button_flow = GuiBase.create_hflow(row_frame, "tag_editor_button_flow")
   ---@diagnostic disable-next-line: param-type-mismatch
   local move_button = GuiBase.create_icon_button(button_flow, "tag_editor_move_button", Enum.SpriteEnum.MOVE,
-    { "tf-gui.move_tooltip" }, "tf_move_button")
-  ---@diagnostic disable-next-line: param-type-mismatch
+    "tf-gui.move_tooltip", "tf_move_button")
   local delete_button = GuiBase.create_icon_button(button_flow, "tag_editor_delete_button", Enum.SpriteEnum.TRASH,
-    { "tf-gui.delete_tooltip" }, "tf_delete_button")
+    "tf-gui.delete_tooltip", "tf_delete_button")
 
   return row_frame, label, move_button, delete_button
 end
 
 local function build_teleport_favorite_row(parent, tag_data)
+  ErrorHandler.debug_log("[TAG_EDITOR] build_teleport_favorite_row: tag_data state", {
+    gps = tag_data.gps,
+    is_favorite = tag_data.is_favorite
+  })
   -- Style must be set at creation time for Factorio GUIs
   local row = GuiBase.create_frame(parent, "tag_editor_teleport_favorite_row", "horizontal",
-    "tf_tag_editor_teleport_favorite_row") -- Simplify the favorite button state logic
+    "tf_tag_editor_teleport_favorite_row")
   local is_favorite = tag_data and tag_data.is_favorite == true
   local star_state = is_favorite and Enum.SpriteEnum.STAR or Enum.SpriteEnum.STAR_DISABLED
   local fave_style = is_favorite and "slot_orange_favorite_on" or "slot_orange_favorite_off"
   local favorite_btn = GuiBase.create_icon_button(row, "tag_editor_is_favorite_button", star_state,
-    { "tf-gui.favorite_tooltip" }, fave_style)
-  local teleport_btn = GuiBase.create_icon_button(row, "tag_editor_teleport_button", "", { "tf-gui.teleport_tooltip" },
+    "tf-gui.favorite_tooltip", fave_style)
+  local teleport_btn = GuiBase.create_icon_button(row, "tag_editor_teleport_button", "", "tf-gui.teleport_tooltip",
     "tf_teleport_button")
-  ---@diagnostic disable-next-line: assign-type-mismatch
-  teleport_btn.caption = { "tf-gui.teleport_to", GPSUtils.coords_string_from_gps(tag_data.gps) }
+  local coords = GPSUtils.coords_string_from_gps(tag_data.gps)
+  if not coords or coords == "" then coords = "" end
+  teleport_btn.caption = {"tf-gui.teleport_to", coords}
   return row, favorite_btn, teleport_btn
 end
 
 local function create_icon_button(row, tag_data)
-  local sprite_path, used_fallback, debug_info = GuiUtils.get_validated_sprite_path(tag_data.icon,
+  local sprite_path, used_fallback, debug_info = GuiValidation.get_validated_sprite_path(tag_data.icon,
     { fallback = Enum.SpriteEnum.PIN, log_context = { context = "tag_editor", gps = tag_data.gps } })
-  
   local icon_btn = GuiBase.create_element("choose-elem-button", row, {
     name = "tag_editor_icon_button",
     tooltip = { "tf-gui.icon_tooltip" },
@@ -283,12 +289,10 @@ local function create_icon_button(row, tag_data)
     signal = tag_data.icon,
     sprite = sprite_path
   })
-  
   if used_fallback then
     ErrorHandler.debug_log("[TAG_EDITOR] Fallback icon used for tag editor icon button",
       { sprite_path = sprite_path, debug_info = debug_info })
   end
-  
   return icon_btn
 end
 
@@ -324,7 +328,7 @@ local function build_last_row(parent)
   })
 
   -- Set drag target for the draggable space
-  local drag_target = GuiUtils.get_gui_frame_by_element(parent)
+  local drag_target = GuiValidation.get_gui_frame_by_element(parent)
   if drag_target and drag_target.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
     draggable.drag_target = drag_target
   end
@@ -344,19 +348,24 @@ end
 --- @param player LuaPlayer
 function tag_editor.build(player)
   if not player or not player.valid then return end
-  -- Only use tag_data as provided, do not perform any additional chart tag search or validation
   local tag_data = Cache.get_player_data(player).tag_editor_data or Cache.create_tag_editor_data()
   if not tag_data.gps or tag_data.gps == "" then
     tag_data.gps = tag_data.move_gps or ""
   end
+  ErrorHandler.debug_log("[TAG_EDITOR] build: tag_data state", {
+    gps = tag_data.gps,
+    is_favorite = tag_data.is_favorite,
+    tag = tag_data.tag,
+    chart_tag = tag_data.chart_tag
+  })
   -- Do NOT attempt to find or create chart tags here. Only use tag_data.tag and tag_data.chart_tag as provided.
 
   local gps = tag_data.gps
   local parent = player.gui.screen
-  local outer = GuiUtils.find_child_by_name(parent, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+  local outer = GuiValidation.find_child_by_name(parent, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
   if outer ~= nil then outer.destroy() end
 
-  local tag_editor_outer_frame = GuiBase.create_frame(parent, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR, "vertical",
+  local tag_editor_outer_frame = GuiBase.create_frame(parent, "tag_editor_frame", "vertical",
     "tf_tag_editor_outer_frame")
   tag_editor_outer_frame.auto_center = true
 
@@ -420,7 +429,7 @@ end
 
 -- Helper function to update confirm button state based on current tag data
 function tag_editor.update_confirm_button_state(player, tag_data)
-  local confirm_btn = GuiUtils.find_child_by_name(player.gui.screen, "last_row_confirm_button")
+  local confirm_btn = GuiValidation.find_child_by_name(player.gui.screen, "last_row_confirm_button")
   if not confirm_btn then return end
 
   -- Check if text input has content or icon is selected
@@ -428,7 +437,7 @@ function tag_editor.update_confirm_button_state(player, tag_data)
   local has_icon = ValidationUtils.has_valid_icon(tag_data.icon)
   local can_confirm = has_text or has_icon
 
-  GuiUtils.set_button_state(confirm_btn, can_confirm)
+  GuiValidation.set_button_state(confirm_btn, can_confirm)
 end
 
 -- Partial update functions for specific UI elements without full rebuild
@@ -437,18 +446,18 @@ end
 ---@param player LuaPlayer
 ---@param message string? Error message to display, nil/empty to hide
 function tag_editor.update_error_message(player, message)
-  local outer_frame = GuiUtils.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+  local outer_frame = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
   if not outer_frame then return end
 
-  local error_row_frame = GuiUtils.find_child_by_name(outer_frame, "tag_editor_error_row_frame")
-  local error_label = error_row_frame and GuiUtils.find_child_by_name(error_row_frame, "error_row_error_message")
+  local error_row_frame = GuiValidation.find_child_by_name(outer_frame, "tag_editor_error_row_frame")
+  local error_label = error_row_frame and GuiValidation.find_child_by_name(error_row_frame, "error_row_error_message")
 
   local should_show_error = message and BasicHelpers.trim(message) ~= ""
 
   if should_show_error then
     -- Create error row if it doesn't exist
     if not error_row_frame then
-      local content_frame = GuiUtils.find_child_by_name(outer_frame, "tag_editor_content_frame")
+      local content_frame = GuiValidation.find_child_by_name(outer_frame, "tag_editor_content_frame")
       if content_frame then
         error_row_frame = GuiBase.create_frame(outer_frame, "tag_editor_error_row_frame", "vertical",
           "tf_tag_editor_error_row_frame")
@@ -478,17 +487,17 @@ end
 ---@param player LuaPlayer
 ---@param tag_data table Current tag data
 function tag_editor.update_button_states(player, tag_data)
-  local outer_frame = GuiUtils.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+  local outer_frame = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
   if not outer_frame then return end
 
   -- Get all button references
-  local icon_btn = GuiUtils.find_child_by_name(outer_frame, "tag_editor_icon_button")
-  local teleport_btn = GuiUtils.find_child_by_name(outer_frame, "tag_editor_teleport_button")
-  local favorite_btn = GuiUtils.find_child_by_name(outer_frame, "tag_editor_is_favorite_button")
-  local move_btn = GuiUtils.find_child_by_name(outer_frame, "tag_editor_move_button")
-  local delete_btn = GuiUtils.find_child_by_name(outer_frame, "tag_editor_delete_button")
-  local confirm_btn = GuiUtils.find_child_by_name(outer_frame, "last_row_confirm_button")
-  local rich_text_input = GuiUtils.find_child_by_name(outer_frame, "tag_editor_rich_text_input")
+  local icon_btn = GuiValidation.find_child_by_name(outer_frame, "tag_editor_icon_button")
+  local teleport_btn = GuiValidation.find_child_by_name(outer_frame, "tag_editor_teleport_button")
+  local favorite_btn = GuiValidation.find_child_by_name(outer_frame, "tag_editor_is_favorite_button")
+  local move_btn = GuiValidation.find_child_by_name(outer_frame, "tag_editor_move_button")
+  local delete_btn = GuiValidation.find_child_by_name(outer_frame, "tag_editor_delete_button")
+  local confirm_btn = GuiValidation.find_child_by_name(outer_frame, "last_row_confirm_button")
+  local rich_text_input = GuiValidation.find_child_by_name(outer_frame, "tag_editor_rich_text_input")
 
   -- Determine ownership and permissions
   local tag = tag_data.tag
@@ -551,13 +560,13 @@ function tag_editor.update_button_states(player, tag_data)
 
   -- Move mode overrides - disable all controls except cancel
   if tag_data.move_mode then
-    if icon_btn then GuiUtils.set_button_state(icon_btn, false) end
-    if teleport_btn then GuiUtils.set_button_state(teleport_btn, false) end
-    if favorite_btn then GuiUtils.set_button_state(favorite_btn, false) end
-    if rich_text_input then GuiUtils.set_button_state(rich_text_input, false) end
-    if move_btn then GuiUtils.set_button_state(move_btn, false) end
-    if delete_btn then GuiUtils.set_button_state(delete_btn, false) end
-    if confirm_btn then GuiUtils.set_button_state(confirm_btn, false) end
+    if icon_btn then GuiValidation.set_button_state(icon_btn, false) end
+    if teleport_btn then GuiValidation.set_button_state(teleport_btn, false) end
+    if favorite_btn then GuiValidation.set_button_state(favorite_btn, false) end
+    if rich_text_input then GuiValidation.set_button_state(rich_text_input, false) end
+    if move_btn then GuiValidation.set_button_state(move_btn, false) end
+    if delete_btn then GuiValidation.set_button_state(delete_btn, false) end
+    if confirm_btn then GuiValidation.set_button_state(confirm_btn, false) end
   end
 end
 
@@ -566,11 +575,11 @@ end
 ---@param field_name string Name of field ("text" or "icon")
 ---@param validation_state table Validation result with errors/warnings
 function tag_editor.update_field_validation(player, field_name, validation_state)
-  local outer_frame = GuiUtils.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+  local outer_frame = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
   if not outer_frame then return end
 
   if field_name == "text" then
-    local text_input = GuiUtils.find_child_by_name(outer_frame, "tag_editor_rich_text_input")
+    local text_input = GuiValidation.find_child_by_name(outer_frame, "tag_editor_rich_text_input")
     if text_input then
       -- Update text field styling based on validation
       if validation_state.error then
@@ -589,7 +598,7 @@ function tag_editor.update_field_validation(player, field_name, validation_state
       end
     end
   elseif field_name == "icon" then
-    local icon_btn = GuiUtils.find_child_by_name(outer_frame, "tag_editor_icon_button")
+    local icon_btn = GuiValidation.find_child_by_name(outer_frame, "tag_editor_icon_button")
     if icon_btn then
       -- Update icon button styling based on validation
       if validation_state.error then
@@ -608,10 +617,10 @@ end
 ---@param player LuaPlayer
 ---@param move_mode_active boolean Whether move mode is active
 function tag_editor.update_move_mode_visuals(player, move_mode_active)
-  local outer_frame = GuiUtils.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+  local outer_frame = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
   if not outer_frame then return end
 
-  local inner_frame = GuiUtils.find_child_by_name(outer_frame, "tag_editor_content_inner_frame")
+  local inner_frame = GuiValidation.find_child_by_name(outer_frame, "tag_editor_content_inner_frame")
   
   if inner_frame then
     if move_mode_active then
@@ -634,10 +643,10 @@ end
 ---@param player LuaPlayer
 ---@param is_favorite boolean Whether the tag is currently favorited
 function tag_editor.update_favorite_state(player, is_favorite)
-  local outer_frame = GuiUtils.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+  local outer_frame = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
   if not outer_frame then return end
 
-  local favorite_btn = GuiUtils.find_child_by_name(outer_frame, "tag_editor_is_favorite_button")
+  local favorite_btn = GuiValidation.find_child_by_name(outer_frame, "tag_editor_is_favorite_button")
   if favorite_btn then
     local star_state = is_favorite and Enum.SpriteEnum.STAR or Enum.SpriteEnum.STAR_DISABLED
     local fave_style = is_favorite and "slot_orange_favorite_on" or "slot_orange_favorite_off"

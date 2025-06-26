@@ -16,6 +16,7 @@
 -- All operations respect locking rules and blank slot constraints.
 
 local ErrorHandler = require("core.utils.error_handler")
+local Logger = require("core.utils.enhanced_error_handler")
 
 ---@class DragDropUtils
 local DragDropUtils = {}
@@ -88,7 +89,7 @@ function DragDropUtils.reorder_slots(slots, src_idx, dest_idx)
   local src = slots[src_idx]
   local dest = slots[dest_idx]
   
-  ErrorHandler.debug_log("[DRAG_DROP] reorder_slots invoked", {
+  Logger.debug_log("[DRAG_DROP] reorder_slots invoked", {
     src_idx = src_idx,
     dest_idx = dest_idx,
     src_gps = src.gps,
@@ -99,7 +100,7 @@ function DragDropUtils.reorder_slots(slots, src_idx, dest_idx)
   local validation = DragDropUtils.validate_drag_drop(src, dest, src_idx, dest_idx)
   
   if not validation.can_drag_source or not validation.can_drop_target then
-    ErrorHandler.debug_log("[DRAG_DROP] Drag operation rejected", {
+    Logger.debug_log("[DRAG_DROP] Drag operation rejected", {
       reason = validation.reason,
       can_drag_source = validation.can_drag_source,
       can_drop_target = validation.can_drop_target
@@ -109,7 +110,7 @@ function DragDropUtils.reorder_slots(slots, src_idx, dest_idx)
   
   -- If source and destination are the same, do nothing
   if src_idx == dest_idx then
-    ErrorHandler.debug_log("[DRAG_DROP] Same slot operation", { slot = src_idx })
+    Logger.debug_log("[DRAG_DROP] Same slot operation", { slot = src_idx })
     return slots
   end
   
@@ -133,7 +134,7 @@ end
 ---@param dest_idx number Destination index (blank)
 ---@return table modified_slots
 function DragDropUtils._swap_with_blank(slots, src_idx, dest_idx)
-  ErrorHandler.debug_log("[DRAG_DROP] Swapping with blank destination", {
+  Logger.debug_log("[DRAG_DROP] Swapping with blank destination", {
     src_idx = src_idx,
     dest_idx = dest_idx
   })
@@ -151,7 +152,7 @@ end
 ---@param dest_idx number Destination index (adjacent)
 ---@return table modified_slots
 function DragDropUtils._swap_adjacent(slots, src_idx, dest_idx)
-  ErrorHandler.debug_log("[DRAG_DROP] Swapping adjacent slots", {
+  Logger.debug_log("[DRAG_DROP] Swapping adjacent slots", {
     src_idx = src_idx,
     dest_idx = dest_idx
   })
@@ -166,7 +167,7 @@ end
 ---@param dest_idx number Destination index
 ---@return table modified_slots
 function DragDropUtils._cascade_reorder(slots, src_idx, dest_idx)
-  ErrorHandler.debug_log("[DRAG_DROP] Performing cascade reorder", {
+  Logger.debug_log("[DRAG_DROP] Performing cascade reorder", {
     src_idx = src_idx,
     dest_idx = dest_idx
   })
@@ -183,13 +184,13 @@ function DragDropUtils._cascade_reorder(slots, src_idx, dest_idx)
   -- Check for locked slots or blanks in the cascade path (excluding src and dest)
   for i = start_idx, end_idx, step do
     if slots[i].locked then
-      ErrorHandler.debug_log("[DRAG_DROP] Cascade blocked by locked slot", { 
+      Logger.debug_log("[DRAG_DROP] Cascade blocked by locked slot", { 
         blocked_at = i 
       })
       return slots  -- Abort if cascade would overwrite a locked slot
     end
     if slots[i].gps == BLANK_GPS then
-      ErrorHandler.debug_log("[DRAG_DROP] Cascade blocked by blank slot", { 
+      Logger.debug_log("[DRAG_DROP] Cascade blocked by blank slot", { 
         blocked_at = i 
       })
       return slots  -- Abort cascade if a blank favorite is encountered
@@ -207,7 +208,7 @@ function DragDropUtils._cascade_reorder(slots, src_idx, dest_idx)
   -- Set source to blank
   slots[src_idx] = { gps = BLANK_GPS, locked = false }
   
-  ErrorHandler.debug_log("[DRAG_DROP] Cascade reorder completed", {
+  Logger.debug_log("[DRAG_DROP] Cascade reorder completed", {
     src_idx = src_idx,
     dest_idx = dest_idx
   })

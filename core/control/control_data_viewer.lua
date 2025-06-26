@@ -5,20 +5,14 @@
 
 local data_viewer = require("gui.data_viewer.data_viewer")
 local Cache = require("core.cache.cache")
-local GuiUtils = require("core.utils.gui_utils")
+local GuiValidation = require("core.utils.gui_validation")
+local GuiAccessibility = require("core.utils.gui_accessibility")
 local ErrorHandler = require("core.utils.error_handler")
 local PositionUtils = require("core.utils.position_utils")
+local SharedUtils = require("core.control.control_shared_utils")
 
 
 local M = {}
-
--- Helper function to count table elements
-local function table_size(t)
-  if type(t) ~= "table" then return 0 end
-  local count = 0
-  for _ in pairs(t) do count = count + 1 end
-  return count
-end
 
 --- Load data for the specified tab - centralized to eliminate duplication
 ---@param player LuaPlayer
@@ -34,7 +28,7 @@ local function load_tab_data(player, active_tab, font_size)
       player_name = player.name,
       data_nil = state.data == nil,
       data_type = type(state.data),
-      data_count = state.data and (type(state.data) == "table" and table_size(state.data) or "not table") or "nil"
+      data_count = state.data and (type(state.data) == "table" and SharedUtils.table_size(state.data) or "not table") or "nil"
     })
   elseif active_tab == "surface_data" then
     state.data = Cache.get_surface_data(player.surface.index)
@@ -43,18 +37,16 @@ local function load_tab_data(player, active_tab, font_size)
       surface_index = player.surface.index,
       data_nil = state.data == nil,
       data_type = type(state.data),
-      data_count = state.data and (type(state.data) == "table" and table_size(state.data) or "not table") or "nil"
+      data_count = state.data and (type(state.data) == "table" and SharedUtils.table_size(state.data) or "not table") or "nil"
     })
   elseif active_tab == "lookup" then
     -- Initialize Cache first to ensure Lookups is available
     Cache.init()
     -- Create a safe view of GPS mapping data for display
     local gps_mapping_data = {}
-    
     for _, surface in pairs(game.surfaces) do
       if surface and surface.valid then
         local surface_index = surface.index
-        
         -- Build GPS mapping data
         local gps_mapping = Cache.Lookups.get_gps_mapping_for_surface(surface_index)
         if gps_mapping and next(gps_mapping) then
@@ -79,20 +71,19 @@ local function load_tab_data(player, active_tab, font_size)
         end
       end
     end
-    
     state.data = {
       chart_tags_mapped_by_gps = gps_mapping_data,
       cache_status = next(gps_mapping_data) and "populated" or "empty"
     }
     state.top_key = "lookups"
     ErrorHandler.debug_log("Data viewer loading lookup data", {
-      gps_mapping_count = table_size(gps_mapping_data),
+      gps_mapping_count = SharedUtils.table_size(gps_mapping_data),
       cache_status = state.data.cache_status
     })
   elseif active_tab == "all_data" then
     state.data = storage
     state.top_key = "all_data"
-    local storage_count = storage and (type(storage) == "table" and table_size(storage) or "not table") or "nil"
+    local storage_count = storage and (type(storage) == "table" and SharedUtils.table_size(storage) or "not table") or "nil"
     ErrorHandler.debug_log("Data viewer loading all data", {
       storage_type = type(storage),
       storage_count = storage_count
@@ -108,10 +99,12 @@ end
 ---@param font_size number?
 ---@param show_flying_text boolean?
 local function rebuild_data_viewer(player, main_flow, active_tab, font_size, show_flying_text)
-  local state = load_tab_data(player, active_tab, font_size)
-  GuiUtils.safe_destroy_frame(main_flow, "data_viewer_frame")
-  data_viewer.build(player, main_flow, state)
-  
+  SharedUtils.refresh_gui_with_cache(
+    function() end, -- No cache setter needed for data viewer
+    function(_, mf) GuiValidation.safe_destroy_frame(mf, "data_viewer_frame") end,
+    function(p, mf, st) data_viewer.build(p, mf, st) end,
+    player, main_flow, load_tab_data(player, active_tab, font_size)
+  )
   if show_flying_text then
     data_viewer.show_refresh_notification(player)
   end
@@ -136,7 +129,7 @@ end
 ---@param main_flow LuaGuiElement
 ---@return string active_tab
 local function find_active_tab_from_gui(main_flow)
-  local frame = GuiUtils.find_child_by_name(main_flow, "data_viewer_frame")
+  local frame = GuiValidation.find_child_by_name(main_flow, "data_viewer_frame")
   if not (frame and frame.valid) then return "player_data" end
   
   -- Access the correct GUI structure: frame.data_viewer_inner_flow.data_viewer_tabs_flow
@@ -160,11 +153,7 @@ local function find_active_tab_from_gui(main_flow)
   return "player_data" -- default fallback
 end
 
-local function get_or_create_gui_flow_from_gui_top(player)
-  return GuiUtils.get_or_create_gui_flow_from_gui_top(player)
-end
--- Removed: M.get_or_create_gui_flow_from_gui_top (now using GuiUtils)
-
+-- Inline get_or_create_gui_flow_from_gui_top, use GuiAccessibility.get_or_create_gui_flow_from_gui_top directly
 function M.on_toggle_data_viewer(event)
   ErrorHandler.debug_log("Data viewer toggle called", {
     player_index = event.player_index,
@@ -183,7 +172,7 @@ function M.on_toggle_data_viewer(event)
     player_name = player.name
   })
   
-  local main_flow = get_or_create_gui_flow_from_gui_top(player)
+  local main_flow = GuiAccessibility.get_or_create_gui_flow_from_gui_top(player)
   if not main_flow then
     ErrorHandler.debug_log("Data viewer toggle failed: no main flow")
     return
@@ -193,7 +182,7 @@ function M.on_toggle_data_viewer(event)
     main_flow_valid = main_flow.valid
   })
   
-  local frame = GuiUtils.find_child_by_name(main_flow, "data_viewer_frame")
+  local frame = GuiValidation.find_child_by_name(main_flow, "data_viewer_frame")
   local pdata = Cache.get_player_data(player)
   pdata.data_viewer_settings = pdata.data_viewer_settings or {}
   local active_tab = pdata.data_viewer_settings.active_tab or "player_data"
@@ -208,7 +197,7 @@ function M.on_toggle_data_viewer(event)
   
   if frame and frame.valid ~= false then
     ErrorHandler.debug_log("Data viewer toggle closing existing frame")
-    GuiUtils.safe_destroy_frame(main_flow, "data_viewer_frame")
+    GuiValidation.safe_destroy_frame(main_flow, "data_viewer_frame")
   else
     ErrorHandler.debug_log("Data viewer toggle building new frame")
     rebuild_data_viewer(player, main_flow, active_tab, font_size)
@@ -226,7 +215,7 @@ function M.on_data_viewer_gui_click(event)
   local player = game.get_player(event.player_index)
   if not player or not player.valid then return end
   
-  local main_flow = get_or_create_gui_flow_from_gui_top(player)
+  local main_flow = GuiAccessibility.get_or_create_gui_flow_from_gui_top(player)
   local pdata = Cache.get_player_data(player)
   pdata.data_viewer_settings = pdata.data_viewer_settings or {}
   
@@ -238,7 +227,7 @@ function M.on_data_viewer_gui_click(event)
   end
   -- Handle close button click in data viewer
   if element.name == "data_viewer_close_btn" then      
-    GuiUtils.safe_destroy_frame(main_flow, "data_viewer_frame")
+    GuiValidation.safe_destroy_frame(main_flow, "data_viewer_frame")
     return
   end
   
@@ -274,7 +263,7 @@ function M.on_data_viewer_gui_click(event)
   end
     -- Handle refresh button click in data viewer
   if element.name == "data_viewer_tab_actions_refresh_data_btn" then
-    local frame = GuiUtils.find_child_by_name(main_flow, "data_viewer_frame")
+    local frame = GuiValidation.find_child_by_name(main_flow, "data_viewer_frame")
     if not (frame and frame.valid) then return end
     
     -- Use the stored active tab instead of trying to detect from GUI
@@ -285,16 +274,12 @@ function M.on_data_viewer_gui_click(event)
     local state = load_tab_data(player, active_tab, font_size)
     data_viewer.update_content_panel(player, state.data, font_size, state.top_key)
     data_viewer.show_refresh_notification(player)
-    
     -- Notify observers of data refresh
-    local success, gui_observer = pcall(require, "core.pattern.gui_observer")
-    if success and gui_observer.GuiEventBus then
-      gui_observer.GuiEventBus.notify("data_refreshed", {
-        player = player,
-        type = "data_refreshed",
-        tab = active_tab
-      })
-    end
+    SharedUtils.notify_observer("data_refreshed", {
+      player = player,
+      type = "data_refreshed",
+      tab = active_tab
+    })
     return
   end
 end
@@ -310,8 +295,8 @@ function M.register(script)
   script.on_event("tf-data-viewer-tab-next", function(event)
     local player = game.get_player(event.player_index)
     if not player then return end
-    local main_flow = get_or_create_gui_flow_from_gui_top(player)
-    local frame = GuiUtils.find_child_by_name(main_flow, "data_viewer_frame")
+    local main_flow = GuiAccessibility.get_or_create_gui_flow_from_gui_top(player)
+    local frame = GuiValidation.find_child_by_name(main_flow, "data_viewer_frame")
     if not frame then return end
     
     -- Access the correct GUI structure: frame.data_viewer_inner_flow.data_viewer_tabs_flow
@@ -339,8 +324,8 @@ function M.register(script)
   script.on_event("tf-data-viewer-tab-prev", function(event)
     local player = game.get_player(event.player_index)
     if not player then return end
-    local main_flow = get_or_create_gui_flow_from_gui_top(player)
-    local frame = GuiUtils.find_child_by_name(main_flow, "data_viewer_frame")
+    local main_flow = GuiAccessibility.get_or_create_gui_flow_from_gui_top(player)
+    local frame = GuiValidation.find_child_by_name(main_flow, "data_viewer_frame")
     if not frame then return end
     
     -- Access the correct GUI structure: frame.data_viewer_inner_flow.data_viewer_tabs_flow

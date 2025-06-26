@@ -26,7 +26,7 @@ local Tag = require("core.tag.tag")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local Constants = require("constants")
-local FavoriteUtils = require("core.utils.favorite_utils")
+local FavoriteUtils = require("core.favorite.favorite")
 
 ---@class ChartTagModificationHelpers
 local ChartTagModificationHelpers = {}
