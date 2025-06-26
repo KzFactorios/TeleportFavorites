@@ -75,7 +75,6 @@ local function setup_tag_editor_ui(refs, tag_data, player)
       end
     end
   else
-    -- New tag (no chart_tag yet) - player can't edit and delete yet
     is_owner = false
     can_delete = false
   end
@@ -101,16 +100,9 @@ local function setup_tag_editor_ui(refs, tag_data, player)
   end
   set_btn_state_and_tooltip(refs.rich_text_input, is_owner, { "tf-gui.text_tooltip" })
 
-  -- Disable move/delete for temp (yet-to-be-created) tags: if tag_data.tag or tag_data.chart_tag are not nil, it's a temp tag
-  -- old way: local is_temp_tag = tag_data.chart_tag and CollectionUtils.table_is_empty(tag_data.chart_tag) or false
-  local is_temp_tag = (not tag_data.chart_tag) or
-      (type(tag_data.chart_tag) == "userdata" and not tag_data.chart_tag.valid)
-  if refs.move_btn then
-    local in_chart_mode = (player.render_mode == defines.render_mode.chart)
-    local can_move = is_owner and in_chart_mode and not is_temp_tag
-    set_btn_state_and_tooltip(refs.move_btn, can_move, { "tf-gui.move_tooltip" })
-  end
+  -- Delete button logic
   if refs.delete_btn then
+    local is_temp_tag = (not tag_data.chart_tag) or (type(tag_data.chart_tag) == "userdata" and not tag_data.chart_tag.valid)
     set_btn_state_and_tooltip(refs.delete_btn, is_owner and can_delete and not is_temp_tag, { "tf-gui.delete_tooltip" })
   end
 
@@ -123,31 +115,10 @@ local function setup_tag_editor_ui(refs, tag_data, player)
 
   if refs.cancel_btn then refs.cancel_btn.tooltip = { "tf-gui.cancel_tooltip" } end
 
-  -- Move mode visual
-  if refs.inner then
-    if tag_data.move_mode then
-      refs.inner.tooltip = { "tf-gui.move_mode_active" }
-    else
-      refs.inner.tooltip = nil
-    end
-  end
-
   local error_label = refs.error_label
   if error_label then
     error_label.caption = tag_data.error_message or ""
     error_label.visible = (tag_data.error_message ~= nil and tag_data.error_message ~= "") and true or false
-  end
-
-  -- In move mode, disable all controls except cancel
-  if tag_data.move_mode then
-    if refs.icon_btn then GuiValidation.set_button_state(refs.icon_btn, false) end
-    if refs.teleport_btn then GuiValidation.set_button_state(refs.teleport_btn, false) end
-    if refs.favorite_btn then GuiValidation.set_button_state(refs.favorite_btn, false) end
-    if refs.rich_text_input then GuiValidation.set_button_state(refs.rich_text_input, false) end
-    if refs.move_btn then GuiValidation.set_button_state(refs.move_btn, false) end
-    if refs.delete_btn then GuiValidation.set_button_state(refs.delete_btn, false) end
-    if refs.confirm_btn then GuiValidation.set_button_state(refs.confirm_btn, false) end
-    -- Optionally, enable a cancel move button if present
   end
 end
 
@@ -248,13 +219,11 @@ local function build_owner_row(parent, tag_data)
   local label = GuiBase.create_label(label_flow, "tag_editor_owner_label",
     "", "tf_tag_editor_owner_label") -- Add buttons to the button flow
   local button_flow = GuiBase.create_hflow(row_frame, "tag_editor_button_flow")
-  ---@diagnostic disable-next-line: param-type-mismatch
-  local move_button = GuiBase.create_icon_button(button_flow, "tag_editor_move_button", Enum.SpriteEnum.MOVE,
-    "tf-gui.move_tooltip", "tf_move_button")
+  -- Remove move button creation
   local delete_button = GuiBase.create_icon_button(button_flow, "tag_editor_delete_button", Enum.SpriteEnum.TRASH,
     "tf-gui.delete_tooltip", "tf_delete_button")
 
-  return row_frame, label, move_button, delete_button
+  return row_frame, label, nil, delete_button
 end
 
 local function build_teleport_favorite_row(parent, tag_data)
@@ -274,7 +243,7 @@ local function build_teleport_favorite_row(parent, tag_data)
     "tf_teleport_button")
   local coords = GPSUtils.coords_string_from_gps(tag_data.gps)
   if not coords or coords == "" then coords = "" end
-  teleport_btn.caption = {"tf-gui.teleport_to", coords}
+  teleport_btn.caption = {"tf-gui.teleport_to", tostring(coords)}
   return row, favorite_btn, teleport_btn
 end
 
@@ -373,7 +342,7 @@ function tag_editor.build(player)
 
   local tag_editor_content_frame = GuiBase.create_frame(tag_editor_outer_frame, "tag_editor_content_frame", "vertical",
     "tf_tag_editor_content_frame")
-  local tag_editor_owner_row, owner_label, move_button, delete_button = build_owner_row(tag_editor_content_frame,
+  local tag_editor_owner_row, owner_label, _, delete_button = build_owner_row(tag_editor_content_frame,
     tag_data) -- Simple owner lookup logic as requested
 
   local owner_value = ""
@@ -405,7 +374,6 @@ function tag_editor.build(player)
   local refs = {
     titlebar = titlebar,
     owner_row = tag_editor_owner_row,
-    move_btn = move_button,
     delete_btn = delete_button,
     teleport_favorite_row = tag_editor_teleport_favorite_row,
     teleport_btn = tag_editor_teleport_button,
@@ -494,7 +462,6 @@ function tag_editor.update_button_states(player, tag_data)
   local icon_btn = GuiValidation.find_child_by_name(outer_frame, "tag_editor_icon_button")
   local teleport_btn = GuiValidation.find_child_by_name(outer_frame, "tag_editor_teleport_button")
   local favorite_btn = GuiValidation.find_child_by_name(outer_frame, "tag_editor_is_favorite_button")
-  local move_btn = GuiValidation.find_child_by_name(outer_frame, "tag_editor_move_button")
   local delete_btn = GuiValidation.find_child_by_name(outer_frame, "tag_editor_delete_button")
   local confirm_btn = GuiValidation.find_child_by_name(outer_frame, "last_row_confirm_button")
   local rich_text_input = GuiValidation.find_child_by_name(outer_frame, "tag_editor_rich_text_input")
@@ -538,14 +505,9 @@ function tag_editor.update_button_states(player, tag_data)
     end
   end
 
-  -- Move and delete buttons
+  -- Delete button
   local is_temp_tag = (not tag_data.chart_tag) or
       (type(tag_data.chart_tag) == "userdata" and not tag_data.chart_tag.valid)
-  if move_btn then
-    local in_chart_mode = (player.render_mode == defines.render_mode.chart)
-    local can_move = is_owner and in_chart_mode and not is_temp_tag
-    set_btn_state_and_tooltip(move_btn, can_move, { "tf-gui.move_tooltip" })
-  end
   if delete_btn then
     set_btn_state_and_tooltip(delete_btn, is_owner and can_delete and not is_temp_tag, { "tf-gui.delete_tooltip" })
   end
@@ -556,17 +518,6 @@ function tag_editor.update_button_states(player, tag_data)
     local has_icon = ValidationUtils.has_valid_icon(tag_data.icon)
     local can_confirm = has_text or has_icon
     set_btn_state_and_tooltip(confirm_btn, can_confirm, { "tf-gui.confirm_tooltip" })
-  end
-
-  -- Move mode overrides - disable all controls except cancel
-  if tag_data.move_mode then
-    if icon_btn then GuiValidation.set_button_state(icon_btn, false) end
-    if teleport_btn then GuiValidation.set_button_state(teleport_btn, false) end
-    if favorite_btn then GuiValidation.set_button_state(favorite_btn, false) end
-    if rich_text_input then GuiValidation.set_button_state(rich_text_input, false) end
-    if move_btn then GuiValidation.set_button_state(move_btn, false) end
-    if delete_btn then GuiValidation.set_button_state(delete_btn, false) end
-    if confirm_btn then GuiValidation.set_button_state(confirm_btn, false) end
   end
 end
 
@@ -610,32 +561,6 @@ function tag_editor.update_field_validation(player, field_name, validation_state
         icon_btn.tooltip = { "tf-gui.icon_tooltip" }
       end
     end
-  end
-end
-
---- Update move mode visual feedback without rebuilding
----@param player LuaPlayer
----@param move_mode_active boolean Whether move mode is active
-function tag_editor.update_move_mode_visuals(player, move_mode_active)
-  local outer_frame = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
-  if not outer_frame then return end
-
-  local inner_frame = GuiValidation.find_child_by_name(outer_frame, "tag_editor_content_inner_frame")
-  
-  if inner_frame then
-    if move_mode_active then
-      ---@diagnostic disable-next-line: assign-type-mismatch
-      inner_frame.tooltip = { "tf-gui.move_mode_active" }
-    else
-      inner_frame.tooltip = nil
-    end
-  end
-
-  -- Update button states for move mode
-  local tag_data = Cache.get_player_data(player).tag_editor_data
-  if tag_data then
-    tag_data.move_mode = move_mode_active
-    tag_editor.update_button_states(player, tag_data)
   end
 end
 

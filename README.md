@@ -58,7 +58,6 @@ There are two ways to teleport:
 
 ### Managing Tags
 
-- **Move a tag**: Click the move button (→) in the Tag Editor, then click the new location. Or, in map mode, hold **Shift** and left-click an existing tag to instantly start moving it.
 - **Delete a tag**: Click the delete button (🗑️), then confirm
 - **Edit a tag**: Change the text or icon, then click "Confirm"
 - **Cancel changes**: Close the editor without saving

@@ -348,15 +348,6 @@ local function handle_confirm_btn(player, element, tag_data)
   GameHelpers.player_print(player, { "tf-command.tag_editor_confirmed" })
 end
 
-local function unregister_move_handlers(script)
-  -- Restore the original handlers instead of setting to nil
-  script.on_event(defines.events.on_player_alt_selected_area, nil)
-end
-
-local function handle_move_btn(player, tag_data, script)
-  TagEditorMoveMode.enter_move_mode(player, tag_data, refresh_tag_editor, script)
-end
-
 local function handle_favorite_btn(player, tag_data)
   ErrorHandler.debug_log("[TAG_EDITOR] handle_favorite_btn: entry", {
     gps = tag_data and tag_data.gps,
@@ -529,8 +520,6 @@ local function on_tag_editor_gui_click(event, script)
   elseif element.name == "last_row_confirm_button" then
     -- Accept all button clicks for confirm button
     return handle_confirm_btn(player, element, tag_data)
-  elseif element.name == "tag_editor_move_button" then
-    return handle_move_btn(player, tag_data, script)
   elseif element.name == "tag_editor_delete_button" then
     -- Accept any mouse button click for delete button
     ErrorHandler.debug_log("Tag editor delete button clicked", {
