@@ -54,35 +54,24 @@ end
 ---@param parent LuaGuiElement Frame to add titlebar to
 ---@return LuaGuiElement titlebar Titlebar element
 function DataViewerGuiBuilders.build_titlebar(parent)
-  local titlebar = parent.add{
-    type = "flow",
-    name = "data_viewer_titlebar",
-    direction = "horizontal",
-    style = "tf_data_viewer_titlebar_flow"
-  }
+  local titlebar = GuiBase.create_hflow(parent, "data_viewer_titlebar", "tf_data_viewer_titlebar_flow")
   
   -- Title label
-  titlebar.add{
-    type = "label",
-    caption = "TeleportFavorites Data Viewer",
-    style = "tf_data_viewer_title_label"
-  }
+  GuiBase.create_label(titlebar, "data_viewer_title", "TeleportFavorites Data Viewer", "tf_data_viewer_title_label")
   
   -- Spacer
-  local spacer = titlebar.add{
-    type = "empty-widget",
+  GuiBase.create_element("empty-widget", titlebar, {
+    name = "data_viewer_titlebar_spacer",
     style = "tf_data_viewer_titlebar_spacer"
-  }
-  -- Note: horizontally_stretchable cannot be set directly on style
+  })
   
   -- Close button
-  titlebar.add{
-    type = "sprite-button",
-    name = "data_viewer_close_button",
-    sprite = "utility/close_white",
+  GuiBase.create_element("sprite-button", titlebar, {
+    name = "data_viewer_close_btn",
+    sprite = Enum.SpriteEnum.CLOSE,
     style = "tf_data_viewer_close_button",
     tooltip = "Close Data Viewer"
-  }
+  })
   
   return titlebar
 end
@@ -97,8 +86,9 @@ function DataViewerGuiBuilders.build_tabs_row(parent, active_tab)
   -- Define available tabs
   local tabs = {
     {name = "player_data", caption = "Player Data", tooltip = "View player-specific data"},
-    {name = "cache_data", caption = "Cache Data", tooltip = "View global cache data"},
-    {name = "global_data", caption = "Global Data", tooltip = "View global game data"}
+    {name = "surface_data", caption = "Surface Data", tooltip = "View surface-specific data"},
+    {name = "lookup", caption = "Lookup Data", tooltip = "View GPS mapping and lookup data"},
+    {name = "all_data", caption = "All Data", tooltip = "View complete storage data"}
   }
   
   -- Create tab buttons
@@ -107,49 +97,40 @@ function DataViewerGuiBuilders.build_tabs_row(parent, active_tab)
       and "tf_data_viewer_tab_button_selected" 
       or "tf_data_viewer_tab_button"
     
-    tabs_flow.add{
-      type = "button",
-      name = "data_viewer_tab_" .. tab.name,
+    GuiBase.create_element("button", tabs_flow, {
+      name = "data_viewer_" .. tab.name .. "_tab",
       caption = tab.caption,
       tooltip = tab.tooltip,
       style = style
-    }
+    })
   end
   
   -- Font size controls
-  local font_controls = tabs_flow.add{
-    type = "flow",
-    name = "font_size_controls",
-    direction = "horizontal"
-  }
-  -- Note: left_margin cannot be set directly on style
+  local font_controls = GuiBase.create_hflow(tabs_flow, "font_size_controls")
   
-  font_controls.add{type = "label", caption = "Font Size:"}
+  GuiBase.create_label(font_controls, "font_size_label", "Font Size:")
   
-  font_controls.add{
-    type = "button",
-    name = "data_viewer_font_smaller",
+  GuiBase.create_element("button", font_controls, {
+    name = "data_viewer_actions_font_down_btn",
     caption = "-",
-    style = "tf_small_button",
+    style = "tf_data_viewer_font_size_button_minus",
     tooltip = "Decrease font size"
-  }
+  })
   
-  font_controls.add{
-    type = "button", 
-    name = "data_viewer_font_larger",
+  GuiBase.create_element("button", font_controls, {
+    name = "data_viewer_actions_font_up_btn",
     caption = "+",
-    style = "tf_small_button",
+    style = "tf_data_viewer_font_size_button_plus",
     tooltip = "Increase font size"
-  }
+  })
   
   -- Refresh button
-  tabs_flow.add{
-    type = "button",
-    name = "data_viewer_refresh",
-    caption = "Refresh",
+  GuiBase.create_element("sprite-button", tabs_flow, {
+    name = "data_viewer_tab_actions_refresh_data_btn",
+    sprite = Enum.SpriteEnum.REFRESH,
     style = "tf_data_viewer_refresh_button",
     tooltip = "Refresh data display"
-  }
+  })
   
   return tabs_flow
 end
@@ -179,8 +160,6 @@ end
 function DataViewerGuiBuilders.display_empty_data(data_table, top_key, font_size)
   if not top_key then top_key = "player_data" end
   
-  local set_label_font = require("gui.data_viewer.data_viewer").set_label_font
-  
   ErrorHandler.debug_log("Data viewer showing empty data structure", {
     top_key = top_key,
     font_size = font_size
@@ -188,10 +167,17 @@ function DataViewerGuiBuilders.display_empty_data(data_table, top_key, font_size
 
   local style = "data_viewer_row_odd_label"
   local lbl = GuiBase.create_label(data_table, "data_top_key_empty", top_key .. " = {", style)
-  set_label_font(lbl, font_size)
+  -- Simple font setting without circular dependency
+  if font_size and font_size > 0 then
+    local font_name = "tf_font_" .. tostring(font_size)
+    pcall(function() lbl.style.font = font_name end)
+  end
   
   local lbl2 = GuiBase.create_label(data_table, "data_closing_brace_empty", "}", "data_viewer_row_even_label")
-  set_label_font(lbl2, font_size)
+  if font_size and font_size > 0 then
+    local font_name = "tf_font_" .. tostring(font_size)
+    pcall(function() lbl2.style.font = font_name end)
+  end
 end
 
 return DataViewerGuiBuilders

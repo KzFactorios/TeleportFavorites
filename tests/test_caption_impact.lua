@@ -8,6 +8,7 @@
 local GuiBase = require("gui.gui_base")
 local GuiUtils = require("core.utils.gui_utils")
 local GameHelpers = require("core.utils.game_helpers")
+local Enum = require("prototypes.enums.enum")
 
 local M = {}
 
@@ -35,13 +36,13 @@ local function setup_test_gui(player)
     
     -- Create button WITH caption
     local with_caption = GuiBase.create_icon_button(button_flow, "test_with_caption", 
-        "utility/questionmark", {"With caption"}, "button")
+        Enum.SpriteEnum.QUESTION_MARK, {"With caption"}, "button")
     with_caption.style.size = {80, 40}
     with_caption.caption = "Caption"
     
     -- Create button WITHOUT caption
     local no_caption = GuiBase.create_icon_button(button_flow, "test_no_caption", 
-        "utility/questionmark", {"No caption"}, "button")
+        Enum.SpriteEnum.QUESTION_MARK, {"No caption"}, "button")
     no_caption.style.size = {80, 40}
     no_caption.caption = ""  -- Empty caption
     

@@ -12,6 +12,14 @@ local PositionUtils = require("core.utils.position_utils")
 
 local M = {}
 
+-- Helper function to count table elements
+local function table_size(t)
+  if type(t) ~= "table" then return 0 end
+  local count = 0
+  for _ in pairs(t) do count = count + 1 end
+  return count
+end
+
 --- Load data for the specified tab - centralized to eliminate duplication
 ---@param player LuaPlayer
 ---@param active_tab string
@@ -22,9 +30,21 @@ local function load_tab_data(player, active_tab, font_size)
   if active_tab == "player_data" then
     state.data = Cache.get_player_data(player)
     state.top_key = "player_data"
+    ErrorHandler.debug_log("Data viewer loading player data", {
+      player_name = player.name,
+      data_nil = state.data == nil,
+      data_type = type(state.data),
+      data_count = state.data and (type(state.data) == "table" and table_size(state.data) or "not table") or "nil"
+    })
   elseif active_tab == "surface_data" then
     state.data = Cache.get_surface_data(player.surface.index)
     state.top_key = "surface_data"
+    ErrorHandler.debug_log("Data viewer loading surface data", {
+      surface_index = player.surface.index,
+      data_nil = state.data == nil,
+      data_type = type(state.data),
+      data_count = state.data and (type(state.data) == "table" and table_size(state.data) or "not table") or "nil"
+    })
   elseif active_tab == "lookup" then
     -- Initialize Cache first to ensure Lookups is available
     Cache.init()
@@ -65,9 +85,18 @@ local function load_tab_data(player, active_tab, font_size)
       cache_status = next(gps_mapping_data) and "populated" or "empty"
     }
     state.top_key = "lookups"
+    ErrorHandler.debug_log("Data viewer loading lookup data", {
+      gps_mapping_count = table_size(gps_mapping_data),
+      cache_status = state.data.cache_status
+    })
   elseif active_tab == "all_data" then
     state.data = storage
     state.top_key = "all_data"
+    local storage_count = storage and (type(storage) == "table" and table_size(storage) or "not table") or "nil"
+    ErrorHandler.debug_log("Data viewer loading all data", {
+      storage_type = type(storage),
+      storage_count = storage_count
+    })
   end
   return state
 end
@@ -137,20 +166,55 @@ end
 -- Removed: M.get_or_create_gui_flow_from_gui_top (now using GuiUtils)
 
 function M.on_toggle_data_viewer(event)
+  ErrorHandler.debug_log("Data viewer toggle called", {
+    player_index = event.player_index,
+    event_name = event.input_name or "unknown"
+  })
+  
   local player = game.get_player(event.player_index)
-  if not player or not player.valid then return end
+  if not player or not player.valid then 
+    ErrorHandler.debug_log("Data viewer toggle failed: invalid player", {
+      player_index = event.player_index
+    })
+    return 
+  end
+  
+  ErrorHandler.debug_log("Data viewer toggle getting main flow", {
+    player_name = player.name
+  })
+  
   local main_flow = get_or_create_gui_flow_from_gui_top(player)
+  if not main_flow then
+    ErrorHandler.debug_log("Data viewer toggle failed: no main flow")
+    return
+  end
+  
+  ErrorHandler.debug_log("Data viewer toggle checking existing frame", {
+    main_flow_valid = main_flow.valid
+  })
+  
   local frame = GuiUtils.find_child_by_name(main_flow, "data_viewer_frame")
   local pdata = Cache.get_player_data(player)
   pdata.data_viewer_settings = pdata.data_viewer_settings or {}
   local active_tab = pdata.data_viewer_settings.active_tab or "player_data"
   local font_size = pdata.data_viewer_settings.font_size or 12
   
+  ErrorHandler.debug_log("Data viewer toggle frame check", {
+    frame_exists = frame ~= nil,
+    frame_valid = frame and frame.valid or false,
+    active_tab = active_tab,
+    font_size = font_size
+  })
+  
   if frame and frame.valid ~= false then
+    ErrorHandler.debug_log("Data viewer toggle closing existing frame")
     GuiUtils.safe_destroy_frame(main_flow, "data_viewer_frame")
   else
+    ErrorHandler.debug_log("Data viewer toggle building new frame")
     rebuild_data_viewer(player, main_flow, active_tab, font_size)
   end
+  
+  ErrorHandler.debug_log("Data viewer toggle completed")
 end
 
 --- Handle GUI click events for data viewer elements
@@ -270,7 +334,9 @@ function M.register(script)
     if children[next_idx] and children[next_idx].type == "sprite-button" then
       children[next_idx].focus()
     end
-  end)  script.on_event("tf-data-viewer-tab-prev", function(event)
+  end)
+  
+  script.on_event("tf-data-viewer-tab-prev", function(event)
     local player = game.get_player(event.player_index)
     if not player then return end
     local main_flow = get_or_create_gui_flow_from_gui_top(player)

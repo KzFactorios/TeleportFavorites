@@ -348,10 +348,25 @@ function PlayerFavorites:update_gps_coordinates(old_gps, new_gps)
     return false
   end
 
+  ErrorHandler.debug_log("PlayerFavorites updating GPS coordinates", {
+    player_index = self.player_index,
+    old_gps = old_gps,
+    new_gps = new_gps
+  })
+
   local any_updated = false
   for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
     local fav = self.favorites[i]
     if fav and not FavoriteUtils.is_blank_favorite(fav) and fav.gps == old_gps then
+      ErrorHandler.debug_log("Updating favorite GPS coordinates", {
+        player_index = self.player_index,
+        slot = i,
+        old_gps = old_gps,
+        new_gps = new_gps,
+        fav_gps_before = fav.gps,
+        fav_tag_gps_before = fav.tag and fav.tag.gps or "nil"
+      })
+      
       fav.gps = new_gps
       
       -- CRITICAL: Also update the tag.gps if tag exists
@@ -359,11 +374,24 @@ function PlayerFavorites:update_gps_coordinates(old_gps, new_gps)
         fav.tag.gps = new_gps
       end
       
+      ErrorHandler.debug_log("Updated favorite GPS coordinates", {
+        player_index = self.player_index,
+        slot = i,
+        fav_gps_after = fav.gps,
+        fav_tag_gps_after = fav.tag and fav.tag.gps or "nil"
+      })
+      
       any_updated = true
     end
   end
   if any_updated then
     sync_to_storage(self)
+
+    ErrorHandler.debug_log("PlayerFavorites GPS coordinates updated - notifying observers", {
+      player_index = self.player_index,
+      old_gps = old_gps,
+      new_gps = new_gps
+    })
 
     -- Notify observers of GPS update
     notify_observers_safe("favorites_gps_updated", {

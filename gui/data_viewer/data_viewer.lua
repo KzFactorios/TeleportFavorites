@@ -32,6 +32,14 @@ local DataViewerGuiBuilders = require("gui.data_viewer.data_viewer_gui_builders"
 
 local data_viewer = {}
 
+-- Helper function to count table elements
+local function table_size(t)
+  if type(t) ~= "table" then return 0 end
+  local count = 0
+  for _ in pairs(t) do count = count + 1 end
+  return count
+end
+
 -- Shared helpers for data rendering and retrieval
 local function set_label_font(lbl, font_size)
   local font_name = "tf_font_" .. tostring(font_size)
@@ -292,9 +300,25 @@ local function render_compact_data_rows(parent, data, indent, font_size, row_ind
 end
 
 function data_viewer.build(player, parent, state)
+  ErrorHandler.debug_log("Data viewer build called", {
+    player_name = player.name,
+    parent_name = parent and parent.name or "nil",
+    parent_valid = parent and parent.valid or false,
+    state_present = state ~= nil,
+    state_active_tab = state and state.active_tab or "nil"
+  })
+  
   -- Use GUI builders helper for initial validation and frame creation
   local frame = DataViewerGuiBuilders.build_main_frame(parent, state, player)
-  if not frame then return end
+  if not frame then 
+    ErrorHandler.debug_log("Data viewer build failed: no frame created")
+    return 
+  end
+  
+  ErrorHandler.debug_log("Data viewer main frame created", {
+    frame_name = frame.name,
+    frame_valid = frame.valid
+  })
 
   local n = 0
   if state.data and type(state.data) == "table" then
@@ -316,14 +340,26 @@ function data_viewer.build(player, parent, state)
   local font_size = (state and state.font_size) or 10
 
   -- Build GUI components using helpers
+  ErrorHandler.debug_log("Data viewer building titlebar")
   DataViewerGuiBuilders.build_titlebar(frame)
+  ErrorHandler.debug_log("Data viewer titlebar built successfully")
   
   -- Inner flow and tabs
+  ErrorHandler.debug_log("Data viewer creating inner flow")
   local inner_flow = GuiBase.create_frame(frame, "data_viewer_inner_flow", "vertical", "invisible_frame")
+  ErrorHandler.debug_log("Data viewer inner flow created successfully")
+  
+  ErrorHandler.debug_log("Data viewer building tabs row")
   DataViewerGuiBuilders.build_tabs_row(inner_flow, state.active_tab)
+  ErrorHandler.debug_log("Data viewer tabs row built successfully")
 
   -- Content area and data table
+  ErrorHandler.debug_log("Data viewer building content area")
   local content_flow, data_table = DataViewerGuiBuilders.build_content_area(inner_flow)
+  ErrorHandler.debug_log("Data viewer content area built", {
+    content_flow_valid = content_flow and content_flow.valid or false,
+    data_table_valid = data_table and data_table.valid or false
+  })
 
   -- Handle data display logic
   ErrorHandler.debug_log("Data viewer data check", {
@@ -333,10 +369,25 @@ function data_viewer.build(player, parent, state)
     top_key = top_key
   })
   
+  -- Add a test label to see if the GUI structure is working
+  local test_label = GuiBase.create_label(data_table, "test_debug_label", "DEBUG: Data viewer is working!", "data_viewer_row_odd_label")
+  
   if data == nil or (type(data) == "table" and next(data) == nil) then
+    ErrorHandler.debug_log("Data viewer showing empty data", {
+      data_is_nil = data == nil,
+      data_type = type(data),
+      data_next = data and next(data) or "nil",
+      top_key = top_key
+    })
     DataViewerGuiBuilders.display_empty_data(data_table, top_key, font_size)
     return frame
   end
+
+  ErrorHandler.debug_log("Data viewer rendering actual data", {
+    data_type = type(data),
+    top_key = top_key,
+    font_size = font_size
+  })
 
   -- Render actual data content
   if not top_key then top_key = "player_data" end
@@ -349,7 +400,14 @@ function data_viewer.build(player, parent, state)
   local row_start = 1
   local row_end = 1
   if type(data) == "table" then
+    ErrorHandler.debug_log("Data viewer calling render_compact_data_rows", {
+      data_count = data and table_size(data) or 0
+    })
     row_end = render_compact_data_rows(data_table, data, 0, font_size, row_start, nil, true)
+    ErrorHandler.debug_log("Data viewer render_compact_data_rows returned", {
+      row_start = row_start,
+      row_end = row_end
+    })
     if row_end == row_start then
       local no_data_lbl2 = GuiBase.create_label(data_table, "no_data_table", "[NO DATA TO DISPLAY]",
         "data_viewer_row_even_label")

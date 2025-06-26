@@ -178,14 +178,34 @@ end
 --- Handle chart tag modification events
 ---@param event table Chart tag modification event data
 function handlers.on_chart_tag_modified(event)
+  ErrorHandler.debug_log("Chart tag modified event received", {
+    player_index = event.player_index,
+    tag_valid = event.tag and event.tag.valid or false,
+    tag_position = event.tag and event.tag.position or "nil",
+    old_position = event.old_position or "nil",
+    has_old_position = event.old_position ~= nil
+  })
+
   local player = game.get_player(event.player_index)
   if not player or not player.valid then return end
 
-  if not ChartTagModificationHelpers.is_valid_tag_modification(event, player) then return end
+  if not ChartTagModificationHelpers.is_valid_tag_modification(event, player) then 
+    ErrorHandler.debug_log("Chart tag modification validation failed", {
+      player_name = player.name
+    })
+    return 
+  end
 
   ---@cast player LuaPlayer  -- Type assertion: player is guaranteed to be valid after the checks above
 
   local new_gps, old_gps = ChartTagModificationHelpers.extract_gps(event, player)
+  
+  ErrorHandler.debug_log("Chart tag GPS extraction results", {
+    player_name = player.name,
+    old_gps = old_gps or "nil",
+    new_gps = new_gps or "nil",
+    gps_changed = old_gps ~= new_gps
+  })
 
   -- Check for need to normalize coordinates
   local chart_tag = event.tag
@@ -205,10 +225,12 @@ function handlers.on_chart_tag_modified(event)
   ChartTagModificationHelpers.update_tag_and_cleanup(old_gps, new_gps, event, player)
 
   -- Update favorites GPS and notify affected players
-  if old_gps and new_gps then
-    ChartTagModificationHelpers.update_favorites_gps(old_gps, new_gps, player)
-  end
   if old_gps and new_gps and old_gps ~= new_gps then
+    ErrorHandler.debug_log("Chart tag modified - updating favorites GPS", {
+      player_name = player.name,
+      old_gps = old_gps,
+      new_gps = new_gps
+    })
     ChartTagModificationHelpers.update_favorites_gps(old_gps, new_gps, player)
   end
 end

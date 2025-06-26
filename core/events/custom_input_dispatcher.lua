@@ -57,6 +57,12 @@ local M = {}
 ---@return function Safe wrapper function
 local function create_safe_handler(handler, handler_name)
   return function(event)
+    ErrorHandler.debug_log("Custom input received", {
+      handler_name = handler_name,
+      player_index = event.player_index,
+      input_name = event.input_name
+    })
+    
     local success, err = pcall(handler, event)
     if not success then
       ErrorHandler.warn_log("Custom input handler failed", {
@@ -74,6 +80,10 @@ local function create_safe_handler(handler, handler_name)
           GameHelpers.player_print(player, {"tf-error.input_handler_error"})
         end
       end
+    else
+      ErrorHandler.debug_log("Custom input handled successfully", {
+        handler_name = handler_name
+      })
     end
   end
 end
