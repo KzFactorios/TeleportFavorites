@@ -63,22 +63,24 @@ local function get_valid_player(player_index)
   local player = game.get_player(player_index)
   if not player or not player.valid then
     return nil
-  return player
+  end
+
+
 end
 
 local function register_gui_observers(player)
   local ok, gui_observer = pcall(require, "core.pattern.gui_observer")
-  -- Optionally handle observer registration result
 end
 
+
 local handlers = {}
-local handlers = {}
+
 function handlers.on_init()
   ErrorHandler.debug_log("Mod initialization started")
   for _, player in pairs(game.players) do
     register_gui_observers(player)
-  end
-  ErrorHandler.debug_log("Mod initialization completed")
+
+
 end
 
 function handlers.on_load()
@@ -88,9 +90,9 @@ end
 function handlers.on_player_created(event)
   ErrorHandler.debug_log("New player created", { player_index = event.player_index })
   local player = get_valid_player(event.player_index)
+  if not player then return end
   PlayerStateHelpers.reset_transient_player_states(player)
   register_gui_observers(player)
-end
 end
 
 function handlers.on_open_tag_editor_custom_input(event)
@@ -112,11 +114,13 @@ function handlers.on_open_tag_editor_custom_input(event)
         player.play_sound { path = "utility/cancel" }
       end
     end
+    return
+  end
   local cursor_position = event.cursor_position
   if not cursor_position or not (cursor_position.x and cursor_position.y) then
     return
+  end
   -- (debug_chart_tag assignment removed; debug_tag is not defined in this scope)
-end
 end
 
 function handlers.on_chart_tag_modified(event)
@@ -151,22 +155,20 @@ function handlers.on_chart_tag_modified(event)
       -- Update the GPS and chart tag reference
       local surface_index = chart_tag.surface and chart_tag.surface.index or 1
       local new_position = position_pair and position_pair.new or chart_tag.position
-      new_gps = GPSUtils.gps_from_map_position(new_position, surface_index)
+
       -- Update chart_tag reference for future operations
-      chart_tag = new_chart_tag
-    end
-  end
-  if old_gps and new_gps and old_gps ~= new_gps then
-    ErrorHandler.debug_log("Chart tag modified - updating favorites GPS", {
-      player_name = player.name,
-      old_gps = old_gps,
-      new_gps = new_gps
-    })
+      if old_gps and new_gps and old_gps ~= new_gps then
+        ErrorHandler.debug_log("Chart tag modified - updating favorites GPS", {
+          player_name = player.name,
+          old_gps = old_gps,
+          new_gps = new_gps
+        })
+      end
+
   end
 end
 end
 
---- Handle chart tag removal events
 function handlers.on_chart_tag_removed(event)
   local should_process, chart_tag = ChartTagRemovalHelpers.validate_removal_event(event)
   if not should_process or not chart_tag then return end
@@ -182,6 +184,7 @@ function handlers.on_chart_tag_removed(event)
     -- Only destroy if the chart tag is not already being destroyed by our helper
     if not TagDestroyHelper.is_chart_tag_being_destroyed(chart_tag) then
       -- Actual destruction logic here if needed
+    end
   end
 end
 end
@@ -191,5 +194,5 @@ function handlers.on_tick(event)
     Logger.take_memory_snapshot()
   end
 end
-return handlers
+
 return handlers
