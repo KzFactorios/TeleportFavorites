@@ -16,7 +16,7 @@ maintainability and reduce function complexity.
 ]]
 
 local GuiBase = require("gui.gui_base")
-local GuiUtils = require("core.utils.gui_utils")
+
 local ErrorHandler = require("core.utils.error_handler")
 local Enum = require("prototypes.enums.enum")
 
@@ -54,25 +54,34 @@ end
 ---@param parent LuaGuiElement Frame to add titlebar to
 ---@return LuaGuiElement titlebar Titlebar element
 function DataViewerGuiBuilders.build_titlebar(parent)
-  local titlebar = GuiBase.create_hflow(parent, "data_viewer_titlebar", "tf_data_viewer_titlebar_flow")
-  
-  -- Title label
-  GuiBase.create_label(titlebar, "data_viewer_title", "TeleportFavorites Data Viewer", "tf_data_viewer_title_label")
-  
-  -- Spacer
-  GuiBase.create_element("empty-widget", titlebar, {
+  local titlebar = GuiBase.create_named_element({
+    type = "hflow",
+    parent = parent,
+    name = "data_viewer_titlebar",
+    style = "tf_data_viewer_titlebar_flow"
+  })
+
+  GuiBase.create_named_element({
+    type = "label",
+    parent = titlebar,
+    name = "data_viewer_title",
+    caption = "TeleportFavorites Data Viewer",
+    style = "tf_data_viewer_title_label"
+  })
+  GuiBase.create_named_element({
+    type = "empty-widget",
+    parent = titlebar,
     name = "data_viewer_titlebar_spacer",
     style = "tf_data_viewer_titlebar_spacer"
   })
-  
-  -- Close button
-  GuiBase.create_element("sprite-button", titlebar, {
+  GuiBase.create_named_element({
+    type = "sprite-button",
+    parent = titlebar,
     name = "data_viewer_close_btn",
     sprite = Enum.SpriteEnum.CLOSE,
     style = "tf_data_viewer_close_button",
     tooltip = "Close Data Viewer"
   })
-  
   return titlebar
 end
 
@@ -81,57 +90,54 @@ end
 ---@param active_tab string Currently active tab name
 ---@return LuaGuiElement tabs_flow Tabs container element
 function DataViewerGuiBuilders.build_tabs_row(parent, active_tab)
-  local tabs_flow = GuiBase.create_hflow(parent, "data_viewer_tabs_flow")
-  
-  -- Define available tabs
+  local tabs_flow = GuiBase.create_named_element({
+    type = "hflow",
+    parent = parent,
+    name = "data_viewer_tabs_flow"
+  })
+
   local tabs = {
     {name = "player_data", caption = "Player Data", tooltip = "View player-specific data"},
     {name = "surface_data", caption = "Surface Data", tooltip = "View surface-specific data"},
     {name = "lookup", caption = "Lookup Data", tooltip = "View GPS mapping and lookup data"},
     {name = "all_data", caption = "All Data", tooltip = "View complete storage data"}
   }
-  
-  -- Create tab buttons
+
+  -- Tab buttons
   for _, tab in ipairs(tabs) do
-    local style = (tab.name == active_tab) 
-      and "tf_data_viewer_tab_button_selected" 
-      or "tf_data_viewer_tab_button"
-    
-    GuiBase.create_element("button", tabs_flow, {
+    GuiBase.create_named_element({
+      type = "button",
+      parent = tabs_flow,
       name = "data_viewer_" .. tab.name .. "_tab",
       caption = tab.caption,
       tooltip = tab.tooltip,
-      style = style
+      style = (tab.name == active_tab) and "tf_data_viewer_tab_button_selected" or "tf_data_viewer_tab_button"
     })
   end
-  
-  -- Font size controls
-  local font_controls = GuiBase.create_hflow(tabs_flow, "font_size_controls")
-  
-  GuiBase.create_label(font_controls, "font_size_label", "Font Size:")
-  
-  GuiBase.create_element("button", font_controls, {
-    name = "data_viewer_actions_font_down_btn",
-    caption = "-",
-    style = "tf_data_viewer_font_size_button_minus",
-    tooltip = "Decrease font size"
+
+  -- Font controls (batch)
+  local font_controls = GuiBase.create_named_element({
+    type = "hflow",
+    parent = tabs_flow,
+    name = "font_size_controls"
   })
-  
-  GuiBase.create_element("button", font_controls, {
-    name = "data_viewer_actions_font_up_btn",
-    caption = "+",
-    style = "tf_data_viewer_font_size_button_plus",
-    tooltip = "Increase font size"
-  })
-  
-  -- Refresh button
-  GuiBase.create_element("sprite-button", tabs_flow, {
+  for _, def in ipairs({
+    {type = "label", name = "font_size_label", caption = "Font Size:"},
+    {type = "button", name = "data_viewer_actions_font_down_btn", caption = "-", style = "tf_data_viewer_font_size_button_minus", tooltip = "Decrease font size"},
+    {type = "button", name = "data_viewer_actions_font_up_btn", caption = "+", style = "tf_data_viewer_font_size_button_plus", tooltip = "Increase font size"}
+  }) do
+    def.parent = font_controls
+    GuiBase.create_named_element(def)
+  end
+
+  GuiBase.create_named_element({
+    type = "sprite-button",
+    parent = tabs_flow,
     name = "data_viewer_tab_actions_refresh_data_btn",
     sprite = Enum.SpriteEnum.REFRESH,
     style = "tf_data_viewer_refresh_button",
     tooltip = "Refresh data display"
   })
-  
   return tabs_flow
 end
 
@@ -166,18 +172,18 @@ function DataViewerGuiBuilders.display_empty_data(data_table, top_key, font_size
   })
 
   local style = "data_viewer_row_odd_label"
-  local lbl = GuiBase.create_label(data_table, "data_top_key_empty", top_key .. " = {", style)
-  -- Simple font setting without circular dependency
+  local font_style = style
   if font_size and font_size > 0 then
-    local font_name = "tf_font_" .. tostring(font_size)
-    pcall(function() lbl.style.font = font_name end)
+    font_style = "tf_font_" .. tostring(font_size) .. "_label"
   end
-  
-  local lbl2 = GuiBase.create_label(data_table, "data_closing_brace_empty", "}", "data_viewer_row_even_label")
+  local lbl = GuiBase.create_label(data_table, "data_top_key_empty", top_key .. " = {", font_style)
+
+  local even_style = "data_viewer_row_even_label"
+  local even_font_style = even_style
   if font_size and font_size > 0 then
-    local font_name = "tf_font_" .. tostring(font_size)
-    pcall(function() lbl2.style.font = font_name end)
+    even_font_style = "tf_font_" .. tostring(font_size) .. "_even_label"
   end
+  GuiBase.create_label(data_table, "data_closing_brace_empty", "}", even_font_style)
 end
 
 return DataViewerGuiBuilders

@@ -47,6 +47,13 @@ local tag_editor = {}
 
 -- Sets up the tag editor UI, including all controls and their state
 -- This function now only sets state, tooltips, and styles. It does NOT create any elements.
+local function set_btn_state_and_tooltip(btn, enabled, tooltip)
+  if btn then
+    GuiUtils.set_button_state(btn, enabled)
+    if tooltip then btn.tooltip = tooltip end
+  end
+end
+
 local function setup_tag_editor_ui(refs, tag_data, player)
   -- Determine ownership and delete permissions
   local tag = tag_data.tag
@@ -78,38 +85,32 @@ local function setup_tag_editor_ui(refs, tag_data, player)
   end
 
   -- Set button enablement
-  if refs.icon_btn then GuiUtils.set_button_state(refs.icon_btn, is_owner) end
-  if refs.teleport_btn then GuiUtils.set_button_state(refs.teleport_btn, true) end
+  set_btn_state_and_tooltip(refs.icon_btn, is_owner, { "tf-gui.icon_tooltip" })
+  set_btn_state_and_tooltip(refs.teleport_btn, true, { "tf-gui.teleport_tooltip" })
 
   -- Favorite button: disable if at max favorites for this surface
   local player_faves = PlayerFavorites.new(player)
   local at_max_faves = player_faves:available_slots() == 0
   if refs.favorite_btn then
     if at_max_faves and not (tag_data and tag_data.is_favorite) then
-      GuiUtils.set_button_state(refs.favorite_btn, false)
-      refs.favorite_btn.tooltip = { "tf-gui.max_favorites_warning" }
+      set_btn_state_and_tooltip(refs.favorite_btn, false, { "tf-gui.max_favorites_warning" })
     else
-      GuiUtils.set_button_state(refs.favorite_btn, true)
-      refs.favorite_btn.tooltip = { "tf-gui.favorite_tooltip" }
+      set_btn_state_and_tooltip(refs.favorite_btn, true, { "tf-gui.favorite_tooltip" })
     end
   end
-  if refs.rich_text_input then GuiUtils.set_button_state(refs.rich_text_input, is_owner) end
+  set_btn_state_and_tooltip(refs.rich_text_input, is_owner, { "tf-gui.text_tooltip" })
 
   -- Disable move/delete for temp (yet-to-be-created) tags: if tag_data.tag or tag_data.chart_tag are not nil, it's a temp tag
   -- old way: local is_temp_tag = tag_data.chart_tag and CollectionUtils.table_is_empty(tag_data.chart_tag) or false
   local is_temp_tag = (not tag_data.chart_tag) or
       (type(tag_data.chart_tag) == "userdata" and not tag_data.chart_tag.valid)
   if refs.move_btn then
-    -- Move button only enabled if player is owner AND in chart mode AND not a temp tag
     local in_chart_mode = (player.render_mode == defines.render_mode.chart)
     local can_move = is_owner and in_chart_mode and not is_temp_tag
-    GuiUtils.set_button_state(refs.move_btn, can_move)
+    set_btn_state_and_tooltip(refs.move_btn, can_move, { "tf-gui.move_tooltip" })
   end
-
   if refs.delete_btn then
-    GuiUtils.set_button_state(refs.delete_btn, is_owner and can_delete and not is_temp_tag)
-    -- Button event handlers must be registered via script.on_event, not by setting .onclick
-    -- The actual delete logic should be handled in the event handler for the delete button name
+    set_btn_state_and_tooltip(refs.delete_btn, is_owner and can_delete and not is_temp_tag, { "tf-gui.delete_tooltip" })
   end
 
   -- Confirm button enabled if text input has content OR icon is selected
@@ -117,20 +118,8 @@ local function setup_tag_editor_ui(refs, tag_data, player)
   local has_icon = ValidationUtils.has_valid_icon(tag_data.icon)
   local can_confirm = has_text or has_icon
 
-  if refs.confirm_btn then
-    GuiUtils.set_button_state(refs.confirm_btn, can_confirm)
-  end
+  set_btn_state_and_tooltip(refs.confirm_btn, can_confirm, { "tf-gui.confirm_tooltip" })
 
-  -- Button style/tooltips
-  if refs.icon_btn then refs.icon_btn.tooltip = { "tf-gui.icon_tooltip" } end
-  if refs.move_btn then refs.move_btn.tooltip = { "tf-gui.move_tooltip" } end
-  if refs.delete_btn then refs.delete_btn.tooltip = { "tf-gui.delete_tooltip" } end
-  if refs.teleport_btn then refs.teleport_btn.tooltip = { "tf-gui.teleport_tooltip" } end
-  -- Only set favorite_btn tooltip if not already set by max check above
-  if refs.favorite_btn and not (at_max_faves and not (tag_data and tag_data.is_favorite)) then
-    refs.favorite_btn.tooltip = { "tf-gui.favorite_tooltip" }
-  end
-  if refs.confirm_btn then refs.confirm_btn.tooltip = { "tf-gui.confirm_tooltip" } end
   if refs.cancel_btn then refs.cancel_btn.tooltip = { "tf-gui.cancel_tooltip" } end
 
   -- Move mode visual
@@ -525,22 +514,18 @@ function tag_editor.update_button_states(player, tag_data)
   end
 
   -- Update button states
-  if icon_btn then GuiUtils.set_button_state(icon_btn, is_owner) end
-  if teleport_btn then GuiUtils.set_button_state(teleport_btn, true) end
-  if rich_text_input then GuiUtils.set_button_state(rich_text_input, is_owner) end
+  set_btn_state_and_tooltip(icon_btn, is_owner, { "tf-gui.icon_tooltip" })
+  set_btn_state_and_tooltip(teleport_btn, true, { "tf-gui.teleport_tooltip" })
+  set_btn_state_and_tooltip(rich_text_input, is_owner, { "tf-gui.text_tooltip" })
 
   -- Favorite button with max check
   local player_faves = PlayerFavorites.new(player)
   local at_max_faves = player_faves:available_slots() == 0
   if favorite_btn then
     if at_max_faves and not (tag_data and tag_data.is_favorite) then
-      GuiUtils.set_button_state(favorite_btn, false)
-      ---@diagnostic disable-next-line: assign-type-mismatch
-      favorite_btn.tooltip = { "tf-gui.max_favorites_warning" }
+      set_btn_state_and_tooltip(favorite_btn, false, { "tf-gui.max_favorites_warning" })
     else
-      GuiUtils.set_button_state(favorite_btn, true)
-      ---@diagnostic disable-next-line: assign-type-mismatch
-      favorite_btn.tooltip = { "tf-gui.favorite_tooltip" }
+      set_btn_state_and_tooltip(favorite_btn, true, { "tf-gui.favorite_tooltip" })
     end
   end
 
@@ -550,11 +535,10 @@ function tag_editor.update_button_states(player, tag_data)
   if move_btn then
     local in_chart_mode = (player.render_mode == defines.render_mode.chart)
     local can_move = is_owner and in_chart_mode and not is_temp_tag
-    GuiUtils.set_button_state(move_btn, can_move)
+    set_btn_state_and_tooltip(move_btn, can_move, { "tf-gui.move_tooltip" })
   end
-
   if delete_btn then
-    GuiUtils.set_button_state(delete_btn, is_owner and can_delete and not is_temp_tag)
+    set_btn_state_and_tooltip(delete_btn, is_owner and can_delete and not is_temp_tag, { "tf-gui.delete_tooltip" })
   end
 
   -- Confirm button
@@ -562,7 +546,7 @@ function tag_editor.update_button_states(player, tag_data)
     local has_text = tag_data.text and tag_data.text ~= ""
     local has_icon = ValidationUtils.has_valid_icon(tag_data.icon)
     local can_confirm = has_text or has_icon
-    GuiUtils.set_button_state(confirm_btn, can_confirm)
+    set_btn_state_and_tooltip(confirm_btn, can_confirm, { "tf-gui.confirm_tooltip" })
   end
 
   -- Move mode overrides - disable all controls except cancel

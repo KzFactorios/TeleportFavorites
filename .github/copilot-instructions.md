@@ -1,22 +1,41 @@
-// filepath: v:\Fac2orios\2_Gemini\mods\TeleportFavorites\.github\copilot-instructions.md
 
-# GitHub Copilot Instructions - TeleportFavorites Factorio Mod
+# TeleportFavorites Factorio Mod — Copilot Instructions
 
+## ⚠️ MANDATORY: READ AND APPLY BEFORE EVERY CODE RESPONSE ⚠️
 
-**⚠️ REMEMBER THAT ... ⚠️**
-**⚠️ MANDATORY - APPLY BEFORE EVERY CODE RESPONSE ⚠️**
+### Your Role
+You are a specialized Factorio mod developer. You must rigorously follow this checklist for every code change.
+
+---
+
+## 1. STRUCTURAL & BLOCKING ERRORS (Lua)
+- **NEVER** declare a function (including handlers) inside another function or code block. All functions must be top-level.
+- **NEVER** leave stray `local` declarations or code fragments between/inside functions.
+- **ALWAYS** match every `function ...` with a corresponding `end` at the same indentation level.
+- If you see repeated syntax errors, check for accidental function nesting or misplaced code. Refactor to top-level functions only.
+- **This rule is CRITICAL for all Lua code in this project.**
+
+---
+---
+
+# AGENT EXECUTION POLICY
+
+When the user asks you to do something, just do it unless it is clearly erroneous or would cause serious issues. In such cases, bring it to the user's attention before making any changes so you can discuss and correct the approach together. Otherwise, act immediately and efficiently.
 
 ## ROLE & COMMITMENT
-You are a specialized Factorio mod development assistant. Apply this checklist rigorously BEFORE every response involving code changes.
+You are a specialized Factorio mod development professional. Apply this checklist rigorously BEFORE every response involving code changes.
 
 ## 0.000 USE IDIOMATIC FACTORIO V2.0+(latest) AS YOUR GUIDE TO IMPLEMENTATION WHENEVER POSSIBLE
 ## 0.001 DO NOT TRY TO DO TRANSLATIONS ON YOUR OWN. ADDING KEYS TO THE /EN FILES IS ALL THAT I EXPECT FROM THE AGENT
 ## 0.002 DO NOT CREATE CODE BLOAT! BE EFFICIENT IN YOUR METHODOLOGIES. DO NOT COMMENT WHERE THE CODE SPEAKS FOR ITSELF
+## 0.003 DO NOT CREATE DUPLICATE CODE. IF THE CODE EXISTS IN THE CODEBASE OR IF IT WOULD ONLY NEED A SLIGHT CHANGE TO USE 
+EXISTING CODE, GO THAT ROUTE. IF A METHOD SIGNATURE NEEDS TO BE CHANGED TO ACCOMODATE A SIMILAR FUNCTION, UPDATE THE EXISTING 
+CODE TO INCORPORATE AN ADDITIONAL PARAMETER AND LOGIC AND REFACTOR EXISTING REFERENCES
 
 ## 1. PRE-EDIT VALIDATION
 - [ ] Use `read_file` to see current content BEFORE editing
-- [ ] Understand existing code structure and context
-- [ ] Preserve existing formatting and style
+- [ ] Understand existing code structure and context PRIOR TO EDITING. DO NOT BREAK EXISTING CODE THAT WE EXPECT TO KEEP (AKA NON-EDITED CODE)
+- [ ] USE PROPER formatting and style FOR THE FILE TYPE
 - [ ] Identify the specific problem and plan discrete steps
 
 ## 2. FACTORIO MOD REQUIREMENTS
@@ -24,28 +43,21 @@ You are a specialized Factorio mod development assistant. Apply this checklist r
 - [ ] Use proper Factorio API syntax:
   - Colon (`:`) for method calls: `surface:get_tile()`, `chart_tag:destroy()`
   - Dot (`.`) for property access: `player.name`, `chart_tag.position`
-- [ ] Use `GameHelpers.player_print(player, message)` NOT `player.print()` whenever possible
+- [ ] Use `GameHelpers.player_print(player, message)` NOT `player.print()` whenever possible. CREATING A SIMPLE PLAYER_PRINT PER FILE IS 
+ALSO ACCEPTABLE - ESPECIALLY IF THERE ARE SEVERAL CALLS. REQUIRING ADDITIONAL FILES TO HANDLE THIS MAY CAUSE CIRCULAR REQUIRE ISSUES
 - [ ] Handle player validity: `if not player or not player.valid then return end`
 
-## 3. ESTABLISHED CODE PATTERNS (100% CONSISTENCY REQUIRED)
-- [ ] **Chart Tag Creation**: Always use `ChartTagSpecBuilder.build()`
-- [ ] **Position Normalization**: Always use `PositionNormalizer` utilities  
-- [ ] **Error Handling**: Always use `ErrorHandler` for logging and error management
-- [ ] **GUI Creation**: Always use `GuiBase.create_*` utilities vs direct `parent.add()`
+## 3. USE ALREADY ESTABLISHED CODE PATTERNS (100% CONSISTENCY REQUIRED)
 
 ## 4. SYNTAX & FORMATTING VALIDATION
-- [ ] All statements properly separated with newlines
+- [ ] All statements properly separated with newlines. ESPECIALLY LINES BEGINNING WITH A `local` declaration
 - [ ] Multi-line strings properly formatted
-- [ ] All parentheses, brackets, braces balanced
+- [ ] All parentheses, brackets, braces balanced **CRITICAL**
 - [ ] **CRITICAL**: ALL `local` declarations MUST start at the beginning of their line
 - [ ] Example: `-- comment  local var = value` → `-- comment\nlocal var = value`
 - [ ] Example: `end  local next_var = ...` → `end\nlocal next_var = ...`
-
-## 5. STRING REPLACEMENT VALIDATION
-- [ ] Include 3-5 lines of context before AND after in `oldString`
-- [ ] `oldString` unique enough to match exactly once
-- [ ] Preserve exact whitespace, indentation, and newlines
-- [ ] NO `...existing code...` comments in `oldString`
+- [ ] Do not create functions within functions. Always create a separate local function
+- [ ] For functions that are not to be used outside the file (aka methods that are not exported in any way), prepend the method name with an underscore
 
 ## 6. PowerShell Command Formatting
 

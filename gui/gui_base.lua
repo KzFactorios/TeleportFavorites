@@ -288,6 +288,15 @@ function GuiBase.create_textbox(parent, name, text, style, icon_selector)
     return GuiBase.create_element('text-box', parent, opts)
 end
 
+--- Create a GUI element with common options (name, style, caption, sprite, tooltip)
+function GuiBase.create_named_element(type, parent, opts)
+  local elem = parent.add{type=type, name=opts.name, style=opts.style}
+  if opts.caption then elem.caption = opts.caption end
+  if opts.sprite then elem.sprite = opts.sprite end
+  if opts.tooltip then elem.tooltip = opts.tooltip end
+  return elem
+end
+
 -- Removed: get_or_create_gui_flow_from_gui_top - moved to GuiUtils
 
 return GuiBase

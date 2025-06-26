@@ -93,8 +93,13 @@ local function handle_overflow_error(frame, fav_btns, pfaves)
   end
 end
 
-local function set_slot_row_visibility(slots_frame, visibility)
-  slots_frame.visible = visibility
+
+local function get_fave_bar_gui_refs(player)
+  local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
+  local bar_frame = main_flow and GuiUtils.find_child_by_name(main_flow, "fave_bar_frame")
+  local bar_flow = bar_frame and GuiUtils.find_child_by_name(bar_frame, "fave_bar_flow")
+  local slots_frame = bar_flow and GuiUtils.find_child_by_name(bar_flow, "fave_bar_slots_flow")
+  return main_flow, bar_frame, bar_flow, slots_frame
 end
 
 function fave_bar.build(player, force_show)
@@ -166,55 +171,35 @@ end
 
 -- Build a row of favorite slot buttons for the favorites bar
 function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
-  -- Get drag state from player data instead of legacy drag_index parameter
   local player_data = Cache.get_player_data(player)
-  local drag_active = player_data.drag_favorite and player_data.drag_favorite.active
-  local drag_source = player_data.drag_favorite and player_data.drag_favorite.source_slot
-
   local max_slots = Constants.settings.MAX_FAVORITE_SLOTS or 10
+
+  local function get_slot_btn_props(i, fav)
+    fav = FavoriteRuntimeUtils.rehydrate_favorite(player, fav)
+    if fav and not FavoriteUtils.is_blank_favorite(fav) then
+      local icon = fav.tag and fav.tag.chart_tag and fav.tag.chart_tag.icon or nil
+      local btn_icon, used_fallback, debug_info = GuiUtils.get_validated_sprite_path(icon, { fallback = Enum.SpriteEnum.PIN, log_context = { slot = i, fav_gps = fav.gps, fav_tag = fav.tag } })
+      if used_fallback then
+        ErrorHandler.debug_log("[FAVE_BAR] Fallback icon used for slot", { slot = i, icon = btn_icon, debug_info = debug_info })
+      end
+      local style = fav.locked and "tf_slot_button_locked" or "tf_slot_button_smallfont"
+      if btn_icon == "tf_tag_in_map_view_small" then style = "tf_slot_button_smallfont_map_pin" end
+      return btn_icon, GuiUtils.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }, style, fav.locked
+    else
+      return "", { "tf-gui.favorite_slot_empty" }, "tf_slot_button_smallfont", false
+    end
+  end
 
   for i = 1, max_slots do
     local fav = pfaves[i]
-    fav = FavoriteRuntimeUtils.rehydrate_favorite(player, fav)
-    ---@cast fav Favorite
-
-    local icon_name = nil
-    local tooltip = { "tf-gui.favorite_slot_empty" }
-    local style = "tf_slot_button_smallfont"
-    local used_fallback = false
-    local btn_icon, debug_info
-
-    if fav and not FavoriteUtils.is_blank_favorite(fav) then
-      local icon = fav.tag and fav.tag.chart_tag and fav.tag.chart_tag.icon or nil
-      btn_icon, used_fallback, debug_info = GuiUtils.get_validated_sprite_path(icon,
-        { fallback = Enum.SpriteEnum.PIN, log_context = { slot = i, fav_gps = fav.gps, fav_tag = fav.tag } })
-      if used_fallback then
-        ErrorHandler.debug_log("[FAVE_BAR] Fallback icon used for slot",
-          { slot = i, icon = btn_icon, debug_info = debug_info })
-      end
-      tooltip = GuiUtils.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }
-      -- Only apply locked style, never drag styles
-      if fav.locked then
-        style = "tf_slot_button_locked"
-      end
-    else
-      -- Blank slot: default style, no drag styling
-      btn_icon = ""
-      tooltip = { "tf-gui.favorite_slot_empty" }
-      style = "tf_slot_button_smallfont"
-    end
-    if btn_icon == "tf_tag_in_map_view_small" then
-      style = "tf_slot_button_smallfont_map_pin"
-    end
-    -- Create the button with proper name pattern for event handling
-    -- Note: Factorio has NO native drag/drop - our implementation is custom
+    local btn_icon, tooltip, style, locked = get_slot_btn_props(i, fav)
     local btn = GuiUtils.create_slot_button(parent, "fave_bar_slot_" .. i, tostring(btn_icon), tooltip, { style = style })
     if btn and btn.valid then
-      -- Also add child label for visual consistency with project standards
       local nbr = GuiBase.create_label(btn, "tf_fave_bar_slot_number_" .. tostring(i), tostring(i), "tf_fave_bar_slot_number")
-
-      if fav.locked then
-        nbr.style = "tf_fave_bar_locked_slot_number"
+      if locked and nbr and nbr.valid and nbr.style then
+        pcall(function() nbr.style = "tf_fave_bar_locked_slot_number" end)
+      end
+      if locked then
         btn.add {
           type = "sprite",
           name = "slot_lock_sprite_" .. tostring(i),
@@ -271,48 +256,23 @@ end
 function fave_bar.update_single_slot(player, slot_index)
   if not player or not player.valid then return end
   
-  local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
-  local bar_frame = GuiUtils.find_child_by_name(main_flow, "fave_bar_frame")
-  local bar_flow = bar_frame and GuiUtils.find_child_by_name(bar_frame, "fave_bar_flow")
-  local slots_frame = bar_flow and GuiUtils.find_child_by_name(bar_flow, "fave_bar_slots_flow")
-  
+  local _, _, _, slots_frame = get_fave_bar_gui_refs(player)
   if not slots_frame then return end
-  
   local slot_button = GuiUtils.find_child_by_name(slots_frame, "fave_bar_slot_" .. slot_index)
   if not slot_button then return end
-  
-  -- Get player favorites and current slot data
   local pfaves = Cache.get_player_favorites(player)
   local fav = pfaves[slot_index]
-  if fav then
-    fav = FavoriteRuntimeUtils.rehydrate_favorite(player, fav)
-  end
-  
-  -- Update button properties
-  ---@diagnostic disable-next-line: param-type-mismatch
+  fav = FavoriteRuntimeUtils.rehydrate_favorite(player, fav)
   if fav and not FavoriteUtils.is_blank_favorite(fav) then
     local icon = fav.tag and fav.tag.chart_tag and fav.tag.chart_tag.icon or nil
-    local btn_icon, used_fallback, debug_info = GuiUtils.get_validated_sprite_path(icon,
-      { fallback = Enum.SpriteEnum.PIN, log_context = { slot = slot_index, fav_gps = fav.gps, fav_tag = fav.tag } })
-    
-    slot_button.sprite = btn_icon
+    slot_button.sprite = GuiUtils.get_validated_sprite_path(icon, { fallback = Enum.SpriteEnum.PIN, log_context = { slot = slot_index, fav_gps = fav.gps, fav_tag = fav.tag } })
     slot_button.tooltip = GuiUtils.build_favorite_tooltip(fav, { slot = slot_index }) or { "tf-gui.fave_slot_tooltip", slot_index }
-    
-    -- Update style based on lock state
-    if fav.locked then
-      ---@diagnostic disable-next-line: assign-type-mismatch
-      slot_button.style = "tf_slot_button_locked"
-    else
-      ---@diagnostic disable-next-line: assign-type-mismatch
-      slot_button.style = "tf_slot_button_smallfont"
-    end
+    pcall(function() slot_button.style = fav.locked and "tf_slot_button_locked" or "tf_slot_button_smallfont" end)
   else
-    -- Blank slot
     slot_button.sprite = ""
-    ---@diagnostic disable-next-line: assign-type-mismatch
     slot_button.tooltip = { "tf-gui.favorite_slot_empty" }
-    ---@diagnostic disable-next-line: assign-type-mismatch
-    slot_button.style = "tf_slot_button_smallfont"
+    pcall(function() slot_button.style = "tf_slot_button_smallfont" end)
+  end
   end
 end
 
@@ -323,24 +283,11 @@ end
 function fave_bar.update_slot_lock_state(player, slot_index, locked)
   if not player or not player.valid then return end
   
-  local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
-  local bar_frame = GuiUtils.find_child_by_name(main_flow, "fave_bar_frame")
-  local bar_flow = bar_frame and GuiUtils.find_child_by_name(bar_frame, "fave_bar_flow")
-  local slots_frame = bar_flow and GuiUtils.find_child_by_name(bar_flow, "fave_bar_slots_flow")
-  
+  local _, _, _, slots_frame = get_fave_bar_gui_refs(player)
   if not slots_frame then return end
-  
   local slot_button = GuiUtils.find_child_by_name(slots_frame, "fave_bar_slot_" .. slot_index)
   if not slot_button then return end
-  
-  -- Update style based on lock state
-  if locked then
-    ---@diagnostic disable-next-line: assign-type-mismatch
-    slot_button.style = "tf_slot_button_locked"
-  else
-    ---@diagnostic disable-next-line: assign-type-mismatch
-    slot_button.style = "tf_slot_button_smallfont"
-  end
+  pcall(function() slot_button.style = locked and "tf_slot_button_locked" or "tf_slot_button_smallfont" end)
 end
 
 --- Update drag visual styling for slots
@@ -349,25 +296,15 @@ end
 function fave_bar.update_drag_visuals(player, drag_state)
   if not player or not player.valid then return end
   
-  local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
-  local bar_frame = GuiUtils.find_child_by_name(main_flow, "fave_bar_frame")
-  local bar_flow = bar_frame and GuiUtils.find_child_by_name(bar_frame, "fave_bar_flow")
-  local slots_frame = bar_flow and GuiUtils.find_child_by_name(bar_flow, "fave_bar_slots_flow")
-  
+  local _, _, _, slots_frame = get_fave_bar_gui_refs(player)
   if not slots_frame then return end
-  
   local max_slots = Constants.settings.MAX_FAVORITE_SLOTS or 10
-  
-  -- Update all slot buttons to show/hide drag styling
   for i = 1, max_slots do
     local slot_button = GuiUtils.find_child_by_name(slots_frame, "fave_bar_slot_" .. i)
     if slot_button then
       if drag_state and drag_state.active and drag_state.source_slot == i then
-        -- Source slot being dragged - add drag styling
-        ---@diagnostic disable-next-line: assign-type-mismatch
-        slot_button.style = "tf_slot_button_drag_source"
+        pcall(function() slot_button.style = "tf_slot_button_drag_source" end)
       else
-        -- Reset to normal styling (will be updated by single slot update if needed)
         fave_bar.update_single_slot(player, i)
       end
     end
@@ -380,11 +317,7 @@ end
 function fave_bar.update_toggle_state(player, slots_visible)
   if not player or not player.valid then return end
   
-  local main_flow = GuiUtils.get_or_create_gui_flow_from_gui_top(player)
-  local bar_frame = GuiUtils.find_child_by_name(main_flow, "fave_bar_frame")
-  local bar_flow = bar_frame and GuiUtils.find_child_by_name(bar_frame, "fave_bar_flow")
-  local slots_frame = bar_flow and GuiUtils.find_child_by_name(bar_flow, "fave_bar_slots_flow")
-  
+  local _, _, _, slots_frame = get_fave_bar_gui_refs(player)
   if slots_frame then
     slots_frame.visible = slots_visible
   end
