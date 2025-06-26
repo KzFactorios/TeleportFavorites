@@ -279,13 +279,6 @@ data:extend {
     order = "da[data-viewer-2]"
   },
   {
-    type = "custom-input",
-    name = "tf-undo-last-action",
-    key_sequence = "CONTROL + Z",
-    consuming = "game-only",
-    order = "ea[undo-1]"
-  },
-  {
     type = "sprite",
     name = "tf_tag_in_map_view",
     filename = "__TeleportFavorites__/graphics/square-custom-tag-in-map-view.png",

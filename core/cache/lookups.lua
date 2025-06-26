@@ -140,6 +140,14 @@ local function get_chart_tag_by_gps(gps)
   if not surface_cache then return nil end
   local match_chart_tag = surface_cache.chart_tags_mapped_by_gps[gps] or nil
   
+  ErrorHandler.debug_log("[LOOKUPS] get_chart_tag_by_gps", {
+    gps = gps,
+    surface_index = surface_index,
+    chart_tag_found = match_chart_tag ~= nil,
+    chart_tag_valid = match_chart_tag and match_chart_tag.valid or false,
+    chart_tag_has_icon = match_chart_tag and match_chart_tag.icon ~= nil
+  })
+  
   -- Return nil if chart tag is invalid
   if not match_chart_tag or not match_chart_tag.valid then
     return nil

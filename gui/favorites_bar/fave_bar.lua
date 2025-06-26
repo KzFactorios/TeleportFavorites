@@ -42,6 +42,7 @@ local GuiBase = require("gui.gui_base")
 local Constants = require("constants")
 local ErrorHandler = require("core.utils.error_handler")
 local FavoriteUtils = require("core.favorite.favorite")
+local FavoriteRehydration = require("core.favorite.favorite_rehydration")
 local GuiValidation = require("core.utils.gui_validation")
 local GuiStyling = require("core.utils.gui_styling")
 local GuiFormatting = require("core.utils.gui_formatting")
@@ -179,13 +180,27 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
   local max_slots = Constants.settings.MAX_FAVORITE_SLOTS or 10
 
   local function get_slot_btn_props(i, fav)
-    fav = FavoriteUtils.rehydrate_runtime(player, fav)
+    fav = FavoriteRehydration.rehydrate_favorite_at_runtime(player, fav)
     if fav and not FavoriteUtils.is_blank_favorite(fav) then
+      -- Icon comes from chart_tag.icon only (tags do not have icon property)
       local icon = fav.tag and fav.tag.chart_tag and fav.tag.chart_tag.icon or nil
+      ErrorHandler.debug_log("[FAVE_BAR] Icon resolution for slot", {
+        slot = i,
+        has_tag = fav.tag ~= nil,
+        has_chart_tag = fav.tag and fav.tag.chart_tag ~= nil,
+        has_icon = icon ~= nil,
+        icon_type = icon and icon.type or nil,
+        icon_name = icon and icon.name or nil,
+        icon_full = icon and icon.type and icon.name and (icon.type .. "/" .. icon.name) or nil,
+        icon_raw = icon -- Show the entire icon object
+      })
       local btn_icon, used_fallback, debug_info = GuiValidation.get_validated_sprite_path(icon, { fallback = Enum.SpriteEnum.PIN, log_context = { slot = i, fav_gps = fav.gps, fav_tag = fav.tag } })
-      if used_fallback then
-        ErrorHandler.debug_log("[FAVE_BAR] Fallback icon used for slot", { slot = i, icon = btn_icon, debug_info = debug_info })
-      end
+      ErrorHandler.debug_log("[FAVE_BAR] Sprite validation result", {
+        slot = i,
+        btn_icon = btn_icon,
+        used_fallback = used_fallback,
+        debug_info = debug_info
+      })
       local style = fav.locked and "tf_slot_button_locked" or "tf_slot_button_smallfont"
       if btn_icon == "tf_tag_in_map_view_small" then style = "tf_slot_button_smallfont_map_pin" end
       return btn_icon, GuiFormatting.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }, style, fav.locked
@@ -196,7 +211,7 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
 
   for i = 1, max_slots do
     local fav = pfaves[i]
-    fav = FavoriteUtils.rehydrate_runtime(player, fav)
+    fav = FavoriteRehydration.rehydrate_favorite_at_runtime(player, fav)
     local btn_icon, tooltip, style, locked = get_slot_btn_props(i, fav)
     ErrorHandler.debug_log("[FAVE_BAR] Creating slot button", {slot = i, icon = btn_icon, tooltip = tooltip, style = style})
     local btn = GuiStyling.create_slot_button(parent, "fave_bar_slot_" .. i, tostring(btn_icon), tooltip, { style = style })
@@ -267,8 +282,9 @@ function fave_bar.update_single_slot(player, slot_index)
   if not slot_button then return end
   local pfaves = Cache.get_player_favorites(player)
   local fav = pfaves[slot_index]
-  fav = FavoriteUtils.rehydrate_favorite(player, fav)
+  fav = FavoriteRehydration.rehydrate_favorite_at_runtime(player, fav)
   if fav and not FavoriteUtils.is_blank_favorite(fav) then
+    -- Icon comes from chart_tag.icon only (tags do not have icon property)
     local icon = fav.tag and fav.tag.chart_tag and fav.tag.chart_tag.icon or nil
     slot_button.sprite = GuiValidation.get_validated_sprite_path(icon, { fallback = Enum.SpriteEnum.PIN, log_context = { slot = slot_index, fav_gps = fav.gps, fav_tag = fav.tag } })
     ---@type LocalisedString

@@ -65,24 +65,12 @@ gui_style.tf_tag_editor_owner_label = {
   bottom_padding = 6,
   left_padding = 8,
   font = "default-bold",
-  font_color = { r = 1, g = .9, b = .75, a = 1 },
+  font_color = { r = 1, g = 1, b = 1, a = 1 }, -- Changed to pure white for better visibility
   horizontally_stretchable = "on",
-  width = 264, -- Reduced proportionally for 342px dialog
+  width = 292, -- Reduced proportionally for 342px dialog
   single_line = true,
   horizontal_align = "left",
   vertical_align = "center"
-}
-
--- We no longer need the tf_owner_right_flow style as we're using a simpler layout
-gui_style.tf_move_button = {
-  type = "button_style",
-  parent = "button",
-  height = 28,
-  width = 28,
-  padding = 1,
-  top_margin = 4,
-  right_margin = 0,                 -- Tighter margin
-  horizontally_stretchable = "off", -- Explicitly prevent stretching
 }
 
 gui_style.tf_delete_button = {

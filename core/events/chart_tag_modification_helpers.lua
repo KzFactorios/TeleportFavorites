@@ -151,6 +151,13 @@ function ChartTagModificationHelpers.update_tag_and_cleanup(old_gps, new_gps, ev
   old_tag.gps = new_gps
   old_tag.chart_tag = modified_chart_tag
 
+  ErrorHandler.debug_log("Updated tag object GPS", {
+    old_gps = old_gps,
+    new_gps = new_gps,
+    tag_gps_after_update = old_tag.gps,
+    chart_tag_position = modified_chart_tag and modified_chart_tag.position or "nil"
+  })
+
   -- CRITICAL: Update the surface mapping table from old GPS to new GPS
   local surface_index = GPSUtils.get_surface_index_from_gps(old_gps)
   if surface_index and old_gps ~= new_gps then
@@ -161,6 +168,43 @@ function ChartTagModificationHelpers.update_tag_and_cleanup(old_gps, new_gps, ev
       surface_tags[new_gps] = surface_tags[old_gps]
       surface_tags[old_gps] = nil
       ErrorHandler.debug_log("Moved tag data in surface mapping", {
+        surface_index = surface_index,
+        old_gps = old_gps,
+        new_gps = new_gps
+      })
+    end
+    
+    -- CRITICAL: Ensure the updated tag is also stored at the new GPS location
+    surface_tags[new_gps] = old_tag
+    ErrorHandler.debug_log("Ensured updated tag is stored at new GPS location", {
+      surface_index = surface_index,
+      new_gps = new_gps,
+      tag_gps = old_tag.gps,
+      tag_has_chart_tag = old_tag.chart_tag ~= nil
+    })
+    
+    -- CRITICAL: Update the lookup table chart_tags_mapped_by_gps
+    -- Access the runtime lookup cache directly
+    local CACHE_KEY = "Lookups"
+    local runtime_cache = _G[CACHE_KEY]
+    if runtime_cache and runtime_cache.surfaces and runtime_cache.surfaces[uint_surface_index] then
+      local surface_cache = runtime_cache.surfaces[uint_surface_index]
+      if surface_cache.chart_tags_mapped_by_gps then
+        -- Remove old GPS mapping
+        surface_cache.chart_tags_mapped_by_gps[old_gps] = nil
+        -- Add new GPS mapping
+        surface_cache.chart_tags_mapped_by_gps[new_gps] = modified_chart_tag
+        ErrorHandler.debug_log("Updated lookup table chart_tags_mapped_by_gps", {
+          surface_index = surface_index,
+          old_gps = old_gps,
+          new_gps = new_gps,
+          chart_tag_valid = modified_chart_tag and modified_chart_tag.valid or false
+        })
+      end
+    else
+      -- Force rebuild of lookup cache if it doesn't exist
+      Cache.Lookups.invalidate_surface_chart_tags(uint_surface_index)
+      ErrorHandler.debug_log("Forced rebuild of lookup cache after GPS change", {
         surface_index = surface_index,
         old_gps = old_gps,
         new_gps = new_gps
@@ -221,6 +265,21 @@ function ChartTagModificationHelpers.update_favorites_gps(old_gps, new_gps, acti
         old_gps = old_gps,
         new_gps = new_gps
       })
+      
+      -- CRITICAL: Force cache refresh before rebuilding favorites bar
+      local surface_index = GPSUtils.get_surface_index_from_gps(new_gps) or 1
+      Cache.Lookups.invalidate_surface_chart_tags(tonumber(surface_index))
+      
+      -- Verify the tag can be found at the new GPS location
+      local updated_tag = Cache.get_tag_by_gps(affected_player, new_gps)
+      ErrorHandler.debug_log("Cache verification after GPS update", {
+        player_name = affected_player.name,
+        new_gps = new_gps,
+        tag_found = updated_tag ~= nil,
+        tag_gps = updated_tag and updated_tag.gps or "nil",
+        tag_has_chart_tag = updated_tag and updated_tag.chart_tag ~= nil
+      })
+      
       fave_bar.build(affected_player)
     end
   end

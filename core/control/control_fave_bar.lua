@@ -351,6 +351,9 @@ local function on_fave_bar_gui_click(event)
 
   log_click_event(event, player)
 
+  -- Get player favorites instance
+  local favorites = PlayerFavorites.new(player)
+
   -- Handle right-click on map during drag mode
   if element.name == "map" then
     if handle_map_right_click(event, player) then return end

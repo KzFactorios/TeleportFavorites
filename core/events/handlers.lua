@@ -61,6 +61,8 @@ local ChartTagModificationHelpers = require("core.events.chart_tag_modification_
 local ChartTagRemovalHelpers = require("core.events.chart_tag_removal_helpers")
 local PlayerStateHelpers = require("core.events.player_state_helpers")
 local GameHelpers = require("core.utils.game_helpers")
+local Settings = require("core.utils.settings_access")
+local PlayerFavorites = require("core.favorite.player_favorites")
 
 -- Helper: Validate player and run handler logic
 local function with_valid_player(player_index, handler_fn, ...)
@@ -73,7 +75,7 @@ local function register_gui_observers(player)
   local ok, gui_observer = pcall(require, "core.pattern.gui_observer")
 end
 
-local handlers = {}
+local handlers = {} 
 
 function handlers.on_init()
   ErrorHandler.debug_log("Mod initialization started")
@@ -112,11 +114,89 @@ function handlers.on_open_tag_editor_custom_input(event)
       end
       return
     end
+    local tag_data = Cache.get_player_data(player).tag_editor_data or Cache.create_tag_editor_data()
     local cursor_position = event.cursor_position
-    if not cursor_position or not (cursor_position.x and cursor_position.y) then
-      return
+    local chart_tag = nil
+    if cursor_position and cursor_position.x and cursor_position.y then
+      local surface_index = player.surface.index
+      local click_radius = Settings.get_chart_tag_click_radius(player)
+      chart_tag = TagEditorEventHelpers.find_nearby_chart_tag(cursor_position, surface_index, click_radius)
     end
-    -- Build and show the tag editor GUI
+    if chart_tag and chart_tag.valid then
+      -- Look up favorite info and icon
+      local gps = GPSUtils.gps_from_map_position(chart_tag.position, tonumber(chart_tag.surface and chart_tag.surface.index or player.surface.index) or 1)
+      local tag_fave = Cache.get_tag_by_gps(player, gps)
+      
+      ErrorHandler.debug_log("Tag favorite lookup", {
+        gps = gps,
+        tag_fave_exists = tag_fave ~= nil,
+        tag_fave_type = type(tag_fave),
+        player_name = player.name
+      })
+      
+      -- Check if this GPS is in the player's favorites using PlayerFavorites
+      local player_favorites = PlayerFavorites.new(player)
+      local favorite_entry, favorite_slot = player_favorites:get_favorite_by_gps(gps)
+      local is_favorite = favorite_entry ~= nil
+      
+      ErrorHandler.debug_log("Favorite detection", {
+        gps = gps,
+        player_name = player.name,
+        is_favorite = is_favorite,
+        favorite_slot = favorite_slot,
+        has_favorite_entry = favorite_entry ~= nil
+      })
+      -- Try multiple ways to get the icon safely
+      local icon = nil
+      -- Try direct icon field
+      local chart_icon = chart_tag and chart_tag["icon"]
+      if chart_icon then
+        icon = chart_icon
+      end
+      
+      -- Try nested tag.icon
+      if not icon then
+        local tag_table = chart_tag and chart_tag["tag"]
+        if tag_table and type(tag_table) == "table" and tag_table["icon"] then
+          icon = tag_table["icon"]
+        end
+      end
+      
+      -- Try from cached tag favorite
+      if not icon and tag_fave then
+        local fave_icon = tag_fave["icon"]
+        if fave_icon then
+          icon = fave_icon
+        end
+      end
+      
+      ErrorHandler.debug_log("Tag editor icon detection", {
+        has_chart_icon = chart_icon ~= nil,
+        has_fave_icon = tag_fave and tag_fave["icon"] ~= nil,
+        final_icon = icon ~= nil,
+        icon_type = type(icon),
+        is_favorite = is_favorite,
+        faved_by_players_count = faved_by_players and #faved_by_players or 0
+      })
+      
+      tag_data.chart_tag = chart_tag
+      tag_data.tag = {
+        chart_tag = chart_tag,
+        gps = gps,
+        icon = icon,
+        text = chart_tag.text,
+        last_user = chart_tag.last_user,
+      }
+      tag_data.gps = gps
+      tag_data.is_favorite = is_favorite
+      tag_data.icon = icon
+      tag_data.text = chart_tag.text
+    elseif tag_data.tag and tag_data.tag.gps and tag_data.tag.gps ~= "" then
+      tag_data.gps = tag_data.tag.gps
+    elseif cursor_position and cursor_position.x and cursor_position.y then
+      tag_data.gps = GPSUtils.gps_from_map_position(cursor_position, tonumber(player.surface.index) or 1)
+    end
+    Cache.set_tag_editor_data(player, tag_data)
     tag_editor.build(player)
   end)
 end
@@ -145,17 +225,64 @@ function handlers.on_chart_tag_modified(event)
     })
     local chart_tag = event.tag
     if chart_tag and chart_tag.valid and chart_tag.position then
-      local new_chart_tag, position_pair = TagEditorEventHelpers.normalize_and_replace_chart_tag(chart_tag, player)
-      if new_chart_tag then
-        local surface_index = chart_tag.surface and chart_tag.surface.index or 1
-        local new_position = position_pair and position_pair.new or chart_tag.position
-        -- Update chart_tag reference for future operations
+      -- Only normalize if the tag position has fractional coordinates
+      local needs_normalization = PositionUtils.needs_normalization(chart_tag.position)
+      
+      if needs_normalization then
+        ErrorHandler.debug_log("Chart tag has fractional coordinates, normalizing", {
+          player_name = player.name,
+          position = chart_tag.position,
+          old_gps = old_gps,
+          new_gps = new_gps
+        })
+        
+        local new_chart_tag, position_pair = TagEditorEventHelpers.normalize_and_replace_chart_tag(chart_tag, player)
+        if new_chart_tag then
+          -- After normalization, recalculate GPS coordinates for the new chart tag
+          local surface_index = new_chart_tag.surface and new_chart_tag.surface.index or 1
+          local normalized_gps = GPSUtils.gps_from_map_position(new_chart_tag.position, tonumber(surface_index) or 1)
+          
+          ErrorHandler.debug_log("Chart tag normalized, updating GPS references", {
+            player_name = player.name,
+            old_gps = old_gps,
+            new_gps = new_gps,
+            normalized_gps = normalized_gps
+          })
+          
+          -- Update using the normalized GPS as the final new GPS
+          if old_gps and normalized_gps and old_gps ~= normalized_gps then
+            -- Create a modified event with the new chart tag for cleanup
+            local normalized_event = {
+              tag = new_chart_tag,
+              old_position = event.old_position,
+              player_index = event.player_index
+            }
+            
+            ChartTagModificationHelpers.update_tag_and_cleanup(old_gps, normalized_gps, normalized_event, player)
+            ChartTagModificationHelpers.update_favorites_gps(old_gps, normalized_gps, player)
+          end
+        end
+      else
+        -- Normal tag move without fractional coordinates - no normalization needed
+        ErrorHandler.debug_log("Chart tag move without fractional coordinates", {
+          player_name = player.name,
+          position = chart_tag.position,
+          old_gps = old_gps,
+          new_gps = new_gps
+        })
+        
         if old_gps and new_gps and old_gps ~= new_gps then
           ErrorHandler.debug_log("Chart tag modified - updating favorites GPS", {
             player_name = player.name,
             old_gps = old_gps,
             new_gps = new_gps
           })
+          
+          -- Update tag data and cache using the original chart tag
+          ChartTagModificationHelpers.update_tag_and_cleanup(old_gps, new_gps, event, player)
+          
+          -- Update all player favorites that reference this GPS
+          ChartTagModificationHelpers.update_favorites_gps(old_gps, new_gps, player)
         end
       end
     end

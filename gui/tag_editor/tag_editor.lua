@@ -63,17 +63,8 @@ local function setup_tag_editor_ui(refs, tag_data, player)
 
   if tag and tag.chart_tag then
     is_owner = tag.chart_tag.last_user and tag.chart_tag.last_user.name == player.name or false
-
-    -- Can delete if player is owner AND no other players have favorited this tag
+    -- Can delete if player is owner (we'll implement multi-player favorite checking later if needed)
     can_delete = is_owner
-    if can_delete and tag.faved_by_players then
-      for _, player_index in ipairs(tag.faved_by_players) do
-        if player_index ~= player.index then
-          can_delete = false
-          break
-        end
-      end
-    end
   else
     is_owner = false
     can_delete = false
@@ -217,7 +208,7 @@ local function build_owner_row(parent, tag_data)
   local label_flow = GuiBase.create_hflow(row_frame, "tag_editor_label_flow")
   -- Create a flow for the buttons
   local label = GuiBase.create_label(label_flow, "tag_editor_owner_label",
-    "", "tf_tag_editor_owner_label") -- Add buttons to the button flow
+    "", "tf_tag_editor_owner_label")
   local button_flow = GuiBase.create_hflow(row_frame, "tag_editor_button_flow")
   -- Remove move button creation
   local delete_button = GuiBase.create_icon_button(button_flow, "tag_editor_delete_button", Enum.SpriteEnum.TRASH,
@@ -227,10 +218,6 @@ local function build_owner_row(parent, tag_data)
 end
 
 local function build_teleport_favorite_row(parent, tag_data)
-  ErrorHandler.debug_log("[TAG_EDITOR] build_teleport_favorite_row: tag_data state", {
-    gps = tag_data.gps,
-    is_favorite = tag_data.is_favorite
-  })
   -- Style must be set at creation time for Factorio GUIs
   local row = GuiBase.create_frame(parent, "tag_editor_teleport_favorite_row", "horizontal",
     "tf_tag_editor_teleport_favorite_row")
@@ -250,6 +237,7 @@ end
 local function create_icon_button(row, tag_data)
   local sprite_path, used_fallback, debug_info = GuiValidation.get_validated_sprite_path(tag_data.icon,
     { fallback = Enum.SpriteEnum.PIN, log_context = { context = "tag_editor", gps = tag_data.gps } })
+  
   local icon_btn = GuiBase.create_element("choose-elem-button", row, {
     name = "tag_editor_icon_button",
     tooltip = { "tf-gui.icon_tooltip" },
@@ -258,10 +246,6 @@ local function create_icon_button(row, tag_data)
     signal = tag_data.icon,
     sprite = sprite_path
   })
-  if used_fallback then
-    ErrorHandler.debug_log("[TAG_EDITOR] Fallback icon used for tag editor icon button",
-      { sprite_path = sprite_path, debug_info = debug_info })
-  end
   return icon_btn
 end
 
@@ -321,12 +305,6 @@ function tag_editor.build(player)
   if not tag_data.gps or tag_data.gps == "" then
     tag_data.gps = tag_data.move_gps or ""
   end
-  ErrorHandler.debug_log("[TAG_EDITOR] build: tag_data state", {
-    gps = tag_data.gps,
-    is_favorite = tag_data.is_favorite,
-    tag = tag_data.tag,
-    chart_tag = tag_data.chart_tag
-  })
   -- Do NOT attempt to find or create chart tags here. Only use tag_data.tag and tag_data.chart_tag as provided.
 
   local gps = tag_data.gps
@@ -353,8 +331,10 @@ function tag_editor.build(player)
   elseif tag_data.chart_tag and tag_data.chart_tag.last_user then
     owner_value = tag_data.chart_tag.last_user.name
   end
+  
+  -- Set the owner label using proper localization
   ---@diagnostic disable-next-line: assign-type-mismatch
-  owner_label.caption = { "tf-gui.owner_label", owner_value }
+  owner_label.caption = { "tf-gui.owner_label", owner_value or "" }
 
   local tag_editor_content_inner_frame = GuiBase.create_frame(tag_editor_content_frame,
     "tag_editor_content_inner_frame", "vertical", "tf_tag_editor_content_inner_frame")
@@ -474,14 +454,6 @@ function tag_editor.update_button_states(player, tag_data)
   if tag and tag.chart_tag then
     is_owner = tag.chart_tag.last_user and tag.chart_tag.last_user.name == player.name or false
     can_delete = is_owner
-    if can_delete and tag.faved_by_players then
-      for _, player_index in ipairs(tag.faved_by_players) do
-        if player_index ~= player.index then
-          can_delete = false
-          break
-        end
-      end
-    end
   end
 
   -- Admin override

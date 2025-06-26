@@ -35,7 +35,6 @@ end
 
 -- Dependencies
 local control_data_viewer = require("core.control.control_data_viewer")
-local on_gui_closed_handler = require("core.events.on_gui_closed_handler")
 local handlers = require("core.events.handlers")
 local GameHelpers = require("core.utils.game_helpers")
 local ErrorHandler = require("core.utils.error_handler")
@@ -141,19 +140,6 @@ end
 
 local default_custom_input_handlers = {
   ["dv-toggle-data-viewer"] = control_data_viewer.on_toggle_data_viewer,
-  ["tf-undo-last-action"] = function(event)
-    local player = game.get_player(event.player_index)
-    if not player or not player.valid then return end
-    
-    -- Use the GUI handler's undo function
-    local success = on_gui_closed_handler.undo_last_gui_close(player)
-    
-    if success then
-      GameHelpers.player_print(player, {"tf-command.action_undone"})
-    else
-      GameHelpers.player_print(player, {"tf-command.nothing_to_undo"})
-    end
-  end,
   -- Teleport to favorite slot handlers (Ctrl+1 through Ctrl+0)
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "1"] = function(event) handle_teleport_to_favorite_slot(event, 1) end,
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "2"] = function(event) handle_teleport_to_favorite_slot(event, 2) end,

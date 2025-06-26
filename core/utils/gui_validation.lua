@@ -361,12 +361,17 @@ function GuiValidation.get_validated_sprite_path(icon, opts)
   elseif type(icon) == "table" then
     if icon.type and icon.type ~= "" and icon.name and icon.name ~= "" then
       sprite_path = icon.type .. "/" .. icon.name
+      debug_info.generated_path = sprite_path
     elseif icon.name and icon.name ~= "" then
-      sprite_path = icon.name
+      -- Default to item type when type is missing
+      sprite_path = "item/" .. icon.name
+      debug_info.generated_path = sprite_path
+      debug_info.defaulted_type = "item"
     else
       sprite_path = fallback
       used_fallback = true
       debug_info.reason = "icon table missing type or name"
+      debug_info.icon_table_details = { has_type = icon.type ~= nil, has_name = icon.name ~= nil, type_value = icon.type, name_value = icon.name }
     end
   else
     sprite_path = fallback

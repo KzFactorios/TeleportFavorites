@@ -82,16 +82,6 @@ local function on_gui_closed(event)
   -- end
 end
 
---- Undo the last GUI close action for a player
---- This can be called from other modules to provide undo functionality
----@param player LuaPlayer
----@return boolean success Always returns false since command pattern isn't implemented
-local function undo_last_gui_close(player)
-  -- Command pattern not implemented, return false
-  return false
-end
-
 return {
-  on_gui_closed = on_gui_closed,
-  undo_last_gui_close = undo_last_gui_close
+  on_gui_closed = on_gui_closed
 }

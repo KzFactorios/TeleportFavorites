@@ -20,7 +20,6 @@ Notes:
 local Constants = require("constants")
 local CollectionUtils = require("core.utils.collection_utils")
 local GPSUtils = require("core.utils.gps_utils")
-local ErrorHandler = require("core.utils.error_handler")
 local Logger = require("core.utils.enhanced_error_handler")
 
 ---@class Favorite
@@ -99,16 +98,9 @@ end
 function FavoriteUtils.check_state(fav, check_type)
   if check_type == "blank" then
     if type(fav) ~= "table" then 
-      --[[ErrorHandler.debug_log("FavoriteUtils.check_state blank - not table", {
-        fav_type = type(fav),
-        result = false
-      })]]
       return false 
     end
     if next(fav) == nil then 
-      --[[ErrorHandler.debug_log("FavoriteUtils.check_state blank - empty table", {
-        result = true
-      })]]
       return true 
     end
     local is_blank = (fav.gps == "" or fav.gps == nil or fav.gps == (Constants.settings.BLANK_GPS --[[@as string]])) 
@@ -147,44 +139,6 @@ function FavoriteUtils.formatted_tooltip(fav)
     tooltip = tooltip .. "\n" .. fav.tag.text
   end
   return tooltip
-end
-
--- Add runtime/game-context favorite rehydration logic (from favorite_utils.lua)
---- Rehydrate a favorite's tag and chart_tag from GPS using the runtime cache
----@param player LuaPlayer
----@param fav table Favorite
----@return table Favorite
-function FavoriteUtils.rehydrate_runtime(player, fav)
-  if not player then return FavoriteUtils.get_blank_favorite() end
-  if not fav or type(fav) ~= "table" or not fav.gps or fav.gps == "" or FavoriteUtils.is_blank_favorite(fav) then
-    return FavoriteUtils.get_blank_favorite()
-  end
-
-  local Cache = require("core.cache.cache")
-  local tag = Cache.get_tag_by_gps(player, fav.gps)
-  local locked = fav.locked or false
-  local new_fav = FavoriteUtils.new(fav.gps, locked, tag)
-  if tag and not tag.chart_tag then
-    local chart_tag = Cache.Lookups.get_chart_tag_by_gps(fav.gps)
-    if chart_tag and chart_tag.valid then
-      tag.chart_tag = chart_tag
-    end
-  end
-
-  local icon_info = nil
-  if tag and tag.chart_tag and tag.chart_tag.icon then
-    local icon = tag.chart_tag.icon
-    icon_info = (icon.type or "<no type>") .. "/" .. (icon.name or "<no name>")
-  end
-  Logger.debug_log("[FAVE_BAR] Rehydrate favorite", {
-    gps = fav.gps,
-    tag_present = tag ~= nil,
-    chart_tag_present = tag and tag.chart_tag ~= nil,
-    icon_present = tag and tag.chart_tag and tag.chart_tag.icon ~= nil,
-    icon_info = icon_info
-  })
-
-  return new_fav
 end
 
 return FavoriteUtils

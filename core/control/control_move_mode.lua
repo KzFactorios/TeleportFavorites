@@ -1,1 +1,0 @@
--- Move mode logic removed: this file is now obsolete and can be deleted.

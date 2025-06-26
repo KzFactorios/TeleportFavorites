@@ -51,8 +51,16 @@ end
 
 -- Use Cache.sanitize_for_storage to sanitize tags for favorites
 local function sanitize_tag_for_favorite(tag)
-  -- Exclude 'chart_tag' and all userdata fields
-  return Cache.sanitize_for_storage(tag, { chart_tag = true })
+  -- Exclude 'chart_tag' userdata but keep all other tag data for rehydration
+  local sanitized = Cache.sanitize_for_storage(tag, { chart_tag = true })
+  
+  ErrorHandler.debug_log("[PLAYER_FAVORITES] Tag sanitized for favorite storage", {
+    gps = tag and tag.gps or nil,
+    original_has_chart_tag = tag and tag.chart_tag ~= nil,
+    original_has_icon = tag and tag.chart_tag and tag.chart_tag.icon ~= nil
+  })
+  
+  return sanitized
 end
 
 --- PlayerFavorites class for managing a player's favorite collection

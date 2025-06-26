@@ -18,6 +18,7 @@
 -- - Use centralized utilities for common operations
 -- - Maintain proper error handling and logging
 
+local FavoriteRehydration = require("core.favorite.favorite_rehydration")
 local FavoriteUtils = require("core.favorite.favorite")
 local FavoriteSlotUtils = require("core.favorite.favorite_slot_utils")
 local fave_bar = require("gui.favorites_bar.fave_bar")
@@ -130,7 +131,7 @@ function SlotInteractionHandlers.open_tag_editor_from_favorite(player, favorite)
   if not favorite then return end
   
   -- Rehydrate the favorite to ensure all runtime fields are present
-  favorite = FavoriteUtils.rehydrate_favorite(player, favorite)
+  favorite = FavoriteRehydration.rehydrate_favorite_at_runtime(player, favorite)
   
   -- Create initial tag data from favorite
   local tag_data = Cache.create_tag_editor_data({

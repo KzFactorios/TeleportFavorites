@@ -339,6 +339,13 @@ function Cache.get_tag_by_gps(player, gps)
   })
 
   local match_tag = tag_cache[gps] or nil
+  ErrorHandler.debug_log("[CACHE] get_tag_by_gps - found tag in cache", {
+    gps = gps,
+    tag_found = match_tag ~= nil,
+    tag_has_chart_tag = match_tag and match_tag.chart_tag ~= nil,
+    tag_chart_tag_valid = match_tag and match_tag.chart_tag and match_tag.chart_tag.valid or false
+  })
+
   -- Ensure chart_tag is present
   if match_tag and (not match_tag.chart_tag or not match_tag.chart_tag.position) then
     local chart_tag_lookup = Cache.Lookups.get_chart_tag_by_gps(gps)

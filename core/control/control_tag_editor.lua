@@ -18,74 +18,17 @@ local ChartTagUtils = require("core.utils.chart_tag_utils")
 local ValidationUtils = require("core.utils.validation_utils")
 local AdminUtils = require("core.utils.admin_utils")
 local SettingsAccess = require("core.utils.settings_access")
-local TagEditorMoveMode = require("core.control.control_move_mode")
 local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 local SharedUtils = require("core.control.control_shared_utils")
 local GuiPartialUpdateUtils = require("core.control.gui_partial_update_utils")
 
--- Observer Pattern Integration
-local GuiObserver = require("core.pattern.gui_observer")
-local GuiEventBus = GuiObserver.GuiEventBus
-
 local M = {}
-
-local function refresh_tag_editor(player, tag_data)
-  SharedUtils.refresh_gui_with_cache(
-    function(p, d) Cache.set_tag_editor_data(p, d) end,
-    function(p) GuiValidation.safe_destroy_frame(p.gui.screen, "tag_editor_frame") end,
-    function(p) tag_editor.build(p) end,
-    player, tag_data
-  )
-end
 
 local function show_tag_editor_error(player, tag_data, message)
   tag_data.error_message = message
   -- Use partial update instead of full rebuild for error messages
   GuiPartialUpdateUtils.update_error_message(tag_editor.update_error_message, player, message)
   Cache.set_tag_editor_data(player, tag_data)
-end
-
-local function update_favorite_state(player, tag, is_favorite)
-  -- This function only updates the is_favorite state in tag_editor_data
-  -- Actual favorite creation/deletion happens only on confirm button click
-  local tag_data = Cache.get_tag_editor_data(player) or {}
-  tag_data.is_favorite = is_favorite
-  Cache.set_tag_editor_data(player, tag_data)
-  -- Use partial update instead of full rebuild for favorite state
-  GuiPartialUpdateUtils.update_state(tag_editor.update_favorite_state, player, is_favorite)
-end
-
-local function handle_favorite_operations(player, tag, is_favorite)
-  -- This function handles the actual favorite creation/deletion on confirm
-  local player_favorites = PlayerFavorites.new(player)
-
-  -- Check current favorite state
-  local current_favorite, _ = player_favorites:get_favorite_by_gps(tag.gps)
-  local currently_is_favorite = current_favorite ~= nil
-
-  -- Only make changes if the state has actually changed
-  if is_favorite and not currently_is_favorite then
-    -- Add favorite
-    local favorite, error_msg = player_favorites:add_favorite(tag.gps)
-    if not favorite then
-      local error_text = error_msg or "Unknown error"
-      GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "failed_add_favorite", { error_text }))
-      return false
-    end
-  elseif not is_favorite and currently_is_favorite then
-    -- Remove favorite
-    local success, error_msg = player_favorites:remove_favorite(tag.gps)
-    if not success then
-      local error_text = error_msg or "Unknown error"
-      GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "failed_remove_favorite", { error_text }))
-      return false
-    end
-  end
-  -- If is_favorite == currently_is_favorite, no action needed
-
-  -- Observer notifications are now sent from PlayerFavorites methods
-  -- No need to send them here as they're already handled in add_favorite/remove_favorite
-  return true
 end
 
 -- Change function signature to accept tag_data
@@ -195,7 +138,7 @@ local function update_chart_tag_fields(tag, tag_data, text, icon, player)
   end
 
   -- Notify observers of tag modification
-  require("core.control.control_shared_utils").notify_observer("tag_modified", {
+  SharedUtils.notify_observer("tag_modified", {
     player = player,
     gps = tag.gps,
     tag = tag,
@@ -231,7 +174,6 @@ local function handle_confirm_btn(player, element, tag_data)
     gps = tag_data and tag_data.gps,
     is_favorite = tag_data and tag_data.is_favorite
   })
-  -- Removed: GuiEventBus.register_player_observers(player)
   ErrorHandler.debug_log("[TAG_EDITOR] handle_confirm_btn called", {
     player = player and player.name or "<nil>",
     tag_data_gps = tag_data and tag_data.gps or "<nil>"
@@ -298,22 +240,36 @@ local function handle_confirm_btn(player, element, tag_data)
   if is_favorite then
     -- Check for available slot before proceeding
     local player_favorites = PlayerFavorites.new(player)
-    local _, error_msg = player_favorites:add_favorite(tag.gps)
+    local _, error_msg = player_favorites:add_favorite(refreshed_tag.gps)
     if error_msg then
       return show_tag_editor_error(player, tag_data,
         LocaleUtils.get_error_string(player, "favorite_slots_full") or error_msg)
     end
 
-    tag.faved_by_players[player.index] = player.index
+    refreshed_tag.faved_by_players[player.index] = player.index
+    -- Notify favorites bar to update after adding favorite
+    SharedUtils.notify_observer("favorites_bar_updated", {
+      player = player,
+      gps = refreshed_tag.gps,
+      action = "add",
+      tag = refreshed_tag
+    })
   else
     local player_favorites = PlayerFavorites.new(player)
-    player_favorites:remove_favorite(tag.gps)
-    tag.faved_by_players[player.index] = nil
+    player_favorites:remove_favorite(refreshed_tag.gps)
+    refreshed_tag.faved_by_players[player.index] = nil
+    -- Notify favorites bar to update after removing favorite
+    SharedUtils.notify_observer("favorites_bar_updated", {
+      player = player,
+      gps = refreshed_tag.gps,
+      action = "remove",
+      tag = refreshed_tag
+    })
   end
 
   -- After updating faved_by_players, re-sanitize and persist the tag
-  local sanitized_tag = Cache.sanitize_for_storage(tag)
-  tags[tag.gps] = sanitized_tag
+  local sanitized_tag = Cache.sanitize_for_storage(refreshed_tag)
+  tags[refreshed_tag.gps] = sanitized_tag
   tag_data.tag = sanitized_tag
 
   -- Notify observers of tag creation or modification
@@ -345,7 +301,6 @@ local function handle_confirm_btn(player, element, tag_data)
     gps = tag.gps
   })
   close_tag_editor(player)
-  GameHelpers.player_print(player, { "tf-command.tag_editor_confirmed" })
 end
 
 local function handle_favorite_btn(player, tag_data)

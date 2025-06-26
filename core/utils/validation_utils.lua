@@ -13,6 +13,10 @@ This module consolidates:
 Provides a unified API for all validation operations throughout the mod.
 ]]
 
+local constants = require("constants")
+local basic_helpers = require("core.utils.basic_helpers")
+local GPSUtils = require("core.utils.gps_utils")
+
 ---@class ValidationUtils
 local ValidationUtils = {}
 
@@ -47,26 +51,6 @@ function ValidationUtils.validate_player_for_position_ops(player)
   
   if not player.surface.valid then
     return false, "Player surface is not valid"
-  end
-  
-  return true, nil
-end
-
---- Validate player for GUI operations
----@param player LuaPlayer|nil
----@return boolean is_valid
----@return string? error_message
-function ValidationUtils.validate_player_for_gui(player)
-  local basic_valid, basic_error = ValidationUtils.validate_player(player)
-  if not basic_valid then
-    return false, basic_error
-  end
-  
-  -- player is guaranteed to be valid at this point
-  assert(player, "Player should not be nil after validation")
-  
-  if not player.gui then
-    return false, "Player GUI is not available"
   end
   
   return true, nil
@@ -117,64 +101,6 @@ function ValidationUtils.validate_and_parse_gps(gps)
 end
 
 -- ========================================
--- POSITION VALIDATION PATTERNS
--- ========================================
-
---- Validate basic position structure
----@param position MapPosition|nil
----@return boolean is_valid
----@return string? error_message
-function ValidationUtils.validate_position_structure(position)
-  if not position or type(position) ~= "table" then
-    return false, "Position must be a table"
-  end
-  local norm_pos = require("core.utils.position_utils").normalize_position(position)
-  if type(norm_pos.x) ~= "number" or type(norm_pos.y) ~= "number" then
-    return false, "Position must have numeric x and y coordinates"
-  end
-  return true, nil
-end
-
---- Validate that a position is within a reasonable range
----@param position MapPosition
----@param max_distance number? Maximum distance from origin (default: 2000000)
----@return boolean is_valid
----@return string? error_message
-function ValidationUtils.validate_position_range(position, max_distance)
-  -- Factorio's practical world limit
-  max_distance = max_distance or 2000000
-  local norm_pos = require("core.utils.position_utils").normalize_position(position)
-  if math.abs(norm_pos.x) > max_distance or math.abs(norm_pos.y) > max_distance then
-    return false, "Position is outside reasonable world bounds"
-  end
-  return true, nil
-end
-
---- Validate position for tagging operations (includes chunk charted check)
----@param player LuaPlayer
----@param position MapPosition
----@return boolean is_valid
----@return string? error_message
-function ValidationUtils.validate_position_for_tagging(player, position)
-  -- Basic validation first
-  local player_valid, player_error = ValidationUtils.validate_player_for_position_ops(player)
-  if not player_valid then
-    return false, player_error
-  end
-  local pos_valid, pos_error = ValidationUtils.validate_position_structure(position)
-  if not pos_valid then
-    return false, pos_error
-  end
-  local norm_pos = require("core.utils.position_utils").normalize_position(position)
-  -- Check if chunk is charted (dot syntax, correct API)
-  local chunk = { x = math.floor(norm_pos.x / 32), y = math.floor(norm_pos.y / 32) }
-  if not player.force.is_chunk_charted(player.surface, chunk) then
-    return false, "Position is not in charted territory"
-  end
-  return true, nil
-end
-
--- ========================================
 -- CHART TAG VALIDATION PATTERNS
 -- ========================================
 
@@ -184,31 +110,6 @@ end
 ---@return string? error_message
 function ValidationUtils.validate_chart_tag(chart_tag)
   return ValidationUtils.validate_factorio_object(chart_tag, "Chart tag")
-end
-
---- Validate chart tag with position check
----@param chart_tag LuaCustomChartTag|nil
----@return boolean is_valid
----@return string? error_message
-function ValidationUtils.validate_chart_tag_with_position(chart_tag)
-  local valid, error_msg = ValidationUtils.validate_chart_tag(chart_tag)
-  if not valid then
-    return false, error_msg
-  end
-  
-  -- chart_tag is guaranteed to be valid at this point
-  assert(chart_tag, "Chart tag should not be nil after validation")
-  
-  if not chart_tag.position then
-    return false, "Chart tag missing position"
-  end
-  
-  local pos_valid, pos_error = ValidationUtils.validate_position_structure(chart_tag.position)
-  if not pos_valid then
-    return false, "Chart tag has invalid position: " .. (pos_error or "unknown error")
-  end
-  
-  return true, nil
 end
 
 -- ========================================
@@ -223,27 +124,6 @@ function ValidationUtils.validate_tag_structure(tag)
   return ValidationUtils.validate_table_fields(tag, {"gps", "faved_by_players"}, "Tag")
 end
 
---- Validate tag using GPS patterns
----@param tag table|nil
----@return boolean is_valid
----@return string? error_message
-function ValidationUtils.validate_tag_with_gps(tag)
-  local valid, error_msg = ValidationUtils.validate_tag_structure(tag)
-  if not valid then
-    return false, error_msg
-  end
-  
-  -- tag is guaranteed to be valid at this point
-  assert(tag, "Tag should not be nil after validation")
-  
-  local gps_valid, gps_error = ValidationUtils.validate_gps_string(tag.gps)
-  if not gps_valid then
-    return false, "Tag has invalid GPS: " .. (gps_error or "unknown error")
-  end
-  
-  return true, nil
-end
-
 -- ========================================
 -- ICON AND SIGNAL VALIDATION
 -- ========================================
@@ -254,34 +134,6 @@ end
 ---@return string? error_message
 function ValidationUtils.validate_signal_structure(signal)
   return ValidationUtils.validate_table_fields(signal, {"type", "name"}, "Signal")
-end
-
---- Validate icon for chart tags
----@param icon table|nil
----@return boolean is_valid
----@return string? error_message
-function ValidationUtils.validate_chart_tag_icon(icon)
-  if not icon then
-    -- Icons are optional
-    return true, nil
-  end
-  
-  return ValidationUtils.validate_signal_structure(icon)
-end
-
---- Validate icon exists in game prototypes
----@param icon table Icon to validate
----@return boolean exists
----@return string? error_message
-function ValidationUtils.validate_icon_exists(icon)
-  local valid, error_msg = ValidationUtils.validate_signal_structure(icon)
-  if not valid then
-    return false, error_msg
-  end
-  
-  -- For now, just validate the structure. Runtime prototype checking can be added later.
-  -- The game's chart tag creation will fail gracefully if the icon doesn't exist.
-  return true, nil
 end
 
 --- Validate if an icon is valid for chart tag creation
@@ -302,26 +154,6 @@ function ValidationUtils.has_valid_icon(icon)
   end
   
   return false
-end
-
--- ========================================
--- SURFACE AND FORCE VALIDATION
--- ========================================
-
---- Validate surface object
----@param surface LuaSurface|nil
----@return boolean is_valid
----@return string? error_message
-function ValidationUtils.validate_surface(surface)
-  return ValidationUtils.validate_factorio_object(surface, "Surface")
-end
-
---- Validate force object
----@param force LuaForce|nil
----@return boolean is_valid
----@return string? error_message
-function ValidationUtils.validate_force(force)
-  return ValidationUtils.validate_factorio_object(force, "Force")
 end
 
 -- ========================================
@@ -348,7 +180,7 @@ function ValidationUtils.validate_position_operation(player, gps)
   end
   
   -- position is guaranteed to be valid at this point due to validation above
-  local range_valid, range_error = ValidationUtils.validate_position_range(position --[[@as MapPosition]])
+  local range_valid, range_error = PositionUtils.validate_position_range(position --[[@as MapPosition]])
   if not range_valid then
     return false, nil, range_error
   end
@@ -407,87 +239,9 @@ function ValidationUtils.validate_gui_element(element)
   return true, nil
 end
 
---- Validate GUI parent element for adding children
----@param parent LuaGuiElement|nil
----@return boolean is_valid
----@return string? error_message
-function ValidationUtils.validate_gui_parent(parent)
-  local valid, error_msg = ValidationUtils.validate_gui_element(parent)
-  if not valid then
-    return false, error_msg
-  end
-  
-  -- parent is guaranteed to be valid at this point
-  assert(parent, "Parent should not be nil after validation")
-  
-  -- Check if parent can contain children
-  if parent.type == "checkbox" or parent.type == "radiobutton" or 
-     parent.type == "textfield" or parent.type == "text-box" then
-    return false, "GUI element cannot contain children"
-  end
-  
-  return true, nil
-end
-
 -- ========================================
 -- UTILITY FUNCTIONS
 -- ========================================
-
---- Create standardized validation result with error logging
----@param is_valid boolean
----@param error_message string?
----@param context table? Additional context for logging
----@return boolean is_valid
----@return string? error_message
-function ValidationUtils.create_validation_result(is_valid, error_message, context)
-  if not is_valid and error_message then
-    ErrorHandler.debug_log("Validation failed", {
-      error = error_message,
-      context = context
-    })
-  end
-  
-  return is_valid, error_message
-end
-
---- Validate multiple inputs with early exit on first failure
----@param validations table[] Array of {func, args...} validation calls
----@return boolean all_valid
----@return string? first_error
-function ValidationUtils.validate_multiple(validations)
-  for _, validation in ipairs(validations) do
-    local func = validation[1]
-    local args = { table.unpack(validation, 2) }
-    
-    local valid, error_msg = func(table.unpack(args))
-    if not valid then
-      return false, error_msg
-    end
-  end
-  
-  return true, nil
-end
-
---- Validate input is not nil or empty
----@param value any
----@param field_name string
----@return boolean is_valid
----@return string? error_message
-function ValidationUtils.validate_not_empty(value, field_name)
-  if value == nil then
-    return false, field_name .. " cannot be nil"
-  end
-  
-  if type(value) == "string" and basic_helpers.trim(value) == "" then
-    return false, field_name .. " cannot be empty"
-  end
-  
-  if type(value) == "table" and next(value) == nil then
-    return false, field_name .. " cannot be an empty table"
-  end
-  
-  return true, nil
-end
 
 --- Validate text length for chart tags and other user inputs
 ---@param text string|nil The text to validate
@@ -509,25 +263,6 @@ function ValidationUtils.validate_text_length(text, max_length, field_name)
   
   if #text > max_length then
     return false, field_name .. " exceeds maximum length of " .. max_length .. " characters"
-  end
-  
-  return true, nil
-end
-
---- Validate numerical range
----@param value number
----@param min_val number
----@param max_val number
----@param field_name string
----@return boolean is_valid
----@return string? error_message
-function ValidationUtils.validate_range(value, min_val, max_val, field_name)
-  if type(value) ~= "number" then
-    return false, field_name .. " must be a number"
-  end
-  
-  if value < min_val or value > max_val then
-    return false, field_name .. " must be between " .. min_val .. " and " .. max_val
   end
   
   return true, nil
