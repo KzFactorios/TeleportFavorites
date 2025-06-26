@@ -84,8 +84,6 @@ function SlotInteractionHandlers.handle_toggle_lock(event, player, fav, slot, fa
       fave_bar.update_slot_row(player, bar_flow)
     end
     
-    local lock_state = fav.locked and "locked" or "unlocked"
-    GameHelpers.player_print(player, SharedUtils.lstr("tf-gui.fave_bar_lock_toggled", slot, lock_state))
     return true
   end
   return false
@@ -214,7 +212,6 @@ function SlotInteractionHandlers.handle_drop_on_slot(event, player, slot, favori
   
   -- Update the favorites bar GUI to reflect the new order
   fave_bar.build(player)
-  GameHelpers.player_print(player, {"tf-gui.fave_bar_reordered", source_slot, slot})
   
   return true
 end
@@ -236,7 +233,6 @@ function SlotInteractionHandlers.reorder_favorites(player, favorites, drag_index
 
   -- Rebuild the entire favorites bar to reflect new order
   fave_bar.build(player)
-  GameHelpers.player_print(player, SharedUtils.lstr("tf-gui.fave_bar_reordered", drag_index, slot))
   CursorUtils.end_drag_favorite(player)
   return true
 end

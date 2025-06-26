@@ -47,6 +47,7 @@ new conditional branches in the main handler function.
 local control_tag_editor = require("core.control.control_tag_editor")
 local GuiValidation = require("core.utils.gui_validation")
 local Enum = require("prototypes.enums.enum")
+local Cache = require("core.cache.cache")
 
 --- Handle on_gui_closed events for TeleportFavorites modal GUIs
 --- This function is called when a player presses ESC or clicks outside a modal GUI
@@ -61,6 +62,7 @@ local function on_gui_closed(event)
   local confirm_dialog = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
   if confirm_dialog and confirm_dialog.valid then
     confirm_dialog.destroy()
+    Cache.set_modal_dialog_state(player, nil) -- Clear modal state
     -- Restore modal focus to the tag editor
     local tag_editor_frame = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
     if tag_editor_frame and tag_editor_frame.valid then

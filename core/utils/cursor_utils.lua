@@ -30,53 +30,39 @@ function CursorUtils.start_drag_favorite(player, favorite, slot_index)
   player_data.drag_favorite.source_slot = slot_index
   player_data.drag_favorite.favorite = FavoriteUtils.copy(favorite)
   
-  -- Clear cursor first
-  player.clear_cursor()
+  -- Set cursor to a simple item for visual feedback during drag
+  -- Using iron plate as a neutral visual indicator
+  ErrorHandler.debug_log("[CURSOR_UTILS] Setting cursor icon for drag", {
+    player = player.name,
+    slot_index = slot_index
+  })
   
-  -- Try to set a visual indicator in the cursor with the favorite's icon if possible
-  if player.cursor_stack and player.cursor_stack.valid then
-    -- Blueprint approach for visual feedback
-    if player.cursor_stack.set_stack("blueprint") then
-      -- Blueprint successfully set in cursor
-      local label = "Favorite " .. slot_index
-      
-      -- Use tag text for the label if available
-      if favorite.tag and favorite.tag.chart_tag and favorite.tag.chart_tag.text and favorite.tag.chart_tag.text ~= "" then
-        label = favorite.tag.chart_tag.text
-      end
-      
-      -- Set the blueprint label
-      player.cursor_stack.label = label
-      
-      -- Try to create a blueprint with a constant combinator holding the signal
-      if favorite.tag and favorite.tag.chart_tag and favorite.tag.chart_tag.icon then
-        local icon = favorite.tag.chart_tag.icon
-        -- pcall here to handle any potential API errors safely
-        pcall(function()
-          -- Try to set the blueprint signal using entities
-          local signal = {type = icon.type, name = icon.name}
-          player.cursor_stack.set_blueprint_entities({{
-            entity_number = 1,
-            name = "constant-combinator",
-            position = {x = 0, y = 0},
-            control_behavior = {
-              filters = {{
-                count = 1,
-                index = 1,
-                signal = signal
-              }}
-            }
-          }})
-        end)
-      end
-      
-      -- Provide user feedback
-      GameHelpers.player_print(player, {"tf-gui.fave_bar_drag_start", slot_index, label})
-      ErrorHandler.debug_log("Set cursor to blueprint with label", { label = label })
-    else
-      -- Blueprint set failed, try a simpler approach (just text)
-      GameHelpers.player_print(player, {"tf-gui.fave_bar_drag_start", slot_index})
-    end
+  local success = pcall(function()
+    player.clear_cursor()
+    
+    -- Use cursor_ghost for visual feedback during drag
+    -- Using blueprint as it represents planning/positioning theme
+    ---@diagnostic disable-next-line: undefined-field
+    player.cursor_ghost = "blueprint"
+    
+    ErrorHandler.debug_log("[CURSOR_UTILS] Set cursor ghost to blueprint", {
+      player = player.name,
+      ---@diagnostic disable-next-line: undefined-field
+      cursor_ghost = player.cursor_ghost or "none"
+    })
+  end)
+  
+  if not success then
+    ErrorHandler.debug_log("[CURSOR_UTILS] Failed to set cursor ghost", {
+      player = player.name
+    })
+  end
+  
+  local label = "Favorite " .. slot_index
+  
+  -- Use tag text for the label if available
+  if favorite.tag and favorite.tag.chart_tag and favorite.tag.chart_tag.text and favorite.tag.chart_tag.text ~= "" then
+    label = favorite.tag.chart_tag.text
   end
   
   -- Success - both data and visual indicator are set
@@ -92,8 +78,13 @@ function CursorUtils.end_drag_favorite(player)
     return false
   end
   
-  -- Clear cursor first to ensure visual indicator is removed
-  player.clear_cursor()
+  -- Remove cursor item and clear cursor
+  pcall(function()
+    player.clear_cursor()
+    -- Also clear cursor_ghost if it was set
+    ---@diagnostic disable-next-line: undefined-field
+    player.cursor_ghost = nil
+  end)
   
   -- Reset drag state in player data
   local player_data = Cache.get_player_data(player)
@@ -127,20 +118,27 @@ function CursorUtils.is_dragging_favorite(player)
       source_slot = nil,
       favorite = nil
     }
+    return false, nil
   end
   
-  -- Check if drag is active and has a valid source slot
-  if player_data.drag_favorite.active and player_data.drag_favorite.source_slot then
-    -- Log the active drag state for debugging
-    ErrorHandler.debug_log("[CURSOR_UTILS] Detected active drag operation", {
-      player = player.name,
-      source_slot = player_data.drag_favorite.source_slot,
-      active = player_data.drag_favorite.active
-    })
-    return true, player_data.drag_favorite.source_slot
+  -- Return early if not active
+  if not player_data.drag_favorite.active then
+    return false, nil
   end
   
-  return false, nil
+  -- Return early if no source slot
+  if not player_data.drag_favorite.source_slot then
+    return false, nil
+  end
+  
+  -- Log the active drag state for debugging
+  ErrorHandler.debug_log("[CURSOR_UTILS] Detected active drag operation", {
+    player = player.name,
+    source_slot = player_data.drag_favorite.source_slot,
+    active = player_data.drag_favorite.active
+  })
+  
+  return true, player_data.drag_favorite.source_slot
 end
 
 return CursorUtils

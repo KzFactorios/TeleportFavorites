@@ -63,6 +63,8 @@ local PlayerStateHelpers = require("core.events.player_state_helpers")
 local GameHelpers = require("core.utils.game_helpers")
 local Settings = require("core.utils.settings_access")
 local PlayerFavorites = require("core.favorite.player_favorites")
+local GuiValidation = require("core.utils.gui_validation")
+local Enum = require("prototypes.enums.enum")
 
 -- Helper: Validate player and run handler logic
 local function with_valid_player(player_index, handler_fn, ...)
@@ -203,6 +205,7 @@ end
 
 function handlers.on_chart_tag_modified(event)
   with_valid_player(event.player_index, function(player)
+    -- Proceed with normal chart tag modification handling
     ErrorHandler.debug_log("Chart tag modified event received", {
       player_index = event.player_index,
       tag_valid = event.tag and event.tag.valid or false,
@@ -223,6 +226,40 @@ function handlers.on_chart_tag_modified(event)
       new_gps = new_gps or "nil",
       gps_changed = (old_gps or "") ~= (new_gps or "")
     })
+    
+    -- Check if this tag is currently open in the tag editor and update it
+    local tag_editor_data = Cache.get_tag_editor_data(player)
+    if tag_editor_data and tag_editor_data.gps == old_gps then
+      ErrorHandler.debug_log("Updating tag editor for moved tag", {
+        player = player.name,
+        old_gps = old_gps,
+        new_gps = new_gps
+      })
+      -- Update the GPS in tag editor data
+      tag_editor_data.gps = new_gps
+      if tag_editor_data.tag then
+        tag_editor_data.tag.gps = new_gps
+      end
+      Cache.set_tag_editor_data(player, tag_editor_data)
+      
+      -- Update the teleport button caption to show new coordinates
+      local tag_editor_frame = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+      if tag_editor_frame and tag_editor_frame.valid then
+        local teleport_btn = GuiValidation.find_child_by_name(tag_editor_frame, "tag_editor_teleport_button")
+        if teleport_btn and teleport_btn.valid then
+          ---@diagnostic disable-next-line: assign-type-mismatch
+          local coords_result = GPSUtils.coords_string_from_gps(new_gps)
+          local coords = coords_result or ""
+          ---@diagnostic disable-next-line: assign-type-mismatch
+          teleport_btn.caption = {"tf-gui.teleport_to", coords}
+          ErrorHandler.debug_log("Updated teleport button caption", {
+            player = player.name,
+            new_coords = coords
+          })
+        end
+      end
+    end
+    
     local chart_tag = event.tag
     if chart_tag and chart_tag.valid and chart_tag.position then
       -- Only normalize if the tag position has fractional coordinates

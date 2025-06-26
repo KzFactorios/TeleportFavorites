@@ -18,6 +18,7 @@ local Logger = require("core.utils.enhanced_error_handler")
 local GameHelpers = require("core.utils.game_helpers")
 local LocaleUtils = require("core.utils.locale_utils")
 local GuiBase = require("gui.gui_base")
+local Enum = require("prototypes.enums.ui_enums")
 
 ---@class GuiValidation
 local GuiValidation = {}
@@ -227,11 +228,11 @@ function GuiValidation.get_gui_frame_by_element(element)
     iterations = iterations + 1
     if current.type == "frame" then
       local name = current.name or ""
-      if name:find("tag_editor_outer_frame") or 
-         name:find("tag_editor_frame") or
-         name:find("data_viewer_outer_frame") or
-         name:find("data_viewer_frame") or
-         name:find("fave_bar_outer_frame") then
+      -- Use enum constants instead of hardcoded strings
+      if name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR or
+         name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM or  
+         name == Enum.GuiEnum.GUI_FRAME.DATA_VIEWER or
+         name == Enum.GuiEnum.GUI_FRAME.FAVE_BAR then
         return current
       end
     end

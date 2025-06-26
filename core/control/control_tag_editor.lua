@@ -345,6 +345,7 @@ local function handle_delete_confirm(player)
   if not tag_data then
     -- No cached data, just close the dialogs
     GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
+    Cache.set_modal_dialog_state(player, nil) -- Clear modal state
     close_tag_editor(player)
     return
   end
@@ -354,6 +355,7 @@ local function handle_delete_confirm(player)
   if not tag then
     -- Close both confirmation dialog and tag editor
     GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
+    Cache.set_modal_dialog_state(player, nil) -- Clear modal state
     close_tag_editor(player)
     -- Reset delete mode
     Cache.reset_tag_editor_delete_mode(player)
@@ -365,6 +367,7 @@ local function handle_delete_confirm(player)
 
   if not can_delete then
     GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
+    Cache.set_modal_dialog_state(player, nil) -- Clear modal state
     show_tag_editor_error(player, tag_data, reason or LocaleUtils.get_error_string(player, "tag_deletion_forbidden"))
     -- Reset delete mode
     Cache.reset_tag_editor_delete_mode(player)
@@ -399,6 +402,7 @@ local function handle_delete_confirm(player)
 
   -- Close both dialogs
   GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
+  Cache.set_modal_dialog_state(player, nil) -- Clear modal state
   close_tag_editor(player)
   -- Reset delete mode
   Cache.reset_tag_editor_delete_mode(player)
@@ -413,6 +417,7 @@ end
 local function handle_delete_cancel(player)
   -- User cancelled deletion - close confirmation dialog and return to tag editor
   GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
+  Cache.set_modal_dialog_state(player, nil) -- Clear modal state
   player.opened = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
   -- Reset delete mode
   Cache.reset_tag_editor_delete_mode(player)
@@ -437,12 +442,16 @@ local function handle_delete_btn(player, tag_data)
     message = { "tf-gui.confirm_delete_message" }
   })
 
+  -- Set modal dialog state to block other GUI interactions
+  Cache.set_modal_dialog_state(player, "delete_confirmation")
+
   -- DO NOT set player.opened to the confirm dialog!
   -- Keep player.opened as the tag editor frame so it remains modal and open
   player.opened = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
   ErrorHandler.debug_log("Confirmation dialog opened successfully", {
     player_name = player.name,
-    frame_lua_type = type(frame)
+    frame_lua_type = type(frame),
+    modal_state_set = true
   })
 end
 

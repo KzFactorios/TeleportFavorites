@@ -127,16 +127,34 @@ function M.register_gui_handlers(script)
     local player = game.get_player(event.player_index)
       if not player or not player.valid then return end
       
+      -- Check if a modal dialog is active and block non-dialog interactions
+      if Cache.is_modal_dialog_active(player) then
+        local element = event.element
+        if not element or not element.valid then return end
+        
+        -- Allow interactions only with the active modal dialog elements
+        local parent_gui = GuiValidation.get_gui_frame_by_element(element)
+        local is_confirmation_dialog = parent_gui and parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM
+        
+        if not is_confirmation_dialog then
+          ErrorHandler.debug_log("[DISPATCH] Blocking GUI interaction due to active modal dialog", {
+            player = player.name,
+            element_name = element.name,
+            modal_dialog_type = Cache.get_modal_dialog_type(player),
+            parent_gui = parent_gui and parent_gui.name or "none"
+          })
+          return -- Block all interactions except with the confirmation dialog
+        end
+      end
+      
       -- Check for right-click during drag operation
       if event.button == defines.mouse_button_type.right then
-        local is_dragging = false
         local player_data = Cache.get_player_data(player)
         -- Ensure drag_favorite is properly initialized
         if not player_data.drag_favorite then
           player_data.drag_favorite = {active = false, source_slot = nil, favorite = nil}
         end
         if player_data.drag_favorite.active then
-          is_dragging = true
           ErrorHandler.debug_log("[DISPATCH] Right-click detected during drag operation, cancelling drag", { 
             player = player.name, 
             source_slot = player_data.drag_favorite.source_slot,
@@ -280,13 +298,28 @@ function M.register_gui_handlers(script)
   -- Register text change handler for immediate storage saving
   local function shared_on_gui_text_changed(event)
     if not event or not event.element then return end
-    control_tag_editor.on_tag_editor_gui_text_changed(event)
+    
+    local player = game.get_player(event.player_index)
+    if not player or not player.valid then return end
+    
+    -- Allow text changes in tag editor even when modal dialog is active
+    -- (since user might be editing while confirmation dialog is open)
+    local element = event.element
+    local parent_gui = GuiValidation.get_gui_frame_by_element(element)
+    if parent_gui and parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
+      control_tag_editor.on_tag_editor_gui_text_changed(event)
+    end
   end
   script.on_event(defines.events.on_gui_text_changed, shared_on_gui_text_changed) -- Register elem changed handler for immediate storage saving (for icon picker)
 
   local function shared_on_gui_elem_changed(event)
     if not event or not event.element then return end
-    -- Handle icon picker changes in tag editor
+    
+    local player = game.get_player(event.player_index)
+    if not player or not player.valid then return end
+    
+    -- Allow elem changes in tag editor even when modal dialog is active
+    -- (since user might be changing icon while confirmation dialog is open)
     local element = event.element
     local parent_gui = GuiValidation.get_gui_frame_by_element(element)
     if parent_gui and parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then

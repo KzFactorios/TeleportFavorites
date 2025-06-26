@@ -312,8 +312,14 @@ function tag_editor.build(player)
   local outer = GuiValidation.find_child_by_name(parent, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
   if outer ~= nil then outer.destroy() end
 
-  local tag_editor_outer_frame = GuiBase.create_frame(parent, "tag_editor_frame", "vertical",
-    "tf_tag_editor_outer_frame")
+  -- Create modal tag editor frame to block map interactions (idiomatic Factorio)
+  local tag_editor_outer_frame = parent.add {
+    type = "frame",
+    name = "tag_editor_frame", 
+    direction = "vertical",
+    style = "tf_tag_editor_outer_frame",
+    modal = true
+  }
   tag_editor_outer_frame.auto_center = true
 
   local titlebar, title_label = build_titlebar(tag_editor_outer_frame)

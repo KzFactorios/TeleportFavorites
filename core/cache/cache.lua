@@ -203,6 +203,12 @@ local function init_player_data(player)
     favorite = nil
   }
   
+  -- Add modal dialog state tracking
+  player_data.modal_dialog = player_data.modal_dialog or {
+    active = false,
+    dialog_type = nil
+  }
+  
   return player_data
 end
 
@@ -466,6 +472,42 @@ function Cache.reset_tag_editor_delete_mode(player)
 
   -- Ensure we keep the tag_editor_data updated
   Cache.set_tag_editor_data(player, tag_data)
+end
+
+-- Modal dialog state management functions
+
+--- Set modal dialog state for a player
+---@param player LuaPlayer
+---@param dialog_type string|nil -- type of dialog that is modal, or nil to clear
+function Cache.set_modal_dialog_state(player, dialog_type)
+  if not player or not player.valid then return end
+  
+  local player_data = Cache.get_player_data(player)
+  player_data.modal_dialog.active = dialog_type ~= nil
+  player_data.modal_dialog.dialog_type = dialog_type
+end
+
+--- Check if a player has an active modal dialog
+---@param player LuaPlayer
+---@return boolean -- true if modal dialog is active
+function Cache.is_modal_dialog_active(player)
+  if not player or not player.valid then return false end
+  
+  local player_data = Cache.get_player_data(player)
+  return player_data.modal_dialog.active == true
+end
+
+--- Get the type of active modal dialog for a player
+---@param player LuaPlayer
+---@return string|nil -- dialog type or nil if no modal dialog active
+function Cache.get_modal_dialog_type(player)
+  if not player or not player.valid then return nil end
+  
+  local player_data = Cache.get_player_data(player)
+  if player_data.modal_dialog.active then
+    return player_data.modal_dialog.dialog_type
+  end
+  return nil
 end
 
 --- Generic sanitizer for objects to be stored in persistent storage
