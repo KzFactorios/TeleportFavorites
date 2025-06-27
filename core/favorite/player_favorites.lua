@@ -310,8 +310,36 @@ function PlayerFavorites:move_favorite(from_slot, to_slot)
     return false, "Cannot move locked favorite"
   end
 
-  local moved_fav = table.remove(self.favorites, math.floor(from_slot))
-  table.insert(self.favorites, math.floor(to_slot), moved_fav)
+  -- Store the favorite being moved
+  local moved_fav = self.favorites[from_slot]
+  
+  -- Create a copy of the favorites array to work with
+  local new_favorites = {}
+  for i = 1, #self.favorites do
+    new_favorites[i] = self.favorites[i]
+  end
+  
+  -- Remove the favorite from the source position by setting it to blank
+  new_favorites[from_slot] = FavoriteUtils.get_blank_favorite()
+  
+  -- Determine the direction of the move
+  if from_slot < to_slot then
+    -- Moving forward: shift items between from_slot and to_slot backward
+    for i = from_slot, to_slot - 1 do
+      new_favorites[i] = self.favorites[i + 1]
+    end
+  else
+    -- Moving backward: shift items between to_slot and from_slot forward
+    for i = from_slot, to_slot + 1, -1 do
+      new_favorites[i] = self.favorites[i - 1]
+    end
+  end
+  
+  -- Place the moved favorite at the destination
+  new_favorites[to_slot] = moved_fav
+  
+  -- Update the favorites array
+  self.favorites = new_favorites
 
   -- Ensure array stays correct size
   while #self.favorites < Constants.settings.MAX_FAVORITE_SLOTS do

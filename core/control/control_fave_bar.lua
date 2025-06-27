@@ -19,21 +19,13 @@ local PlayerFavorites = require("core.favorite.player_favorites")
 local FavoriteUtils = require("core.favorite.favorite")
 local FavoriteSlotUtils = require("core.favorite.favorite_slot_utils")
 local fave_bar = require("gui.favorites_bar.fave_bar")
-local GuiValidation = require("core.utils.gui_validation")
-local GuiAccessibility = require("core.utils.gui_accessibility")
 local ErrorHandler = require("core.utils.error_handler")
 local SlotInteractionHandlers = require("core.control.slot_interaction_handlers")
-local DragDropUtils = require("core.utils.drag_drop_utils")
 local GameHelpers = require("core.utils.game_helpers")
 local SharedUtils = require("core.control.control_shared_utils")
-
--- Observer Pattern Integration
-local GuiObserver = require("core.pattern.gui_observer")
-local GuiEventBus = GuiObserver.GuiEventBus
+local CursorUtils = require("core.utils.cursor_utils")
 
 local M = {}
-
-local CursorUtils = require("core.utils.cursor_utils")
 
 --- Reorder favorites using modular handlers
 ---@param player LuaPlayer The player
@@ -42,7 +34,23 @@ local CursorUtils = require("core.utils.cursor_utils")
 ---@param slot number The target slot index
 ---@return boolean success
 local function reorder_favorites(player, favorites, drag_index, slot)
-  -- Use the modular SlotInteractionHandlers for reordering
+  -- Custom drag algorithm: if destination is blank, swap and do not cascade
+  local favs = favorites.favorites
+  if not favs or not favs[drag_index] or not favs[slot] then return false end
+  local src_fav = favs[drag_index]
+  local dst_fav = favs[slot]
+  if FavoriteUtils.is_blank_favorite(dst_fav) then
+    -- Swap source and destination
+    favs[slot] = src_fav
+    favs[drag_index] = FavoriteUtils.get_blank_favorite()
+    favorites.favorites = favs
+    -- Removed player print for blank slot swap per user request
+    -- Rebuild bar and end drag
+    fave_bar.build(player)
+    CursorUtils.end_drag_favorite(player)
+    return true
+  end
+  -- Fallback to default cascade logic
   return SlotInteractionHandlers.reorder_favorites(player, favorites, drag_index, slot)
 end
 
