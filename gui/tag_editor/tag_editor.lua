@@ -287,7 +287,7 @@ local function build_last_row(parent)
   end
 
   local confirm_btn = GuiBase.create_element('button', row, {
-    name = "last_row_confirm_button",
+    name = "tag_editor_confirm_button",
     caption = { "tf-gui.confirm" },
     tooltip = { "tf-gui.confirm_tooltip" },
     style = "tf_dlg_confirm_button",
@@ -355,7 +355,7 @@ function tag_editor.build(player)
       build_rich_text_row(tag_editor_content_inner_frame, tag_data)
 
   local tag_editor_error_row_frame, error_row_error_message = build_error_row(tag_editor_outer_frame, tag_data)
-  local tag_editor_last_row, last_row_confirm_button = build_last_row(tag_editor_outer_frame)
+  local tag_editor_last_row, tag_editor_confirm_button = build_last_row(tag_editor_outer_frame)
 
   local refs = {
     titlebar = titlebar,
@@ -368,7 +368,7 @@ function tag_editor.build(player)
     icon_btn = tag_editor_icon_button,
     rich_text_input = tag_editor_rich_text_input,
     error_label = error_row_error_message,
-    confirm_btn = last_row_confirm_button,
+    confirm_btn = tag_editor_confirm_button,
     tag_editor_error_row_frame = tag_editor_error_row_frame,
     tag_editor_last_row = tag_editor_last_row,
     gps = gps
@@ -383,7 +383,7 @@ end
 
 -- Helper function to update confirm button state based on current tag data
 function tag_editor.update_confirm_button_state(player, tag_data)
-  local confirm_btn = GuiValidation.find_child_by_name(player.gui.screen, "last_row_confirm_button")
+  local confirm_btn = GuiValidation.find_child_by_name(player.gui.screen, "tag_editor_confirm_button")
   if not confirm_btn then return end
 
   -- Check if text input has content or icon is selected
@@ -449,7 +449,7 @@ function tag_editor.update_button_states(player, tag_data)
   local teleport_btn = GuiValidation.find_child_by_name(outer_frame, "tag_editor_teleport_button")
   local favorite_btn = GuiValidation.find_child_by_name(outer_frame, "tag_editor_is_favorite_button")
   local delete_btn = GuiValidation.find_child_by_name(outer_frame, "tag_editor_delete_button")
-  local confirm_btn = GuiValidation.find_child_by_name(outer_frame, "last_row_confirm_button")
+  local confirm_btn = GuiValidation.find_child_by_name(outer_frame, "tag_editor_confirm_button")
   local rich_text_input = GuiValidation.find_child_by_name(outer_frame, "tag_editor_rich_text_input")
 
   -- Determine ownership and permissions

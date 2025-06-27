@@ -84,6 +84,10 @@ end
 ---@param level number Debug level to check
 ---@return boolean should_log True if this level should be logged
 function DebugConfig.should_log(level)
+  if not level then return false end
+  if not current_debug_level then
+    current_debug_level = detect_environment()
+  end
   return level <= current_debug_level
 end
 

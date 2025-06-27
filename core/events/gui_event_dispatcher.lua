@@ -213,8 +213,13 @@ function M.register_gui_handlers(script)
         expected_tag_editor = Enum.GuiEnum.GUI_FRAME.TAG_EDITOR
       })
       if not parent_gui then
-        error("Element: " .. element.name .. ", parent GUI not found")
-      end -- Dispatch based on parent_gui
+        ErrorHandler.debug_log("[DISPATCH] Element parent GUI not found, skipping", {
+          element_name = element.name,
+          element_type = element.type or "unknown"
+        })
+        return
+      end
+      -- Dispatch based on parent_gui
       if parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR or parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM then
         ErrorHandler.debug_log("[DISPATCH] Routing to control_tag_editor.on_tag_editor_gui_click",
           { element = element.name, parent_gui = parent_gui.name })

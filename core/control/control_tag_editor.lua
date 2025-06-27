@@ -481,7 +481,7 @@ local function on_tag_editor_gui_click(event, script)
   if element.name == "tag_editor_title_row_close" then
     close_tag_editor(player)
     return
-  elseif element.name == "last_row_confirm_button" then
+  elseif element.name == "tag_editor_confirm_button" then
     -- Accept all button clicks for confirm button
     return handle_confirm_btn(player, element, tag_data)
   elseif element.name == "tag_editor_delete_button" then

@@ -187,7 +187,7 @@ tag_editor_outer_frame (frame, vertical, tf_tag_editor_outer_frame)
 │  └─ error_row_error_message (label, tf_tag_editor_error_label)
 └─ tag_editor_last_row (frame, horizontal, tf_tag_editor_last_row)
    ├─ tag_editor_last_row_draggable (empty-widget, tf_tag_editor_last_row_draggable)
-   └─ last_row_confirm_button (button, tf_confirm_button)
+   └─ tag_editor_confirm_button (button, tf_confirm_button)
 ```
 
 ```

@@ -162,7 +162,7 @@ UIEnums.GUI.TagEditor = {
   -- Action row
   LAST_ROW = "tag_editor_last_row",
   LAST_ROW_DRAGGABLE = "tag_editor_last_row_draggable",
-  CONFIRM_BUTTON = "last_row_confirm_button",
+  CONFIRM_BUTTON = "tag_editor_confirm_button",
 
   -- Confirmation dialog
   CONFIRM_DIALOG_FRAME = "tf_confirm_dialog_frame",
