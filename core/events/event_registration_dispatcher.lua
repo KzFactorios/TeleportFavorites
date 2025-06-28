@@ -54,7 +54,6 @@ local ErrorHandler = require("core.utils.error_handler")
 local GameHelpers = require("core.utils.game_helpers")
 local Settings = require("core.utils.settings_access")
 local fave_bar = require("gui.favorites_bar.fave_bar")
-local ChartTagUtils = require("core.utils.chart_tag_utils")
 local Cache = require("core.cache.cache")
 
 ---@class EventRegistrationDispatcher
@@ -85,13 +84,13 @@ local function create_safe_event_handler(handler, handler_name, event_type)
         error = err,
         player_index = event and event.player_index
       })
-        -- Show player message for user-facing errors if applicable
+      -- Show player message for user-facing errors if applicable
       if event and event.player_index then
         local player = game.get_player(event.player_index)
         if player and player.valid then
           -- Only show generic error message for critical failures
           if event_type:find("gui") or event_type:find("input") then
-            GameHelpers.player_print(player, {"tf-error.event_handler_error"})
+            GameHelpers.player_print(player, { "tf-error.event_handler_error" })
           end
         end
       end
@@ -107,18 +106,14 @@ function EventRegistrationDispatcher.register_core_events(script)
     ErrorHandler.warn_log("Invalid script object for core events registration")
     return false
   end
-  
+
   ErrorHandler.debug_log("Registering core lifecycle events")
-  
+
   local registration_count = 0
   local error_count = 0
-  
+
   -- Core lifecycle events
   local core_events = {
-    [defines.events.on_tick] = {
-      handler = handlers.on_tick,
-      name = "on_tick"
-    },
     [defines.events.on_player_created] = {
       handler = function(event)
         handlers.on_player_created(event)
@@ -143,30 +138,30 @@ function EventRegistrationDispatcher.register_core_events(script)
           -- Reset transient states for rejoining players
           -- This handles cases where cleanup on leave may have failed
           local player_data = Cache.get_player_data(player)
-          
+
           -- Reset drag mode state
           if player_data.drag_favorite then
             player_data.drag_favorite.active = false
             player_data.drag_favorite.source_slot = nil
             player_data.drag_favorite.favorite = nil
           end
-          
+
           -- Reset move mode state
           if player_data.tag_editor_data and player_data.tag_editor_data.move_mode then
             player_data.tag_editor_data.move_mode = false
             player_data.tag_editor_data.error_message = ""
           end
-          
+
           -- Clear cursor
           pcall(function()
             player.clear_cursor()
           end)
-          
+
           ErrorHandler.debug_log("Transient states reset for rejoining player", {
             player = player.name,
             player_index = player.index
           })
-          
+
           -- Import gui_observer safely
           local success, gui_observer = pcall(require, "core.pattern.gui_observer")
           if success and gui_observer.GuiEventBus and gui_observer.GuiEventBus.register_player_observers then
@@ -179,16 +174,17 @@ function EventRegistrationDispatcher.register_core_events(script)
     [defines.events.on_player_changed_surface] = {
       handler = handlers.on_player_changed_surface,
       name = "on_player_changed_surface"
-    },    [defines.events.on_player_left_game] = {
+    },
+    [defines.events.on_player_left_game] = {
       handler = function(event)
         -- Get the leaving player before handling chart tag ownership
         local leaving_player = game.get_player(event.player_index)
         local ErrorHandler = require("core.utils.error_handler")
-        
+
         -- Handle chart tag ownership reset
         local ChartTagOwnershipManager = require("core.control.chart_tag_ownership_manager")
         ChartTagOwnershipManager.on_player_left_game(event)
-        
+
         -- Reset drag mode and move mode states for leaving player
         if leaving_player and leaving_player.valid then
           -- Reset drag mode state
@@ -197,17 +193,13 @@ function EventRegistrationDispatcher.register_core_events(script)
           if player_data and player_data.drag_favorite and player_data.drag_favorite.active then
             local CursorUtils = require("core.utils.cursor_utils")
             CursorUtils.end_drag_favorite(leaving_player)
-            ErrorHandler.debug_log("Reset drag mode for leaving player", {
-              player = leaving_player.name,
-              player_index = leaving_player.index
-            })
           end
-          
+
           -- Reset move mode state and clear cursor
           pcall(function()
             leaving_player.clear_cursor()
           end)
-          
+
           -- Reset any tag editor move mode states
           local tag_data = Cache.get_tag_editor_data(leaving_player)
           -- Check if move_mode exists and is true (move_mode is dynamically set)
@@ -215,21 +207,13 @@ function EventRegistrationDispatcher.register_core_events(script)
           if move_mode_active then
             tag_data.move_mode = false
             Cache.set_tag_editor_data(leaving_player, tag_data)
-            ErrorHandler.debug_log("Reset move mode for leaving player", {
-              player = leaving_player.name,
-              player_index = leaving_player.index
-            })
           end
-          
+
           -- Clear any error messages to prevent persistence across sessions
           tag_data.error_message = ""
           Cache.set_tag_editor_data(leaving_player, tag_data)
-          ErrorHandler.debug_log("Cleared tag editor state for leaving player", {
-            player = leaving_player.name,
-            player_index = leaving_player.index
-          })
         end
-        
+
         -- Enhanced cleanup for leaving player using targeted methods
         local success, gui_observer = pcall(require, "core.pattern.gui_observer")
         if success and gui_observer.GuiEventBus then
@@ -252,11 +236,11 @@ function EventRegistrationDispatcher.register_core_events(script)
         -- Get the removed player before handling chart tag ownership
         local removed_player = game.get_player(event.player_index)
         local ErrorHandler = require("core.utils.error_handler")
-        
+
         -- Handle chart tag ownership reset
         local ChartTagOwnershipManager = require("core.control.chart_tag_ownership_manager")
         ChartTagOwnershipManager.on_player_removed(event)
-        
+
         -- Reset drag mode and move mode states for removed player
         if removed_player and removed_player.valid then
           -- Reset drag mode state
@@ -265,17 +249,13 @@ function EventRegistrationDispatcher.register_core_events(script)
           if player_data and player_data.drag_favorite and player_data.drag_favorite.active then
             local CursorUtils = require("core.utils.cursor_utils")
             CursorUtils.end_drag_favorite(removed_player)
-            ErrorHandler.debug_log("Reset drag mode for removed player", {
-              player = removed_player.name,
-              player_index = removed_player.index
-            })
           end
-          
+
           -- Reset move mode state and clear cursor
           pcall(function()
             removed_player.clear_cursor()
           end)
-          
+
           -- Reset any tag editor move mode states
           local tag_data = Cache.get_tag_editor_data(removed_player)
           -- Check if move_mode exists and is true (move_mode is dynamically set)
@@ -283,21 +263,13 @@ function EventRegistrationDispatcher.register_core_events(script)
           if move_mode_active then
             tag_data.move_mode = false
             Cache.set_tag_editor_data(removed_player, tag_data)
-            ErrorHandler.debug_log("Reset move mode for removed player", {
-              player = removed_player.name,
-              player_index = removed_player.index
-            })
           end
-          
+
           -- Clear any error messages to prevent persistence across sessions
           tag_data.error_message = ""
           Cache.set_tag_editor_data(removed_player, tag_data)
-          ErrorHandler.debug_log("Cleared tag editor state for removed player", {
-            player = removed_player.name,
-            player_index = removed_player.index
-          })
         end
-        
+
         -- Enhanced cleanup for removed player using targeted methods
         local success, gui_observer = pcall(require, "core.pattern.gui_observer")
         if success and gui_observer.GuiEventBus then
@@ -314,8 +286,9 @@ function EventRegistrationDispatcher.register_core_events(script)
         end
       end,
       name = "on_player_removed"
-    },[defines.events.on_runtime_mod_setting_changed] = {
-      handler = function(event)          -- Handle changes to the favorites on/off setting
+    },
+    [defines.events.on_runtime_mod_setting_changed] = {
+      handler = function(event) -- Handle changes to the favorites on/off setting
         if event.setting == "favorites-on" then
           for _, player in pairs(game.connected_players) do
             local player_settings = Settings:getPlayerSettings(player)
@@ -325,14 +298,16 @@ function EventRegistrationDispatcher.register_core_events(script)
               fave_bar.destroy(player)
             end
           end
-          return        end
+          return
+        end
 
         -- Handle changes to the destination message setting
         if event.setting == "destination-msg-on" then
           ErrorHandler.debug_log("Destination message setting changed", {
             player_index = event.player_index
           })
-          return        end
+          return
+        end
       end,
       name = "on_runtime_mod_setting_changed"
     },
@@ -350,7 +325,7 @@ function EventRegistrationDispatcher.register_core_events(script)
       name = "on_chart_tag_removed"
     }
   }
-  
+
   -- Add scheduled GUI observer cleanup (every 5 minutes = 18000 ticks)
   local success, err = pcall(function()
     script.on_nth_tick(18000, function(event)
@@ -360,25 +335,25 @@ function EventRegistrationDispatcher.register_core_events(script)
       end
     end)
   end)
-  
+
   if not success then
     ErrorHandler.warn_log("Failed to register periodic GUI observer cleanup", { error = err })
   else
     ErrorHandler.debug_log("Registered periodic GUI observer cleanup (every 5 minutes)")
   end
-  
+
   -- Register each core event with safety wrapper
   for event_type, event_config in pairs(core_events) do
     local safe_handler = create_safe_event_handler(
-      event_config.handler, 
-      event_config.name, 
+      event_config.handler,
+      event_config.name,
       "core_event"
     )
-    
+
     local success, err = pcall(function()
       script.on_event(event_type, safe_handler)
     end)
-    
+
     if success then
       registration_count = registration_count + 1
       ErrorHandler.debug_log("Registered core event", { event = event_config.name })
@@ -389,12 +364,12 @@ function EventRegistrationDispatcher.register_core_events(script)
         error = err
       })
     end
-  end  
+  end
   ErrorHandler.debug_log("Core events registration complete", {
     registered = registration_count,
     errors = error_count
   })
-  
+
   return error_count == 0
 end
 
@@ -406,35 +381,35 @@ function EventRegistrationDispatcher.register_gui_events(script)
     ErrorHandler.warn_log("Invalid script object for GUI events registration")
     return false
   end
-  
+
   ErrorHandler.debug_log("Registering GUI events")
-  
+
   local success = true
-  
+
   -- Register through centralized GUI dispatcher
   local gui_success = pcall(gui_event_dispatcher.register_gui_handlers, script)
   if not gui_success then
     ErrorHandler.warn_log("Failed to register GUI events through dispatcher")
     success = false
   end
-  
+
   -- Register GUI closed handler for ESC key support
   local closed_handler = create_safe_event_handler(
     on_gui_closed_handler.on_gui_closed,
     "on_gui_closed",
     "gui_event"
   )
-  
+
   local closed_success = pcall(function()
     script.on_event(defines.events.on_gui_closed, closed_handler)
   end)
-  
+
   if not closed_success then
     ErrorHandler.warn_log("Failed to register on_gui_closed handler")
     success = false
-  end  
+  end
   ErrorHandler.debug_log("GUI events registration complete", { success = success })
-  
+
   return success
 end
 
@@ -446,35 +421,35 @@ function EventRegistrationDispatcher.register_custom_input_events(script)
     ErrorHandler.warn_log("Invalid script object for custom input events registration")
     return false
   end
-  
+
   ErrorHandler.debug_log("Registering custom input events")
-  
+
   local success = true
-  
+
   -- Register default custom inputs through dispatcher
   local input_success = pcall(custom_input_dispatcher.register_default_inputs, script)
   if not input_success then
     ErrorHandler.warn_log("Failed to register custom input events through dispatcher")
     success = false
   end
-  
+
   -- Register custom tag editor input
   local tag_editor_handler = create_safe_event_handler(
     handlers.on_open_tag_editor_custom_input,
     "tf-open-tag-editor",
     "custom_input"
   )
-  
+
   local tag_editor_success = pcall(function()
     script.on_event("tf-open-tag-editor", tag_editor_handler)
   end)
-  
+
   if not tag_editor_success then
     ErrorHandler.warn_log("Failed to register tag editor custom input")
     success = false
-  end  
+  end
   ErrorHandler.debug_log("Custom input events registration complete", { success = success })
-  
+
   return success
 end
 
@@ -486,9 +461,9 @@ function EventRegistrationDispatcher.register_observer_events(script)
     ErrorHandler.warn_log("Invalid script object for observer events registration")
     return false
   end
-  
+
   ErrorHandler.debug_log("Observer events registration complete")
-  
+
   return true
 end
 
@@ -500,13 +475,13 @@ function EventRegistrationDispatcher.register_data_viewer_events(script)
     ErrorHandler.warn_log("Invalid script object for data viewer events registration")
     return false
   end
-  
+
   local success = pcall(control_data_viewer.register, script)
   if not success then
     ErrorHandler.warn_log("Failed to register data viewer events")
     return false
   end
-  
+
   ErrorHandler.debug_log("Data viewer events registration complete")
   return true
 end
@@ -519,19 +494,19 @@ function EventRegistrationDispatcher.register_all_events(script)
     ErrorHandler.warn_log("Invalid script object provided to register_all_events")
     return false
   end
-  
+
   ErrorHandler.debug_log("Starting comprehensive event registration")
-  
+
   local results = {}
   local overall_success = true
-  
+
   -- Register in dependency order
   results.core = EventRegistrationDispatcher.register_core_events(script)
   results.gui = EventRegistrationDispatcher.register_gui_events(script)
   results.custom_input = EventRegistrationDispatcher.register_custom_input_events(script)
   results.observer = EventRegistrationDispatcher.register_observer_events(script)
   results.data_viewer = EventRegistrationDispatcher.register_data_viewer_events(script)
-  
+
   -- Check overall success
   for category, success in pairs(results) do
     if not success then
@@ -539,12 +514,7 @@ function EventRegistrationDispatcher.register_all_events(script)
       ErrorHandler.warn_log("Event registration failed for category", { category = category })
     end
   end
-  
-  ErrorHandler.debug_log("Event registration complete", {
-    overall_success = overall_success,
-    results = results
-  })
-  
+
   return overall_success
 end
 

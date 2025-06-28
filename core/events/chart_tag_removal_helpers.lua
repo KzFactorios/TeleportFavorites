@@ -22,7 +22,6 @@ local AdminUtils = require("core.utils.admin_utils")
 local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
 local RichTextFormatter = require("core.utils.rich_text_formatter")
-local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 
 ---@class ChartTagRemovalHelpers
 local ChartTagRemovalHelpers = {}
@@ -84,10 +83,8 @@ function ChartTagRemovalHelpers.recreate_protected_chart_tag(chart_tag, player, 
       tag.chart_tag = new_chart_tag
     end
     
-    -- Refresh the cache
     Cache.Lookups.invalidate_surface_chart_tags(surface_index)
     
-    -- Notify the player
     local deletion_msg = RichTextFormatter.deletion_prevention_notification(new_chart_tag)
     GameHelpers.player_print(player, deletion_msg)
     

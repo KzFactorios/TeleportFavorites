@@ -15,7 +15,6 @@ maintainability and support for multiplayer scenarios.
 ]]
 
 local Cache = require("core.cache.cache")
-local ErrorHandler = require("core.utils.error_handler")
 
 ---@class PlayerStateHelpers
 local PlayerStateHelpers = {}
@@ -32,29 +31,16 @@ function PlayerStateHelpers.reset_transient_player_states(player)
     player_data.drag_favorite.active = false
     player_data.drag_favorite.source_slot = nil
     player_data.drag_favorite.favorite = nil
-    ErrorHandler.debug_log("Reset drag mode state on player join", {
-      player = player.name,
-      player_index = player.index
-    })
   end
   
   -- Reset move mode state in tag editor
   if player_data.tag_editor_data then
     if player_data.tag_editor_data.move_mode then
       player_data.tag_editor_data.move_mode = false
-      ErrorHandler.debug_log("Reset move mode state on player join", {
-        player = player.name,
-        player_index = player.index
-      })
     end
     -- Clear any error messages from previous session
     player_data.tag_editor_data.error_message = ""
   end
-  
-  ErrorHandler.debug_log("Reset transient player states completed", {
-    player = player.name,
-    player_index = player.index
-  })
 end
 
 return PlayerStateHelpers

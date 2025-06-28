@@ -35,13 +35,11 @@ end
 
 -- Dependencies
 local control_data_viewer = require("core.control.control_data_viewer")
-local handlers = require("core.events.handlers")
 local GameHelpers = require("core.utils.game_helpers")
 local ErrorHandler = require("core.utils.error_handler")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local FavoriteUtils = require("core.favorite.favorite")
 local Enum = require("prototypes.enums.enum")
-local GPSUtils = require("core.utils.gps_utils")
 local Tag = require("core.tag.tag")
 
 
@@ -79,10 +77,6 @@ local function create_safe_handler(handler, handler_name)
           GameHelpers.player_print(player, {"tf-error.input_handler_error"})
         end
       end
-    else
-      ErrorHandler.debug_log("Custom input handled successfully", {
-        handler_name = handler_name
-      })
     end
   end
 end
@@ -96,17 +90,9 @@ local function handle_teleport_to_favorite_slot(event, slot_number)
     ErrorHandler.debug_log("Invalid player in teleport handler", { player_index = event.player_index })
     return 
   end
-  
-  ErrorHandler.debug_log("Attempting teleport to favorite slot", {
-    player = player.name,
-    slot = slot_number,
-    input_name = event.input_name
-  })
-  
-  -- Get player favorites
+
   local player_favorites = PlayerFavorites.new(player)
   if not player_favorites or not player_favorites.favorites then
-    ErrorHandler.debug_log("No favorites found for player", { player = player.name })
     GameHelpers.player_print(player, {"tf-gui.no_favorites_available"})
     return
   end
@@ -118,12 +104,6 @@ local function handle_teleport_to_favorite_slot(event, slot_number)
     GameHelpers.player_print(player, {"tf-gui.favorite_slot_empty"})
     return
   end
-  
-  ErrorHandler.debug_log("Found favorite, attempting teleport", {
-    player = player.name,
-    slot = slot_number,
-    gps = favorite.gps
-  })
   
   -- Use Tag module for teleportation (already has all the strategy logic)
   local result = Tag.teleport_player_with_messaging(player, favorite.gps, nil)
@@ -140,7 +120,6 @@ end
 
 local default_custom_input_handlers = {
   ["dv-toggle-data-viewer"] = control_data_viewer.on_toggle_data_viewer,
-  -- Teleport to favorite slot handlers (Ctrl+1 through Ctrl+0)
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "1"] = function(event) handle_teleport_to_favorite_slot(event, 1) end,
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "2"] = function(event) handle_teleport_to_favorite_slot(event, 2) end,
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "3"] = function(event) handle_teleport_to_favorite_slot(event, 3) end,
@@ -151,10 +130,7 @@ local default_custom_input_handlers = {
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "8"] = function(event) handle_teleport_to_favorite_slot(event, 8) end,
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "9"] = function(event) handle_teleport_to_favorite_slot(event, 9) end,
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "10"] = function(event) handle_teleport_to_favorite_slot(event, 10) end,
-  -- Add more custom input handlers here as needed
 }
-
--- Public API
 
 --- Register custom input handlers with comprehensive validation
 ---@param script table The Factorio script object
@@ -219,16 +195,6 @@ end
 function M.register_default_inputs(script)
   ErrorHandler.debug_log("Registering default custom inputs")
   return M.register_custom_inputs(script, default_custom_input_handlers)
-end
-
---- Get a copy of the default handlers (for testing or extension)
----@return table<string, function> Copy of default handlers
-function M.get_default_handlers()
-  local copy = {}
-  for name, handler in pairs(default_custom_input_handlers) do
-    copy[name] = handler
-  end
-  return copy
 end
 
 return M

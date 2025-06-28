@@ -76,12 +76,6 @@ local function on_gui_closed(event)
     control_tag_editor.close_tag_editor(player)
     return
   end
-    -- Future GUI handlers can be added here:
-  -- local data_viewer_frame = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.DATA_VIEWER)
-  -- if data_viewer_frame and data_viewer_frame.valid then
-  --   control_data_viewer.close_data_viewer(player)
-  --   return
-  -- end
 end
 
 return {

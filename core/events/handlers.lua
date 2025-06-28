@@ -49,7 +49,6 @@ API:
 
 local Cache = require("core.cache.cache")
 local Logger = require("core.utils.enhanced_error_handler")
-local fave_bar = require("gui.favorites_bar.fave_bar")
 local PositionUtils = require("core.utils.position_utils")
 local GPSUtils = require("core.utils.gps_utils")
 local ErrorHandler = require("core.utils.error_handler")
@@ -60,7 +59,6 @@ local TagEditorEventHelpers = require("core.events.tag_editor_event_helpers")
 local ChartTagModificationHelpers = require("core.events.chart_tag_modification_helpers")
 local ChartTagRemovalHelpers = require("core.events.chart_tag_removal_helpers")
 local PlayerStateHelpers = require("core.events.player_state_helpers")
-local GameHelpers = require("core.utils.game_helpers")
 local Settings = require("core.utils.settings_access")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local GuiValidation = require("core.utils.gui_validation")
@@ -129,25 +127,11 @@ function handlers.on_open_tag_editor_custom_input(event)
       local gps = GPSUtils.gps_from_map_position(chart_tag.position, tonumber(chart_tag.surface and chart_tag.surface.index or player.surface.index) or 1)
       local tag_fave = Cache.get_tag_by_gps(player, gps)
       
-      ErrorHandler.debug_log("Tag favorite lookup", {
-        gps = gps,
-        tag_fave_exists = tag_fave ~= nil,
-        tag_fave_type = type(tag_fave),
-        player_name = player.name
-      })
-      
       -- Check if this GPS is in the player's favorites using PlayerFavorites
       local player_favorites = PlayerFavorites.new(player)
       local favorite_entry, favorite_slot = player_favorites:get_favorite_by_gps(gps)
       local is_favorite = favorite_entry ~= nil
-      
-      ErrorHandler.debug_log("Favorite detection", {
-        gps = gps,
-        player_name = player.name,
-        is_favorite = is_favorite,
-        favorite_slot = favorite_slot,
-        has_favorite_entry = favorite_entry ~= nil
-      })
+
       -- Try multiple ways to get the icon safely
       local icon = nil
       -- Try direct icon field
@@ -171,15 +155,6 @@ function handlers.on_open_tag_editor_custom_input(event)
           icon = fave_icon
         end
       end
-      
-      ErrorHandler.debug_log("Tag editor icon detection", {
-        has_chart_icon = chart_icon ~= nil,
-        has_fave_icon = tag_fave and tag_fave["icon"] ~= nil,
-        final_icon = icon ~= nil,
-        icon_type = type(icon),
-        is_favorite = is_favorite,
-        faved_by_players_count = faved_by_players and #faved_by_players or 0
-      })
       
       tag_data.chart_tag = chart_tag
       tag_data.tag = {
@@ -205,14 +180,7 @@ end
 
 function handlers.on_chart_tag_modified(event)
   with_valid_player(event.player_index, function(player)
-    -- Proceed with normal chart tag modification handling
-    ErrorHandler.debug_log("Chart tag modified event received", {
-      player_index = event.player_index,
-      tag_valid = event.tag and event.tag.valid or false,
-      tag_position = event.tag and event.tag.position or "nil",
-      old_position = event.old_position or "nil",
-      has_old_position = event.old_position ~= nil
-    })
+
     if not ChartTagModificationHelpers.is_valid_tag_modification(event, player) then 
       ErrorHandler.debug_log("Chart tag modification validation failed", {
         player_name = player.name
@@ -220,21 +188,10 @@ function handlers.on_chart_tag_modified(event)
       return 
     end
     local new_gps, old_gps = ChartTagModificationHelpers.extract_gps(event, player)
-    ErrorHandler.debug_log("Chart tag GPS extraction results", {
-      player_name = player.name,
-      old_gps = old_gps or "nil",
-      new_gps = new_gps or "nil",
-      gps_changed = (old_gps or "") ~= (new_gps or "")
-    })
     
     -- Check if this tag is currently open in the tag editor and update it
     local tag_editor_data = Cache.get_tag_editor_data(player)
     if tag_editor_data and tag_editor_data.gps == old_gps then
-      ErrorHandler.debug_log("Updating tag editor for moved tag", {
-        player = player.name,
-        old_gps = old_gps,
-        new_gps = new_gps
-      })
       -- Update the GPS in tag editor data
       tag_editor_data.gps = new_gps
       if tag_editor_data.tag then
@@ -252,10 +209,6 @@ function handlers.on_chart_tag_modified(event)
           local coords = coords_result or ""
           ---@diagnostic disable-next-line: assign-type-mismatch
           teleport_btn.caption = {"tf-gui.teleport_to", coords}
-          ErrorHandler.debug_log("Updated teleport button caption", {
-            player = player.name,
-            new_coords = coords
-          })
         end
       end
     end
@@ -278,14 +231,7 @@ function handlers.on_chart_tag_modified(event)
           -- After normalization, recalculate GPS coordinates for the new chart tag
           local surface_index = new_chart_tag.surface and new_chart_tag.surface.index or 1
           local normalized_gps = GPSUtils.gps_from_map_position(new_chart_tag.position, tonumber(surface_index) or 1)
-          
-          ErrorHandler.debug_log("Chart tag normalized, updating GPS references", {
-            player_name = player.name,
-            old_gps = old_gps,
-            new_gps = new_gps,
-            normalized_gps = normalized_gps
-          })
-          
+
           -- Update using the normalized GPS as the final new GPS
           if old_gps and normalized_gps and old_gps ~= normalized_gps then
             -- Create a modified event with the new chart tag for cleanup
@@ -300,21 +246,8 @@ function handlers.on_chart_tag_modified(event)
           end
         end
       else
-        -- Normal tag move without fractional coordinates - no normalization needed
-        ErrorHandler.debug_log("Chart tag move without fractional coordinates", {
-          player_name = player.name,
-          position = chart_tag.position,
-          old_gps = old_gps,
-          new_gps = new_gps
-        })
         
         if old_gps and new_gps and old_gps ~= new_gps then
-          ErrorHandler.debug_log("Chart tag modified - updating favorites GPS", {
-            player_name = player.name,
-            old_gps = old_gps,
-            new_gps = new_gps
-          })
-          
           -- Update tag data and cache using the original chart tag
           ChartTagModificationHelpers.update_tag_and_cleanup(old_gps, new_gps, event, player)
           
@@ -342,12 +275,6 @@ function handlers.on_chart_tag_removed(event)
   if not game.get_player(event.player_index) or not game.get_player(event.player_index).valid then
     Cache.Lookups.invalidate_surface_chart_tags(surface_index)
     return
-  end
-end
-
-function handlers.on_tick(event)
-  if event.tick % 300 == 0 then
-    Logger.take_memory_snapshot()
   end
 end
 
