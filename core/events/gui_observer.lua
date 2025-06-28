@@ -411,7 +411,7 @@ function NotificationObserver:new(player)
   return obj
 end
 
---- Handle notification-related events
+--- Handle invalid chart tag notification events
 ---@param event_data table
 function NotificationObserver:update(event_data)
   if not self:is_valid() or not event_data then return end
@@ -545,5 +545,6 @@ return {
   GuiEventBus = GuiEventBus,
   BaseGuiObserver = BaseGuiObserver,
   FavoriteObserver = FavoriteObserver,
-  DataObserver = DataObserver
+  DataObserver = DataObserver,
+  NotificationObserver = NotificationObserver
 }

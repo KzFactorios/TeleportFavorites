@@ -1,6 +1,6 @@
 ---@diagnostic disable: undefined-doc-param, param-type-mismatch, missing-parameter
 --[[
-core/pattern/teleport_strategy.lua
+core/utils/teleport_strategy.lua
 TeleportFavorites Factorio Mod
 -----------------------------
 Strategy Pattern implementation for teleportation logic.
@@ -28,12 +28,10 @@ API:
 ]]
 
 local GPSUtils = require("core.utils.gps_utils")
-local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 local ErrorHandler = require("core.utils.error_handler")
 local Enum = require("prototypes.enums.enum")
 local LocaleUtils = require("core.utils.locale_utils")
 local TileUtils = require("core.utils.tile_utils")
-local settings_access = require("core.utils.settings_access")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
 
 ---@class TeleportContext

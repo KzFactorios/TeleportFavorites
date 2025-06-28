@@ -121,7 +121,7 @@ function EventRegistrationDispatcher.register_core_events(script)
         local player = game.get_player(event.player_index)
         if player and player.valid then
           -- Import gui_observer safely
-          local success, gui_observer = pcall(require, "core.pattern.gui_observer")
+          local success, gui_observer = pcall(require, "core.events.gui_observer")
           if success and gui_observer.GuiEventBus and gui_observer.GuiEventBus.register_player_observers then
             gui_observer.GuiEventBus.register_player_observers(player)
           end
@@ -163,7 +163,7 @@ function EventRegistrationDispatcher.register_core_events(script)
           })
 
           -- Import gui_observer safely
-          local success, gui_observer = pcall(require, "core.pattern.gui_observer")
+          local success, gui_observer = pcall(require, "core.events.gui_observer")
           if success and gui_observer.GuiEventBus and gui_observer.GuiEventBus.register_player_observers then
             gui_observer.GuiEventBus.register_player_observers(player)
           end
@@ -215,7 +215,7 @@ function EventRegistrationDispatcher.register_core_events(script)
         end
 
         -- Enhanced cleanup for leaving player using targeted methods
-        local success, gui_observer = pcall(require, "core.pattern.gui_observer")
+        local success, gui_observer = pcall(require, "core.events.gui_observer")
         if success and gui_observer.GuiEventBus then
           if leaving_player and leaving_player.valid and gui_observer.GuiEventBus.cleanup_player_observers then
             -- Use targeted player cleanup
@@ -271,7 +271,7 @@ function EventRegistrationDispatcher.register_core_events(script)
         end
 
         -- Enhanced cleanup for removed player using targeted methods
-        local success, gui_observer = pcall(require, "core.pattern.gui_observer")
+        local success, gui_observer = pcall(require, "core.events.gui_observer")
         if success and gui_observer.GuiEventBus then
           if removed_player and removed_player.valid and gui_observer.GuiEventBus.cleanup_player_observers then
             -- Use targeted player cleanup
@@ -329,7 +329,7 @@ function EventRegistrationDispatcher.register_core_events(script)
   -- Add scheduled GUI observer cleanup (every 5 minutes = 18000 ticks)
   local success, err = pcall(function()
     script.on_nth_tick(18000, function(event)
-      local gui_observer_success, gui_observer = pcall(require, "core.pattern.gui_observer")
+      local gui_observer_success, gui_observer = pcall(require, "core.events.gui_observer")
       if gui_observer_success and gui_observer.GuiEventBus and gui_observer.GuiEventBus.schedule_periodic_cleanup then
         gui_observer.GuiEventBus.schedule_periodic_cleanup()
       end

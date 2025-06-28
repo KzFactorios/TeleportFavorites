@@ -15,10 +15,7 @@ local CursorUtils = {}
 ---@param slot_index number The slot index being dragged from (1-based)
 ---@return boolean success
 function CursorUtils.start_drag_favorite(player, favorite, slot_index)
-  if not player or not player.valid then
-    ErrorHandler.log_error("CursorUtils.start_drag_favorite: Invalid player")
-    return false
-  end
+  if not player or not player.valid then return false end
   
   if not favorite or FavoriteUtils.is_blank_favorite(favorite) then
     return false

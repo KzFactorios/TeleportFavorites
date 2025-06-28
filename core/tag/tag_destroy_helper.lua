@@ -70,10 +70,6 @@ end
 ---@return number cleaned_count Number of favorites cleaned up
 local function cleanup_player_favorites(tag)
   if not tag or not _G.game or type(_G.game.players) ~= "table" then 
-    ErrorHandler.debug_log("Cannot cleanup player favorites: missing game or players", {
-      has_tag = tag ~= nil,
-      has_game = _G.game ~= nil
-    })
     return 0 
   end
   
@@ -85,18 +81,10 @@ local function cleanup_player_favorites(tag)
         fave.gps = ""
         fave.locked = false
         cleaned_count = cleaned_count + 1
-        ErrorHandler.debug_log("Cleaned favorite for player", {
-          player_name = player.name,
-          old_gps = tag.gps
-        })
       end
     end
   end
-  
-  ErrorHandler.debug_log("Player favorites cleanup completed", {
-    tag_gps = tag.gps,
-    cleaned_count = cleaned_count
-  })
+
   return cleaned_count
 end
 
@@ -117,11 +105,6 @@ local function cleanup_faved_by_players(tag)
       end
     end
   end
-  
-  ErrorHandler.debug_log("Faved by players cleanup completed", {
-    original_count = original_count,
-    final_count = #tag.faved_by_players
-  })
 end
 
 --- Validate inputs for destruction
@@ -160,7 +143,6 @@ local function safe_destroy_with_cleanup(tag, chart_tag)
       if has_any_favorites(tag) then
         local cleaned_count = cleanup_player_favorites(tag)
         cleanup_faved_by_players(tag)
-        ErrorHandler.debug_log("Favorites cleanup completed", { cleaned_count = cleaned_count })
       end
       
       Cache.remove_stored_tag(tag.gps)
@@ -187,20 +169,10 @@ end
 ---@param chart_tag LuaCustomChartTag|nil Chart tag object (may be nil)
 ---@return boolean success True if destruction completed successfully
 local function destroy_tag_and_chart_tag(tag, chart_tag)
-  ErrorHandler.debug_log("Starting tag destruction", {
-    has_tag = tag ~= nil,
-    has_chart_tag = chart_tag ~= nil,
-    tag_gps = tag and tag.gps,
-    chart_tag_valid = chart_tag and chart_tag.valid
-  })
-  
-  -- Early return if already being destroyed (recursion guard)
   if tag and destroying_tags[tag] then 
-    ErrorHandler.debug_log("Tag already being destroyed, skipping")
     return true 
   end
   if chart_tag and destroying_chart_tags[chart_tag] then 
-    ErrorHandler.debug_log("Chart tag already being destroyed, skipping")
     return true 
   end
   
@@ -221,11 +193,6 @@ local function destroy_tag_and_chart_tag(tag, chart_tag)
   -- Clean up destruction guards
   if tag then destroying_tags[tag] = nil end
   if chart_tag then destroying_chart_tags[chart_tag] = nil end
-  
-  ErrorHandler.debug_log("Tag destruction completed", { 
-    success = success,
-    tag_gps = tag and tag.gps
-  })
   
   return success
 end

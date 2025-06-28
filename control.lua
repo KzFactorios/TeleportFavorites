@@ -35,7 +35,7 @@ local gui_observer = nil
 local did_run_fave_bar_startup = false
 
 -- Optional modules - load safely
-local success, module = pcall(require, "core.pattern.gui_observer")
+local success, module = pcall(require, "core.events.gui_observer")
 if success then gui_observer = module end
 
 -- Log control.lua loading

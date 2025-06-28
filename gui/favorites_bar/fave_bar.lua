@@ -213,11 +213,10 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
     local fav = pfaves[i]
     fav = FavoriteRehydration.rehydrate_favorite_at_runtime(player, fav)
     local btn_icon, tooltip, style, locked = get_slot_btn_props(i, fav)
-    ErrorHandler.debug_log("[FAVE_BAR] Creating slot button", {slot = i, icon = btn_icon, tooltip = tooltip, style = style})
     local btn = GuiStyling.create_slot_button(parent, "fave_bar_slot_" .. i, tostring(btn_icon), tooltip, { style = style })
     if btn and btn.valid then
       local label_style = locked and "tf_fave_bar_locked_slot_number" or "tf_fave_bar_slot_number"
-      local nbr = GuiBase.create_label(btn, "tf_fave_bar_slot_number_" .. tostring(i), tostring(i), label_style)
+      GuiBase.create_label(btn, "tf_fave_bar_slot_number_" .. tostring(i), tostring(i), label_style)
       if locked then
         btn.add {
           type = "sprite",

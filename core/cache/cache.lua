@@ -56,7 +56,7 @@ local ErrorHandler = require("core.utils.error_handler")
 -- Observer Pattern Integration
 local function notify_observers_safe(event_type, data)
   -- Safe notification that handles module load order
-  local success, gui_observer = pcall(require, "core.pattern.gui_observer")
+local success, gui_observer = pcall(require, "core.events.gui_observer")
   if success and gui_observer.GuiEventBus then
     gui_observer.GuiEventBus.notify(event_type, data)
   end
@@ -95,6 +95,8 @@ function Cache.init()
 end
 
 local function init_player_favorites(player)
+  if not player or not player.valid then return {} end
+
   local pfaves = storage.players[player.index].surfaces[player.surface.index].favorites or {}
   for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
     if not pfaves[i] or type(pfaves[i]) ~= "table" then
@@ -248,20 +250,8 @@ function Cache.get_tag_by_gps(player, gps)
   for k, _ in pairs(tag_cache) do
     table.insert(cache_keys, k)
   end
-  local cache_keys_str = table.concat(cache_keys, ", ")
-  ErrorHandler.debug_log("[CACHE] get_tag_by_gps", {
-    gps = gps,
-    surface_index = surface_index,
-    cache_keys = cache_keys_str
-  })
 
   local match_tag = tag_cache[gps] or nil
-  ErrorHandler.debug_log("[CACHE] get_tag_by_gps - found tag in cache", {
-    gps = gps,
-    tag_found = match_tag ~= nil,
-    tag_has_chart_tag = match_tag and match_tag.chart_tag ~= nil,
-    tag_chart_tag_valid = match_tag and match_tag.chart_tag and match_tag.chart_tag.valid or false
-  })
 
   -- Ensure chart_tag is present
   if match_tag and (not match_tag.chart_tag or not match_tag.chart_tag.position) then
@@ -272,11 +262,6 @@ function Cache.get_tag_by_gps(player, gps)
   end
 
   local valid_chart_tag = match_tag and match_tag.chart_tag and match_tag.chart_tag.valid
-  ErrorHandler.debug_log("[CACHE] get_tag_by_gps chart_tag validity", {
-    gps = gps,
-    valid_chart_tag = valid_chart_tag,
-    match_tag_present = match_tag ~= nil
-  })
   if valid_chart_tag and match_tag then
     return match_tag
   end

@@ -42,7 +42,7 @@ local Constants = require("constants")
 local FavoriteUtils = require("core.favorite.favorite")
 local Cache = require("core.cache.cache")
 local ErrorHandler = require("core.utils.error_handler")
-local GuiObserver = require("core.pattern.gui_observer")
+local GuiObserver = require("core.events.gui_observer")
 
 -- Observer Pattern Integration
 local function notify_observers_safe(event_type, data)
@@ -53,13 +53,13 @@ end
 local function sanitize_tag_for_favorite(tag)
   -- Exclude 'chart_tag' userdata but keep all other tag data for rehydration
   local sanitized = Cache.sanitize_for_storage(tag, { chart_tag = true })
-  
+
   ErrorHandler.debug_log("[PLAYER_FAVORITES] Tag sanitized for favorite storage", {
     gps = tag and tag.gps or nil,
     original_has_chart_tag = tag and tag.chart_tag ~= nil,
     original_has_icon = tag and tag.chart_tag and tag.chart_tag.icon ~= nil
   })
-  
+
   return sanitized
 end
 
@@ -121,8 +121,6 @@ local function update_tag_favorites(tag, player_index, action)
   end
 end
 
--- Public methods
-
 --- Constructor for PlayerFavorites
 ---@param player LuaPlayer
 ---@return PlayerFavorites
@@ -173,8 +171,6 @@ function PlayerFavorites:get_favorite_by_gps(gps)
   return nil, nil
 end
 
--- Removed unused methods: get_favorite_by_slot, get_all_favorites, set_favorites
-
 --- Add a favorite to the first available slot
 ---@param gps string
 ---@return Favorite|nil, string|nil error_message
@@ -208,45 +204,20 @@ function PlayerFavorites:add_favorite(gps)
   end
   -- Find first available slot
   local slot_idx = nil
-  ErrorHandler.debug_log("Looking for available slot", {
-    player = (self.player and self.player.valid and self.player.name) or "unknown",
-    max_slots = Constants.settings.MAX_FAVORITE_SLOTS,
-    current_favorites_count = #self.favorites
-  })
   for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
-    ErrorHandler.debug_log("Checking slot", {
-      player = (self.player and self.player.valid and self.player.name) or "unknown",
-      slot = i,
-      favorite = self.favorites[i],
-      is_blank = FavoriteUtils.is_blank_favorite(self.favorites[i])
-    })
     if FavoriteUtils.is_blank_favorite(self.favorites[i]) then
       slot_idx = i
       break
     end
   end
   if not slot_idx then
-    ErrorHandler.debug_log("No available slots", {
-      player = (self.player and self.player.valid and self.player.name) or "unknown",
-      max_slots = Constants.settings.MAX_FAVORITE_SLOTS
-    })
     return nil, "No available slots (maximum " .. Constants.settings.MAX_FAVORITE_SLOTS .. " favorites)"
   end
 
-  ErrorHandler.debug_log("Found available slot", {
-    player = (self.player and self.player.valid and self.player.name) or "unknown",
-    slot = slot_idx
-  })
   -- Get or create tag
   local existing_tag = Cache.get_tag_by_gps(player, gps)
   local tag_for_favorite = existing_tag and sanitize_tag_for_favorite(existing_tag) or nil
   local new_favorite = FavoriteUtils.new(gps, false, tag_for_favorite)
-  ErrorHandler.debug_log("Created new favorite", {
-    player = (self.player and self.player.valid and self.player.name) or "unknown",
-    gps = gps,
-    slot = slot_idx,
-    favorite = new_favorite
-  })
   if existing_tag then
     update_tag_favorites(existing_tag, self.player_index, "add")
   end
@@ -290,69 +261,6 @@ function PlayerFavorites:remove_favorite(gps)
   return true, nil
 end
 
--- Removed unused methods: remove_favorite_by_slot, modify_slot, swap_slots
-
---- Move a favorite from one slot to another
----@param from_slot number
----@param to_slot number
----@return boolean success, string|nil error_message
-function PlayerFavorites:move_favorite(from_slot, to_slot)
-  if not is_valid_slot(from_slot) or not is_valid_slot(to_slot) then
-    return false, "Invalid slot indices"
-  end
-  if from_slot == to_slot then return true, nil end
-
-  local fav = self.favorites[from_slot]
-  if FavoriteUtils.is_blank_favorite(fav) then
-    return false, "Cannot move blank favorite"
-  end
-  if fav and fav.locked then
-    return false, "Cannot move locked favorite"
-  end
-
-  -- Store the favorite being moved
-  local moved_fav = self.favorites[from_slot]
-  
-  -- Create a copy of the favorites array to work with
-  local new_favorites = {}
-  for i = 1, #self.favorites do
-    new_favorites[i] = self.favorites[i]
-  end
-  
-  -- Remove the favorite from the source position by setting it to blank
-  new_favorites[from_slot] = FavoriteUtils.get_blank_favorite()
-  
-  -- Determine the direction of the move
-  if from_slot < to_slot then
-    -- Moving forward: shift items between from_slot and to_slot backward
-    for i = from_slot, to_slot - 1 do
-      new_favorites[i] = self.favorites[i + 1]
-    end
-  else
-    -- Moving backward: shift items between to_slot and from_slot forward
-    for i = from_slot, to_slot + 1, -1 do
-      new_favorites[i] = self.favorites[i - 1]
-    end
-  end
-  
-  -- Place the moved favorite at the destination
-  new_favorites[to_slot] = moved_fav
-  
-  -- Update the favorites array
-  self.favorites = new_favorites
-
-  -- Ensure array stays correct size
-  while #self.favorites < Constants.settings.MAX_FAVORITE_SLOTS do
-    table.insert(self.favorites, FavoriteUtils.get_blank_favorite())
-  end
-  while #self.favorites > Constants.settings.MAX_FAVORITE_SLOTS do
-    table.remove(self.favorites)
-  end
-
-  sync_to_storage(self)
-  return true, nil
-end
-
 --- Toggle the locked state of a favorite
 ---@param slot_idx number
 ---@return boolean success, string|nil error_message
@@ -392,40 +300,18 @@ function PlayerFavorites:update_gps_coordinates(old_gps, new_gps)
   for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
     local fav = self.favorites[i]
     if fav and not FavoriteUtils.is_blank_favorite(fav) and fav.gps == old_gps then
-      ErrorHandler.debug_log("Updating favorite GPS coordinates", {
-        player_index = self.player_index,
-        slot = i,
-        old_gps = old_gps,
-        new_gps = new_gps,
-        fav_gps_before = fav.gps,
-        fav_tag_gps_before = fav.tag and fav.tag.gps or "nil"
-      })
-      
       fav.gps = new_gps
-      
+
       -- CRITICAL: Also update the tag.gps if tag exists
       if fav.tag and fav.tag.gps then
         fav.tag.gps = new_gps
       end
-      
-      ErrorHandler.debug_log("Updated favorite GPS coordinates", {
-        player_index = self.player_index,
-        slot = i,
-        fav_gps_after = fav.gps,
-        fav_tag_gps_after = fav.tag and fav.tag.gps or "nil"
-      })
-      
+
       any_updated = true
     end
   end
   if any_updated then
     sync_to_storage(self)
-
-    ErrorHandler.debug_log("PlayerFavorites GPS coordinates updated - notifying observers", {
-      player_index = self.player_index,
-      old_gps = old_gps,
-      new_gps = new_gps
-    })
 
     -- Notify observers of GPS update
     notify_observers_safe("favorites_gps_updated", {
@@ -433,7 +319,7 @@ function PlayerFavorites:update_gps_coordinates(old_gps, new_gps)
       old_gps = old_gps,
       new_gps = new_gps
     })
-    
+
     -- CRITICAL: Trigger cache_updated to rebuild favorites bar
     notify_observers_safe("cache_updated", {
       type = "favorites_gps_updated",

@@ -1,7 +1,7 @@
 -- control_shared_utils.lua
 -- Shared helpers for control modules: refresh, update, observer notification, and common utilities
 
-local GuiObserver = require("core.pattern.gui_observer")
+local GuiObserver = require("core.events.gui_observer")
 local GuiEventBus = GuiObserver.GuiEventBus
 local GameHelpers = require("core.utils.game_helpers")
 

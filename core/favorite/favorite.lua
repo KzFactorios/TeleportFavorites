@@ -19,8 +19,6 @@ Notes:
 
 local Constants = require("constants")
 local CollectionUtils = require("core.utils.collection_utils")
-local GPSUtils = require("core.utils.gps_utils")
-local Logger = require("core.utils.enhanced_error_handler")
 
 ---@class Favorite
 ---@field gps string GPS coordinates in 'xxx.yyy.s' format
@@ -46,49 +44,6 @@ end
 ---@param fav Favorite
 function FavoriteUtils.toggle_locked(fav)
   FavoriteUtils.update_property(fav, "locked")
-end
-
---- Generic property update method for favorites
----@param fav Favorite The favorite to modify
----@param property string Property name ("gps", "locked", "tag")
----@param value any? New value for the property (nil for toggle operations on booleans)
-function FavoriteUtils.update_property(fav, property, value)
-  if property == "gps" and type(value) == "string" then
-    fav.gps = value
-  elseif property == "locked" then
-    if value ~= nil then
-      fav.locked = value
-    else
-      -- Toggle if no value provided
-      fav.locked = not fav.locked
-    end
-  elseif property == "tag" then
-    fav.tag = value
-  end
-end
-
----@param fav Favorite
----@return Favorite?
-function FavoriteUtils.copy(fav)
-  if type(fav) ~= "table" then return nil end
-  local copy = FavoriteUtils.new(fav.gps, fav.locked, fav.tag and CollectionUtils.deep_copy(fav.tag) or nil)
-  for k, v in pairs(fav) do
-    if copy[k] == nil then copy[k] = v end
-  end
-  return copy
-end
-
----@param a Favorite
----@param b Favorite
----@return boolean
-function FavoriteUtils.equals(a, b)
-  if type(a) ~= "table" or type(b) ~= "table" then return false end
-  return a.gps == b.gps and a.locked == b.locked and (a.tag and a.tag.text or nil) == (b.tag and b.tag.text or nil)
-end
-
----@return Favorite
-function FavoriteUtils.get_blank_favorite()
-  return FavoriteUtils.new((Constants.settings.BLANK_GPS --[[@as string]]), false, nil)
 end
 
 --- Generic state checking method for favorites
@@ -122,23 +77,53 @@ function FavoriteUtils.is_blank_favorite(fav)
   return FavoriteUtils.check_state(fav, "blank")
 end
 
+---@return Favorite
+function FavoriteUtils.get_blank_favorite()
+  return FavoriteUtils.new((Constants.settings.BLANK_GPS --[[@as string]]), false, nil)
+end
+
 ---@param fav Favorite?
 ---@return boolean
 function FavoriteUtils.valid(fav)
   return FavoriteUtils.check_state(fav, "valid")
 end
 
----@param fav Favorite?
----@return string|table
-function FavoriteUtils.formatted_tooltip(fav)
-  if not fav or not fav.gps or fav.gps == "" or fav.gps == (Constants.settings.BLANK_GPS --[[@as string]]) then
-    return {"tf-gui.favorite_slot_empty"}
+---@param fav Favorite
+---@return Favorite?
+function FavoriteUtils.copy(fav)
+  if type(fav) ~= "table" then return nil end
+  local copy = FavoriteUtils.new(fav.gps, fav.locked, fav.tag and CollectionUtils.deep_copy(fav.tag) or nil)
+  for k, v in pairs(fav) do
+    if copy[k] == nil then copy[k] = v end
   end
-  local tooltip = GPSUtils.coords_string_from_gps(fav.gps) or fav.gps
-  if fav.tag ~= nil and type(fav.tag) == "table" and fav.tag.text ~= nil and fav.tag.text ~= "" then
-    tooltip = tooltip .. "\n" .. fav.tag.text
+  return copy
+end
+
+---@param a Favorite
+---@param b Favorite
+---@return boolean
+function FavoriteUtils.equals(a, b)
+  if type(a) ~= "table" or type(b) ~= "table" then return false end
+  return a.gps == b.gps and a.locked == b.locked and (a.tag and a.tag.text or nil) == (b.tag and b.tag.text or nil)
+end
+
+--- Generic property update method for favorites
+---@param fav Favorite The favorite to modify
+---@param property string Property name ("gps", "locked", "tag")
+---@param value any? New value for the property (nil for toggle operations on booleans)
+function FavoriteUtils.update_property(fav, property, value)
+  if property == "gps" and type(value) == "string" then
+    fav.gps = value
+  elseif property == "locked" then
+    if value ~= nil then
+      fav.locked = value
+    else
+      -- Toggle if no value provided
+      fav.locked = not fav.locked
+    end
+  elseif property == "tag" then
+    fav.tag = value
   end
-  return tooltip
 end
 
 return FavoriteUtils

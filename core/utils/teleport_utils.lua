@@ -1,7 +1,7 @@
 -- teleport_utils.lua
 -- Shared teleportation logic for Tag and GameHelpers to break circular dependency
 
-local TeleportStrategies = require("core.pattern.teleport_strategy")
+local TeleportStrategies = require("core.utils.teleport_strategy")
 local ErrorHandler = require("core.utils.error_handler")
 local Enum = require("prototypes.enums.enum")
 
