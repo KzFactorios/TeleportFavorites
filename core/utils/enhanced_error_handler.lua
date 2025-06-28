@@ -107,6 +107,4 @@ function EnhancedErrorHandler.initialize()
   EnhancedErrorHandler.info("Enhanced error handler initialized")
 end
 
-
-
 return EnhancedErrorHandler

@@ -11,17 +11,6 @@ Features:
 - Ensures all GUIs use the same style and structure for maintainability and a unified look.
 - Simplifies GUI code in feature modules by abstracting common patterns.
 
-API:
-- GuiBase.create_frame(parent, name, direction, style): Create a styled frame.
-- GuiBase.create_icon_button(parent, name, sprite, tooltip, style, enabled): Create a sprite button with icon and tooltip.
-- GuiBase.create_label(parent, name, caption, style): Create a label with optional style.
-- GuiBase.create_textfield(parent, name, text, style): Create a textfield with optional style.
-- GuiBase.create_textbox(parent, name, text, style, icon_selector): Create a text-box with optional icon selector.
-- GuiBase.create_hflow(parent, name, style): Create a horizontal flow container.
-- GuiBase.create_vflow(parent, name, style): Create a vertical flow container.
-- GuiBase.create_draggable(parent, name): Create a draggable space widget.
-- GuiBase.create_titlebar(parent, name, close_button_name): Create a draggable titlebar with optional close button.
-
 Each function is annotated with argument and return value details.
 --]]
 
@@ -140,26 +129,6 @@ function GuiBase.create_label(parent, name, caption, style)
     return elem
 end
 
-
---- Create a textfield with optional style.
---- @param parent LuaGuiElement: Parent element
---- @param name string: Name of the textfield
---- @param text? string: Initial text (default: "")
---- @param style? string|nil: Optional style name
---- @return LuaGuiElement: The created textfield
-function GuiBase.create_textfield(parent, name, text, style)
-    local opts = {
-        name = name,
-        text = text or "",
-        style = style
-    }
-    -- Remove nil values
-    for k, v in pairs(opts) do
-        if v == nil then opts[k] = nil end
-    end
-    return GuiBase.create_element('textfield', parent, opts)
-end
-
 --- Create a button with optional style.
 --- @param parent LuaGuiElement: Parent element
 --- @param name string: Name of the button
@@ -248,36 +217,6 @@ function GuiBase.create_titlebar(parent, name, close_button_name)
         Enum.SpriteEnum.CLOSE, nil, "tf_frame_action_button")
 
     return titlebar, title_label, close_button
-end
-
---- Create an empty-widget element.
---- @param parent LuaGuiElement: Parent element
---- @param name string: Name of the empty-widget
---- @param style? string|nil: Optional style name
---- @return LuaGuiElement: The created empty-widget
-function GuiBase.create_empty_widget(parent, name, style)
-    local opts = { name = name }
-    if style then
-        opts.style = style
-    end
-    return GuiBase.create_element('empty-widget', parent, opts)
-end
-
---- Create a table element.
---- @param parent LuaGuiElement: Parent element
---- @param name string: Name of the table
---- @param column_count? number: Number of columns (default: 1)
---- @param style? string|nil: Optional style name
---- @return LuaGuiElement: The created table
-function GuiBase.create_table(parent, name, column_count, style)
-    local opts = {
-        name = name,
-        column_count = column_count or 1
-    }
-    if style then
-        opts.style = style
-    end
-    return GuiBase.create_element('table', parent, opts)
 end
 
 --- Create a text-box with optional icon selector (Factorio 1.1.77+).

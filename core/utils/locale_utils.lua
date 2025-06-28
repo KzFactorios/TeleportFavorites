@@ -58,17 +58,6 @@ function LocaleUtils.get_error_string(player, key, params)
 end
 
 --[[
-Get a localized string from the command category
-@param player - The player object for localization context
-@param key - The locale key (without prefix)
-@param params - Optional table of parameters for string substitution
-@return localized string
-]]
-function LocaleUtils.get_command_string(player, key, params)
-    return LocaleUtils.get_string(player, "command", key, params)
-end
-
---[[
 Get a localized string from the handler category
 @param player - The player object for localization context
 @param key - The locale key (without prefix)
@@ -77,18 +66,6 @@ Get a localized string from the handler category
 ]]
 function LocaleUtils.get_handler_string(player, key, params)
     return LocaleUtils.get_string(player, "handler", key, params)
-end
-
---[[
-Get a localized string from the mod settings category
-@param player - The player object for localization context
-@param key - The locale key (without prefix)
-@param is_description - Whether this is a setting description (default: false)
-@return localized string
-]]
-function LocaleUtils.get_setting_string(player, key, is_description)
-    local category = is_description and "setting_desc" or "setting_name"
-    return LocaleUtils.get_string(player, category, key)
 end
 
 --[[
@@ -201,61 +178,11 @@ function LocaleUtils.substitute_parameters(text, params)
 end
 
 --[[
-Format a localized string with parameters
-Convenience function that combines getting a string and parameter substitution
-@param player - The player object
-@param category - The category
-@param key - The locale key
-@param params - Parameters for substitution
-@return formatted localized string
-]]
-function LocaleUtils.format_string(player, category, key, params)
-    return LocaleUtils.get_string(player, category, key, params)
-end
-
---[[
-Validate that all required locale keys exist for a player
-Useful for debugging and ensuring translation completeness
-@param player - The player object
-@param required_keys - Table of {category = {key1, key2, ...}}
-@return table of missing keys
-]]
-function LocaleUtils.validate_translations(player, required_keys)
-    local missing = {}
-    
-    for category, keys in pairs(required_keys) do
-        for _, key in ipairs(keys) do
-            local localized = LocaleUtils.get_string(player, category, key)
-            if localized:match("^%[" .. category .. ":" .. key .. "%]$") then
-                if not missing[category] then
-                    missing[category] = {}
-                end
-                table.insert(missing[category], key)
-            end
-        end
-    end
-    
-    return missing
-end
-
---[[
 Enable or disable debug mode for missing translations
 @param enabled - Boolean to enable/disable debug mode
 ]]
 function LocaleUtils.set_debug_mode(enabled)
     DEBUG_MISSING_TRANSLATIONS = enabled
-end
-
---[[
-Get all available locale categories
-@return table of category names
-]]
-function LocaleUtils.get_categories()
-    local categories = {}
-    for category, _ in pairs(LOCALE_PREFIXES) do
-        table.insert(categories, category)
-    end
-    return categories
 end
 
 return LocaleUtils

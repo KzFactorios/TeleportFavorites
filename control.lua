@@ -38,12 +38,6 @@ local did_run_fave_bar_startup = false
 local success, module = pcall(require, "core.events.gui_observer")
 if success then gui_observer = module end
 
--- Log control.lua loading
-if log then log("[TeleportFavorites] control.lua loaded") end
-
--- Development environment initialization removed
--- All dev mode functionality has been removed from the codebase
-
 -- Core lifecycle event registration through centralized dispatcher
 
 -- Custom on_init to allow easy toggling of intro cutscene skip

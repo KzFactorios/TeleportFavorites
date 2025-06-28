@@ -4,8 +4,6 @@ Defines mod constants for TeleportFavorites.
 This is the central configuration point for the mod with values used throughout the codebase.
 ]]--
 
-local Enum = require("prototypes.enums.enum")
-
 --- @class Constants
 --- @field PREFIX string Prefix used for mod-specific element names
 --- @field settings table<string, number|string|boolean> Configuration settings

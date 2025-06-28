@@ -108,16 +108,6 @@ function AdminUtils.can_delete_chart_tag(player, chart_tag, tag)
       reason = "Cannot delete tag: other players have favorited this tag"
     end
   end
-  log_permission_result("Chart tag deletion permission result", {
-    player_name = player.name,
-    last_user = last_user,
-    is_owner = is_owner,
-    is_admin = is_admin,
-    has_other_favorites = has_other_favorites,
-    can_delete = can_delete,
-    is_admin_override = is_admin_override,
-    reason = reason
-  })
   return can_delete, is_owner, is_admin_override, reason
 end
 

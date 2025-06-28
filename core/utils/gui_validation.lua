@@ -5,13 +5,6 @@ GUI Validation Utilities for TeleportFavorites
 Module: core/utils/gui_validation.lua
 
 Provides validation and safety utilities for GUI elements and operations.
-
-Functions:
-- validate_gui_element() - Check if GUI element exists and is valid
-- set_element_visibility() - Safely set element visibility
-- set_element_text() - Safely set element text/caption
-- apply_style_properties() - Apply style properties with error handling
-- safe_destroy_frame() - Safe GUI frame destruction
 ]]
 
 local Logger = require("core.utils.enhanced_error_handler")
@@ -39,38 +32,6 @@ end
 function GuiValidation.validate_gui_element(element)
   local is_valid = GuiValidation.validate_gui_runtime_element(element, "GUI element")
   return is_valid
-end
-
---- Set GUI element visibility with validation
----@param element LuaGuiElement? Element to modify
----@param visible boolean Visibility state
----@return boolean success True if successfully set
-function GuiValidation.set_element_visibility(element, visible)
-  if not GuiValidation.validate_gui_element(element) then return false end
-  ---@cast element -nil
-  
-  element.visible = visible
-  return true
-end
-
---- Set GUI element text with validation
----@param element LuaGuiElement? Element to modify
----@param text string Text to set
----@return boolean success True if successfully set
-function GuiValidation.set_element_text(element, text)
-  if not GuiValidation.validate_gui_element(element) then return false end
-  ---@cast element -nil
-  
-  if element.type == "label" or element.type == "button" then
-    ---@diagnostic disable-next-line: assign-type-mismatch
-    element.caption = text
-  elseif element.type == "textfield" or element.type == "text-box" then
-    element.text = text
-  else
-    return false
-  end
-  
-  return true
 end
 
 --- Apply style properties to element with validation
@@ -141,40 +102,6 @@ function GuiValidation.set_button_state(element, enabled, style_overrides)
   end
 end
 
--- ========================================
--- ERROR HANDLING AND USER FEEDBACK
--- ========================================
-
---- Centralized error handling and user feedback for GUI operations
----@param player LuaPlayer|nil Player to notify (optional)
----@param message string|table Error or info message to show
----@param level string? Error level: 'error', 'info', or 'warn' (default: 'error')
----@param log_to_console boolean? Whether to log to console (default: true)
-function GuiValidation.handle_error(player, message, level, log_to_console)
-  level = level or 'error'
-  log_to_console = log_to_console ~= false
-  local msg = (type(message) == 'table' and table.concat(message, ' ')) or tostring(message)
-
-  -- Notify player if available
-  if player and player.valid then
-    if level == 'error' then
-      local prefix = LocaleUtils.get_error_string(player, "error_prefix")
-      GameHelpers.player_print(player, { '', '[color=red]', prefix, ' ', msg, '[/color]' })
-    elseif level == 'warn' then
-      local prefix = LocaleUtils.get_error_string(player, "warn_prefix")
-      GameHelpers.player_print(player, { '', '[color=orange]', prefix, ' ', msg, '[/color]' })
-    else
-      local prefix = LocaleUtils.get_error_string(player, "info_prefix")
-      GameHelpers.player_print(player, { '', '[color=white]', prefix, ' ', msg, '[/color]' })
-    end
-  end
-
-  if log_to_console then
-    local log_msg = '[TeleportFavorites][' .. level:upper() .. '] ' .. msg
-    ErrorHandler.debug_log(log_msg)
-  end
-end
-
 --- Show error label in a GUI frame
 ---@param parent LuaGuiElement Parent GUI element
 ---@param message string Error message to display
@@ -211,10 +138,6 @@ function GuiValidation.clear_error_label(parent)
   error_label.visible = false
   error_label.caption = nil
 end
-
--- ========================================
--- ELEMENT FINDING AND VALIDATION
--- ========================================
 
 --- Get the top-level GUI frame that contains an element
 ---@param element LuaGuiElement Element to search from
@@ -309,33 +232,6 @@ function GuiValidation.validate_sprite(sprite_path)
   end
   
   return true, nil
-end
-
---- Get debug information about a sprite
----@param sprite_path string Sprite path to debug
----@return table Debug information about the sprite
-function GuiValidation.debug_sprite_info(sprite_path)
-  local info = {
-    path = sprite_path,
-    valid = false,
-    error = nil,
-    type = nil,
-    name = nil
-  }
-  
-  local is_valid, error_msg = GuiValidation.validate_sprite(sprite_path)
-  info.valid = is_valid
-  info.error = error_msg
-  
-  if sprite_path and type(sprite_path) == "string" then
-    local slash_pos = sprite_path:find("/")
-    if slash_pos then
-      info.type = sprite_path:sub(1, slash_pos - 1)
-      info.name = sprite_path:sub(slash_pos + 1)
-    end
-  end
-  
-  return info
 end
 
 --- Get a validated sprite path for an icon, with fallback and debug info

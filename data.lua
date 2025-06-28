@@ -2,7 +2,6 @@
 ---@diagnostic disable: undefined-global
 require("prototypes.styles.init")
 require("prototypes.item.selection_tool")
-local Constants = require("constants")
 local Enum = require("prototypes.enums.enum")
 
 -- Ensure the custom virtual signal subgroup exists

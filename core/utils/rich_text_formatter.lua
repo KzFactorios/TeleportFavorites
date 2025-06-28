@@ -55,44 +55,4 @@ function RichTextFormatter.deletion_prevention_notification(chart_tag)
     )
 end
 
---[[
-Format a GPS coordinate string with color coding
-@param position - The position to format
-@param surface_index - The surface index
-@param color - Optional color (default: cyan)
-@return formatted GPS string
-]]
-function RichTextFormatter.format_gps_with_color(position, surface_index, color)
-    color = color or "cyan"
-    local gps_string = GPSUtils.gps_from_map_position(position, surface_index)
-    return string.format("[color=%s]%s[/color]", color, gps_string)
-end
-
---[[
-Format a success message with green color
-@param message - The message to format
-@return formatted success message
-]]
-function RichTextFormatter.success_message(message)
-    return string.format("[color=green]%s[/color]", message or "")
-end
-
---[[
-Format a warning message with yellow color
-@param message - The message to format
-@return formatted warning message
-]]
-function RichTextFormatter.warning_message(message)
-    return string.format("[color=yellow]%s[/color]", message or "")
-end
-
---[[
-Format an error message with red color
-@param message - The message to format
-@return formatted error message
-]]
-function RichTextFormatter.error_message(message)
-    return string.format("[color=red]%s[/color]", message or "")
-end
-
 return RichTextFormatter

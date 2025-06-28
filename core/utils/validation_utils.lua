@@ -56,10 +56,6 @@ function ValidationUtils.validate_player_for_position_ops(player)
   return true, nil
 end
 
--- ========================================
--- GPS VALIDATION PATTERNS
--- ========================================
-
 --- Validate GPS string format and content
 ---@param gps string|nil
 ---@return boolean is_valid
@@ -100,40 +96,12 @@ function ValidationUtils.validate_and_parse_gps(gps)
   return true, position, nil
 end
 
--- ========================================
--- CHART TAG VALIDATION PATTERNS
--- ========================================
-
---- Validate chart tag object
----@param chart_tag LuaCustomChartTag|nil
----@return boolean is_valid
----@return string? error_message
-function ValidationUtils.validate_chart_tag(chart_tag)
-  return ValidationUtils.validate_factorio_object(chart_tag, "Chart tag")
-end
-
--- ========================================
--- TAG VALIDATION PATTERNS
--- ========================================
-
 --- Validate tag object structure
 ---@param tag table|nil
 ---@return boolean is_valid
 ---@return string? error_message
 function ValidationUtils.validate_tag_structure(tag)
   return ValidationUtils.validate_table_fields(tag, {"gps", "faved_by_players"}, "Tag")
-end
-
--- ========================================
--- ICON AND SIGNAL VALIDATION
--- ========================================
-
---- Validate signal/icon structure
----@param signal table|nil
----@return boolean is_valid
----@return string? error_message
-function ValidationUtils.validate_signal_structure(signal)
-  return ValidationUtils.validate_table_fields(signal, {"type", "name"}, "Signal")
 end
 
 --- Validate if an icon is valid for chart tag creation
@@ -156,73 +124,6 @@ function ValidationUtils.has_valid_icon(icon)
   return false
 end
 
--- ========================================
--- COMBINED VALIDATION PATTERNS
--- ========================================
-
---- Comprehensive validation for position operations
----@param player LuaPlayer|nil
----@param gps string|nil
----@return boolean is_valid
----@return MapPosition? position
----@return string? error_message
-function ValidationUtils.validate_position_operation(player, gps)
-  -- Validate player first
-  local player_valid, player_error = ValidationUtils.validate_player_for_position_ops(player)
-  if not player_valid then
-    return false, nil, player_error
-  end
-  
-  -- Validate and parse GPS
-  local gps_valid, position, gps_error = ValidationUtils.validate_and_parse_gps(gps)
-  if not gps_valid then
-    return false, nil, gps_error
-  end
-  
-  -- position is guaranteed to be valid at this point due to validation above
-  local range_valid, range_error = PositionUtils.validate_position_range(position --[[@as MapPosition]])
-  if not range_valid then
-    return false, nil, range_error
-  end
-  
-  return true, position, nil
-end
-
---- Validate tag synchronization inputs
----@param player LuaPlayer|nil
----@param tag table|nil
----@param new_gps string|nil
----@return boolean is_valid
----@return string[] issues List of validation issues
-function ValidationUtils.validate_sync_inputs(player, tag, new_gps)
-  local issues = {}
-  
-  local player_valid, player_error = ValidationUtils.validate_player(player)
-  if not player_valid then
-    table.insert(issues, player_error)
-  end
-  
-  if tag then
-    local tag_valid, tag_error = ValidationUtils.validate_tag_structure(tag)
-    if not tag_valid then
-      table.insert(issues, tag_error)
-    end
-  end
-  
-  if new_gps then
-    local gps_valid, gps_error = ValidationUtils.validate_gps_string(new_gps)
-    if not gps_valid then
-      table.insert(issues, "New GPS invalid: " .. (gps_error or "unknown error"))
-    end
-  end
-  
-  return #issues == 0, issues
-end
-
--- ========================================
--- GUI VALIDATION PATTERNS
--- ========================================
-
 --- Validate GUI element exists and is valid
 ---@param element LuaGuiElement|nil
 ---@return boolean is_valid
@@ -238,10 +139,6 @@ function ValidationUtils.validate_gui_element(element)
   
   return true, nil
 end
-
--- ========================================
--- UTILITY FUNCTIONS
--- ========================================
 
 --- Validate text length for chart tags and other user inputs
 ---@param text string|nil The text to validate

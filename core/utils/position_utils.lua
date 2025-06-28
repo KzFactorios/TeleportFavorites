@@ -25,10 +25,6 @@ local Logger = require("core.utils.enhanced_error_handler")
 ---@class PositionUtils
 local PositionUtils = {}
 
--- ========================================
--- POSITION NORMALIZATION
--- ========================================
-
 --- Normalize a map position to whole numbers
 --- Consolidates position normalization logic from multiple files
 ---@param map_position MapPosition
@@ -66,10 +62,6 @@ function PositionUtils.normalize_if_needed(position)
   end
   return position
 end
-
--- ========================================
--- TERRAIN VALIDATION
--- ========================================
 
 --- Check if a tile at a position is water
 --- Consolidated from multiple implementations across the codebase
@@ -155,10 +147,6 @@ function PositionUtils.is_walkable_position(surface, position)
   Logger.debug_log("[WALKABLE] Position is walkable", tile_info)
   return true
 end
-
--- ========================================
--- POSITION SEARCH ALGORITHMS
--- ========================================
 
 --- Find a valid (walkable) position near a target position using spiral search
 --- Consolidates search logic from multiple files
@@ -274,43 +262,6 @@ function PositionUtils.find_valid_position_in_box(surface, center_position, tole
   return nil
 end
 
---- Find a valid position using multiple search strategies
---- Combines both bounding box and spiral search methods for best results
----@param surface LuaSurface
----@param center_position MapPosition
----@param search_radius number? Optional search radius (default: 50)
----@param player LuaPlayer? Optional player context for space platform detection
----@return MapPosition? valid_position
-function PositionUtils.find_valid_position(surface, center_position, search_radius, player)
-  if not surface or not surface.valid or not center_position then return nil end
-
-  -- Ensure coordinates are numbers
-  if type(center_position.x) ~= "number" or type(center_position.y) ~= "number" then
-    return nil
-  end
-
-  search_radius = search_radius or 50
-  -- Strategy 1: Try bounding box method first (faster, more precise)
-  local box_result = PositionUtils.find_valid_position_in_box(surface, center_position, nil, player)
-  if box_result then
-    return box_result
-  end
-  -- Strategy 2: Fall back to spiral search for wider coverage
-  -- Limit spiral search to reasonable size
-  local spiral_radius = math.min(search_radius, 20)
-  local spiral_result = PositionUtils.find_nearest_walkable_position(surface, center_position, spiral_radius, player)
-  if spiral_result then
-    return spiral_result
-  end
-
-  -- No valid position found with any method
-  return nil
-end
-
--- ========================================
--- POSITION VALIDATION
--- ========================================
-
 --- Check if a position is valid for tagging (no water/space)
 ---@param player LuaPlayer
 ---@param map_position MapPosition
@@ -346,124 +297,6 @@ function PositionUtils.is_valid_tag_position(player, map_position, skip_notifica
 
   return true
 end
-
---- Returns true if a tag can be placed at the given map position for the player
----@param player LuaPlayer
----@param map_position table
----@return boolean
-function PositionUtils.position_can_be_tagged(player, map_position)
-  -- Use consolidated validation helper for player and position checks
-  local surface_index = tonumber((player and player.surface and player.surface.index) or 1)
-  -- Fix: Pass surface_index as number to GPSUtils.gps_from_map_position
-  local gps_string = GPSUtils.gps_from_map_position(map_position, tonumber(surface_index) or 1)
-  local valid, position, error_msg = ValidationUtils.validate_position_operation(player, gps_string)
-  if not valid then
-    if error_msg then
-      safe_player_print(player, "[TeleportFavorites] " .. error_msg)
-    end
-    return false
-  end
-  -- Check if the position is valid for tagging - handle nil position
-  if not position then
-    safe_player_print(player, LocaleUtils.get_error_string(player, "invalid_position"))
-    return false
-  end
-
-  return PositionUtils.is_valid_tag_position(player, position, false)
-end
-
---- Print a teleport event message to the player after successful teleportation
----@param player LuaPlayer
----@param gps string The GPS string of the destination
-function PositionUtils.print_teleport_event_message(player, gps)
-  if not player or not player.valid then return end
-  local surface_index = GPSUtils.get_surface_index_from_gps(gps) or 1
-  local coords = GPSUtils.coords_string_from_gps(gps) -- Always show coords if available, otherwise fallback to GPS string
-  if coords and coords ~= "" then
-    safe_player_print(player,
-      LocaleUtils.get_gui_string(player, "teleported_to_surface", { coords, tostring(surface_index) }))
-  else
-    safe_player_print(player, LocaleUtils.get_gui_string(player, "teleported_to_gps", { gps }))
-  end
-end
-
--- ========================================
--- TAG MOVEMENT OPERATIONS
--- ========================================
-
---- Move a tag to a selected position with validation and callback handling
---- This function is used by the tag editor move mode to relocate tags
----@param player LuaPlayer The player performing the move operation
----@param tag table The tag object to move
----@param chart_tag LuaCustomChartTag The chart tag associated with the tag
----@param new_position MapPosition The target position to move to
----@param search_radius number? Search radius for finding valid alternatives
----@param callback function? Callback function to handle validation results
----@return boolean success True if the move was successful, false otherwise
-function PositionUtils.move_tag_to_selected_position(player, tag, chart_tag, new_position, search_radius, callback)
-  -- Input validation
-  if not player or not player.valid then
-    ErrorHandler.warn_log("Move tag failed: Invalid player")
-    return false
-  end
-
-  if not new_position or type(new_position.x) ~= "number" or type(new_position.y) ~= "number" then
-    ErrorHandler.warn_log("Move tag failed: Invalid position")
-    return false
-  end
-
-  -- Normalize the target position
-  local normalized_position = PositionUtils.normalize_position(new_position)
-  local surface_index = tonumber(player.surface.index) or 1
-
-  -- First check if the position is valid for tagging
-  if not PositionUtils.is_valid_tag_position(player, normalized_position, true) then
-    -- Position is invalid (water, space, uncharted, etc.)
-    if callback then
-      -- Create tag data for the callback
-      local tag_data = {
-        gps = GPSUtils.gps_from_map_position(normalized_position, surface_index),
-        tag = tag,
-        chart_tag = chart_tag
-      }
-
-      -- Let the callback handle the invalid position (e.g., show dialog)
-      callback("invalid_position", tag_data)
-    end
-    return false
-  end
-
-  -- Position is valid - proceed with the move
-  local new_gps = GPSUtils.gps_from_map_position(normalized_position, surface_index)
-
-  -- If we have a callback, use it for the successful move
-  if callback then
-    local tag_data = {
-      gps = new_gps,
-      tag = tag,
-      chart_tag = chart_tag
-    }
-    callback("move", tag_data)
-    return true
-  end
-
-  -- Fallback: direct move without callback (only if tag exists)
-  local old_gps = tag and tag.gps or "unknown"
-  tag.gps = new_gps
-
-  Logger.debug_log("Tag moved to selected position", {
-    player = player.name,
-    old_gps = old_gps,
-    new_gps = new_gps,
-    position = normalized_position
-  })
-
-  return true
-end
-
--- ========================================
--- SURFACE AND PLATFORM DETECTION
--- ========================================
 
 --- Check if a player is currently on a space platform
 --- Used for space tile validation - space tiles are walkable on space platforms

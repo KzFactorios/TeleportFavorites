@@ -7,8 +7,6 @@ Rudimentary error handling module for bubbling errors up through function calls.
 Provides consistent error reporting and logging patterns.
 ]]
 
-local Constants = require("constants")
-
 -- Prevent infinite recursion in error handling
 local _in_error_handler = false
 

@@ -88,15 +88,7 @@ function DragDropUtils.reorder_slots(slots, src_idx, dest_idx)
   
   local src = slots[src_idx]
   local dest = slots[dest_idx]
-  
-  Logger.debug_log("[DRAG_DROP] reorder_slots invoked", {
-    src_idx = src_idx,
-    dest_idx = dest_idx,
-    src_gps = src.gps,
-    dest_gps = dest.gps
-  })
-  
-  -- Validate the drag operation
+
   local validation = DragDropUtils.validate_drag_drop(src, dest, src_idx, dest_idx)
   
   if not validation.can_drag_source or not validation.can_drop_target then
@@ -110,7 +102,6 @@ function DragDropUtils.reorder_slots(slots, src_idx, dest_idx)
   
   -- If source and destination are the same, do nothing
   if src_idx == dest_idx then
-    Logger.debug_log("[DRAG_DROP] Same slot operation", { slot = src_idx })
     return slots
   end
   

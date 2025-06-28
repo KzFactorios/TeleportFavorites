@@ -291,14 +291,7 @@ function data_viewer.build(player, parent, state)
   local row_start = 1
   local row_end = 1
   if type(data) == "table" then
-    ErrorHandler.debug_log("Data viewer calling render_compact_data_rows", {
-      data_count = data and table_size(data) or 0
-    })
     row_end = render_compact_data_rows(data_table, data, 0, font_size, row_start, nil, true)
-    ErrorHandler.debug_log("Data viewer render_compact_data_rows returned", {
-      row_start = row_start,
-      row_end = row_end
-    })
     if row_end == row_start then
       local no_data_lbl2 = GuiBase.create_label(data_table, "no_data_table", "[NO DATA TO DISPLAY]",
         "data_viewer_row_even_label")

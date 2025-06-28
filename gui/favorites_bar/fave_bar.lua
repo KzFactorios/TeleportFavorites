@@ -137,22 +137,18 @@ function fave_bar.build(player, force_show)
     -- Outer frame for the bar (matches quickbar background)
     local fave_bar_frame = GuiBase.create_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR, "horizontal",
       "tf_fave_bar_frame")
-    ErrorHandler.debug_log("Favorites bar: Building quickbar style")
     local _bar_flow, slots_frame, _toggle_button = fave_bar.build_quickbar_style(player, fave_bar_frame)
 
     -- Only one toggle button: the one created in build_quickbar_style
-    ErrorHandler.debug_log("Favorites bar: Getting player favorites")
     local pfaves = Cache.get_player_favorites(player)
     local drag_index = Cache.get_player_data(player).drag_favorite_index
 
     -- By default, show the slots row when building the bar
-    ErrorHandler.debug_log("Favorites bar: Setting slot visibility")
     if slots_frame and slots_frame.valid then
         slots_frame.visible = true
     end
 
     -- Build slot buttons
-    ErrorHandler.debug_log("Favorites bar: Building favorite buttons row")
     fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves, drag_index)
 
     -- Do NOT update toggle state in pdata here! Only the event handler should do that.
@@ -163,8 +159,6 @@ function fave_bar.build(player, force_show)
     return fave_bar_frame
   end)
   if not success then
-    ErrorHandler.warn_log("Favorites bar build failed for player " ..
-    (player and player.name or "unknown") .. ": " .. tostring(result))
     ErrorHandler.debug_log("Favorites bar build failed", {
       player = player and player.name,
       error = result
@@ -248,7 +242,6 @@ function fave_bar.update_slot_row(player, parent_flow)
     end
   end
 
-  -- Get player favorites
   local pfaves = Cache.get_player_favorites(player)
 
   -- Rebuild only the slot buttons
@@ -267,8 +260,6 @@ function fave_bar.destroy(player)
 
   GuiValidation.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
 end
-
--- Enhanced partial update functions for favorites bar
 
 --- Update a single slot button without rebuilding the entire row
 ---@param player LuaPlayer
@@ -294,39 +285,6 @@ function fave_bar.update_single_slot(player, slot_index)
   end
 end
 
---- Update lock state styling for a specific slot
----@param player LuaPlayer
----@param slot_index number Slot index (1-based) 
----@param locked boolean Lock state
-function fave_bar.update_slot_lock_state(player, slot_index, locked)
-  if not player or not player.valid then return end
-  local _, _, _, slots_frame = get_fave_bar_gui_refs(player)
-  if not slots_frame then return end
-  local slot_button = GuiValidation.find_child_by_name(slots_frame, "fave_bar_slot_" .. slot_index)
-  if not slot_button then return end
-  -- Style must be set at creation; cannot change after
-end
-
---- Update drag visual styling for slots
----@param player LuaPlayer
----@param drag_state table? Drag state with source_slot and active flag
-function fave_bar.update_drag_visuals(player, drag_state)
-  if not player or not player.valid then return end
-  local _, _, _, slots_frame = get_fave_bar_gui_refs(player)
-  if not slots_frame then return end
-  local max_slots = Constants.settings.MAX_FAVORITE_SLOTS or 10
-  for i = 1, max_slots do
-    local slot_button = GuiValidation.find_child_by_name(slots_frame, "fave_bar_slot_" .. i)
-    if slot_button then
-      if drag_state and drag_state.active and drag_state.source_slot == i then
-        -- Style must be set at creation; cannot change after
-      else
-        fave_bar.update_single_slot(player, i)
-      end
-    end
-  end
-end
-
 --- Update toggle button visibility state
 ---@param player LuaPlayer
 ---@param slots_visible boolean Whether slots should be visible
@@ -337,48 +295,6 @@ function fave_bar.update_toggle_state(player, slots_visible)
   if slots_frame then
     slots_frame.visible = slots_visible
   end
-end
-
--- Update the GUI click handling
-function fave_bar.on_gui_click(event)
-  local player = game.get_player(event.player_index)
-  if not player or not player.valid then return end
-
-  local element = event.element
-  if not element or not element.valid then return end
-
-  -- Prioritize drag mode cancellation for right-click
-  if event.button == defines.mouse_button_type.right then
-    if fave_bar.cancel_drag_mode(player, "right-click") then
-      return
-    end
-  end
-
-  -- Prioritize drag mode cancellation for toggle button click
-  if element.name == "fave_bar_visible_btns_toggle" then
-    if fave_bar.cancel_drag_mode(player, "toggle button click") then
-      return
-    end
-  end
-
-  -- Prevent left-click on locked slots in map view from closing map view or triggering any action
-  if is_fave_bar_slot_button(element) and event.button == defines.mouse_button_type.left then
-    local slot_num = tonumber(element.name:match("fave_bar_slot_(%d+)$"))
-    if slot_num then
-      local pfaves = Cache.get_player_favorites(player)
-      local fav = pfaves[slot_num]
-      if fav and fav.locked then
-        local player_data = Cache.get_player_data(player)
-        local drag_active = player_data.drag_favorite and player_data.drag_favorite.active
-        if not drag_active and player.render_mode == defines.render_mode.chart then
-          ErrorHandler.debug_log("[FAVE_BAR] Ignoring left-click on locked slot in map view", {player=player.name, slot=slot_num})
-          return
-        end
-      end
-    end
-  end
-  -- Handle other GUI events after drag mode cancellation
-  -- ...existing code...
-end
+end 
 
 return fave_bar

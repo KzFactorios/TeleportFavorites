@@ -158,38 +158,4 @@ function DataParsingHelpers.is_chart_tag_data(value)
          value.surface_name ~= nil
 end
 
---- Format chart tag data for better readability
----@param chart_tag_data table Chart tag data table
----@return table Formatted chart tag data
-function DataParsingHelpers.format_chart_tag_display(chart_tag_data)
-  if not DataParsingHelpers.is_chart_tag_data(chart_tag_data) then
-    return chart_tag_data
-  end
-  
-  local formatted = {}
-  
-  -- Position formatting
-  if chart_tag_data.position then
-    local pos = chart_tag_data.position
-    formatted.position = string.format("(%.1f, %.1f)", pos.x or 0, pos.y or 0)
-  end
-  
-  -- Text formatting
-  formatted.text = chart_tag_data.text or "[No Text]"
-  
-  -- Icon formatting
-  if chart_tag_data.icon and chart_tag_data.icon.type and chart_tag_data.icon.name then
-    formatted.icon = chart_tag_data.icon.type .. "/" .. chart_tag_data.icon.name
-  else
-    formatted.icon = "[No Icon]"
-  end
-  
-  -- User and surface info
-  formatted.last_user = chart_tag_data.last_user or "[Unknown]"
-  formatted.surface = chart_tag_data.surface_name or "[Unknown]"
-  formatted.valid = chart_tag_data.valid ~= false
-  
-  return formatted
-end
-
 return DataParsingHelpers

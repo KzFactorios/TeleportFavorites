@@ -40,10 +40,6 @@ local ChartTagUtils = require("core.utils.chart_tag_utils")
 ---@field allow_vehicle boolean? Allow vehicle teleportation
 ---@field custom_radius number? Custom teleportation radius
 
--- Helper functions to avoid circular dependencies
-local function is_water_tile_at_position(surface, position)
-  return TileUtils.is_water_tile_at_position(surface, position)
-end
 
 local function find_safe_landing_position(surface, position, radius, precision)
   return TileUtils.find_safe_landing_position(surface, position, radius, precision)
@@ -119,19 +115,6 @@ function BaseTeleportStrategy:get_landing_position(player, gps)
   end
 
   return position, ""
-end
-
---- Teleport using the appropriate strategy
----@param player LuaPlayer
----@param gps string
----@param context TeleportContext?
----@return string|integer result
-function BaseTeleportStrategy:apply_teleport(player, position, context)
-  ErrorHandler.debug_log("Abstract teleport strategy should not be called directly")
-  if player and player.valid then
-    player.print("Abstract teleport strategy should not be called")
-  end
-  return LocaleUtils.get_error_string(player, "abstract_teleport_error")
 end
 
 --- Standard Teleportation Strategy

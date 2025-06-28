@@ -15,21 +15,10 @@ Provides a unified API for all chart tag operations throughout the mod.
 local ErrorHandler = require("core.utils.error_handler")
 local GPSUtils = require("core.utils.gps_utils")
 local Cache = require("core.cache.cache")
-local Constants = require("constants")
-local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 local settings_access = require("core.utils.settings_access")
 
 ---@class ChartTagUtils
 local ChartTagUtils = {}
-
--- ========================================
--- CHART TAG SPECIFICATION BUILDING
--- ========================================
-
-
--- ========================================
--- CHART TAG CLICK DETECTION
--- ========================================
 
 -- Cache for last clicked chart tags per player
 local last_clicked_chart_tags = {}
@@ -53,11 +42,6 @@ function ChartTagUtils.find_closest_chart_tag_to_position(player, cursor_positio
   if not force_tags or #force_tags == 0 then
     Cache.Lookups.invalidate_surface_chart_tags(surface_index)
     force_tags = Cache.Lookups.get_chart_tag_cache(surface_index)
-
-    ErrorHandler.debug_log("Attempted to refresh chart tag cache from Factorio API", {
-      surface_index = surface_index,
-      chart_tags_found = force_tags and #force_tags or 0
-    })
   end
 
   -- If still no tags found, there genuinely are no chart tags on this surface
@@ -91,47 +75,6 @@ function ChartTagUtils.find_closest_chart_tag_to_position(player, cursor_positio
 
   return closest_tag
 end
-
---- Handle map click event for chart tag detection
----@param event table Event data containing player_index and cursor_position
----@return LuaCustomChartTag? clicked_chart_tag The chart tag that was clicked or nil
-function ChartTagUtils.handle_map_click(event)
-  local player = game.get_player(event.player_index)
-  if not player or not player.valid then return nil end
-
-  -- Only process when player is in map view
-  if player.render_mode ~= defines.render_mode.chart then
-    return nil
-  end
-
-  -- Get cursor position
-  local cursor_position = event.cursor_position or player.position
-  if player.selected then
-    cursor_position = player.selected.position
-  end
-
-  -- Try to find chart tag at cursor position
-  local clicked_chart_tag = ChartTagUtils.find_closest_chart_tag_to_position(player, cursor_position)
-
-  -- Store last clicked tag for this player
-  last_clicked_chart_tags[player.index] = clicked_chart_tag
-  -- Log the click if a tag was found
-  if clicked_chart_tag and clicked_chart_tag.valid then
-    local gps = GPSUtils.gps_from_map_position(clicked_chart_tag.position, player.surface.index)
-
-    ErrorHandler.debug_log("Player clicked chart tag", {
-      player_name = player.name,
-      gps = gps,
-      tag_text = clicked_chart_tag.text
-    })
-  end
-
-  return clicked_chart_tag
-end
-
--- ========================================
--- CHART TAG CREATION WRAPPER
--- ========================================
 
 --- Safe wrapper for chart tag creation with comprehensive error handling and collision detection
 ---@param force LuaForce The force that will own the chart tag
@@ -167,21 +110,12 @@ function ChartTagUtils.safe_add_chart_tag(force, surface, spec, player)
   end
 
   if existing_chart_tag and existing_chart_tag.valid then
-    ErrorHandler.debug_log("Chart tag reuse: updating existing tag", {
-      gps = gps,
-      existing_text = existing_chart_tag.text or "",
-      new_text = spec.text or ""
-    })
-
     -- Update existing chart tag instead of creating new one
     if spec.text then existing_chart_tag.text = spec.text end
     if spec.icon then existing_chart_tag.icon = spec.icon end
     if spec.last_user then existing_chart_tag.last_user = spec.last_user end
     return existing_chart_tag
   end
-
-  -- Create new chart tag - only set last_user if explicitly provided in spec
-  -- This ensures temp chart tags don't record ownership until confirmed
 
   -- Use protected call to catch any errors
   local success, result = pcall(function()
@@ -207,13 +141,6 @@ function ChartTagUtils.safe_add_chart_tag(force, surface, spec, player)
     })
     return nil
   end
-
-  -- Natural system: No collision resolution needed as GPS-keyed storage prevents duplicates
-  ErrorHandler.debug_log("Chart tag created successfully with natural position system", {
-    position = result.position,
-    text = result.text,
-    gps = gps
-  })
 
   return result
 end

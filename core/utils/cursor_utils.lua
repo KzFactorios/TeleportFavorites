@@ -3,7 +3,6 @@
 
 local ErrorHandler = require("core.utils.error_handler")
 local FavoriteUtils = require("core.favorite.favorite")
-local GameHelpers = require("core.utils.game_helpers")
 local Cache = require("core.cache.cache")
 
 ---@class CursorUtils
@@ -27,39 +26,18 @@ function CursorUtils.start_drag_favorite(player, favorite, slot_index)
   player_data.drag_favorite.source_slot = slot_index
   player_data.drag_favorite.favorite = FavoriteUtils.copy(favorite)
   
-  -- Set cursor to a simple item for visual feedback during drag
-  -- Using iron plate as a neutral visual indicator
-  ErrorHandler.debug_log("[CURSOR_UTILS] Setting cursor icon for drag", {
-    player = player.name,
-    slot_index = slot_index
-  })
-  
   local success = pcall(function()
-    player.clear_cursor()
-    
+    player.clear_cursor()    
     -- Use cursor_ghost for visual feedback during drag
     -- Using blueprint as it represents planning/positioning theme
     ---@diagnostic disable-next-line: undefined-field
     player.cursor_ghost = "blueprint"
-    
-    ErrorHandler.debug_log("[CURSOR_UTILS] Set cursor ghost to blueprint", {
-      player = player.name,
-      ---@diagnostic disable-next-line: undefined-field
-      cursor_ghost = player.cursor_ghost or "none"
-    })
   end)
   
   if not success then
     ErrorHandler.debug_log("[CURSOR_UTILS] Failed to set cursor ghost", {
       player = player.name
     })
-  end
-  
-  local label = "Favorite " .. slot_index
-  
-  -- Use tag text for the label if available
-  if favorite.tag and favorite.tag.chart_tag and favorite.tag.chart_tag.text and favorite.tag.chart_tag.text ~= "" then
-    label = favorite.tag.chart_tag.text
   end
   
   -- Success - both data and visual indicator are set
@@ -127,13 +105,6 @@ function CursorUtils.is_dragging_favorite(player)
   if not player_data.drag_favorite.source_slot then
     return false, nil
   end
-  
-  -- Log the active drag state for debugging
-  ErrorHandler.debug_log("[CURSOR_UTILS] Detected active drag operation", {
-    player = player.name,
-    source_slot = player_data.drag_favorite.source_slot,
-    active = player_data.drag_favorite.active
-  })
   
   return true, player_data.drag_favorite.source_slot
 end
