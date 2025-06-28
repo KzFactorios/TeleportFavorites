@@ -31,17 +31,12 @@ Main Functions:
 local Enum = require("prototypes.enums.enum")
 local GuiBase = require("gui.gui_base")
 local GuiValidation = require("core.utils.gui_validation")
-local GuiFormatting = require("core.utils.gui_formatting")
 local GPSUtils = require("core.utils.gps_utils")
 local BasicHelpers = require("core.utils.basic_helpers")
 local ValidationUtils = require("core.utils.validation_utils")
-local ErrorHandler = require("core.utils.error_handler")
 local Cache = require("core.cache.cache")
 local AdminUtils = require("core.utils.admin_utils")
-local GameHelpers = require("core.utils.game_helpers")
 local PlayerFavorites = require("core.favorite.player_favorites")
-local FavoriteUtils = require("core.favorite.favorite")
-local Constants = require("constants")
 
 
 local tag_editor = {}

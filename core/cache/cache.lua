@@ -48,10 +48,8 @@ storage = {
 local mod_version = require("core.utils.version")
 local FavoriteUtils = require("core.favorite.favorite")
 local Constants = require("constants")
-local ErrorHandler = require("core.utils.error_handler") -- Use basic error handler to avoid circular dependency
 local GPSUtils = require("core.utils.gps_utils")
 local Lookups = require("core.cache.lookups")
-local PositionUtils = require("core.utils.position_utils")
 local ErrorHandler = require("core.utils.error_handler")
 
 -- Lazy-loaded Lookups module to avoid circular dependency
@@ -96,6 +94,51 @@ function Cache.init()
   return storage
 end
 
+local function init_player_favorites(player)
+  local pfaves = storage.players[player.index].surfaces[player.surface.index].favorites or {}
+  for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
+    if not pfaves[i] or type(pfaves[i]) ~= "table" then
+      pfaves[i] = FavoriteUtils.get_blank_favorite()
+    end
+    -- Don't override GPS if it's already set - preserve BLANK_GPS value
+    pfaves[i].gps = pfaves[i].gps or Constants.settings.BLANK_GPS
+    pfaves[i].locked = pfaves[i].locked or false
+  end
+
+  storage.players[player.index].surfaces[player.surface.index].favorites = pfaves or {}
+  return storage.players[player.index].surfaces[player.surface.index].favorites
+end
+
+local function init_player_data(player)
+  if not player or not player.index then return {} end
+  Cache.init()
+  storage.players = storage.players or {}
+  storage.players[player.index] = storage.players[player.index] or {}
+  storage.players[player.index].surfaces = storage.players[player.index].surfaces or {}
+
+  local player_data = storage.players[player.index]
+  player_data.surfaces[player.surface.index] = player_data.surfaces[player.surface.index] or {}
+
+  player_data.surfaces[player.surface.index].favorites = init_player_favorites(player)
+  player_data.player_name = player.name or "Unknown"
+  player_data.render_mode = player_data.render_mode or player.render_mode
+  player_data.tag_editor_data = player_data.tag_editor_data or Cache.create_tag_editor_data()
+
+  player_data.drag_favorite = player_data.drag_favorite or {
+    active = false,
+    source_slot = nil,
+    favorite = nil
+  }
+
+  player_data.modal_dialog = player_data.modal_dialog or {
+    active = false,
+    dialog_type = nil
+  }
+
+  return player_data
+end
+
+
 --- Retrieve a value from the persistent cache by key.
 ---@param key string
 ---@return any|nil
@@ -105,45 +148,6 @@ function Cache.get(key)
   return storage[key]
 end
 
---- Set a value in the persistent cache by key.
----@param key string
----@param value any
-function Cache.set(key, value)
-  if not key or key == "" then return end
-  Cache.init()
-  storage[key] = value
-end
-
---- Clear the entire persistent cache.
-function Cache.clear()
-  if not storage then
-    error("Storage table not available - cannot clear cache")
-  end
-
-  -- Clear all data while preserving storage table reference
-  for k in pairs(storage) do
-    storage[k] = nil
-  end
-
-  -- Reinitialize with clean structure
-  storage.players = {}
-  storage.surfaces = {}
-  storage.mod_version = mod_version
-  -- Clear non-persistent lookup cache if available
-  if package.loaded["core.cache.lookups"] then
-    local lookups_module = package.loaded["core.cache.lookups"]
-    if lookups_module.clear_all_caches then
-      lookups_module.clear_all_caches()
-    end
-  end
-
-  -- Notify observers of cache refresh
-  notify_observers_safe("cache_updated", {
-    type = "cache_cleared",
-    timestamp = game and game.tick or 0
-  })
-end
-
 --- Get the mod version from the cache, setting it if not present.
 ---@return string|nil
 function Cache.get_mod_version()
@@ -151,90 +155,12 @@ function Cache.get_mod_version()
   return (val and val ~= "") and tostring(val) or nil
 end
 
--- At this point, we assume the player is already initialized and has a valid surface.
--- Initialize the player's favorites array, ensuring it has the correct structure. eg: min # favorites
-
-
---- Initialize and retrieve persistent player data for a given player.
----@param player LuaPlayer
----@return table Player data table (persistent)
-local function ensure_player_cache(player)
-  if not player or not player.valid or not player.index then return {} end
-  Cache.init()
-  storage.players = storage.players or {}
-  storage.players[player.index] = storage.players[player.index] or {}
-  return storage.players[player.index]
-end
-
-local function init_player_data(player)
-  if not player or not player.index then return {} end
-  Cache.init()
-  storage.players = storage.players or {}
-
-  storage.players[player.index] = storage.players[player.index] or {}
-  storage.players[player.index].surfaces = storage.players[player.index].surfaces or {}
-
-  local player_data = storage.players[player.index]
-  player_data.surfaces[player.surface.index] = player_data.surfaces[player.surface.index] or {}
-
-  local function init_player_favorites(player)
-    local pfaves = storage.players[player.index].surfaces[player.surface.index].favorites or {}
-    for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
-      if not pfaves[i] or type(pfaves[i]) ~= "table" then
-        pfaves[i] = FavoriteUtils.get_blank_favorite()
-      end
-      -- Don't override GPS if it's already set - preserve BLANK_GPS value
-      pfaves[i].gps = pfaves[i].gps or Constants.settings.BLANK_GPS
-      pfaves[i].locked = pfaves[i].locked or false
-    end
-
-    storage.players[player.index].surfaces[player.surface.index].favorites = pfaves or {}
-    return storage.players[player.index].surfaces[player.surface.index].favorites
-  end
-  player_data.surfaces[player.surface.index].favorites = init_player_favorites(player)
-  player_data.player_name = player.name or "Unknown"
-  player_data.render_mode = player_data.render_mode or player.render_mode
-  player_data.tag_editor_data = player_data.tag_editor_data or Cache.create_tag_editor_data()
-  
-  -- Add drag state tracking for drag-and-drop functionality
-  player_data.drag_favorite = player_data.drag_favorite or {
-    active = false,
-    source_slot = nil,
-    favorite = nil
-  }
-  
-  -- Add modal dialog state tracking
-  player_data.modal_dialog = player_data.modal_dialog or {
-    active = false,
-    dialog_type = nil
-  }
-  
-  return player_data
-end
-
-
 --- Get persistent player data for a given player.
 ---@param player LuaPlayer
 ---@return table --data table (persistent)
 function Cache.get_player_data(player)
-  if not player then 
-    -- Use basic error handler to avoid circular dependency
-    return {} 
-  end
-  
-  -- Simple timing without circular dependency
-  local start_tick = game.tick
+  if not player then return {} end
   local result = init_player_data(player)
-  local duration = game.tick - start_tick
-  
-  if duration > 3 then
-    ErrorHandler.debug_log("Slow cache operation", {
-      operation = "get_player_data",
-      duration_ticks = duration,
-      player_index = player.index
-    })
-  end
-  
   return result
 end
 
@@ -242,20 +168,8 @@ end
 -- Returns the player's favorites array, or an empty table if not found.
 ---@return table[]
 function Cache.get_player_favorites(player)
-  local start_tick = game.tick
   local player_data = Cache.get_player_data(player)
   local favorites = player_data.surfaces[player.surface.index].favorites or {}
-  local duration = game.tick - start_tick
-  
-  if duration > 3 then
-    ErrorHandler.debug_log("Slow cache operation", {
-      operation = "get_player_favorites",
-      duration_ticks = duration,
-      player_index = player.index,
-      surface_index = player.surface.index
-    })
-  end
-  
   return favorites
 end
 
@@ -474,14 +388,12 @@ function Cache.reset_tag_editor_delete_mode(player)
   Cache.set_tag_editor_data(player, tag_data)
 end
 
--- Modal dialog state management functions
-
 --- Set modal dialog state for a player
 ---@param player LuaPlayer
 ---@param dialog_type string|nil -- type of dialog that is modal, or nil to clear
 function Cache.set_modal_dialog_state(player, dialog_type)
   if not player or not player.valid then return end
-  
+
   local player_data = Cache.get_player_data(player)
   player_data.modal_dialog.active = dialog_type ~= nil
   player_data.modal_dialog.dialog_type = dialog_type
@@ -492,7 +404,7 @@ end
 ---@return boolean -- true if modal dialog is active
 function Cache.is_modal_dialog_active(player)
   if not player or not player.valid then return false end
-  
+
   local player_data = Cache.get_player_data(player)
   return player_data.modal_dialog.active == true
 end
@@ -502,7 +414,7 @@ end
 ---@return string|nil -- dialog type or nil if no modal dialog active
 function Cache.get_modal_dialog_type(player)
   if not player or not player.valid then return nil end
-  
+
   local player_data = Cache.get_player_data(player)
   if player_data.modal_dialog.active then
     return player_data.modal_dialog.dialog_type
