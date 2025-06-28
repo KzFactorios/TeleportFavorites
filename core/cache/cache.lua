@@ -110,7 +110,8 @@ local function init_player_favorites(player)
 end
 
 local function init_player_data(player)
-  if not player or not player.index then return {} end
+  if not player or not player.valid then return {} end
+
   Cache.init()
   storage.players = storage.players or {}
   storage.players[player.index] = storage.players[player.index] or {}
@@ -137,7 +138,6 @@ local function init_player_data(player)
 
   return player_data
 end
-
 
 --- Retrieve a value from the persistent cache by key.
 ---@param key string
@@ -230,7 +230,7 @@ function Cache.remove_stored_tag(gps)
   tag_cache[gps] = nil
 
   -- Remove the tag from the Lookups cache as well
-  Cache.init() -- Ensure Lookups is initialized
+  Cache.init()
   ---@diagnostic disable-next-line: undefined-field, need-check-nil
   Cache.Lookups.remove_chart_tag_from_cache_by_gps(gps)
 end
@@ -241,10 +241,7 @@ end
 function Cache.get_tag_by_gps(player, gps)
   if not player then return nil end
   if not gps or gps == "" then return nil end
-  local surface_index = GPSUtils.get_surface_index_from_gps(gps)
-  if not surface_index or surface_index < 1 then return nil end
-  local surface = game.surfaces[surface_index]
-  if not surface then return nil end
+  local surface_index = player.surface.index
 
   local tag_cache = Cache.get_surface_tags(surface_index --[[@as uint]])
   local cache_keys = {}
@@ -367,14 +364,6 @@ function Cache.set_tag_editor_delete_mode(player, is_delete_mode)
 
   -- Ensure we keep the tag_editor_data updated
   Cache.set_tag_editor_data(player, tag_data)
-end
-
--- Check if the tag editor is in delete mode
-function Cache.is_tag_editor_delete_mode(player)
-  if not player or not player.valid then return false end
-
-  local tag_data = Cache.get_tag_editor_data(player)
-  return tag_data.delete_mode == true
 end
 
 -- Reset the delete mode flag in tag_editor_data

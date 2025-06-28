@@ -18,7 +18,7 @@ Commands:
 local DebugConfig = require("core.utils.debug_config")
 local Logger = require("core.utils.enhanced_error_handler")
 local GameHelpers = require("core.utils.game_helpers")
-local DevPerformanceMonitor = require("core.utils.dev_performance_monitor")
+
 
 ---@class DebugCommands
 local DebugCommands = {}
@@ -52,13 +52,12 @@ function DebugCommands.register_commands()
     local player = game.get_player(command.player_index)
     if not player then return end
     
-    local debug_info = Logger.get_debug_info()
     GameHelpers.player_print(player, "=== TeleportFavorites Debug Info ===")
-    GameHelpers.player_print(player, "Current Level: " .. debug_info.level .. " (" .. debug_info.level_name .. ")")
-    GameHelpers.player_print(player, "Mode: " .. (debug_info.is_production and "Production" or "Development"))
+    GameHelpers.player_print(player, "Current Level: " .. DebugConfig.get_level() .. " (" .. DebugConfig.get_level_name() .. ")")
+    GameHelpers.player_print(player, "Mode: " .. (DebugConfig.get_level() <= DebugConfig.LEVELS.WARN and "Production" or "Development"))
     GameHelpers.player_print(player, "Available Levels:")
-    for name, level in pairs(debug_info.available_levels) do
-      local indicator = (level == debug_info.level) and " ← CURRENT" or ""
+    for name, level in pairs(DebugConfig.LEVELS) do
+      local indicator = (level == DebugConfig.get_level()) and " 0 CURRENT" or ""
       GameHelpers.player_print(player, "  " .. level .. " = " .. name .. indicator)
     end
   end)
@@ -78,26 +77,7 @@ function DebugCommands.register_commands()
     if not player then return end
     
     DebugConfig.enable_development_mode()
-    DevPerformanceMonitor.initialize()
     GameHelpers.player_print(player, "Development mode enabled (debug level: " .. DebugConfig.get_level_name() .. ")")
-    GameHelpers.player_print(player, "Performance monitoring activated")
-  end)
-  
-  -- Performance dashboard command
-  commands.add_command("tf_perf_dashboard", "Show TeleportFavorites development performance dashboard", function(command)
-    local player = game.get_player(command.player_index)
-    if not player then return end
-    
-    DevPerformanceMonitor.show_performance_dashboard(player)
-  end)
-  
-  -- Performance reset command
-  commands.add_command("tf_perf_reset", "Reset TeleportFavorites performance monitoring data", function(command)
-    local player = game.get_player(command.player_index)
-    if not player then return end
-    
-    DevPerformanceMonitor.reset_data()
-    GameHelpers.player_print(player, "Performance monitoring data reset")
   end)
   
   Logger.info("Debug commands registered")

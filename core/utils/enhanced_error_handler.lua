@@ -24,7 +24,7 @@ Usage:
 
 local DebugConfig = require("core.utils.debug_config")
 local ErrorHandler = require("core.utils.error_handler")
-local DevPerformanceMonitor = require("core.utils.dev_performance_monitor")
+
 
 ---@class EnhancedErrorHandler
 local EnhancedErrorHandler = {}
@@ -107,39 +107,6 @@ function EnhancedErrorHandler.initialize()
   EnhancedErrorHandler.info("Enhanced error handler initialized")
 end
 
---- Measure performance of an operation (development only)
----@param operation_name string Name of the operation
----@param func function Function to measure
----@param context table? Optional context
----@return any result Function result
-function EnhancedErrorHandler.measure_operation(operation_name, func, context)
-  return DevPerformanceMonitor.measure_operation(operation_name, func, context)
-end
 
---- Record cache operation for performance tracking
----@param operation string "hit" or "miss"
----@param cache_type string Type of cache
-function EnhancedErrorHandler.record_cache_operation(operation, cache_type)
-  DevPerformanceMonitor.record_cache_operation(operation, cache_type)
-end
-
---- Take periodic memory snapshot (called from event handlers)
-function EnhancedErrorHandler.take_memory_snapshot()
-  DevPerformanceMonitor.take_memory_snapshot()
-end
-
---- Get current debug configuration info
----@return table config Debug configuration info
-function EnhancedErrorHandler.get_debug_info()
-  local perf_summary = DevPerformanceMonitor.get_performance_summary()
-  
-  return {
-    level = DebugConfig.get_level(),
-    level_name = DebugConfig.get_level_name(),
-    is_production = DebugConfig.get_level() <= DebugConfig.LEVELS.WARN,
-    available_levels = DebugConfig.LEVELS,
-    performance_monitoring = perf_summary
-  }
-end
 
 return EnhancedErrorHandler

@@ -35,7 +35,6 @@ local Lookups = {}
 Lookups.__index = Lookups
 local CACHE_KEY = "Lookups"
 
-
 --- Ensure the cache.surfaces table exists in global (non-persistent)
 --- This is a local function and should never be called from outside this module.
 --- It initializes the cache if it doesn't exist, ensuring a consistent structure.
@@ -172,7 +171,6 @@ local function get_gps_mapping_for_surface(surface_index)
   if not surface_cache then return {} end
   return surface_cache.chart_tags_mapped_by_gps or {}
 end
-
 
 --- Selectivly remove a chart tag from the cache by GPS.
 --- This is useful when a chart tag is deleted or modified and we want to ensure the cache is up-to-date.

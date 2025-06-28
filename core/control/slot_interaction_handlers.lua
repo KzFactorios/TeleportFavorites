@@ -36,7 +36,6 @@ local SharedUtils = require("core.control.control_shared_utils")
 ---@class SlotInteractionHandlers
 local SlotInteractionHandlers = {}
 
---- Check if a favorite can be dragged
 ---@param fav table The favorite to check
 ---@return boolean can_drag
 function SlotInteractionHandlers.can_start_drag(fav)

@@ -25,17 +25,6 @@ function SharedUtils.lstr(key, ...)
   return { key, ... }
 end
 
---- Standardized GUI refresh pattern
----@param cache_setter function
----@param gui_destroyer function
----@param gui_builder function
----@param ... any
-function SharedUtils.refresh_gui(cache_setter, gui_destroyer, gui_builder, ...)
-  cache_setter(...)
-  gui_destroyer(...)
-  gui_builder(...)
-end
-
 --- Standardized GUI refresh with cache update
 ---@param cache_setter function
 ---@param destroyer function
@@ -52,13 +41,6 @@ end
 ---@param data table
 function SharedUtils.notify_observer(event_name, data)
   GuiEventBus.notify(event_name, data)
-end
-
---- Standardized error display
----@param player LuaPlayer
----@param message any
-function SharedUtils.display_error(player, message)
-  GameHelpers.player_print(player, message)
 end
 
 return SharedUtils

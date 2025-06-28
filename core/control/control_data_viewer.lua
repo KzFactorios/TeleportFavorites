@@ -125,35 +125,6 @@ local function update_font_size(player, main_flow, delta)
   data_viewer.update_font_size(player, new_size)
 end
 
---- Find currently active tab from GUI elements
----@param main_flow LuaGuiElement
----@return string active_tab
-local function find_active_tab_from_gui(main_flow)
-  local frame = GuiValidation.find_child_by_name(main_flow, "data_viewer_frame")
-  if not (frame and frame.valid) then return "player_data" end
-  
-  -- Access the correct GUI structure: frame.data_viewer_inner_flow.data_viewer_tabs_flow
-  ---@diagnostic disable-next-line: undefined-field
-  local inner_flow = frame.data_viewer_inner_flow
-  if not inner_flow then return "player_data" end
-  
-  local tabs_flow = inner_flow.data_viewer_tabs_flow
-  if not tabs_flow then return "player_data" end
-  
-  -- Look for tab buttons with the active style
-  for _, child in pairs(tabs_flow.children) do
-    if child.style and child.style.name == "tf_data_viewer_tab_button_active" then
-      if child.name:find("player_data") then return "player_data" end
-      if child.name:find("surface_data") then return "surface_data" end
-      if child.name:find("lookup") then return "lookup" end
-      if child.name:find("all_data") then return "all_data" end
-    end
-  end
-  
-  return "player_data" -- default fallback
-end
-
--- Inline get_or_create_gui_flow_from_gui_top, use GuiAccessibility.get_or_create_gui_flow_from_gui_top directly
 function M.on_toggle_data_viewer(event)
   ErrorHandler.debug_log("Data viewer toggle called", {
     player_index = event.player_index,

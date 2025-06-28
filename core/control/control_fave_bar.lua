@@ -24,6 +24,8 @@ local SlotInteractionHandlers = require("core.control.slot_interaction_handlers"
 local GameHelpers = require("core.utils.game_helpers")
 local SharedUtils = require("core.control.control_shared_utils")
 local CursorUtils = require("core.utils.cursor_utils")
+local GuiAccessibility = require("core.utils.gui_accessibility")
+local GuiValidation = require("core.utils.gui_validation")
 
 local M = {}
 
@@ -52,44 +54,6 @@ local function reorder_favorites(player, favorites, drag_index, slot)
   end
   -- Fallback to default cascade logic
   return SlotInteractionHandlers.reorder_favorites(player, favorites, drag_index, slot)
-end
-
---- Open tag editor from a favorite using modular handlers
----@param player LuaPlayer The player
----@param favorite table The favorite
-local function open_tag_editor_from_favorite(player, favorite)
-  -- Use the modular SlotInteractionHandlers for tag editor opening
-  SlotInteractionHandlers.open_tag_editor_from_favorite(player, favorite)
-end
-
---- Handle drag start operation
----@param event table The GUI event
----@param player LuaPlayer The player
----@param fav table The favorite
----@param slot number The slot number
----@return boolean handled
-local function handle_drag_start(event, player, fav, slot)
-  if event.button == defines.mouse_button_type.left and not event.control and FavoriteSlotUtils.can_start_drag(fav) then
-    return CursorUtils.start_drag_favorite(player, fav, slot)
-  end
-  return false
-end
-
---- Handle reorder operation during drag
----@param event table The GUI event
----@param player LuaPlayer The player
----@param favorites PlayerFavorites The favorites instance
----@param drag_index number The source slot index
----@param slot number The target slot index
----@return boolean handled
-local function handle_reorder(event, player, favorites, drag_index, slot)
-  if event.button == defines.mouse_button_type.left and not event.control and drag_index and drag_index ~= slot then
-    return reorder_favorites(player, favorites, drag_index, slot)
-  elseif event.button == defines.mouse_button_type.left and not event.control and drag_index and drag_index == slot then
-    CursorUtils.end_drag_favorite(player)
-    return true
-  end
-  return false
 end
 
 --- Handle teleport operation
@@ -200,7 +164,7 @@ local function handle_favorite_slot_click(event, player, favorites)
     if event.button == defines.mouse_button_type.right then
       ErrorHandler.debug_log("[FAVE_BAR] Right-click detected during drag, canceling drag operation", 
         { player = player.name, source_slot = source_slot })
-      end_drag(player)
+      CursorUtils.end_drag_favorite(player)
       GameHelpers.player_print(player, {"tf-gui.fave_bar_drag_canceled"})
       return
     end
@@ -217,7 +181,7 @@ local function handle_favorite_slot_click(event, player, favorites)
         if target_fav and FavoriteSlotUtils.is_locked_favorite(target_fav) then
           GameHelpers.player_print(player, SharedUtils.lstr("tf-gui.fave_bar_locked_cant_target", slot))
           GameHelpers.safe_play_sound(player, { path = "utility/cannot_build" })
-          end_drag(player)
+          CursorUtils.end_drag_favorite(player)
           ErrorHandler.debug_log("[FAVE_BAR] Target slot is locked, canceling drag")
           return
         end
@@ -325,12 +289,6 @@ local function handle_map_right_click(event, player)
 end
 
 --- Handle favorites bar GUI click events
---- Processes various types of interactions with the favorites bar slots including:
---- - Drag and drop operations
---- - Teleportation
---- - Lock toggle
---- - Tag editor opening
---- - Visibility toggle
 ---@param event table The GUI click event containing element, player_index, button, etc.
 local function log_click_event(event, player)
   ErrorHandler.debug_log("[FAVE_BAR] on_fave_bar_gui_click entry point", {

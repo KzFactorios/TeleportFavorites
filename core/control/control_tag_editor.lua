@@ -148,7 +148,6 @@ local function update_chart_tag_fields(tag, tag_data, text, icon, player)
       icon = icon
     }
   })
-  -- Do NOT notify "cache_updated" here; only handle_confirm_btn should do so
 end
 
 local function close_tag_editor(player)
@@ -304,11 +303,6 @@ local function handle_confirm_btn(player, element, tag_data)
 end
 
 local function handle_favorite_btn(player, tag_data)
-  ErrorHandler.debug_log("[TAG_EDITOR] handle_favorite_btn: entry", {
-    gps = tag_data and tag_data.gps,
-    is_favorite = tag_data and tag_data.is_favorite
-  })
-  -- Validate player first
   if not player or not player.valid then
     ErrorHandler.debug_log("Handle favorite button - invalid player", {
       player_exists = player ~= nil,
@@ -363,7 +357,7 @@ local function handle_delete_confirm(player)
   end
 
   -- Use AdminUtils to validate deletion permissions
-  local can_delete, is_owner, is_admin_override, reason = AdminUtils.can_delete_chart_tag(player, tag.chart_tag, tag)
+  local can_delete, _is_owner, is_admin_override, reason = AdminUtils.can_delete_chart_tag(player, tag.chart_tag, tag)
 
   if not can_delete then
     GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
@@ -385,7 +379,6 @@ local function handle_delete_confirm(player)
   -- Store tag info for observers before deletion
   local tag_gps = tag.gps
 
-  -- Execute deletion
   tag_destroy_helper.destroy_tag_and_chart_tag(tag, tag.chart_tag)
 
   -- Notify observers of tag deletion
@@ -404,18 +397,17 @@ local function handle_delete_confirm(player)
   GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
   Cache.set_modal_dialog_state(player, nil) -- Clear modal state
   close_tag_editor(player)
-  -- Reset delete mode
+ 
   Cache.reset_tag_editor_delete_mode(player)
 
-  -- get the player settings value for teleport messages on and make the next line conitional
   local player_settings = SettingsAccess:getPlayerSettings(player)
   if player_settings.destination_msg_on then
     GameHelpers.player_print(player, { "tf-gui.tag_deleted" })
   end
 end
 
+-- User cancelled deletion - close confirmation dialog and return to tag editor
 local function handle_delete_cancel(player)
-  -- User cancelled deletion - close confirmation dialog and return to tag editor
   GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
   Cache.set_modal_dialog_state(player, nil) -- Clear modal state
   player.opened = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
@@ -463,12 +455,6 @@ end
 
 --- Tag editor GUI click handler for shared dispatcher
 local function on_tag_editor_gui_click(event, script)
-  ErrorHandler.debug_log("[TAG_EDITOR] on_tag_editor_gui_click called", {
-    element_name = event and event.element and event.element.name or "<none>",
-    button = event and event.button,
-    event_type = event and event.input_name or "<no input_name>"
-  })
-
   local element = event.element
   if not element or not element.valid then return end
 
@@ -506,14 +492,8 @@ local function on_tag_editor_gui_click(event, script)
   end
   -- Handle confirmation dialog buttons without checking button type
   if element.name == "tf_confirm_dialog_confirm_btn" then
-    ErrorHandler.debug_log("Confirm dialog confirm button clicked", {
-      button = event.button
-    })
     return handle_delete_confirm(player)
   elseif element.name == "tf_confirm_dialog_cancel_btn" then
-    ErrorHandler.debug_log("Confirm dialog cancel button clicked", {
-      button = event.button
-    })
     return handle_delete_cancel(player)
   end
 
@@ -554,7 +534,7 @@ local function on_tag_editor_gui_text_changed(event)
     end
     
     Cache.set_tag_editor_data(player, tag_data)
-    -- Update error display if there's an error
+    
     if tag_data.error_message then
       tag_editor.update_error_message(player, tag_data.error_message)
     else
@@ -582,13 +562,6 @@ local function on_tag_editor_gui_elem_changed(event)
     tag_data.icon = new_icon
     Cache.set_tag_editor_data(player, tag_data)
 
-    ErrorHandler.debug_log("Icon selection changed", {
-      player = player.name,
-      new_icon = new_icon,
-      icon_type = type(new_icon)
-    })
-
-    -- Update confirm button state based on new icon selection
     GuiPartialUpdateUtils.update_state(tag_editor.update_confirm_button_state, player, tag_data)
   end
 end
