@@ -174,7 +174,19 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
   local max_slots = Constants.settings.MAX_FAVORITE_SLOTS or 10
 
   local function get_slot_btn_props(i, fav)
-    fav = FavoriteRehydration.rehydrate_favorite_at_runtime(player, fav)
+    -- Safely rehydrate favorite, catch any errors and return blank favorite
+    local rehydrated_fav = nil
+    local rehydrate_success, rehydrate_error = pcall(function()
+      rehydrated_fav = FavoriteRehydration.rehydrate_favorite_at_runtime(player, fav)
+    end)
+    
+    if not rehydrate_success or not rehydrated_fav then
+      -- Rehydration failed, treat as blank favorite
+      rehydrated_fav = FavoriteUtils.get_blank_favorite()
+    end
+    
+    fav = rehydrated_fav
+    
     if fav and not FavoriteUtils.is_blank_favorite(fav) then
       -- Icon comes from chart_tag.icon only (tags do not have icon property)
       -- Safely check chart_tag validity before accessing its properties
@@ -184,8 +196,8 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
         if valid_check_success and is_valid then
           icon = fav.tag.chart_tag.icon
         else
-          -- Chart tag is invalid, clear the reference
-          fav.tag.chart_tag = nil
+          -- Chart tag is invalid, treat this favorite as blank
+          return nil, { "tf-gui.favorite_slot_empty" }, "slot_button", false
         end
       end
       -- Normalize icon type for virtual signals before any debug or sprite logic
@@ -292,7 +304,19 @@ function fave_bar.update_single_slot(player, slot_index)
 
   local pfaves = Cache.get_player_favorites(player)
   local fav = pfaves[slot_index]
-  fav = FavoriteRehydration.rehydrate_favorite_at_runtime(player, fav)
+  
+  -- Safely rehydrate favorite, catch any errors and return blank favorite
+  local rehydrated_fav = nil
+  local rehydrate_success, rehydrate_error = pcall(function()
+    rehydrated_fav = FavoriteRehydration.rehydrate_favorite_at_runtime(player, fav)
+  end)
+  
+  if not rehydrate_success or not rehydrated_fav then
+    -- Rehydration failed, treat as blank favorite
+    rehydrated_fav = FavoriteUtils.get_blank_favorite()
+  end
+  
+  fav = rehydrated_fav
   
   if fav and not FavoriteUtils.is_blank_favorite(fav) then
     -- Icon comes from chart_tag.icon only (tags do not have icon property)
@@ -303,8 +327,10 @@ function fave_bar.update_single_slot(player, slot_index)
       if valid_check_success and is_valid then
         icon = fav.tag.chart_tag.icon
       else
-        -- Chart tag is invalid, clear the reference
-        fav.tag.chart_tag = nil
+        -- Chart tag is invalid, treat as blank favorite
+        slot_button.sprite = ""
+        slot_button.tooltip = { "tf-gui.favorite_slot_empty" }
+        return
       end
     end
     local norm_icon = icon

@@ -253,15 +253,45 @@ function Cache.get_tag_by_gps(player, gps)
 
   local match_tag = tag_cache[gps] or nil
 
-  -- Ensure chart_tag is present
-  if match_tag and (not match_tag.chart_tag or not match_tag.chart_tag.position) then
+  -- Ensure chart_tag is present and valid
+  if match_tag and match_tag.chart_tag then
+    -- Safely check if chart_tag is valid and has position
+    local chart_tag_valid, chart_tag_has_position = pcall(function()
+      return match_tag.chart_tag.valid and match_tag.chart_tag.position ~= nil
+    end)
+    
+    if not chart_tag_valid or not chart_tag_has_position then
+      -- Chart tag is invalid or missing position, try to get a fresh one
+      local chart_tag_lookup = Cache.Lookups.get_chart_tag_by_gps(gps)
+      if chart_tag_lookup then
+        local lookup_valid = pcall(function() return chart_tag_lookup.valid end)
+        if lookup_valid then
+          match_tag.chart_tag = chart_tag_lookup
+        else
+          match_tag.chart_tag = nil
+        end
+      else
+        match_tag.chart_tag = nil
+      end
+    end
+  elseif match_tag and not match_tag.chart_tag then
+    -- No chart_tag reference, try to get one
     local chart_tag_lookup = Cache.Lookups.get_chart_tag_by_gps(gps)
-    if chart_tag_lookup and chart_tag_lookup.valid then
-      match_tag.chart_tag = chart_tag_lookup
+    if chart_tag_lookup then
+      local lookup_valid = pcall(function() return chart_tag_lookup.valid end)
+      if lookup_valid then
+        match_tag.chart_tag = chart_tag_lookup
+      end
     end
   end
 
-  local valid_chart_tag = match_tag and match_tag.chart_tag and match_tag.chart_tag.valid
+  -- Safely check if we have a valid chart_tag
+  local valid_chart_tag = false
+  if match_tag and match_tag.chart_tag then
+    local chart_tag_check_success, is_valid = pcall(function() return match_tag.chart_tag.valid end)
+    valid_chart_tag = chart_tag_check_success and is_valid == true
+  end
+  
   if valid_chart_tag and match_tag then
     return match_tag
   end
