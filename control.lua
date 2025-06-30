@@ -26,6 +26,7 @@ local ErrorHandler = require("core.utils.error_handler")
 local Logger = require("core.utils.enhanced_error_handler")
 local DebugCommands = require("core.commands.debug_commands")
 local DeleteFavoriteCommand = require("core.commands.delete_favorite_command")
+local TeleportHistory = require("core.teleport.teleport_history")
 
 local gui_observer = nil
 local did_run_fave_bar_startup = false
@@ -99,5 +100,43 @@ script.on_event(defines.events.on_tick, function(event)
     end
     -- Remove this handler after first run
     script.on_event(defines.events.on_tick, nil)
+  end
+end)
+
+-- Teleport History Key Handlers
+
+script.on_event("teleport_history-prev", function(event)
+  local player = game.get_player(event.player_index)
+  TeleportHistory.move_pointer(player, -1, false)
+end)
+
+script.on_event("teleport_history-next", function(event)
+  local player = game.get_player(event.player_index)
+  TeleportHistory.move_pointer(player, 1, false)
+end)
+
+script.on_event("teleport_history-first", function(event)
+  local player = game.get_player(event.player_index)
+  TeleportHistory.move_pointer(player, -1, true)
+end)
+
+script.on_event("teleport_history-last", function(event)
+  local player = game.get_player(event.player_index)
+  TeleportHistory.move_pointer(player, 1, true)
+end)
+
+script.on_event("teleport_history-clear", function(event)
+  local player = game.get_player(event.player_index)
+  TeleportHistory.clear(player)
+end)
+
+-- Add GPS to history on successful teleport (not from teleport history component)
+script.on_event(defines.events.on_player_changed_position, function(event)
+  local player = game.get_player(event.player_index)
+  if not player or not player.valid then return end
+  -- Only add if not from teleport history (could use a flag if needed)
+  if player and player.valid and player.vehicle == nil then
+    local gps = { x = math.floor(player.position.x), y = math.floor(player.position.y), surface = player.surface.index }
+    TeleportHistory.add_gps(player, gps)
   end
 end)
