@@ -20,16 +20,12 @@ local control_fave_bar = require("core.control.control_fave_bar")
 local control_tag_editor = require("core.control.control_tag_editor")
 -- Used for data viewer registration
 local control_data_viewer = require("core.control.control_data_viewer")
-
--- Import event handling components
 local event_registration_dispatcher = require("core.events.event_registration_dispatcher")
 local handlers = require("core.events.handlers")
--- Import error handler for logging
 local ErrorHandler = require("core.utils.error_handler")
--- Import enhanced error handler with debug levels
 local Logger = require("core.utils.enhanced_error_handler")
--- Import debug commands for runtime control
 local DebugCommands = require("core.commands.debug_commands")
+local DeleteFavoriteCommand = require("core.commands.delete_favorite_command")
 
 local gui_observer = nil
 local did_run_fave_bar_startup = false
@@ -38,6 +34,15 @@ local did_run_fave_bar_startup = false
 local success, module = pcall(require, "core.events.gui_observer")
 if success then gui_observer = module end
 
+-- Register all commands
+local function register_commands()
+  -- Register debug commands
+  DebugCommands.register_commands()
+  
+  -- Register delete favorite command
+  DeleteFavoriteCommand.register_commands()
+end
+
 -- Core lifecycle event registration through centralized dispatcher
 
 -- Custom on_init to allow easy toggling of intro cutscene skip
@@ -45,8 +50,8 @@ local function custom_on_init()
   -- Initialize debug system first
   Logger.initialize()
 
-  -- Register debug commands
-  DebugCommands.register_commands()
+  -- Register all commands
+  register_commands()
 
   -- Set debug mode based on development indicators
   if storage and storage._tf_debug_mode then
@@ -58,8 +63,17 @@ local function custom_on_init()
   handlers.on_init()
 end
 
+-- Custom on_load to ensure commands are registered
+local function custom_on_load()
+  -- Register all commands
+  register_commands()
+  
+  -- Call the original handlers.on_load
+  handlers.on_load()
+end
+
 script.on_init(custom_on_init)
-script.on_load(handlers.on_load)
+script.on_load(custom_on_load)
 
 -- KEEP THIS CODE for development (disabled in production)
 -- Instantly skip any cutscene (including intro) for all players

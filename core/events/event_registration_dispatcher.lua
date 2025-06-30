@@ -55,16 +55,15 @@ local GameHelpers = require("core.utils.game_helpers")
 local Settings = require("core.utils.settings_access")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local Cache = require("core.cache.cache")
-
----@class EventRegistrationDispatcher
-local EventRegistrationDispatcher = {}
-
--- Import all required modules
 local gui_event_dispatcher = require("core.events.gui_event_dispatcher")
 local custom_input_dispatcher = require("core.events.custom_input_dispatcher")
 local on_gui_closed_handler = require("core.events.on_gui_closed_handler")
 local handlers = require("core.events.handlers")
 local control_data_viewer = require("core.control.control_data_viewer")
+
+
+---@class EventRegistrationDispatcher
+local EventRegistrationDispatcher = {}
 
 -- Track registration state (use rawget to avoid static analysis issues)
 local _registration_state = {}

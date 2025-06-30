@@ -240,6 +240,7 @@ end
 ---@return string sprite_path Valid sprite path (never blank unless allow_blank)
 ---@return boolean used_fallback True if fallback was used
 ---@return table debug_info Debug info for logging
+
 function GuiValidation.get_validated_sprite_path(icon, opts)
   opts = opts or {}
   local fallback = opts.fallback or "utility/unknown"
@@ -249,26 +250,37 @@ function GuiValidation.get_validated_sprite_path(icon, opts)
   used_fallback = false
   debug_info = { original_icon = icon, fallback = fallback }
 
-  if not icon or icon == "" then
+  -- Normalize icon.type = "virtual" to "virtual-signal" at the very start
+  local normalized_icon = icon
+  if type(icon) == "table" and icon.type == "virtual" then
+    normalized_icon = {}
+    for k, v in pairs(icon) do normalized_icon[k] = v end
+    normalized_icon.type = "virtual-signal"
+    debug_info.normalized_type = "virtual-signal"
+  end
+
+  if not normalized_icon or normalized_icon == "" then
     sprite_path = allow_blank and "" or fallback
     used_fallback = not allow_blank
     debug_info.reason = "icon is nil or blank"
-  elseif type(icon) == "string" then
-    sprite_path = icon
-  elseif type(icon) == "table" then
-    if icon.type and icon.type ~= "" and icon.name and icon.name ~= "" then
-      sprite_path = icon.type .. "/" .. icon.name
+  elseif type(normalized_icon) == "string" then
+    sprite_path = normalized_icon
+  elseif type(normalized_icon) == "table" then
+    if normalized_icon.type and normalized_icon.type ~= "" and normalized_icon.name and normalized_icon.name ~= "" then
+      sprite_path = normalized_icon.type .. "/" .. normalized_icon.name
       debug_info.generated_path = sprite_path
-    elseif icon.name and icon.name ~= "" then
+      debug_info.final_icon_type = normalized_icon.type
+      debug_info.final_icon_name = normalized_icon.name
+    elseif normalized_icon.name and normalized_icon.name ~= "" then
       -- Default to item type when type is missing
-      sprite_path = "item/" .. icon.name
+      sprite_path = "item/" .. normalized_icon.name
       debug_info.generated_path = sprite_path
       debug_info.defaulted_type = "item"
     else
       sprite_path = fallback
       used_fallback = true
       debug_info.reason = "icon table missing type or name"
-      debug_info.icon_table_details = { has_type = icon.type ~= nil, has_name = icon.name ~= nil, type_value = icon.type, name_value = icon.name }
+      debug_info.icon_table_details = { has_type = normalized_icon.type ~= nil, has_name = normalized_icon.name ~= nil, type_value = normalized_icon.type, name_value = normalized_icon.name }
     end
   else
     sprite_path = fallback
@@ -276,11 +288,27 @@ function GuiValidation.get_validated_sprite_path(icon, opts)
     debug_info.reason = "icon is not string or table"
   end
 
+  -- Extra debug: log the normalized sprite path and fallback usage
+  if Logger and Logger.debug_log then
+    Logger.debug_log("[GUI_VALIDATION] Sprite path normalization", {
+      original_icon = icon,
+      normalized_sprite_path = sprite_path,
+      debug_info = debug_info
+    })
+  end
+
   local is_valid, error_msg = GuiValidation.validate_sprite(sprite_path)
   if not is_valid then
     debug_info.reason = (debug_info.reason or "") .. (error_msg and (": " .. error_msg) or "")
     sprite_path = fallback
     used_fallback = true
+    if Logger and Logger.debug_log then
+      Logger.debug_log("[GUI_VALIDATION] Sprite validation failed, using fallback", {
+        attempted_sprite_path = sprite_path,
+        error_msg = error_msg,
+        fallback = fallback
+      })
+    end
   end
 
   debug_info.log_context = log_context

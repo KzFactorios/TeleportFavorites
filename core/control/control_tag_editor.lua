@@ -222,8 +222,17 @@ local function handle_confirm_btn(player, element, tag_data)
     gps = tag.gps,
     tag_present = tag ~= nil,
     chart_tag_present = tag and tag.chart_tag ~= nil,
-    icon_present = tag and tag.chart_tag and tag.chart_tag.icon ~= nil,
-    icon_info = tag and tag.chart_tag and tag.chart_tag.icon and ((tag.chart_tag.icon.type or "<no type>") .. "/" .. (tag.chart_tag.icon.name or "<no name>")) or nil
+    icon_present = tag and tag.chart_tag and (function()
+      local valid_check_success, is_valid = pcall(function() return tag.chart_tag.valid end)
+      return valid_check_success and is_valid and tag.chart_tag.icon ~= nil or false
+    end)(),
+    icon_info = tag and tag.chart_tag and (function()
+      local valid_check_success, is_valid = pcall(function() return tag.chart_tag.valid end)
+      if valid_check_success and is_valid and tag.chart_tag.icon then
+        return (tag.chart_tag.icon.type or "<no type>") .. "/" .. (tag.chart_tag.icon.name or "<no name>")
+      end
+      return nil
+    end)()
   })
   -- Ensure tag is written to persistent storage (sanitized)
   local sanitized_tag = Cache.sanitize_for_storage(refreshed_tag)

@@ -131,12 +131,26 @@ function SlotInteractionHandlers.open_tag_editor_from_favorite(player, favorite)
   favorite = FavoriteRehydration.rehydrate_favorite_at_runtime(player, favorite)
   
   -- Create initial tag data from favorite
+  -- Safely extract icon and text from chart_tag if valid
+  local icon = ""
+  local text = ""
+  if favorite.tag and favorite.tag.chart_tag then
+    local valid_check_success, is_valid = pcall(function() return favorite.tag.chart_tag.valid end)
+    if valid_check_success and is_valid then
+      icon = favorite.tag.chart_tag.icon or ""
+      text = favorite.tag.chart_tag.text or ""
+    else
+      -- Chart tag is invalid, clear the reference
+      favorite.tag.chart_tag = nil
+    end
+  end
+  
   local tag_data = Cache.create_tag_editor_data({
     gps = favorite.gps,
     locked = favorite.locked,
     is_favorite = true,  -- Always true when opening from favorites bar
-    icon = favorite.tag.chart_tag.icon or "",
-    text = favorite.tag.chart_tag.text or "",
+    icon = icon,
+    text = text,
     tag = favorite.tag,
     chart_tag = favorite.chart_tag
   })

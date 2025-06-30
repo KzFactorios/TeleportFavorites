@@ -57,7 +57,10 @@ local function sanitize_tag_for_favorite(tag)
   ErrorHandler.debug_log("[PLAYER_FAVORITES] Tag sanitized for favorite storage", {
     gps = tag and tag.gps or nil,
     original_has_chart_tag = tag and tag.chart_tag ~= nil,
-    original_has_icon = tag and tag.chart_tag and tag.chart_tag.icon ~= nil
+    original_has_icon = tag and tag.chart_tag and (function()
+      local valid_check_success, is_valid = pcall(function() return tag.chart_tag.valid end)
+      return valid_check_success and is_valid and tag.chart_tag.icon ~= nil or false
+    end)()
   })
 
   return sanitized

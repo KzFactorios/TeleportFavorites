@@ -25,7 +25,7 @@ local Constants = {
     
     -- Data display settings
     DATA_VIEWER_INDENT = 4,          -- Number of spaces for indentation in data viewer
-    
+  
     -- Feature toggles
     FAVORITES_ON = "favorites_on",   -- Setting name for enabling/disabling favorites feature
       -- Physics
@@ -34,6 +34,11 @@ local Constants = {
     -- Text limits
     -- Maximum character length for tag text
     TAG_TEXT_MAX_LENGTH = 256
+  },
+  
+  -- Command definitions
+  COMMANDS = {
+    DELETE_FAVORITE_BY_SLOT = "tf-delete-favorite-slot"
   }
 }
 

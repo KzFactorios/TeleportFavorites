@@ -2,8 +2,7 @@
   "factorio.versions": [
     {
       "name": "Gemini",
-      "factorioPath": "v:\\Fac2orios\\2_Gemini\\bin\\x64\\factorio.exe",
-      "active": true
+      "factorioPath": "v:\\Fac2orios\\2_Gemini\\bin\\x64\\factorio.exe"
     }
   ],
   "Lua.workspace.userThirdParty": [

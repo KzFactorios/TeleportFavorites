@@ -481,8 +481,14 @@ function GuiEventBus.register_player_observers(player)
   local data_observer = DataObserver:new(player)
   GuiEventBus.subscribe("cache_updated", data_observer)
 
-  ErrorHandler.debug_log("GUI observers registered for player (DataObserver only, cache_updated)", {
-    player = player.name
+  -- Also register DataObserver for favorite events to ensure favorites bar updates
+  GuiEventBus.subscribe("favorite_added", data_observer)
+  GuiEventBus.subscribe("favorite_removed", data_observer)
+  GuiEventBus.subscribe("favorite_updated", data_observer)
+
+  ErrorHandler.debug_log("GUI observers registered for player (DataObserver)", {
+    player = player.name,
+    events = {"cache_updated", "favorite_added", "favorite_removed", "favorite_updated"}
   })
 
   -- Ensure the favorites bar is visible on startup (only if not already present)

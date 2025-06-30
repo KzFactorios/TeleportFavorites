@@ -177,18 +177,35 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
     fav = FavoriteRehydration.rehydrate_favorite_at_runtime(player, fav)
     if fav and not FavoriteUtils.is_blank_favorite(fav) then
       -- Icon comes from chart_tag.icon only (tags do not have icon property)
-      local icon = fav.tag and fav.tag.chart_tag and fav.tag.chart_tag.icon or nil
+      -- Safely check chart_tag validity before accessing its properties
+      local icon = nil
+      if fav.tag and fav.tag.chart_tag then
+        local valid_check_success, is_valid = pcall(function() return fav.tag.chart_tag.valid end)
+        if valid_check_success and is_valid then
+          icon = fav.tag.chart_tag.icon
+        else
+          -- Chart tag is invalid, clear the reference
+          fav.tag.chart_tag = nil
+        end
+      end
+      -- Normalize icon type for virtual signals before any debug or sprite logic
+      local norm_icon = icon
+      if type(icon) == "table" and icon.type == "virtual" then
+        norm_icon = {}
+        for k, v in pairs(icon) do norm_icon[k] = v end
+        norm_icon.type = "virtual-signal"
+      end
       ErrorHandler.debug_log("[FAVE_BAR] Icon resolution for slot", {
         slot = i,
         has_tag = fav.tag ~= nil,
         has_chart_tag = fav.tag and fav.tag.chart_tag ~= nil,
-        has_icon = icon ~= nil,
-        icon_type = icon and icon.type or nil,
-        icon_name = icon and icon.name or nil,
-        icon_full = icon and icon.type and icon.name and (icon.type .. "/" .. icon.name) or nil,
-        icon_raw = icon -- Show the entire icon object
+        has_icon = norm_icon ~= nil,
+        icon_type = norm_icon and norm_icon.type or nil,
+        icon_name = norm_icon and norm_icon.name or nil,
+        icon_full = norm_icon and norm_icon.type and norm_icon.name and (norm_icon.type .. "/" .. norm_icon.name) or nil,
+        icon_raw = norm_icon -- Show the entire icon object
       })
-      local btn_icon, used_fallback, debug_info = GuiValidation.get_validated_sprite_path(icon, { fallback = Enum.SpriteEnum.PIN, log_context = { slot = i, fav_gps = fav.gps, fav_tag = fav.tag } })
+      local btn_icon, used_fallback, debug_info = GuiValidation.get_validated_sprite_path(norm_icon, { fallback = Enum.SpriteEnum.PIN, log_context = { slot = i, fav_gps = fav.gps, fav_tag = fav.tag } })
       ErrorHandler.debug_log("[FAVE_BAR] Sprite validation result", {
         slot = i,
         btn_icon = btn_icon,
@@ -210,7 +227,9 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
     local btn = GuiStyling.create_slot_button(parent, "fave_bar_slot_" .. i, tostring(btn_icon), tooltip, { style = style })
     if btn and btn.valid then
       local label_style = locked and "tf_fave_bar_locked_slot_number" or "tf_fave_bar_slot_number"
-      GuiBase.create_label(btn, "tf_fave_bar_slot_number_" .. tostring(i), tostring(i), label_style)
+      -- slot #10 shuold show as 0
+      local slot_num = (i == 10) and 0 or i
+      GuiBase.create_label(btn, "tf_fave_bar_slot_number_" .. tostring(i), tostring(slot_num), label_style)
       if locked then
         btn.add {
           type = "sprite",
@@ -270,13 +289,31 @@ function fave_bar.update_single_slot(player, slot_index)
   if not slots_frame then return end
   local slot_button = GuiValidation.find_child_by_name(slots_frame, "fave_bar_slot_" .. slot_index)
   if not slot_button then return end
+
   local pfaves = Cache.get_player_favorites(player)
   local fav = pfaves[slot_index]
   fav = FavoriteRehydration.rehydrate_favorite_at_runtime(player, fav)
+  
   if fav and not FavoriteUtils.is_blank_favorite(fav) then
     -- Icon comes from chart_tag.icon only (tags do not have icon property)
-    local icon = fav.tag and fav.tag.chart_tag and fav.tag.chart_tag.icon or nil
-    slot_button.sprite = GuiValidation.get_validated_sprite_path(icon, { fallback = Enum.SpriteEnum.PIN, log_context = { slot = slot_index, fav_gps = fav.gps, fav_tag = fav.tag } })
+    -- Safely check chart_tag validity before accessing its properties
+    local icon = nil
+    if fav.tag and fav.tag.chart_tag then
+      local valid_check_success, is_valid = pcall(function() return fav.tag.chart_tag.valid end)
+      if valid_check_success and is_valid then
+        icon = fav.tag.chart_tag.icon
+      else
+        -- Chart tag is invalid, clear the reference
+        fav.tag.chart_tag = nil
+      end
+    end
+    local norm_icon = icon
+    if type(icon) == "table" and icon.type == "virtual" then
+      norm_icon = {}
+      for k, v in pairs(icon) do norm_icon[k] = v end
+      norm_icon.type = "virtual-signal"
+    end
+    slot_button.sprite = GuiValidation.get_validated_sprite_path(norm_icon, { fallback = Enum.SpriteEnum.PIN, log_context = { slot = slot_index, fav_gps = fav.gps, fav_tag = fav.tag } })
     ---@type LocalisedString
     slot_button.tooltip = GuiFormatting.build_favorite_tooltip(fav, { slot = slot_index })
   else

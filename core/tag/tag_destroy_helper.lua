@@ -119,8 +119,12 @@ local function validate_destruction_inputs(tag, chart_tag)
     table.insert(issues, "Tag missing GPS coordinate")
   end
   
-  if chart_tag and not chart_tag.valid then
-    table.insert(issues, "Chart tag is invalid")
+  -- Don't treat invalid chart_tag as an error - it might have already been destroyed
+  if chart_tag then
+    local valid_check_success, is_valid = pcall(function() return chart_tag.valid end)
+    if not valid_check_success or not is_valid then
+      ErrorHandler.debug_log("Chart tag already invalid or inaccessible, skipping chart_tag destruction")
+    end
   end
   
   return #issues == 0, issues
@@ -131,33 +135,57 @@ end
 ---@param chart_tag LuaCustomChartTag|nil
 ---@return boolean success
 local function safe_destroy_with_cleanup(tag, chart_tag)
-  local success, error_msg = pcall(function()
-    -- Destroy chart tag first
-    if chart_tag and chart_tag.valid then 
-      chart_tag:destroy()
-      ErrorHandler.debug_log("Chart tag destroyed successfully")
+  -- Store gps for cleanup before any modifications
+  local tag_gps = tag and tag.gps or nil
+  
+  -- FIRST: Clear the chart_tag reference from the tag immediately to prevent invalid access
+  if tag and tag.chart_tag then
+    tag.chart_tag = nil
+  end
+  
+  -- SECOND: Handle chart tag destruction safely
+  if chart_tag then
+    -- Use pcall to safely check if chart_tag.valid can be accessed
+    local valid_check_success, is_valid = pcall(function() return chart_tag.valid end)
+    if valid_check_success and is_valid then 
+      local chart_success, chart_error = pcall(function()
+        chart_tag:destroy()
+      end)
+      if chart_success then
+        ErrorHandler.debug_log("Chart tag destroyed successfully")
+      else
+        ErrorHandler.debug_log("Chart tag destruction failed, but continuing with tag cleanup", { error = chart_error })
+      end
+    else
+      ErrorHandler.debug_log("Chart tag already invalid or inaccessible, skipping destruction")
     end
-    
-    -- Clean up tag-related data
-    if tag then
+  end
+  
+  -- THIRD: Clean up tag-related data - this should always succeed even if chart_tag failed
+  if tag then
+    local tag_success, tag_error = pcall(function()
       if has_any_favorites(tag) then
         local cleaned_count = cleanup_player_favorites(tag)
         cleanup_faved_by_players(tag)
       end
-      
-      Cache.remove_stored_tag(tag.gps)
-      ErrorHandler.debug_log("Tag removed from storage", { gps = tag.gps })
+    end)
+    
+    if not tag_success then
+      ErrorHandler.debug_log("Tag favorites cleanup failed", { error = tag_error })
     end
     
-    return true
-  end)
-  
-  if not success then
-    ErrorHandler.debug_log("Tag destruction failed, cleaning up guards", { error = error_msg })
-    -- Clean up destruction guards on failure
-    if tag then destroying_tags[tag] = nil end
-    if chart_tag then destroying_chart_tags[chart_tag] = nil end
-    return false
+    -- FOURTH: Try storage removal separately using the stored GPS
+    if tag_gps then
+      local storage_success, storage_error = pcall(function()
+        Cache.remove_stored_tag(tag_gps)
+        ErrorHandler.debug_log("Tag removed from storage", { gps = tag_gps })
+      end)
+      
+      if not storage_success then
+        ErrorHandler.debug_log("Tag storage removal failed", { error = storage_error })
+        return false
+      end
+    end
   end
   
   return true

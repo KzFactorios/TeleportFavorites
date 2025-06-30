@@ -143,12 +143,24 @@ local function get_chart_tag_by_gps(gps)
     gps = gps,
     surface_index = surface_index,
     chart_tag_found = match_chart_tag ~= nil,
-    chart_tag_valid = match_chart_tag and match_chart_tag.valid or false,
-    chart_tag_has_icon = match_chart_tag and match_chart_tag.icon ~= nil
+    chart_tag_valid = match_chart_tag and (function()
+      local valid_check_success, is_valid = pcall(function() return match_chart_tag.valid end)
+      return valid_check_success and is_valid or false
+    end)(),
+    chart_tag_has_icon = match_chart_tag and (function()
+      local valid_check_success, is_valid = pcall(function() return match_chart_tag.valid end)
+      return valid_check_success and is_valid and match_chart_tag.icon ~= nil or false
+    end)()
   })
   
   -- Return nil if chart tag is invalid
-  if not match_chart_tag or not match_chart_tag.valid then
+  if not match_chart_tag then
+    return nil
+  end
+  
+  -- Safely check chart tag validity
+  local valid_check_success, is_valid = pcall(function() return match_chart_tag.valid end)
+  if not valid_check_success or not is_valid then
     return nil
   end
   
@@ -179,9 +191,19 @@ local function remove_chart_tag_from_cache_by_gps(gps)
   if not gps or gps == "" then return end
   local chart_tag = get_chart_tag_by_gps(gps)
   if not chart_tag then return end
-  -- destroy the matching chart_tag object
-  chart_tag.destroy()
-  --reset the surface_cache_chart_tags
+  
+  -- Only destroy the chart_tag if it's still valid (prevent double-destroy)
+  -- Wrap in pcall to handle cases where chart_tag becomes invalid between check and destroy
+  if chart_tag.valid then
+    local success, error_msg = pcall(function()
+      chart_tag.destroy()
+    end)
+    if not success then
+      ErrorHandler.debug_log("Chart tag destroy failed in cache cleanup, but continuing", { error = error_msg })
+    end
+  end
+  
+  -- Reset the surface_cache_chart_tags regardless of chart_tag destruction success
   local surface_index = GPSUtils.get_surface_index_from_gps(gps)
   clear_surface_cache_chart_tags(surface_index)
 end

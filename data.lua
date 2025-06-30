@@ -4,18 +4,6 @@ require("prototypes.styles.init")
 require("prototypes.item.selection_tool")
 local Enum = require("prototypes.enums.enum")
 
--- Ensure the custom virtual signal subgroup exists
-if not data.raw["item-subgroup"]["virtual-signal-special"] then
-  data:extend({
-    {
-      type = "item-subgroup",
-      name = "virtual-signal-special",
-      group = "signals",
-      order = "z"
-    }
-  })
-end
-
 ---@diagnostic disable-next-line: undefined-global
 data:extend {
   {
