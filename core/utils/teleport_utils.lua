@@ -33,6 +33,13 @@ function TeleportUtils.teleport_to_gps(player, gps, context, return_raw)
     end
   else
     if result == Enum.ReturnStateEnum.SUCCESS then
+      -- Notify teleport history via remote interface
+      pcall(function()
+        if remote.interfaces["TeleportFavorites_History"] and 
+           remote.interfaces["TeleportFavorites_History"].add_to_history then
+          remote.call("TeleportFavorites_History", "add_to_history", player.index)
+        end
+      end)
       return true
     else
       return false

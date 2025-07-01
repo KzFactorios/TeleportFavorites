@@ -442,4 +442,17 @@ function Cache.sanitize_for_storage(obj, exclude_fields)
   return sanitized
 end
 
+---@param player LuaPlayer
+---@param surface_index uint
+---@return table teleport_history
+function Cache.get_player_teleport_history(player, surface_index)
+  if not player or not player.valid then return { stack = {}, pointer = 0 } end
+  Cache.init()
+  local player_data = Cache.get_player_data(player)
+  player_data.surfaces = player_data.surfaces or {}
+  player_data.surfaces[surface_index] = player_data.surfaces[surface_index] or {}
+  player_data.surfaces[surface_index].teleport_history = player_data.surfaces[surface_index].teleport_history or { stack = {}, pointer = 0 }
+  return player_data.surfaces[surface_index].teleport_history
+end
+
 return Cache

@@ -2,6 +2,7 @@
 ---@diagnostic disable: undefined-global
 require("prototypes.styles.init")
 require("prototypes.item.selection_tool")
+require("prototypes.input.teleport_history_inputs")
 local Enum = require("prototypes.enums.enum")
 
 ---@diagnostic disable-next-line: undefined-global

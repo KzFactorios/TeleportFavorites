@@ -1,25 +1,18 @@
 -- core/teleport/teleport_history.lua
 
 local GameHelpers = require("core.utils.game_helpers")
+local Cache = require("core.cache.cache")
 
 local HISTORY_STACK_SIZE = 128 -- Only 128 allowed for now (TBA for future options)
 local TeleportHistory = {}
 
--- Utility: Get or create player/surface history
-local function _get_player_surface_history(player_index, surface_index)
-    if not global.teleport_history then global.teleport_history = {} end
-    if not global.teleport_history[player_index] then global.teleport_history[player_index] = {} end
-    if not global.teleport_history[player_index][surface_index] then
-        global.teleport_history[player_index][surface_index] = { stack = {}, pointer = 0 }
-    end
-    return global.teleport_history[player_index][surface_index]
-end
+
 
 -- Add a GPS to history (if not duplicate at top)
 function TeleportHistory.add_gps(player, gps)
     if not player or not player.valid or not gps or not gps.x or not gps.y or not gps.surface then return end
     local surface_index = gps.surface
-    local hist = _get_player_surface_history(player.index, surface_index)
+    local hist = Cache.get_player_teleport_history(player, surface_index)
     local stack = hist.stack
     -- Only add if not duplicate at top
     local top = stack[#stack]
@@ -36,7 +29,7 @@ end
 function TeleportHistory.move_pointer(player, direction, shift)
     if not player or not player.valid then return end
     local surface_index = player.surface.index
-    local hist = _get_player_surface_history(player.index, surface_index)
+    local hist = Cache.get_player_teleport_history(player, surface_index)
     local stack = hist.stack
     if #stack == 0 then return end
     if shift then
@@ -53,7 +46,7 @@ end
 function TeleportHistory.clear(player)
     if not player or not player.valid then return end
     local surface_index = player.surface.index
-    local hist = _get_player_surface_history(player.index, surface_index)
+    local hist = Cache.get_player_teleport_history(player, surface_index)
     hist.stack = {}
     hist.pointer = 0
 end
@@ -62,7 +55,7 @@ end
 function TeleportHistory.teleport_to_pointer(player)
     if not player or not player.valid then return end
     local surface_index = player.surface.index
-    local hist = _get_player_surface_history(player.index, surface_index)
+    local hist = Cache.get_player_teleport_history(player, surface_index)
     local stack = hist.stack
     local ptr = hist.pointer
     if ptr < 1 or ptr > #stack then return end
