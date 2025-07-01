@@ -20,14 +20,13 @@ local control_fave_bar = require("core.control.control_fave_bar")
 local control_tag_editor = require("core.control.control_tag_editor")
 -- Used for data viewer registration
 local control_data_viewer = require("core.control.control_data_viewer")
+
 local event_registration_dispatcher = require("core.events.event_registration_dispatcher")
 local handlers = require("core.events.handlers")
-local ErrorHandler = require("core.utils.error_handler")
 local Logger = require("core.utils.enhanced_error_handler")
 local DebugCommands = require("core.commands.debug_commands")
 local DeleteFavoriteCommand = require("core.commands.delete_favorite_command")
-local TeleportHistory = require("core.teleport.teleport_history")
-local teleport_history_handlers = require("core.events.teleport_history_handlers")
+
 
 local gui_observer = nil
 local did_run_fave_bar_startup = false
@@ -104,4 +103,3 @@ script.on_event(defines.events.on_tick, function(event)
   end
 end)
 
-teleport_history_handlers.register(script)

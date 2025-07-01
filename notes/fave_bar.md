@@ -5,7 +5,11 @@ The favorites bar (fave_bar) is a persistent, player-specific GUI element that p
 ## Core Features and Interactions
 - The fave_bar exists in the player's top GUI, ideally as the rightmost item.
 - The parent element is `fave_bar_frame`, which contains two horizontal containers:
-  - `fave_bar_toggle_flow`: Holds the `fave_bar_visible_btns_toggle` button (red star icon). Clicking toggles visibility of the favorite buttons container. State is persisted in `storage.players[player_index].toggle_fave_bar_buttons`.
+  - `fave_bar_toggle_container`: Holds the `fave_bar_visibility_toggle` button with eye/eyelash icon:
+     - Shows eyelash (closed eye) when slots are visible
+     - Shows eye (open) when slots are hidden
+     - Clicking toggles visibility of the favorite buttons container
+     - State is persisted in `storage.players[player_index].fave_bar_slots_visible` (default: true)
   - `fave_bar_slots_flow` container: Contains `MAX_FAVORITE_SLOTS` slot buttons, each representing a favorite. Each slot button:
 
 ```
@@ -13,7 +17,7 @@ The favorites bar (fave_bar) is a persistent, player-specific GUI element that p
 │                      Favorites Bar                      │
 ├───────┬───────┬───────┬───────┬───────┬───────┬─────────┤
 │Toggle │  #1   │  #2   │  #3   │  #4   │  ...  │  #0     │
-│Button │ (Icon)│ (Icon)│ (Icon)│       │       │         │
+│ 👁️/👁️‍🗨️  │ (Icon)│ (Icon)│ (Icon)│       │       │         │
 ├───────┴───────┴───────┴───────┴───────┴───────┴─────────┤
 │       Interactions:                                     │
 │       ┌───────────────┬──────────────────────────────┐  │
@@ -107,7 +111,7 @@ Not at this time
 All favorites bar GUI element names use the `{gui_context}_{purpose}_{type}` naming convention. This ensures clarity and robust event filtering. Example element names:
 - `fave_bar_frame` (frame)
 - `fave_bar_toggle_flow` (flow)
-- `fave_bar_visible_btns_toggle` (sprite-button)
+- `fave_bar_visibility_toggle` (sprite-button)
 - `fave_bar_slots_flow` (flow)
 - `fave_bar_slot_button_1` (sprite-button)
 
@@ -117,14 +121,14 @@ This convention is strictly enforced in both code and documentation. All event h
 
 ```
 fave_bar_frame (frame)
-└─ fave_bar_inner_flow (frame, invisible frame)
-    ├─ fave_bar_toggle_flow (flow, horizontal)
-    │   └─ fave_bar_visible_btns_toggle (sprite-button)
-    └─ fave_bar_slots_flow (flow, horizontal)
-        ├─ fave_bar_slot_button_1 (sprite-button)
-        ├─ fave_bar_slot_button_2 (sprite-button)
+└─ fave_bar_flow (flow, horizontal)
+    ├─ fave_bar_toggle_container (frame, vertical)
+    │   └─ fave_bar_visibility_toggle (sprite-button, eye/eyelash icon)
+    └─ fave_bar_slots_flow (frame, horizontal, visible toggled at runtime)
+        ├─ fave_bar_slot_1 (sprite-button)
+        ├─ fave_bar_slot_2 (sprite-button)
         ├─ ...
-        └─ fave_bar_slot_button_{MAX_FAVORITE_SLOTS} (sprite-button)
+        └─ fave_bar_slot_10 (sprite-button, shows as '0')
 ```
 - All element names use the `{gui_context}_{purpose}_{type}` convention.
 - The number of slot buttons depends on the user’s settings (`MAX_FAVORITE_SLOTS`).

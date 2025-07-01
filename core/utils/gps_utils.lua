@@ -91,10 +91,12 @@ function GPSUtils.coords_string_from_map_position(map_position)
     return "0.0"
   end
   
-  local x = basic_helpers.normalize_index(map_position.x)
-  local y = basic_helpers.normalize_index(map_position.y)
+  -- Round coordinates and ensure proper padding
+  local x = math.floor(map_position.x + 0.5)
+  local y = math.floor(map_position.y + 0.5)
   
-  return basic_helpers.pad(x, padlen) .. "." .. basic_helpers.pad(y, padlen)
+  -- Use the padding function to ensure at least 3 digits
+  return basic_helpers.pad(x, 3) .. "." .. basic_helpers.pad(y, 3)
 end
 
 --- Validate map position for GPS conversion

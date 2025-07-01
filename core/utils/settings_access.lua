@@ -11,9 +11,10 @@ Features:
 API:
 - Settings:getPlayerSettings(player): Returns a table of settings for the given player (or defaults).
   - favorites_on (boolean): Whether the favorites bar is enabled (default: true)
-  - destination_msg_on (boolean): Whether to show destination messages (default: true)
+  - show_player_coords (boolean): Whether to show player coordinates in favorites bar (default: true)
   -- map_reticle_on removed - functionality no longer exists
   -- teleport_radius removed - no longer needed
+  -- destination_msg_on removed - messages always shown
 
 Error Handling:
 - Returns default values if player or player.mod_settings is nil
@@ -29,11 +30,13 @@ local Settings = {}
 
 --- Returns a table of per-player mod settings, with defaults if not set
 --- @param player LuaPlayer|nil The player to get settings for
---- @return table settings { favorites_on: boolean, destination_msg_on: boolean }
+--- @return table settings { favorites_on: boolean, show_player_coords: boolean }
 function Settings:getPlayerSettings(player)-- Initialize with default values from Constants
   local settings = {
     favorites_on = true,
-    destination_msg_on = true,
+    show_player_coords = true,
+    show_teleport_history = true,
+    -- destination_msg_on removed - messages always shown
     -- map_reticle_on removed - functionality no longer exists
     -- teleport_radius removed - no longer needed
   }
@@ -55,16 +58,31 @@ function Settings:getPlayerSettings(player)-- Initialize with default values fro
       settings.favorites_on = true
     end
   end
-    -- Get destination message on/off setting
-  local dmsg = mod_settings["destination-msg-on"]
-  if dmsg and dmsg.value ~= nil then 
+    -- Get show player coordinates on/off setting
+  local show_coords = mod_settings["show-player-coords"]
+  if show_coords and show_coords.value ~= nil then 
     -- Explicit boolean conversion using comparison
-    if type(dmsg.value) == "boolean" then
-      settings.destination_msg_on = dmsg.value
+    if type(show_coords.value) == "boolean" then
+      settings.show_player_coords = show_coords.value
     else
       -- Default to true if not a boolean
-      settings.destination_msg_on = true
-    end  end
+      settings.show_player_coords = true
+    end
+  end
+  
+  -- Get show teleport history on/off setting
+  local show_history = mod_settings["show-teleport-history"]
+  if show_history and show_history.value ~= nil then
+    -- Explicit boolean conversion using comparison
+    if type(show_history.value) == "boolean" then
+      settings.show_teleport_history = show_history.value
+    else
+      -- Default to true if not a boolean
+      settings.show_teleport_history = true
+    end
+  end
+  
+  -- Destination message setting removed - messages always shown
   
   -- map reticle setting removed - functionality no longer exists
   

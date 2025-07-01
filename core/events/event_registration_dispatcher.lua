@@ -61,6 +61,8 @@ local on_gui_closed_handler = require("core.events.on_gui_closed_handler")
 local handlers = require("core.events.handlers")
 local control_data_viewer = require("core.control.control_data_viewer")
 
+local fave_bar_gui_labels_manager = require("core.control.fave_bar_gui_labels_manager")
+
 
 ---@class EventRegistrationDispatcher
 local EventRegistrationDispatcher = {}
@@ -300,13 +302,7 @@ function EventRegistrationDispatcher.register_core_events(script)
           return
         end
 
-        -- Handle changes to the destination message setting
-        if event.setting == "destination-msg-on" then
-          ErrorHandler.debug_log("Destination message setting changed", {
-            player_index = event.player_index
-          })
-          return
-        end
+        -- Destination message setting has been removed - messages always shown
       end,
       name = "on_runtime_mod_setting_changed"
     },
@@ -505,6 +501,11 @@ function EventRegistrationDispatcher.register_all_events(script)
   results.custom_input = EventRegistrationDispatcher.register_custom_input_events(script)
   results.observer = EventRegistrationDispatcher.register_observer_events(script)
   results.data_viewer = EventRegistrationDispatcher.register_data_viewer_events(script)
+  
+
+  -- Register all favorites bar GUI label updaters and controls
+  fave_bar_gui_labels_manager.register_all(script)
+  results.fave_bar_gui_labels = true
 
   -- Check overall success
   for category, success in pairs(results) do

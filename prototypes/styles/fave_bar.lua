@@ -31,7 +31,7 @@ gui_style.tf_fave_bar_draggable = {
 
 gui_style.tf_fave_toggle_container = {
     type = "frame_style",
-    parent = "inside_deep_frame", -- match the slots row background
+    parent = "quick_bar_inner_panel", --"inside_deep_frame", -- match the slots row background
     graphical_set = nil,          -- use parent's background
     padding = 0,
     --top_padding = 1,
@@ -40,13 +40,46 @@ gui_style.tf_fave_toggle_container = {
     vertically_stretchable = "off"
 }
 
-gui_style.tf_fave_toggle_button = {
+gui_style.tf_fave_bar_visibility_on = {
     type = "button_style",
     parent = "tf_slot_button",
     margin = 0,
-    width = 41,
-    height = 41,
+    width = 40,
+    height = 20,
+    padding = 0,
+    scale = 2,
     default_graphical_set = nil-- { base = { position = { 0, 0 }, corner_size = 8, tint = { r = 1, g = 1, b = 1, a = 1 } }, },
+}
+
+gui_style.tf_fave_bar_visibility_off = {
+    type = "button_style",
+    parent = "tf_slot_button",
+    margin = 0,
+    width = 40,
+    height = 20,
+    padding = 0,
+    scale = 2,
+    default_graphical_set = nil-- { base = { position = { 0, 0 }, corner_size = 8, tint = { r = 1, g = 1, b = 1, a = 1 } }, },
+}
+
+gui_style.fave_bar_coords_label_style = {
+    type = "label_style",
+    --parent = "default_label",
+    font = "tf_font_7",
+    font_color = { r = 0.98, g = 0.66, b = 0.22, a = 0.8 },
+    horizontal_align = "center",
+    width = 40,
+    height = 10,
+}
+
+gui_style.fave_bar_teleport_history_label_style = {
+    type = "label_style",
+    --parent = "default_label",
+    font = "tf_font_7",
+    font_color = { r = 0.98, g = 0.66, b = 0.22, a = 0.8 },
+    horizontal_align = "center",
+    width = 40,
+    height = 10,
 }
 
 gui_style.tf_fave_slots_row = {

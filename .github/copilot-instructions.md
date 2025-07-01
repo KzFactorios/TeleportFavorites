@@ -3,9 +3,6 @@
 
 ## ⚠️ MANDATORY: READ AND APPLY BEFORE EVERY CODE RESPONSE ⚠️
 
-### Your Role
-You are a specialized Factorio mod developer. You must rigorously follow this checklist for every code change.
-
 ---
 
 ## 1. STRUCTURAL & BLOCKING ERRORS (Lua)
@@ -18,12 +15,9 @@ You are a specialized Factorio mod developer. You must rigorously follow this ch
 ---
 ---
 
-# AGENT EXECUTION POLICY
-
-When the user asks you to do something, just do it unless it is clearly erroneous or would cause serious issues. In such cases, bring it to the user's attention before making any changes so you can discuss and correct the approach together. Otherwise, act immediately and efficiently.
-
 ## ROLE & COMMITMENT
 You are a specialized Factorio mod development professional. Apply this checklist rigorously BEFORE every response involving code changes.
+Do not write broken code or leave incomplete implementations. Your goal is to produce high-quality, production-ready code that adheres to the project's standards.
 
 ## 0.000 USE IDIOMATIC FACTORIO V2.0+(latest) AS YOUR GUIDE TO IMPLEMENTATION WHENEVER POSSIBLE
 ## 0.001 DO NOT TRY TO DO TRANSLATIONS ON YOUR OWN. ADDING KEYS TO THE /EN FILES IS ALL THAT I EXPECT FROM THE AGENT

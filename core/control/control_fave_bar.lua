@@ -17,15 +17,16 @@
 
 local PlayerFavorites = require("core.favorite.player_favorites")
 local FavoriteUtils = require("core.favorite.favorite")
-local FavoriteSlotUtils = require("core.favorite.favorite_slot_utils")
+local SmallHelpers = require("core.utils.small_helpers")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local ErrorHandler = require("core.utils.error_handler")
 local SlotInteractionHandlers = require("core.control.slot_interaction_handlers")
 local GameHelpers = require("core.utils.game_helpers")
 local SharedUtils = require("core.control.control_shared_utils")
 local CursorUtils = require("core.utils.cursor_utils")
-local GuiAccessibility = require("core.utils.gui_accessibility")
+local GuiHelpers = require("core.utils.gui_helpers")
 local GuiValidation = require("core.utils.gui_validation")
+local Cache = require("core.cache.cache")
 
 local M = {}
 
@@ -178,7 +179,7 @@ local function handle_favorite_slot_click(event, player, favorites)
         local target_fav = favorites.favorites[slot]
         
         -- Check if target slot is locked
-        if target_fav and FavoriteSlotUtils.is_locked_favorite(target_fav) then
+        if target_fav and SmallHelpers.is_locked_favorite(target_fav) then
           GameHelpers.player_print(player, SharedUtils.lstr("tf-gui.fave_bar_locked_cant_target", slot))
           GameHelpers.safe_play_sound(player, { path = "utility/cannot_build" })
           CursorUtils.end_drag_favorite(player)
@@ -255,19 +256,36 @@ local function handle_favorite_slot_click(event, player, favorites)
 end
 
 --- Handle toggle button for favorites bar visibility
+---@param event table The GUI click event
 ---@param player LuaPlayer The player
-local function handle_toggle_button_click(player)
-  local main_flow = GuiAccessibility.get_or_create_gui_flow_from_gui_top(player)
-  if not main_flow or not main_flow.valid then return end
-  local slots_row = GuiValidation.find_child_by_name(main_flow, "fave_bar_slots_flow")
-  if not slots_row or not slots_row.valid then
+local function handle_toggle_button_click(event, player)
+  -- Only process left clicks for toggling, silently ignore right-clicks
+  if event.button ~= defines.mouse_button_type.left then
     return
   end
+  
+  -- Use the shared function from fave_bar to get GUI components
+  local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
+  if not main_flow or not main_flow.valid then return end
+  
+  local bar_frame = GuiValidation.find_child_by_name(main_flow, "fave_bar_frame")
+  if not bar_frame or not bar_frame.valid then return end
+  
+  local bar_flow = GuiValidation.find_child_by_name(bar_frame, "fave_bar_flow")
+  if not bar_flow or not bar_flow.valid then return end
+  
+  local slots_flow = GuiValidation.find_child_by_name(bar_flow, "fave_bar_slots_flow")
+  if not slots_flow or not slots_flow.valid then return end
 
-  local currently_visible = slots_row.visible
+  -- Toggle visibility
+  local currently_visible = slots_flow.visible
   local new_visibility = not currently_visible
   
-  -- Use partial update instead of manual visibility change
+  -- Update the player data to persist the visibility state
+  local player_data = Cache.get_player_data(player)
+  player_data.fave_bar_slots_visible = new_visibility
+  
+  -- Update the GUI state
   fave_bar.update_toggle_state(player, new_visibility)
 end
 
@@ -330,8 +348,8 @@ local function on_fave_bar_gui_click(event)
     return
   end
 
-  if element.name == "fave_bar_visible_btns_toggle" then
-    handle_toggle_button_click(player)
+  if element.name == "fave_bar_visibility_toggle" then
+    handle_toggle_button_click(event, player)
   end
 end
 

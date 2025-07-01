@@ -20,12 +20,12 @@
 
 local FavoriteRehydration = require("core.favorite.favorite_rehydration")
 local FavoriteUtils = require("core.favorite.favorite")
-local FavoriteSlotUtils = require("core.favorite.favorite_slot_utils")
+local SmallHelpers = require("core.utils.small_helpers")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local Cache = require("core.cache.cache")
 local tag_editor = require("gui.tag_editor.tag_editor")
 local GuiValidation = require("core.utils.gui_validation")
-local GuiAccessibility = require("core.utils.gui_accessibility")
+local GuiHelpers = require("core.utils.gui_helpers")
 local ErrorHandler = require("core.utils.error_handler")
 local LocaleUtils = require("core.utils.locale_utils")
 local CursorUtils = require("core.utils.cursor_utils")
@@ -39,7 +39,7 @@ local SlotInteractionHandlers = {}
 ---@param fav table The favorite to check
 ---@return boolean can_drag
 function SlotInteractionHandlers.can_start_drag(fav)
-  return fav and not FavoriteSlotUtils.is_blank_favorite(fav) and not FavoriteSlotUtils.is_locked_favorite(fav)
+  return fav and not SmallHelpers.is_blank_favorite(fav) and not SmallHelpers.is_locked_favorite(fav)
 end
 
 --- Handle teleportation to a favorite
@@ -76,7 +76,7 @@ function SlotInteractionHandlers.handle_toggle_lock(event, player, fav, slot, fa
     end
     
     -- Update the slot row to reflect lock state change
-    local main_flow = GuiAccessibility.get_or_create_gui_flow_from_gui_top(player)
+    local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
     local bar_frame = GuiValidation.find_child_by_name(main_flow, "fave_bar_frame")
     local bar_flow = bar_frame and GuiValidation.find_child_by_name(bar_frame, "fave_bar_flow")
     if bar_flow then
@@ -102,7 +102,7 @@ function SlotInteractionHandlers.handle_shift_left_click(event, player, fav, slo
       slot = slot,
       can_drag = SlotInteractionHandlers.can_start_drag(fav),
       fav_is_blank = FavoriteUtils.is_blank_favorite(fav),
-      fav_is_locked = FavoriteSlotUtils.is_locked_favorite(fav)
+      fav_is_locked = SmallHelpers.is_locked_favorite(fav)
     })
     
     if SlotInteractionHandlers.can_start_drag(fav) then
@@ -113,7 +113,7 @@ function SlotInteractionHandlers.handle_shift_left_click(event, player, fav, slo
         slot = slot
       })
       return success
-    elseif FavoriteSlotUtils.is_locked_favorite(fav) then
+    elseif SmallHelpers.is_locked_favorite(fav) then
       GameHelpers.player_print(player, SharedUtils.lstr("tf-gui.fave_bar_locked_cant_drag", slot))
       return true -- Prevent further processing like teleportation
     end

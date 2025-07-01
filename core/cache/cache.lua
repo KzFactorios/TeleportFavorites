@@ -1,7 +1,5 @@
 ---@diagnostic disable: undefined-global
 
----@diagnostic disable: undefined-global
-
 --[[
 Cache.lua
 TeleportFavorites Factorio Mod
@@ -50,17 +48,7 @@ local FavoriteUtils = require("core.favorite.favorite")
 local Constants = require("constants")
 local GPSUtils = require("core.utils.gps_utils")
 local Lookups = require("core.cache.lookups")
-local ErrorHandler = require("core.utils.error_handler")
 
--- Lazy-loaded Lookups module to avoid circular dependency
--- Observer Pattern Integration
-local function notify_observers_safe(event_type, data)
-  -- Safe notification that handles module load order
-local success, gui_observer = pcall(require, "core.events.gui_observer")
-  if success and gui_observer.GuiEventBus then
-    gui_observer.GuiEventBus.notify(event_type, data)
-  end
-end
 
 --- Persistent and runtime cache management for TeleportFavorites mod.
 ---@class Cache
@@ -75,6 +63,41 @@ Cache.Lookups = nil
 -- Ensure storage is always available for persistence (Factorio 2.0+)
 if not storage then
   error("Storage table not available - this mod requires Factorio 2.0+")
+end
+
+-- Lazy-loaded Lookups module to avoid circular dependency
+-- Observer Pattern Integration
+local function notify_observers_safe(event_type, data)
+  -- Safe notification that handles module load order
+local success, gui_observer = pcall(require, "core.events.gui_observer")
+  if success and gui_observer.GuiEventBus then
+    gui_observer.GuiEventBus.notify(event_type, data)
+  end
+end
+
+
+--- Resets transient state for a player
+---@param player LuaPlayer
+function Cache.reset_transient_player_states(player)
+  if not player or not player.valid then return end
+
+  local player_data = Cache.get_player_data(player)
+
+  -- Reset drag mode state
+  if player_data.drag_favorite then
+    player_data.drag_favorite.active = false
+    player_data.drag_favorite.source_slot = nil
+    player_data.drag_favorite.favorite = nil
+  end
+
+  -- Reset move mode state in tag editor
+  if player_data.tag_editor_data then
+    if player_data.tag_editor_data.move_mode then
+      player_data.tag_editor_data.move_mode = false
+    end
+    -- Clear any error messages from previous session
+    player_data.tag_editor_data.error_message = ""
+  end
 end
 
 --- Initialize the persistent cache table if not already present.
@@ -126,6 +149,17 @@ local function init_player_data(player)
   player_data.player_name = player.name or "Unknown"
   player_data.render_mode = player_data.render_mode or player.render_mode
   player_data.tag_editor_data = player_data.tag_editor_data or Cache.create_tag_editor_data()
+  player_data.fave_bar_slots_visible = player_data.fave_bar_slots_visible
+  if player_data.fave_bar_slots_visible == nil then
+    player_data.fave_bar_slots_visible = true -- Default: slots are visible, show EYELASH icon
+  end
+  
+  player_data.show_player_coords = player_data.show_player_coords
+  if player_data.show_player_coords == nil then
+    -- Default to the player's setting or true if setting doesn't exist
+    local settings = settings.get_player_settings(player)
+    player_data.show_player_coords = settings and settings["show-player-coords"] and settings["show-player-coords"].value or true
+  end
 
   player_data.drag_favorite = player_data.drag_favorite or {
     active = false,

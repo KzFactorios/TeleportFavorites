@@ -197,11 +197,23 @@ data:extend {
     from = "default",
     size = 6
   },
+    {
+    type = "font",
+    name = "tf_font_7",
+    from = "default",
+    size = 7
+  },
   {
     type = "font",
     name = "tf_font_8",
     from = "default",
     size = 8
+  },
+  {
+    type = "font",
+    name = "tf_font_9",
+    from = "default",
+    size = 9
   },
   {
     type = "font",
@@ -289,6 +301,22 @@ data:extend {
     filename = "__TeleportFavorites__/graphics/icons8-lock-a50.png",
     width = 24,
     height = 24,
+    flags = {"gui-icon"}
+  },
+  {
+    type = "sprite",
+    name = "tf_eye",
+    filename = "__TeleportFavorites__/graphics/icons8-eye-50.png",
+    width = 75,
+    height = 75,
+    flags = {"gui-icon"}
+  },
+  {
+    type = "sprite",
+    name = "tf_eyelash",
+    filename = "__TeleportFavorites__/graphics/icons8-eyelash-50.png",
+    width = 75,
+    height = 75,
     flags = {"gui-icon"}
   }
 }

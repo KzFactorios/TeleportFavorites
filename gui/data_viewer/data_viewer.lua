@@ -22,7 +22,7 @@ Functions:
 
 local GuiBase = require("gui.gui_base")
 local GuiValidation = require("core.utils.gui_validation")
-local GuiAccessibility = require("core.utils.gui_accessibility")
+local GuiHelpers = require("core.utils.gui_helpers")
 local GameHelpers = require("core.utils.game_helpers")
 local Enum = require("prototypes.enums.enum")
 local ErrorHandler = require("core.utils.error_handler")
@@ -318,8 +318,8 @@ end
 ---@param font_size number Font size to use
 ---@param top_key string Top-level key name
 function data_viewer.update_content_panel(player, data, font_size, top_key)
-  local main_flow = GuiAccessibility.get_or_create_gui_flow_from_gui_top(player)
-  local frame = GuiValidation.find_child_by_name(main_flow, Enum.GuiEnum.GUI_FRAME.DATA_VIEWER)
+  local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
+  local frame = GuiHelpers.find_child_by_name(main_flow, Enum.GuiEnum.GUI_FRAME.DATA_VIEWER)
   if not frame then return end
 
   local content_flow = GuiValidation.find_child_by_name(frame, "data_viewer_content_flow")
@@ -379,7 +379,7 @@ end
 ---@param player LuaPlayer
 ---@param new_font_size number New font size to apply
 function data_viewer.update_font_size(player, new_font_size)
-  local main_flow = GuiAccessibility.get_or_create_gui_flow_from_gui_top(player)
+  local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   local frame = GuiValidation.find_child_by_name(main_flow, Enum.GuiEnum.GUI_FRAME.DATA_VIEWER)
   if not frame then return end
 
@@ -398,7 +398,7 @@ end
 ---@param player LuaPlayer
 ---@param active_tab string Active tab name
 function data_viewer.update_tab_selection(player, active_tab)
-  local main_flow = GuiAccessibility.get_or_create_gui_flow_from_gui_top(player)
+  local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   local frame = GuiValidation.find_child_by_name(main_flow, Enum.GuiEnum.GUI_FRAME.DATA_VIEWER)
   if not frame then return end
 

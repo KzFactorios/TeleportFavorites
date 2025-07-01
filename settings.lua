@@ -8,11 +8,17 @@ data:extend({
     default_value = true,
     order = "ka",
   },  {
-    name = "destination-msg-on",
+    name = "show-player-coords",
     type = "bool-setting",
     setting_type = "runtime-per-user",
     default_value = true,
-    order = "kd",
+    order = "kb",
+  },  {
+    name = "show-teleport-history",
+    type = "bool-setting",
+    setting_type = "runtime-per-user",
+    default_value = true,
+    order = "kc",
   },  {
     name = "chart-tag-click-radius",
     type = "int-setting",

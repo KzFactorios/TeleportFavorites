@@ -11,8 +11,22 @@ Element Hierarchy Diagram:
 
 fave_bar_frame (frame)
 └─ fave_bar_flow (flow, horizontal)
-   ├─ fave_bar_toggle_container (frame, vertical)
-   │  └─ fave_bar_visible_btns_toggle (sprite-button)
+          -- First capture the tooltip and ensure children are properly referenced
+        local tooltip = toggle_visibility_button.tooltip
+        
+        -- Force an immediate visual update by recreating the button with the correct state
+        toggle_visibility_button.destroy()
+        
+        -- Create new button with correct sprite and style
+        local new_sprite = slots_visible and Enum.SpriteEnum.EYE or Enum.SpriteEnum.EYELASH
+        local new_style = slots_visible and "tf_fave_bar_visibility_on" or "tf_fave_bar_visibility_off"
+        
+        -- Create the new button
+        local new_button = GuiBase.create_sprite_button(toggle_container, "fave_bar_visibility_toggle", new_sprite, tooltip, new_style)
+        if new_button and new_button.valid then
+          new_button.bring_to_front()
+        }gle_container (frame, vertical)
+   │  └─ fave_bar_visibility_toggle (sprite-button)
    └─ fave_bar_slots_flow (frame, horizontal, visible toggled at runtime)
       ├─ fave_bar_slot_1 (sprite-button)
       ├─ fave_bar_slot_2 (sprite-button)
@@ -44,9 +58,9 @@ local ErrorHandler = require("core.utils.error_handler")
 local FavoriteUtils = require("core.favorite.favorite")
 local FavoriteRehydration = require("core.favorite.favorite_rehydration")
 local GuiValidation = require("core.utils.gui_validation")
-local GuiStyling = require("core.utils.gui_styling")
-local GuiFormatting = require("core.utils.gui_formatting")
-local GuiAccessibility = require("core.utils.gui_accessibility")
+local GuiHelpers = require("core.utils.gui_helpers")
+local GuiHelpers = require("core.utils.gui_helpers")
+local GuiHelpers = require("core.utils.gui_helpers")
 local Settings = require("core.utils.settings_access")
 local Cache = require("core.cache.cache")
 local Enum = require("prototypes.enums.enum")
@@ -60,7 +74,7 @@ Element Hierarchy Diagram:
 fave_bar_frame (frame)
   └─ fave_bar_flow (flow, horizontal)
       ├─ fave_bar_toggle_container (frame, vertical)
-      │   └─ fave_bar_visible_btns_toggle (sprite-button)
+      │   └─ fave_bar_visibility_toggle (sprite-button)
       └─ fave_bar_slots_flow (frame, horizontal, visible toggled at runtime)
           ├─ fave_bar_slot_1 (sprite-button)
           ├─ fave_bar_slot_2 (sprite-button)
@@ -70,7 +84,7 @@ fave_bar_frame (frame)
 
 
 -- Removed local function: get_or_create_gui_flow_from_gui_top
--- Now using GuiAccessibility.get_or_create_gui_flow_from_gui_top
+-- Now using GuiHelpers.get_or_create_gui_flow_from_gui_top
 
 -- Build the favorites bar to visually match the quickbar top row
 ---@diagnostic disable: assign-type-mismatch, param-type-mismatch
@@ -78,13 +92,25 @@ function fave_bar.build_quickbar_style(player, parent)           -- Add a horizo
   local bar_flow = GuiBase.create_hflow(parent, "fave_bar_flow") -- Add a thin dark background frame for the toggle button
   local toggle_container = GuiBase.create_frame(bar_flow, "fave_bar_toggle_container", "vertical",
     "tf_fave_toggle_container")
+
   ---@type LocalisedString
-  local toggle_tooltip = { "tf-gui.toggle_fave_bar" }
-  local toggle_btn = GuiBase.create_icon_button(toggle_container, "fave_bar_visible_btns_toggle", "logo_36", toggle_tooltip, "tf_fave_toggle_button")
+  local toggle_tooltip = { "tf-gui.toggle_fave_bar" }  
+  -- Determine which visibility icon to use based on slots visibility state
+  -- Icon logic: eyelash (closed eye) when slots visible, eye (open) when slots hidden
+  local player_data = Cache.get_player_data(player)  
+  local visibility_icon = player_data.fave_bar_slots_visible and Enum.SpriteEnum.EYELASH or Enum.SpriteEnum.EYE
+  local visibility_style = player_data.fave_bar_slots_visible and "tf_fave_bar_visibility_on" or "tf_fave_bar_visibility_off"
+  local toggle_visibility_button = GuiBase.create_sprite_button(toggle_container, "fave_bar_visibility_toggle", 
+  visibility_icon, toggle_tooltip, visibility_style)
+
+  -- position info
+  local player_coords = GuiBase.create_label(toggle_container, "fave_bar_coords_label", "", "fave_bar_coords_label_style")
+
+  local teleport_history= GuiBase.create_label(toggle_container, "fave_bar_teleport_history_label", "", "fave_bar_teleport_history_label_style")
 
   -- Add slots frame to the same flow for proper layout
   local slots_frame = GuiBase.create_frame(bar_flow, "fave_bar_slots_flow", "horizontal", "tf_fave_slots_row")
-  return bar_flow, slots_frame, toggle_btn
+  return bar_flow, slots_frame, toggle_visibility_button
 end
 
 ---@diagnostic enable: assign-type-mismatch, param-type-mismatch
@@ -92,13 +118,13 @@ end
 local function handle_overflow_error(frame, fav_btns, pfaves)
   if pfaves and #pfaves > Constants.settings.MAX_FAVORITE_SLOTS then
     GuiValidation.show_error_label(frame, "tf-gui.fave_bar_overflow_error")
-  else
+  else  
     GuiValidation.clear_error_label(frame)
   end
 end
 
 local function get_fave_bar_gui_refs(player)
-  local main_flow = GuiAccessibility.get_or_create_gui_flow_from_gui_top(player)
+  local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   local bar_frame = main_flow and GuiValidation.find_child_by_name(main_flow, "fave_bar_frame")
   local bar_flow = bar_frame and GuiValidation.find_child_by_name(bar_frame, "fave_bar_flow")
   local slots_frame = bar_flow and GuiValidation.find_child_by_name(bar_flow, "fave_bar_slots_flow")
@@ -108,7 +134,7 @@ end
 function fave_bar.build(player, force_show)
   if not player or not player.valid then return end
   local tick = game and game.tick or 0
-  local main_flow = GuiAccessibility.get_or_create_gui_flow_from_gui_top(player)
+  local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   local bar_frame = main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
   if last_build_tick[player.index] == tick and bar_frame and bar_frame.valid then
     ErrorHandler.debug_log("[FAVE_BAR] build skipped (already built this tick, bar present)",
@@ -226,7 +252,7 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
       })
       local style = fav.locked and "tf_slot_button_locked" or "tf_slot_button_smallfont"
       if btn_icon == "tf_tag_in_map_view_small" then style = "tf_slot_button_smallfont_map_pin" end
-      return btn_icon, GuiFormatting.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }, style, fav.locked
+      return btn_icon, GuiHelpers.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }, style, fav.locked
     else
       return "", { "tf-gui.favorite_slot_empty" }, "tf_slot_button_smallfont", false
     end
@@ -236,7 +262,7 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
     local fav = pfaves[i]
     fav = FavoriteRehydration.rehydrate_favorite_at_runtime(player, fav)
     local btn_icon, tooltip, style, locked = get_slot_btn_props(i, fav)
-    local btn = GuiStyling.create_slot_button(parent, "fave_bar_slot_" .. i, tostring(btn_icon), tooltip, { style = style })
+    local btn = GuiHelpers.create_slot_button(parent, "fave_bar_slot_" .. i, tostring(btn_icon), tooltip, { style = style })
     if btn and btn.valid then
       local label_style = locked and "tf_fave_bar_locked_slot_number" or "tf_fave_bar_slot_number"
       -- slot #10 shuold show as 0
@@ -341,7 +367,7 @@ function fave_bar.update_single_slot(player, slot_index)
     end
     slot_button.sprite = GuiValidation.get_validated_sprite_path(norm_icon, { fallback = Enum.SpriteEnum.PIN, log_context = { slot = slot_index, fav_gps = fav.gps, fav_tag = fav.tag } })
     ---@type LocalisedString
-    slot_button.tooltip = GuiFormatting.build_favorite_tooltip(fav, { slot = slot_index })
+    slot_button.tooltip = GuiHelpers.build_favorite_tooltip(fav, { slot = slot_index })
   else
     slot_button.sprite = ""
     slot_button.tooltip = { "tf-gui.favorite_slot_empty" }
@@ -354,10 +380,26 @@ end
 function fave_bar.update_toggle_state(player, slots_visible)
   if not player or not player.valid then return end
   
-  local _, _, _, slots_frame = get_fave_bar_gui_refs(player)
+  local _, _, bar_flow, slots_frame = get_fave_bar_gui_refs(player)
+  
+  -- First update the toggle button sprite
+  if bar_flow then
+    local toggle_container = GuiValidation.find_child_by_name(bar_flow, "fave_bar_toggle_container")
+    if toggle_container then
+      -- Update the visibility toggle button (fave_bar_visibility_toggle)
+      local toggle_visibility_button = GuiValidation.find_child_by_name(toggle_container, "fave_bar_visibility_toggle")
+      if toggle_visibility_button and toggle_visibility_button.valid then
+        -- Simple approach - just update the sprite property
+        -- Swapped sprites: eyelash (closed eye) when visible, eye (open) when hidden
+        toggle_visibility_button.sprite = slots_visible and Enum.SpriteEnum.EYELASH or Enum.SpriteEnum.EYE
+      end
+    end
+  end
+  
+  -- Then update slots frame visibility
   if slots_frame then
     slots_frame.visible = slots_visible
   end
-end 
+end
 
 return fave_bar

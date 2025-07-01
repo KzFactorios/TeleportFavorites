@@ -20,14 +20,14 @@ local AdminUtils = require("core.utils.admin_utils")
 local SettingsAccess = require("core.utils.settings_access")
 local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 local SharedUtils = require("core.control.control_shared_utils")
-local GuiPartialUpdateUtils = require("core.control.gui_partial_update_utils")
+local SmallHelpers = require("core.utils.small_helpers")
 
 local M = {}
 
 local function show_tag_editor_error(player, tag_data, message)
   tag_data.error_message = message
   -- Use partial update instead of full rebuild for error messages
-  GuiPartialUpdateUtils.update_error_message(tag_editor.update_error_message, player, message)
+  SmallHelpers.update_error_message(tag_editor.update_error_message, player, message)
   Cache.set_tag_editor_data(player, tag_data)
 end
 
@@ -339,7 +339,7 @@ local function handle_favorite_btn(player, tag_data)
   -- Update the tag_data and refresh the UI to show new state
   Cache.set_tag_editor_data(player, tag_data)
   -- Use partial update instead of full rebuild for favorite toggle
-  GuiPartialUpdateUtils.update_state(tag_editor.update_favorite_state, player, tag_data.is_favorite)
+  SmallHelpers.update_state(tag_editor.update_favorite_state, player, tag_data.is_favorite)
 end
 
 local function handle_delete_confirm(player)
@@ -409,10 +409,8 @@ local function handle_delete_confirm(player)
  
   Cache.reset_tag_editor_delete_mode(player)
 
-  local player_settings = SettingsAccess:getPlayerSettings(player)
-  if player_settings.destination_msg_on then
-    GameHelpers.player_print(player, { "tf-gui.tag_deleted" })
-  end
+  -- Always show destination messages
+  GameHelpers.player_print(player, { "tf-gui.tag_deleted" })
 end
 
 -- User cancelled deletion - close confirmation dialog and return to tag editor
@@ -496,7 +494,7 @@ local function on_tag_editor_gui_click(event, script)
     tag_data.icon = new_icon
     Cache.set_tag_editor_data(player, tag_data)
     -- Update confirm button state based on new icon selection
-    GuiPartialUpdateUtils.update_state(tag_editor.update_confirm_button_state, player, tag_data)
+    SmallHelpers.update_state(tag_editor.update_confirm_button_state, player, tag_data)
     return
   end
   -- Handle confirmation dialog buttons without checking button type
@@ -550,7 +548,7 @@ local function on_tag_editor_gui_text_changed(event)
       tag_editor.update_error_message(player, nil)
     end
     -- Update confirm button state based on new text content
-    GuiPartialUpdateUtils.update_state(tag_editor.update_confirm_button_state, player, tag_data)
+    SmallHelpers.update_state(tag_editor.update_confirm_button_state, player, tag_data)
   end
 end
 
@@ -571,7 +569,7 @@ local function on_tag_editor_gui_elem_changed(event)
     tag_data.icon = new_icon
     Cache.set_tag_editor_data(player, tag_data)
 
-    GuiPartialUpdateUtils.update_state(tag_editor.update_confirm_button_state, player, tag_data)
+    SmallHelpers.update_state(tag_editor.update_confirm_button_state, player, tag_data)
   end
 end
 

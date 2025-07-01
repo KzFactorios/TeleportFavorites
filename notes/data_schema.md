@@ -43,6 +43,8 @@ storage = {
     [player_index] = {
       player_name = string,            -- Factorio player name (for debugging)
       render_mode = string,            -- Player's current render mode
+      fave_bar_slots_visible = boolean,-- Whether favorites bar slots are visible (true = visible, false = hidden)
+                                       -- Controls the eye/eyelash icon: eyelash when visible, eye when hidden
       data_viewer_settings = {
         active_tab = string,           -- "player_data", "surface_data", "lookup", "all_data"
         font_size = number,            -- Font size for data viewer (6-24)

@@ -83,6 +83,8 @@ UIEnums.Sprites = {
   -- Interface elements
   LIST_VIEW = "utility/list_view",
   LOCK = "tf_slot_lock",
+  EYE = "tf_eye",
+  EYELASH = "tf_eyelash",
   PIN = "tf_tag_in_map_view_small",
   PLAY = "utility/play",
   SEARCH = "utility/search_icon",
@@ -122,7 +124,7 @@ UIEnums.GUI.FaveBar = {
   SLOTS_FLOW = "fave_bar_slots_flow",
 
   -- Buttons
-  TOGGLE_BUTTON = "fave_bar_visible_btns_toggle",
+  TOGGLE_BUTTON = "fave_bar_visibility_toggle",
   SLOT_BUTTON_PREFIX = "fave_bar_slot_", -- Append slot number (1-10)
 }
 

@@ -131,9 +131,6 @@ gui_style.tf_tag_editor_text_input = {
   top_margin = 5,
   right_margin = 4,
   left_margin = 4,
-  --top_padding = 0,
-  --bottom_padding = 0
-  --right_padding = 2
 }
 
 gui_style.tf_tag_editor_last_row = {

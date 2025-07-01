@@ -13,7 +13,7 @@ This module consolidates:
 Provides a unified API for all position-related operations throughout the mod.
 ]]
 
-local PositionTileHelpers = require("core.utils.position_tile_helpers")
+local SmallHelpers = require("core.utils.small_helpers")
 local basic_helpers = require("core.utils.basic_helpers")
 local Constants = require("constants")
 local ErrorHandler = require("core.utils.error_handler")
@@ -30,14 +30,14 @@ local PositionUtils = {}
 ---@param map_position MapPosition
 ---@return MapPosition normalized_position
 function PositionUtils.normalize_position(map_position)
-  return PositionTileHelpers.normalize_position(map_position)
+  return SmallHelpers.normalize_position(map_position)
 end
 
 --- Check if a position needs normalization
 ---@param position MapPosition
 ---@return boolean
 function PositionUtils.needs_normalization(position)
-  return PositionTileHelpers.needs_normalization(position)
+  return SmallHelpers.needs_normalization(position)
 end
 
 --- Create old/new position pair for tracking position changes

@@ -133,25 +133,6 @@ gui_style.tf_draggable_space_header = {
   left_margin              = 8
 }
 
-gui_style.slot_orange = {
-  type = "button_style",
-  parent = "slot_button",
-  default_graphical_set = {
-    -- originally default_graphical_set
-    base = { position = { 236, 200 }, corner_size = 8 },
-    shadow = Styles.rounded_button_glow({ r = 0.5, g = 0.3, b = 0.1, a = 0.5 })
-  },
-  hovered_graphical_set = {
-    -- originally hovered_graphical_set
-    base = { position = { 236, 216 }, corner_size = 8 }, -- Example hover position
-    shadow = Styles.rounded_button_glow({ r = 0.5, g = 0.3, b = 0.1, a = 0.5 }),
-    glow = Styles.default_glow({ r = 1, g = 0.5, b = 0, a = 0.5 }, 0.5)
-  },
-  clicked_graphical_set = {
-    base = { position = { 236, 232 }, corner_size = 8 }, -- Example clicked position
-    shadow = Styles.rounded_button_glow({ r = 0.5, g = 0.3, b = 0.1, a = 0.5 })
-  },
-}
 
 gui_style.slot_orange_favorite_off = {
   type = "button_style",

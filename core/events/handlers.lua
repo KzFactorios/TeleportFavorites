@@ -48,21 +48,19 @@ API:
 -- Centralized event handler implementations for TeleportFavorites
 
 local Cache = require("core.cache.cache")
-local Logger = require("core.utils.enhanced_error_handler")
 local PositionUtils = require("core.utils.position_utils")
 local GPSUtils = require("core.utils.gps_utils")
 local ErrorHandler = require("core.utils.error_handler")
 local CursorUtils = require("core.utils.cursor_utils")
-local TagDestroyHelper = require("core.tag.tag_destroy_helper")
 local tag_editor = require("gui.tag_editor.tag_editor")
 local TagEditorEventHelpers = require("core.events.tag_editor_event_helpers")
-local ChartTagModificationHelpers = require("core.events.chart_tag_modification_helpers")
-local ChartTagRemovalHelpers = require("core.events.chart_tag_removal_helpers")
-local PlayerStateHelpers = require("core.events.player_state_helpers")
 local Settings = require("core.utils.settings_access")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local GuiValidation = require("core.utils.gui_validation")
+local GuiHelpers = require("core.utils.gui_helpers")
+local fave_bar = require("gui.favorites_bar.fave_bar")
 local Enum = require("prototypes.enums.enum")
+local FaveBarGuiLabelsManager = require("core.control.fave_bar_gui_labels_manager")
 
 -- Helper: Validate player and run handler logic
 local function with_valid_player(player_index, handler_fn, ...)
@@ -75,12 +73,18 @@ local function register_gui_observers(player)
   local ok, gui_observer = pcall(require, "core.pattern.gui_observer")
 end
 
-local handlers = {} 
+local handlers = {}
 
 function handlers.on_init()
   ErrorHandler.debug_log("Mod initialization started")
+  Cache.init()
+  -- Register the label managers first
+  FaveBarGuiLabelsManager.register_all(script)
   for _, player in pairs(game.players) do
     register_gui_observers(player)
+    fave_bar.build(player)
+    -- Force update labels after GUI is built
+    FaveBarGuiLabelsManager.force_update_labels_for_player(player)
   end
   ErrorHandler.debug_log("Mod initialization completed")
 end
@@ -91,9 +95,19 @@ end
 
 function handlers.on_player_created(event)
   with_valid_player(event.player_index, function(player)
-    ErrorHandler.debug_log("New player created", { player_index = event.player_index })
-    PlayerStateHelpers.reset_transient_player_states(player)
+    Cache.reset_transient_player_states(player)
+    fave_bar.build(player)
     register_gui_observers(player)
+    -- Force update labels after GUI is built
+    FaveBarGuiLabelsManager.force_update_labels_for_player(player)
+  end)
+end
+
+function handlers.on_player_joined_game(event)
+  with_valid_player(event.player_index, function(player)
+    fave_bar.build(player)
+    -- Force update labels after GUI is built
+    FaveBarGuiLabelsManager.force_update_labels_for_player(player)
   end)
 end
 

@@ -48,7 +48,7 @@ GuiEventBus:notify("favorite_added", {
 local Cache = require("core.cache.cache")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local ErrorHandler = require("core.utils.error_handler")
-local GuiAccessibility = require("core.utils.gui_accessibility")
+local GuiHelpers = require("core.utils.gui_helpers")
 local Enum = require("prototypes.enums.enum")
 local GameHelpers = require("core.utils.game_helpers")
 
@@ -492,7 +492,7 @@ function GuiEventBus.register_player_observers(player)
   })
 
   -- Ensure the favorites bar is visible on startup (only if not already present)
-  local main_flow = GuiAccessibility.get_or_create_gui_flow_from_gui_top(player)
+  local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   local bar_frame = main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
   if not (bar_frame and bar_frame.valid) then
     fave_bar.build(player)
