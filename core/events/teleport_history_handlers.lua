@@ -28,10 +28,14 @@ local function _handle_history_navigation(event, direction, is_endpoint)
     local player = _get_valid_player(event)
     if not player then return end
     
+    -- Mark teleport as being initiated by history navigation
+    -- This prevents adding the destination to history again
     local player_index = event.player_index
     mark_teleport_history(player_index)
+    
+    -- Move the pointer and attempt teleport
     TeleportHistory.move_pointer(player, direction, is_endpoint)
-    -- clear will be called after script_raised_teleported
+    -- clear_teleport_history will be called after script_raised_teleported
 end
 
 function TeleportHistoryHandlers.register(script)
@@ -55,36 +59,33 @@ function TeleportHistoryHandlers.register(script)
         local player = _get_valid_player(event)
         if not player then return end
         
+        -- Clear the player's teleport history for the current surface
         TeleportHistory.clear(player)
     end)
 
+    -- Register debug commands
+    commands.add_command("tf-history", "Show teleport history debug info", function(command)
+        local player = game.get_player(command.player_index)
+        if not player or not player.valid then return end
+        TeleportHistory.print_history(player)
+    end)
+    
+    commands.add_command("tf-add-position", "Add current position to teleport history", function(command)
+        local player = game.get_player(command.player_index)
+        if not player or not player.valid then return end
+        
+        local gps = {
+            x = math.floor(player.position.x),
+            y = math.floor(player.position.y),
+            surface = player.surface.index
+        }
+        TeleportHistory.add_gps(player, gps)
+        TeleportHistory.print_history(player)
+    end)
+    
     -- Create a remote interface for TeleportUtils to add to history
     -- This avoids circular dependencies
-    if remote then
-        remote.add_interface("TeleportFavorites_History", {
-            add_to_history = function(player_index)
-                local player = game.get_player(player_index)
-                if not player or not player.valid then return end
-                
-                -- Skip if this teleport was initiated by history navigation
-                if teleport_history_in_progress[player_index] then
-                    clear_teleport_history(player_index)
-                    return
-                end
-                
-                -- Add current position to history
-                local gps = {
-                    x = math.floor(player.position.x),
-                    y = math.floor(player.position.y),
-                    surface = player.surface.index
-                }
-                TeleportHistory.add_gps(player, gps)
-            end
-        })
-    end
-    
-    -- Add a remote interface for other mods to trigger teleport history
-    if remote then
+    if remote and not remote.interfaces["TeleportFavorites_History"] then
         remote.add_interface("TeleportFavorites_History", {
             add_to_history = function(player_index)
                 local player = game.get_player(player_index)
