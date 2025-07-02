@@ -14,6 +14,7 @@ gui_style.tf_fave_bar_frame = {
     parent = "slot_window_frame",
     padding = 3,
     left_padding = 4,
+    right_padding = 4,
     top_margin = 0,
     right_margin = 0,
     bottom_margin = 0,
@@ -161,7 +162,7 @@ gui_style.tf_slot_button_locked = {
 gui_style.tf_fave_bar_slot_number = {
     type = "label_style",
     font = "technology-slot-level-font",
-    font_color = { r = 0.98, g = 0.66, b = 0.22, a = 0.5 },
+    font_color = { r = 0.98, g = 0.66, b = 0.22, a = 0.7 },
     horizontal_align = "center",
     width = 25,
     top_padding = 16

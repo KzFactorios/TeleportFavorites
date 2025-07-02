@@ -76,21 +76,25 @@ end
 local handlers = {}
 
 function handlers.on_init()
-  ErrorHandler.debug_log("Mod initialization started")
+
   Cache.init()
   
   for _, player in pairs(game.players) do
     register_gui_observers(player)
-    fave_bar.build(player)
+    fave_bar.build(player, true) -- Force show during initialization
   end
   
   -- Register the label managers AFTER GUI is built
   FaveBarGuiLabelsManager.register_all(script)
   
   -- Initialize labels for all existing players AFTER registration and GUI building
-  FaveBarGuiLabelsManager.initialize_all_players(script)
+  -- Use a delay to ensure GUI is fully built
+  script.on_nth_tick(30, function() -- Short delay to ensure GUIs are ready
+    FaveBarGuiLabelsManager.initialize_all_players(script)
+    script.on_nth_tick(30, nil) -- Unregister this one-time handler
+  end)
   
-  ErrorHandler.debug_log("Mod initialization completed")
+
 end
 
 function handlers.on_load()
@@ -105,31 +109,30 @@ end
 function handlers.on_player_created(event)
   with_valid_player(event.player_index, function(player)
     Cache.reset_transient_player_states(player)
-    fave_bar.build(player)
+    fave_bar.build(player, true) -- Force show for new players
     register_gui_observers(player)
-    -- Force update labels after GUI is built
-    FaveBarGuiLabelsManager.force_update_labels_for_player(player)
+    -- Register the player for automatic label updates AND force immediate update
+    FaveBarGuiLabelsManager.update_label_for_player("player_coords", player, script, "show-player-coords", "fave_bar_coords_label", FaveBarGuiLabelsManager.get_coords_caption)
+    FaveBarGuiLabelsManager.update_label_for_player("teleport_history", player, script, "show-teleport-history", "fave_bar_teleport_history_label", FaveBarGuiLabelsManager.get_history_caption)
   end)
 end
 
 function handlers.on_player_joined_game(event)
   with_valid_player(event.player_index, function(player)
-    fave_bar.build(player)
-    -- Force update labels after GUI is built
-    FaveBarGuiLabelsManager.force_update_labels_for_player(player)
+    fave_bar.build(player, true) -- Force show for joining players
+    -- Register the player for automatic label updates AND force immediate update
+    FaveBarGuiLabelsManager.update_label_for_player("player_coords", player, script, "show-player-coords", "fave_bar_coords_label", FaveBarGuiLabelsManager.get_coords_caption)
+    FaveBarGuiLabelsManager.update_label_for_player("teleport_history", player, script, "show-teleport-history", "fave_bar_teleport_history_label", FaveBarGuiLabelsManager.get_history_caption)
   end)
 end
 
 function handlers.on_open_tag_editor_custom_input(event)
   with_valid_player(event.player_index, function(player)
-    ErrorHandler.debug_log("Tag editor custom input handler called", {
-      player_index = event.player_index,
-      cursor_position = event.cursor_position
-    })
+
 
     local can_open, reason = TagEditorEventHelpers.validate_tag_editor_opening(player)
     if not can_open then
-      ErrorHandler.debug_log("Tag editor handler: " .. (reason or "validation failed"))
+
       if reason == "Drag mode active" then
         CursorUtils.end_drag_favorite(player)
         if player and player.play_sound then

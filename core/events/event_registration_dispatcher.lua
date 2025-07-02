@@ -294,7 +294,7 @@ function EventRegistrationDispatcher.register_core_events(script)
           for _, player in pairs(game.connected_players) do
             local player_settings = Settings:getPlayerSettings(player)
             if player_settings.favorites_on then
-              fave_bar.build(player)
+              fave_bar.build(player, true) -- Force show when enabling setting
             else
               fave_bar.destroy(player)
             end
@@ -305,6 +305,20 @@ function EventRegistrationDispatcher.register_core_events(script)
         -- Destination message setting has been removed - messages always shown
       end,
       name = "on_runtime_mod_setting_changed"
+    },
+    [defines.events.on_player_controller_changed] = {
+      handler = function(event)
+        if not event or not event.player_index then return end
+        local player = game.get_player(event.player_index)
+        if not player or not player.valid then return end
+        
+        -- If player switched to character controller, rebuild favorites bar
+        -- If player switched away from character controller, bar won't be built due to guard in build function
+        if player.controller_type == defines.controllers.character then
+          fave_bar.build(player)
+        end
+      end,
+      name = "on_player_controller_changed"
     },
     -- Chart tag events - Critical: These were missing!
     [defines.events.on_chart_tag_added] = {

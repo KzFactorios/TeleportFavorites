@@ -80,6 +80,54 @@ function DebugCommands.register_commands()
     GameHelpers.player_print(player, "Development mode enabled (debug level: " .. DebugConfig.get_level_name() .. ")")
   end)
   
+  -- Controller test command
+  commands.add_command("tf_test_controller", "Test controller-based favorites bar behavior", function(command)
+    local player = game.get_player(command.player_index)
+    if not player then return end
+    
+    GameHelpers.player_print(player, "=== CONTROLLER TEST ===")
+    GameHelpers.player_print(player, "Current controller: " .. tostring(player.controller_type))
+    GameHelpers.player_print(player, "Character controller constant: " .. tostring(defines.controllers.character))
+    GameHelpers.player_print(player, "Editor controller constant: " .. tostring(defines.controllers.editor))
+    
+    local fave_bar = require("gui.favorites_bar.fave_bar")
+    local GuiHelpers = require("core.utils.gui_helpers")
+    local GuiValidation = require("core.utils.gui_validation")
+    
+    -- Check if favorites bar exists
+    local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
+    local fave_bar_frame = main_flow and GuiValidation.find_child_by_name(main_flow, "fave_bar_frame")
+    
+    GameHelpers.player_print(player, "Favorites bar exists: " .. tostring(fave_bar_frame ~= nil))
+    
+    -- Test build function
+    GameHelpers.player_print(player, "Attempting to build favorites bar...")
+    fave_bar.build(player)
+    
+    -- Check again
+    fave_bar_frame = main_flow and GuiValidation.find_child_by_name(main_flow, "fave_bar_frame")
+    GameHelpers.player_print(player, "Favorites bar exists after build: " .. tostring(fave_bar_frame ~= nil))
+    
+    GameHelpers.player_print(player, "Test commands: /editor (toggle editor), /c game.player.character = nil (god mode)")
+  end)
+  
+  -- Force build favorites bar command
+  commands.add_command("tf_force_build_bar", "Force build favorites bar (ignores controller check)", function(command)
+    local player = game.get_player(command.player_index)
+    if not player then return end
+    
+    GameHelpers.player_print(player, "Force building favorites bar...")
+    local fave_bar = require("gui.favorites_bar.fave_bar")
+    fave_bar.build(player, true) -- Force show
+    
+    local GuiHelpers = require("core.utils.gui_helpers")
+    local GuiValidation = require("core.utils.gui_validation")
+    local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
+    local fave_bar_frame = main_flow and GuiValidation.find_child_by_name(main_flow, "fave_bar_frame")
+    
+    GameHelpers.player_print(player, "Favorites bar built successfully: " .. tostring(fave_bar_frame ~= nil))
+  end)
+  
   Logger.info("Debug commands registered")
 end
 

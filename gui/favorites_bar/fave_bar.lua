@@ -119,21 +119,28 @@ end
 
 function fave_bar.build(player, force_show)
   if not player or not player.valid then return end
+  
+  -- Only build favorites bar when player is in character controller mode
+  -- Allow force_show to override controller check for initialization
+  if not force_show and player.controller_type ~= defines.controllers.character and player.controller_type ~= defines.controllers.cutscene then
+    return
+  end
+
+  
   local tick = game and game.tick or 0
   local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   local bar_frame = main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
   if last_build_tick[player.index] == tick and bar_frame and bar_frame.valid then
-    ErrorHandler.debug_log("[FAVE_BAR] build skipped (already built this tick, bar present)",
-      { player = player.name, tick = tick })
+
     return
   end
   last_build_tick[player.index] = tick
-  ErrorHandler.debug_log("[FAVE_BAR] build called", {
-    player = player and player.name or "<nil>"
-  })
+
   local success, result = pcall(function()
     local player_settings = Settings:getPlayerSettings(player)
-    if not player_settings.favorites_on then return end
+    if not player_settings.favorites_on then 
+      return 
+    end
 
     local mode = player and player.render_mode
     if not (mode == defines.render_mode.game or mode == defines.render_mode.chart or mode == defines.render_mode.chart_zoomed_in) then
@@ -222,23 +229,9 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves, drag_index)
         for k, v in pairs(icon) do norm_icon[k] = v end
         norm_icon.type = "virtual-signal"
       end
-      ErrorHandler.debug_log("[FAVE_BAR] Icon resolution for slot", {
-        slot = i,
-        has_tag = fav.tag ~= nil,
-        has_chart_tag = fav.tag and fav.tag.chart_tag ~= nil,
-        has_icon = norm_icon ~= nil,
-        icon_type = norm_icon and norm_icon.type or nil,
-        icon_name = norm_icon and norm_icon.name or nil,
-        icon_full = norm_icon and norm_icon.type and norm_icon.name and (norm_icon.type .. "/" .. norm_icon.name) or nil,
-        icon_raw = norm_icon -- Show the entire icon object
-      })
+
       local btn_icon, used_fallback, debug_info = GuiValidation.get_validated_sprite_path(norm_icon, { fallback = Enum.SpriteEnum.PIN, log_context = { slot = i, fav_gps = fav.gps, fav_tag = fav.tag } })
-      ErrorHandler.debug_log("[FAVE_BAR] Sprite validation result", {
-        slot = i,
-        btn_icon = btn_icon,
-        used_fallback = used_fallback,
-        debug_info = debug_info
-      })
+
       local style = fav.locked and "tf_slot_button_locked" or "tf_slot_button_smallfont"
       if btn_icon == "tf_tag_in_map_view_small" then style = "tf_slot_button_smallfont_map_pin" end
       return btn_icon, GuiHelpers.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }, style, fav.locked
