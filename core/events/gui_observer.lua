@@ -451,23 +451,32 @@ end
 ---@param event_data table
 function DataObserver:update(event_data)
   if not self:is_valid() then return end
-  local debug_context = {
-    class = "DataObserver",
-    method = "update",
-    player = self.player.name,
-    event_type = event_data and event_data.type or "unknown",
-    event_data = event_data
-    -- stacktrace removed for log clarity
-  }
-  ErrorHandler.debug_log("[DATA OBSERVER] ===> (cache/data event)", debug_context)
+  
+  -- Check if conditions are right for building the bar
+  local player = self.player
+  
+  -- Skip if on space platform
+  local surface = player.surface
+  if surface and surface.platform then
+    return
+  end
+  
+  -- Skip for god mode and spectator mode (but allow editor mode on main surface)
+  if player.controller_type == defines.controllers.god or 
+     player.controller_type == defines.controllers.spectator then
+    return
+  end
+  
+  -- Use the standard build function which has all the proper validation checks
   local success, err = pcall(function()
-    fave_bar.build(self.player)
-    -- Force update labels after favorites bar is built
-    local FaveBarGuiLabelsManager = require("core.control.fave_bar_gui_labels_manager")
-    FaveBarGuiLabelsManager.force_update_labels_for_player(self.player)
+    fave_bar.build(player)
   end)
+  
   if not success then
-    ErrorHandler.warn_log("[DATA OBSERVER] ===> Failed to refresh favorites bar", debug_context)
+    ErrorHandler.warn_log("[DATA OBSERVER] Failed to refresh favorites bar", {
+      player = player.name,
+      error = err
+    })
   end
 end
 

@@ -232,22 +232,22 @@ local function handle_favorite_slot_click(event, player, favorites)
   if fav == nil then return end
   
   -- Check for blank favorite (different handling)
-  if FavoriteSlotUtils.is_blank_favorite(fav) then
+  if FavoriteUtils.is_blank_favorite(fav) then
     -- For blank favorites, only allow drag targets (no teleport/etc)
     return
   end
 
   -- Handle Shift+Left-Click to start drag
-  if handle_shift_left_click(event, player, fav, slot, favorites) then return end
+  if SlotInteractionHandlers.handle_shift_left_click(event, player, fav, slot, favorites) then return end
 
   -- Handle Ctrl+click to toggle lock state
-  if handle_toggle_lock(event, player, fav, slot, favorites) then return end
+  if SlotInteractionHandlers.handle_toggle_lock(event, player, fav, slot, favorites) then return end
 
   -- Normal left-click to teleport
-  if handle_teleport(event, player, fav, slot, false) then return end
+  if SlotInteractionHandlers.handle_teleport(event, player, fav, slot, false) then return end
 
   -- Right-click to open tag editor
-  handle_request_to_open_tag_editor(event, player, fav, slot)
+  SlotInteractionHandlers.handle_request_to_open_tag_editor(event, player, fav, slot)
 
   -- Use partial update for single slot changes where possible
   -- Only rebuild entire slot row if the slot structure has fundamentally changed

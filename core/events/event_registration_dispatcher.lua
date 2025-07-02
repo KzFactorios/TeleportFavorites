@@ -312,11 +312,9 @@ function EventRegistrationDispatcher.register_core_events(script)
         local player = game.get_player(event.player_index)
         if not player or not player.valid then return end
         
-        -- If player switched to character controller, rebuild favorites bar
-        -- If player switched away from character controller, bar won't be built due to guard in build function
-        if player.controller_type == defines.controllers.character then
-          fave_bar.build(player)
-        end
+        -- Always try to rebuild the bar when controller changes
+        -- The build function will handle space platform and other restrictions
+        fave_bar.build(player)
       end,
       name = "on_player_controller_changed"
     },
@@ -470,6 +468,46 @@ function EventRegistrationDispatcher.register_observer_events(script)
     ErrorHandler.warn_log("Invalid script object for observer events registration")
     return false
   end
+
+  -- Register observer for favorites bar updates
+  local GuiObserver = require("core.events.gui_observer")
+  local GuiEventBus = GuiObserver.GuiEventBus
+  
+  -- Create a simple observer function for favorites bar updates
+  local favorites_bar_observer = {
+    update = function(self, event_data)
+      ErrorHandler.debug_log("[FAVORITES_BAR] Observer triggered", {
+        event_data = event_data,
+        player = event_data.player and event_data.player.name or "nil",
+        action = event_data.action or "unknown"
+      })
+      
+      if event_data.player and event_data.player.valid then
+        local fave_bar = require("gui.favorites_bar.fave_bar")
+        local GuiHelpers = require("core.utils.gui_helpers")
+        local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(event_data.player)
+        if main_flow then
+          ErrorHandler.debug_log("[FAVORITES_BAR] Updating slot row for player", {
+            player = event_data.player.name,
+            gps = event_data.gps or "unknown"
+          })
+          -- Update the slot row to reflect the new favorite
+          fave_bar.update_slot_row(event_data.player, main_flow)
+        else
+          ErrorHandler.debug_log("[FAVORITES_BAR] Main flow not found for player", {
+            player = event_data.player.name
+          })
+        end
+      else
+        ErrorHandler.debug_log("[FAVORITES_BAR] Invalid player in event data")
+      end
+    end
+  }
+  
+  -- Subscribe to the favorites_bar_updated event
+  ErrorHandler.debug_log("[OBSERVER] Registering favorites_bar_updated observer")
+  GuiEventBus.subscribe("favorites_bar_updated", favorites_bar_observer)
+  ErrorHandler.debug_log("[OBSERVER] favorites_bar_updated observer registered successfully")
 
   ErrorHandler.debug_log("Observer events registration complete")
 

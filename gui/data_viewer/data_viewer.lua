@@ -319,7 +319,7 @@ end
 ---@param top_key string Top-level key name
 function data_viewer.update_content_panel(player, data, font_size, top_key)
   local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
-  local frame = GuiHelpers.find_child_by_name(main_flow, Enum.GuiEnum.GUI_FRAME.DATA_VIEWER)
+  local frame = GuiValidation.find_child_by_name(main_flow, Enum.GuiEnum.GUI_FRAME.DATA_VIEWER)
   if not frame then return end
 
   local content_flow = GuiValidation.find_child_by_name(frame, "data_viewer_content_flow")

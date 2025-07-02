@@ -58,7 +58,7 @@ gui_style.tf_fave_toggle_flow = {
     margin = 0,
     top_margin = 0,
     bottom_margin = 0,
-    width = 56,
+    width = 60,
     height = 16,
     padding = 0,
 }
@@ -69,7 +69,7 @@ gui_style.tf_fave_bar_visibility_off = {
     margin = 0,
     top_margin = 0,
     bottom_margin = 0,
-    width = 56,
+    width = 60,
     height = 16,
     padding = 0,
 }
@@ -161,11 +161,11 @@ gui_style.tf_slot_button_locked = {
 
 gui_style.tf_fave_bar_slot_number = {
     type = "label_style",
-    font = "technology-slot-level-font",
-    font_color = { r = 0.98, g = 0.66, b = 0.22, a = 0.7 },
+    font = "tf_font_8",
+    font_color = { r = 0.98, g = 0.66, b = 0.22, a = 1 },
     horizontal_align = "center",
     width = 25,
-    top_padding = 16
+    top_padding = 18
 }
 
 gui_style.tf_fave_bar_locked_slot_number = {

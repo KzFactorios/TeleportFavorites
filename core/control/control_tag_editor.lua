@@ -256,6 +256,11 @@ local function handle_confirm_btn(player, element, tag_data)
 
     refreshed_tag.faved_by_players[player.index] = player.index
     -- Notify favorites bar to update after adding favorite
+    ErrorHandler.debug_log("[TAG_EDITOR] Sending favorites_bar_updated notification (ADD)", {
+      player = player.name,
+      gps = refreshed_tag.gps,
+      action = "add"
+    })
     SharedUtils.notify_observer("favorites_bar_updated", {
       player = player,
       gps = refreshed_tag.gps,
@@ -267,6 +272,11 @@ local function handle_confirm_btn(player, element, tag_data)
     player_favorites:remove_favorite(refreshed_tag.gps)
     refreshed_tag.faved_by_players[player.index] = nil
     -- Notify favorites bar to update after removing favorite
+    ErrorHandler.debug_log("[TAG_EDITOR] Sending favorites_bar_updated notification (REMOVE)", {
+      player = player.name,
+      gps = refreshed_tag.gps,
+      action = "remove"
+    })
     SharedUtils.notify_observer("favorites_bar_updated", {
       player = player,
       gps = refreshed_tag.gps,

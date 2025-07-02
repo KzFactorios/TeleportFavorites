@@ -37,7 +37,16 @@ function SmallHelpers.normalize_position(map_position)
     return {x = 0, y = 0}
   end
   
-  local x, y = basic_helpers.get_position_x_y(map_position)
+  -- Handle both array-style [x, y] and object-style {x = ..., y = ...} positions
+  local x, y
+  if map_position.x ~= nil and map_position.y ~= nil then
+    x, y = map_position.x, map_position.y
+  elseif type(map_position) == "table" and #map_position >= 2 then
+    x, y = map_position[1], map_position[2]
+  else
+    return {x = 0, y = 0}
+  end
+  
   return {x = math.floor(x), y = math.floor(y)}
 end
 

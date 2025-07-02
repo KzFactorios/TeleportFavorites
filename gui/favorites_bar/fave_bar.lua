@@ -120,10 +120,20 @@ end
 function fave_bar.build(player, force_show)
   if not player or not player.valid then return end
   
-  -- Only build favorites bar when player is in character controller mode
-  -- Allow force_show to override controller check for initialization
-  if not force_show and player.controller_type ~= defines.controllers.character and player.controller_type ~= defines.controllers.cutscene then
-    return
+  -- Hide favorites bar when editing space platforms (but allow on main surface even in editor mode)
+  -- Allow force_show to override all checks for initialization
+  if not force_show then
+    -- Check if player is on a space platform surface
+    local surface = player.surface
+    if surface and surface.platform then
+      return
+    end
+    
+    -- Also skip for god mode and spectator mode (but allow editor mode on main surface)
+    if player.controller_type == defines.controllers.god or 
+       player.controller_type == defines.controllers.spectator then
+      return
+    end
   end
 
   
@@ -131,7 +141,6 @@ function fave_bar.build(player, force_show)
   local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   local bar_frame = main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
   if last_build_tick[player.index] == tick and bar_frame and bar_frame.valid then
-
     return
   end
   last_build_tick[player.index] = tick
@@ -382,6 +391,17 @@ function fave_bar.update_toggle_state(player, slots_visible)
   if slots_frame then
     slots_frame.visible = slots_visible
   end
+end
+
+--- Check if favorites bar exists and is valid for a player
+---@param player LuaPlayer
+---@return boolean exists
+function fave_bar.exists(player)
+  if not player or not player.valid then return false end
+  
+  local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
+  local bar_frame = main_flow and GuiValidation.find_child_by_name(main_flow, "fave_bar_frame")
+  return bar_frame and bar_frame.valid or false
 end
 
 return fave_bar
