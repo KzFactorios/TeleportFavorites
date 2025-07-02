@@ -13,6 +13,7 @@ gui_style.tf_fave_bar_frame = {
     type = "frame_style",
     parent = "slot_window_frame",
     padding = 3,
+    left_padding = 4,
     top_margin = 0,
     right_margin = 0,
     bottom_margin = 0,
@@ -21,77 +22,94 @@ gui_style.tf_fave_bar_frame = {
     horizontally_stretchable = "off",
 }
 
-gui_style.tf_fave_bar_draggable = {
-    type = "empty_widget_style",
-    parent = "draggable_space_header",
-    horizontally_stretchable = "on",
-    width = 16,
-    height = 0
-}
-
 gui_style.tf_fave_toggle_container = {
     type = "frame_style",
     parent = "quick_bar_inner_panel", --"inside_deep_frame", -- match the slots row background
-    graphical_set = nil,          -- use parent's background
+    graphical_set = nil,              -- use parent's background
     padding = 0,
-    --top_padding = 1,
+    top_padding = 0,
+    bottom_padding = 4,
     margin = 0,
+    bottom_margin = -1,
     horizontally_stretchable = "off",
-    vertically_stretchable = "off"
+    vertically_stretchable = "off",
+    vertical_align = "top",
+    width = 60,
+    height = 40,
 }
 
-gui_style.tf_fave_bar_visibility_on = {
-    type = "button_style",
-    parent = "tf_slot_button",
-    margin = 0,
-    width = 40,
-    height = 20,
+gui_style.tf_fave_toggle_flow = {
+    type = "horizontal_flow_style",
+    horizontal_align = "center",
     padding = 0,
-    scale = 2,
-    default_graphical_set = nil-- { base = { position = { 0, 0 }, corner_size = 8, tint = { r = 1, g = 1, b = 1, a = 1 } }, },
+    margin = 0,
+    top_margin = 1,
+    bottom_margin = 0,
+    top_padding = 0,
+    bottom_padding = 0,
+    horizontally_stretchable = "on",
+    vertically_stretchable = "on",
+    }
+    
+    gui_style.tf_fave_bar_visibility_on = {
+    type = "button_style",
+    parent = "slot_button",
+    margin = 0,
+    top_margin = 0,
+    bottom_margin = 0,
+    width = 56,
+    height = 16,
+    padding = 0,
 }
 
 gui_style.tf_fave_bar_visibility_off = {
     type = "button_style",
-    parent = "tf_slot_button",
+    parent = "slot_button",
     margin = 0,
-    width = 40,
-    height = 20,
+    top_margin = 0,
+    bottom_margin = 0,
+    width = 56,
+    height = 16,
     padding = 0,
-    scale = 2,
-    default_graphical_set = nil-- { base = { position = { 0, 0 }, corner_size = 8, tint = { r = 1, g = 1, b = 1, a = 1 } }, },
-}
-
-gui_style.fave_bar_coords_label_style = {
-    type = "label_style",
-    --parent = "default_label",
-    font = "tf_font_7",
-    font_color = { r = 0.98, g = 0.66, b = 0.22, a = 0.8 },
-    horizontal_align = "center",
-    width = 40,
-    height = 10,
 }
 
 gui_style.fave_bar_teleport_history_label_style = {
     type = "label_style",
     --parent = "default_label",
-    font = "tf_font_7",
-    font_color = { r = 0.98, g = 0.66, b = 0.22, a = 0.8 },
+    font = "tf_font_8",
+    font_color = { r = 0.98, g = 0.66, b = 0.22, a = 1 },
     horizontal_align = "center",
-    width = 40,
-    height = 10,
+    width = 60,
+    height = 9,
+    padding = 0,
+    top_margin = 0,
+    bottom_margin = 0,
+}
+
+gui_style.fave_bar_coords_label_style = {
+    type = "label_style",
+    --parent = "default_label",
+    font = "tf_font_8",
+    font_color = { r = 0.98, g = 0.66, b = 0.22, a = 1 },
+    horizontal_align = "center",
+    width = 60,
+    height = 9,
+    padding = 0,
+    top_margin = 1,
+    bottom_margin = 0,
 }
 
 gui_style.tf_fave_slots_row = {
     type = "frame_style",
-    --parent = "inside_deep_frame",
-    parent = "slot_button_deep_frame",
+    parent = "quick_bar_inner_panel",
+    --parent = "slot_button_deep_frame",
     vertically_stretchable = "off",
     horizontally_stretchable = "on",
-    --left_margin = 2,
-    --padding = 0,
-    --right_padding = 0,
-    --left_padding = 0,
+    left_margin = 5,
+    right_margin = 0,
+    padding = 0,
+    right_padding = 4,
+    left_padding = 0,
 }
 
 gui_style.tf_slot_button_smallfont = {
@@ -106,8 +124,8 @@ gui_style.tf_slot_button_smallfont = {
     bottom_padding = 4,
     left_padding = 4,
 
-    top_margin = 1,
-    right_margin = 0,
+    top_margin = 0,
+    right_margin = -4,
     bottom_margin = 0,
     left_margin = 0,
     size = { 40, 40 }
@@ -124,7 +142,7 @@ gui_style.tf_slot_button_smallfont_map_pin = {
 
 gui_style.tf_slot_button_locked = {
     type = "button_style",
-    --parent = "tf_slot_button_smallfont", 
+    --parent = "tf_slot_button_smallfont",
     parent = "slot_button_in_shallow_frame",
     default_graphical_set = {
         base = { position = { 0, 0 }, corner_size = 8, tint = { r = .3, g = .3, b = .3, a = .4 } }
@@ -134,6 +152,9 @@ gui_style.tf_slot_button_locked = {
     right_padding = 4,
     bottom_padding = 4,
     left_padding = 4,
+    top_margin = 0,
+    right_margin = 0,
+    bottom_margin = 0,
     left_margin = 0
 }
 

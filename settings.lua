@@ -20,6 +20,22 @@ data:extend({
     default_value = true,
     order = "kc",
   },  {
+    name = "coords-update-interval",
+    type = "int-setting",
+    setting_type = "runtime-global",
+    default_value = Constants.settings.DEFAULT_COORDS_UPDATE_INTERVAL,
+    minimum_value = Constants.settings.MIN_UPDATE_INTERVAL,
+    maximum_value = Constants.settings.MAX_UPDATE_INTERVAL,
+    order = "kd",
+  },  {
+    name = "history-update-interval", 
+    type = "int-setting",
+    setting_type = "runtime-global",
+    default_value = Constants.settings.DEFAULT_HISTORY_UPDATE_INTERVAL,
+    minimum_value = Constants.settings.MIN_UPDATE_INTERVAL,
+    maximum_value = Constants.settings.MAX_UPDATE_INTERVAL,
+    order = "ke",
+  },  {
     name = "chart-tag-click-radius",
     type = "int-setting",
     setting_type = "runtime-per-user",

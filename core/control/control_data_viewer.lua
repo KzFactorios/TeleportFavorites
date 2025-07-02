@@ -143,7 +143,7 @@ function M.on_toggle_data_viewer(event)
     player_name = player.name
   })
   
-  local main_flow = GuiAccessibility.get_or_create_gui_flow_from_gui_top(player)
+  local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   if not main_flow then
     ErrorHandler.debug_log("Data viewer toggle failed: no main flow")
     return
@@ -186,7 +186,7 @@ function M.on_data_viewer_gui_click(event)
   local player = game.get_player(event.player_index)
   if not player or not player.valid then return end
   
-  local main_flow = GuiAccessibility.get_or_create_gui_flow_from_gui_top(player)
+  local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   local pdata = Cache.get_player_data(player)
   pdata.data_viewer_settings = pdata.data_viewer_settings or {}
   
@@ -266,7 +266,7 @@ function M.register(script)
   script.on_event("tf-data-viewer-tab-next", function(event)
     local player = game.get_player(event.player_index)
     if not player then return end
-    local main_flow = GuiAccessibility.get_or_create_gui_flow_from_gui_top(player)
+    local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
     local frame = GuiValidation.find_child_by_name(main_flow, "data_viewer_frame")
     if not frame then return end
     
@@ -295,7 +295,7 @@ function M.register(script)
   script.on_event("tf-data-viewer-tab-prev", function(event)
     local player = game.get_player(event.player_index)
     if not player then return end
-    local main_flow = GuiAccessibility.get_or_create_gui_flow_from_gui_top(player)
+    local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
     local frame = GuiValidation.find_child_by_name(main_flow, "data_viewer_frame")
     if not frame then return end
     

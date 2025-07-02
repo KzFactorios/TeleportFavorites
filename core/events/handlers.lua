@@ -78,19 +78,28 @@ local handlers = {}
 function handlers.on_init()
   ErrorHandler.debug_log("Mod initialization started")
   Cache.init()
-  -- Register the label managers first
-  FaveBarGuiLabelsManager.register_all(script)
+  
   for _, player in pairs(game.players) do
     register_gui_observers(player)
     fave_bar.build(player)
-    -- Force update labels after GUI is built
-    FaveBarGuiLabelsManager.force_update_labels_for_player(player)
   end
+  
+  -- Register the label managers AFTER GUI is built
+  FaveBarGuiLabelsManager.register_all(script)
+  
+  -- Initialize labels for all existing players AFTER registration and GUI building
+  FaveBarGuiLabelsManager.initialize_all_players(script)
+  
   ErrorHandler.debug_log("Mod initialization completed")
 end
 
 function handlers.on_load()
   -- Re-initialize runtime-only structures if needed
+  -- Re-register label managers for existing game AFTER ensuring GUIs exist
+  FaveBarGuiLabelsManager.register_all(script)
+  
+  -- Initialize labels for all connected players in loaded games
+  FaveBarGuiLabelsManager.initialize_all_players(script)
 end
 
 function handlers.on_player_created(event)

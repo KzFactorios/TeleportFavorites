@@ -18,7 +18,12 @@ local Constants = {
     DEFAULT_SNAP_SCALE = 1,          -- Scale factor for position snapping
     MAX_FAVORITE_SLOTS = 10,         -- Maximum number of favorite slots per player
     FAVE_BAR_SLOT_PREFIX = "fave_bar_slot_", -- Prefix for favorite bar slot element names
-    COORDS_UPDATE_TICK_INTERVAL = 30, -- Tick interval for updating player coordinates display
+    
+    -- Label update intervals (in ticks)
+    DEFAULT_COORDS_UPDATE_INTERVAL = 15,  -- Default tick interval for player coordinates (0.25 seconds)
+    DEFAULT_HISTORY_UPDATE_INTERVAL = 30, -- Default tick interval for teleport history (0.5 seconds)
+    MIN_UPDATE_INTERVAL = 5,             -- Minimum allowed update interval (0.083 seconds)
+    MAX_UPDATE_INTERVAL = 59,            -- Maximum allowed update interval (0.983 seconds)
     
     -- GPS settings
     GPS_PAD_NUMBER = 3,              -- Min digits for GPS coordinate display

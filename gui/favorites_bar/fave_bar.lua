@@ -59,32 +59,16 @@ local FavoriteUtils = require("core.favorite.favorite")
 local FavoriteRehydration = require("core.favorite.favorite_rehydration")
 local GuiValidation = require("core.utils.gui_validation")
 local GuiHelpers = require("core.utils.gui_helpers")
-local GuiHelpers = require("core.utils.gui_helpers")
-local GuiHelpers = require("core.utils.gui_helpers")
 local Settings = require("core.utils.settings_access")
 local Cache = require("core.cache.cache")
 local Enum = require("prototypes.enums.enum")
+local FaveBarGuiLabelsManager = require("core.control.fave_bar_gui_labels_manager")
 
 local fave_bar = {}
 
 local last_build_tick = {}
 
---[[
-Element Hierarchy Diagram:
-fave_bar_frame (frame)
-  └─ fave_bar_flow (flow, horizontal)
-      ├─ fave_bar_toggle_container (frame, vertical)
-      │   └─ fave_bar_visibility_toggle (sprite-button)
-      └─ fave_bar_slots_flow (frame, horizontal, visible toggled at runtime)
-          ├─ fave_bar_slot_1 (sprite-button)
-          ├─ fave_bar_slot_2 (sprite-button)
-          ├─ ...
-          └─ fave_bar_slot_N (sprite-button)
-]]
 
-
--- Removed local function: get_or_create_gui_flow_from_gui_top
--- Now using GuiHelpers.get_or_create_gui_flow_from_gui_top
 
 -- Build the favorites bar to visually match the quickbar top row
 ---@diagnostic disable: assign-type-mismatch, param-type-mismatch
@@ -93,6 +77,9 @@ function fave_bar.build_quickbar_style(player, parent)           -- Add a horizo
   local toggle_container = GuiBase.create_frame(bar_flow, "fave_bar_toggle_container", "vertical",
     "tf_fave_toggle_container")
 
+  -- Create a centering flow inside the toggle container
+  local toggle_flow = GuiBase.create_hflow(toggle_container, "fave_bar_toggle_flow", "tf_fave_toggle_flow")
+
   ---@type LocalisedString
   local toggle_tooltip = { "tf-gui.toggle_fave_bar" }  
   -- Determine which visibility icon to use based on slots visibility state
@@ -100,13 +87,12 @@ function fave_bar.build_quickbar_style(player, parent)           -- Add a horizo
   local player_data = Cache.get_player_data(player)  
   local visibility_icon = player_data.fave_bar_slots_visible and Enum.SpriteEnum.EYELASH or Enum.SpriteEnum.EYE
   local visibility_style = player_data.fave_bar_slots_visible and "tf_fave_bar_visibility_on" or "tf_fave_bar_visibility_off"
-  local toggle_visibility_button = GuiBase.create_sprite_button(toggle_container, "fave_bar_visibility_toggle", 
+  local toggle_visibility_button = GuiBase.create_sprite_button(toggle_flow, "fave_bar_visibility_toggle", 
   visibility_icon, toggle_tooltip, visibility_style)
 
-  -- position info
-  local player_coords = GuiBase.create_label(toggle_container, "fave_bar_coords_label", "", "fave_bar_coords_label_style")
-
+  -- history/position info
   local teleport_history= GuiBase.create_label(toggle_container, "fave_bar_teleport_history_label", "", "fave_bar_teleport_history_label_style")
+  local player_coords = GuiBase.create_label(toggle_container, "fave_bar_coords_label", "", "fave_bar_coords_label_style")
 
   -- Add slots frame to the same flow for proper layout
   local slots_frame = GuiBase.create_frame(bar_flow, "fave_bar_slots_flow", "horizontal", "tf_fave_slots_row")
@@ -155,7 +141,7 @@ function fave_bar.build(player, force_show)
     end
 
     -- Use shared vertical flow
-    local main_flow = GuiAccessibility.get_or_create_gui_flow_from_gui_top(player)
+    local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
 
     GuiValidation.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
 
@@ -181,6 +167,9 @@ function fave_bar.build(player, force_show)
 
     -- Do NOT set toggle_container.visible here; toggle button always visible unless a future setting overrides it
     handle_overflow_error(fave_bar_frame, slots_frame, pfaves)
+
+    -- Force update labels after favorites bar is built
+    FaveBarGuiLabelsManager.force_update_labels_for_player(player)
 
     return fave_bar_frame
   end)
@@ -312,7 +301,7 @@ end
 function fave_bar.destroy(player)
   if not player or not player.valid then return end
 
-  local main_flow = GuiAccessibility.get_or_create_gui_flow_from_gui_top(player)
+  local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   if not main_flow or not main_flow.valid then return end
 
   GuiValidation.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)

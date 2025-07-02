@@ -462,6 +462,9 @@ function DataObserver:update(event_data)
   ErrorHandler.debug_log("[DATA OBSERVER] ===> (cache/data event)", debug_context)
   local success, err = pcall(function()
     fave_bar.build(self.player)
+    -- Force update labels after favorites bar is built
+    local FaveBarGuiLabelsManager = require("core.control.fave_bar_gui_labels_manager")
+    FaveBarGuiLabelsManager.force_update_labels_for_player(self.player)
   end)
   if not success then
     ErrorHandler.warn_log("[DATA OBSERVER] ===> Failed to refresh favorites bar", debug_context)
