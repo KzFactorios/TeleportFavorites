@@ -1,0 +1,10 @@
+local Favorite = require("core.favorite.favorite")
+
+describe("Favorite object", function()
+  it("should create a favorite with correct properties", function()
+    local fav = Favorite.new("gps_string", "icon_name", "label")
+    assert.equals(fav.gps, "gps_string")
+    assert.equals(fav.icon, "icon_name")
+    assert.equals(fav.label, "label")
+  end)
+end)

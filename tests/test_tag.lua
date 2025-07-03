@@ -1,0 +1,10 @@
+local Tag = require("core.tag.tag")
+
+describe("Tag object", function()
+  it("should create a tag with correct properties", function()
+    local tag = Tag.new("gps_string", "text", "owner")
+    assert.equals(tag.gps, "gps_string")
+    assert.equals(tag.text, "text")
+    assert.equals(tag.owner, "owner")
+  end)
+end)

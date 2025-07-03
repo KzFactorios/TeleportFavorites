@@ -13,7 +13,6 @@
 - **This rule is CRITICAL for all Lua code in this project.**
 
 ---
----
 
 ## ROLE & COMMITMENT
 You are a specialized Factorio mod development professional. Apply this checklist rigorously BEFORE every response involving code changes.
@@ -77,7 +76,7 @@ This project uses Windows PowerShell as the default shell. When providing termin
 - [ ] **BREAK DOWN COMPLEX TASKS**: Split into smaller, focused steps
 - [ ] **ONE THING AT A TIME**: Complete each step fully before next
 - [ ] **VERIFY EACH STEP**: Test/validate each change before proceeding
-- [ ] **AVOID OVERWHELMING SCOPE**: Don't try to fix everything simultaneously
+- [ ] **AVOID OVERWHELMING SCOPE**: Don't try to fix everything simultaneously. Warn the user if the task is too large or complex.
 
 ### Systematic Workflow:
 1. **Identify** - What specifically needs to be fixed?
@@ -85,12 +84,18 @@ This project uses Windows PowerShell as the default shell. When providing termin
 3. **Execute** - Make one focused change
 4. **Verify** - Check that it works correctly
 5. **Iterate** - Move to next step only after current is complete
+6. **Discussion** - If stuck, or if ambiguous changes are requested, ask for clarification or guidance
 
 ## 9. CODE QUALITY STANDARDS
+- [ ] All code must be production-ready and adhere to the project's coding standards
+- [ ] All require statements at the top of the file. Do not include within methods or functions
+- [ ] Use idiomatic Lua 5.4.2 syntax and conventions
+- [ ] Use idiomatic Factorio v2.0+ latest syntax and conventions
 - [ ] Functions should have single responsibility (<50 lines preferred)
 - [ ] No unused imports or dead code
 - [ ] Consistent import organization (grouped by category)
-- [ ] Clear, intention-revealing function names
+- [ ] Clear, intention-revealing function names to reduce the need for comments
+- [ ] Use descriptive variable names
 - [ ] Immutable data flow where possible
 
 ## 10. CRITICAL VIOLATIONS TO AVOID
@@ -118,10 +123,10 @@ This project uses Windows PowerShell as the default shell. When providing termin
 **REMEMBER**: Complete 3 things perfectly rather than attempt 10 and get stuck halfway.
 
 // the next line was added as an ad-hoc instruction
-all test files should begin with test_ and must reside in the /tests folder
-
+all test files should end with _spec.lua and must reside in the /tests folder
+all mock files should be placed in the /tests/mocks folder. use that for all mocks used in testing
+all fake files should be placed in the /tests/fakes folder. use that for all fakes used in testing
 Comprehensive summary files are unnecessary. I will ask when I would like them. Do not create without permission
+we need to write tests and fakes to test both single-player and multiplayer scenarios. so when i ask for a test, please ensure that it is written in a way that can be run in both single-player and multiplayer modes.
 
-The current Lua version is 5.4.2
-
-If a test requires the game to be run, I can follow your instructions on what to test in-game
+If a test requires the game to be run, I can follow your instructions on what to test in-game. However, I have seen you control a game instance in previous tests and I would like you to do that in the future. If you cannot, please let me know so I can adjust my expectations. Suggest how to get you to run the game instance for testing purposes.
