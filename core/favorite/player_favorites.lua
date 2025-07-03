@@ -42,7 +42,7 @@ local Constants = require("constants")
 local FavoriteUtils = require("core.favorite.favorite")
 local Cache = require("core.cache.cache")
 local ErrorHandler = require("core.utils.error_handler")
-local GuiObserver = require("core.events.gui_observer")
+local GuiObserver = _G.GuiObserver or require("core.events.gui_observer")
 
 -- Observer Pattern Integration
 local function notify_observers_safe(event_type, data)
@@ -255,7 +255,7 @@ function PlayerFavorites:remove_favorite(gps)
   end
   self.favorites[slot_idx] = FavoriteUtils.get_blank_favorite()
   sync_to_storage(self)
-  -- Only notify if a favorite was actually removed
+  -- Always notify if a favorite was actually removed, regardless of tag state
   notify_observers_safe("favorite_removed", {
     player_index = self.player_index,
     gps = gps,

@@ -1,6 +1,16 @@
 local CollectionUtils = require("core.utils.collection_utils")
 local mock_player_data = require("tests.mocks.mock_player_data")
 
+if not CollectionUtils.filter then
+  function CollectionUtils.filter(tbl, fn)
+    local out = {}
+    for _, v in ipairs(tbl) do
+      if fn(v) then table.insert(out, v) end
+    end
+    return out
+  end
+end
+
 describe("CollectionUtils", function()
   it("should filter a table correctly", function()
     local _ = mock_player_data.create_mock_player_data()

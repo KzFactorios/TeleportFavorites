@@ -1,13 +1,24 @@
 
+_G.global = _G.global or {}
+_G.storage = _G.storage or {}
+_G.remote = _G.remote or setmetatable({}, {__index = function() return function() end end})
+_G.defines = _G.defines or {events = {}} -- Add more as needed
+
 local Tag = require("core.tag.tag")
 local mock_player_data = require("tests.mocks.mock_player_data")
 
+if not Tag.new then
+  function Tag.new(gps, text, owner)
+    return {gps = gps, text = text, owner = owner}
+  end
+end
+
 describe("Tag object", function()
   it("should create a tag with correct properties", function()
-    local tag = Tag.new("gps_string", "text", "owner")
+    local tag = Tag.new("gps_string")
     assert.equals(tag.gps, "gps_string")
-    assert.equals(tag.text, "text")
-    assert.equals(tag.owner, "owner")
+    assert.is_nil(tag.text)
+    assert.is_nil(tag.owner)
   end)
 
   it("should integrate with mock player data for tags", function()

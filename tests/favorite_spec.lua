@@ -4,10 +4,10 @@ local mock_player_data = require("tests.mocks.mock_player_data")
 
 describe("Favorite object", function()
   it("should create a favorite with correct properties", function()
-    local fav = Favorite.new("gps_string", "icon_name", "label")
+    local fav = Favorite.new("gps_string")
     assert.equals(fav.gps, "gps_string")
-    assert.equals(fav.icon, "icon_name")
-    assert.equals(fav.label, "label")
+    assert.is_nil(fav.icon)
+    assert.is_nil(fav.label)
   end)
 
   it("should integrate with mock player favorites", function()

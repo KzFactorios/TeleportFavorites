@@ -130,3 +130,5 @@ Comprehensive summary files are unnecessary. I will ask when I would like them. 
 we need to write tests and fakes to test both single-player and multiplayer scenarios. so when i ask for a test, please ensure that it is written in a way that can be run in both single-player and multiplayer modes.
 
 If a test requires the game to be run, I can follow your instructions on what to test in-game. However, I have seen you control a game instance in previous tests and I would like you to do that in the future. If you cannot, please let me know so I can adjust my expectations. Suggest how to get you to run the game instance for testing purposes.
+
+please don't write broken code and if you do, fix it before completing the task
