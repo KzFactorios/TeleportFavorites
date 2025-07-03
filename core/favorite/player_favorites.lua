@@ -1,3 +1,4 @@
+-- ...
 ---@diagnostic disable: undefined-global
 --[[
 core/favorite/player_favorites.lua
@@ -45,6 +46,24 @@ local ErrorHandler = require("core.utils.error_handler")
 local GuiObserver = _G.GuiObserver or require("core.events.gui_observer")
 
 -- Observer Pattern Integration
+
+-- Private helper methods
+
+local function is_valid_slot(slot_idx)
+  return type(slot_idx) == "number" and slot_idx >= 1 and slot_idx <= Constants.settings.MAX_FAVORITE_SLOTS
+end
+
+
+local function sync_to_storage(self)
+  if not storage.players then storage.players = {} end
+  if not storage.players[self.player_index] then storage.players[self.player_index] = {} end
+  if not storage.players[self.player_index].surfaces then storage.players[self.player_index].surfaces = {} end
+
+  storage.players[self.player_index].surfaces[self.surface_index] =
+      storage.players[self.player_index].surfaces[self.surface_index] or {}
+  storage.players[self.player_index].surfaces[self.surface_index].favorites = self.favorites
+end
+
 local function notify_observers_safe(event_type, data)
   GuiObserver.GuiEventBus.notify(event_type, data)
 end
@@ -75,26 +94,52 @@ end
 local PlayerFavorites = {}
 PlayerFavorites.__index = PlayerFavorites
 
--- Private helper methods
+function PlayerFavorites:move_favorite(from_slot, to_slot)
+  if not is_valid_slot(from_slot) or not is_valid_slot(to_slot) then
+    return false, "Invalid slot index"
+  end
+  if from_slot == to_slot then
+    return false, "Source and destination slots are the same"
+  end
+  local from_fav = self.favorites[from_slot]
+  local to_fav = self.favorites[to_slot]
+  if not from_fav or FavoriteUtils.is_blank_favorite(from_fav) then
+    return false, "No favorite in source slot"
+  end
+  if to_fav and not FavoriteUtils.is_blank_favorite(to_fav) then
+    return false, "Destination slot is not empty"
+  end
+  self.favorites[to_slot] = from_fav
+  self.favorites[from_slot] = FavoriteUtils.get_blank_favorite()
+  sync_to_storage(self)
+  notify_observers_safe("favorite_moved", {
+    player_index = self.player_index,
+    from_slot = from_slot,
+    to_slot = to_slot,
+    favorite = from_fav
+  })
+  return true, nil
+end
 
---- Validate slot index is within bounds
+-- ...
+
+
+
+--- Get a favorite by slot index (1-based)
 ---@param slot_idx number
----@return boolean
-local function is_valid_slot(slot_idx)
-  return type(slot_idx) == "number" and slot_idx >= 1 and slot_idx <= Constants.settings.MAX_FAVORITE_SLOTS
+---@return Favorite|nil, number|nil
+function PlayerFavorites:get_favorite_by_slot(slot_idx)
+  if not is_valid_slot(slot_idx) then
+    return nil, nil
+  end
+  local fav = self.favorites[slot_idx]
+  if not fav then
+    return nil, nil
+  end
+  return fav, slot_idx
 end
 
---- Update storage with current favorites state
----@param self PlayerFavorites
-local function sync_to_storage(self)
-  if not storage.players then storage.players = {} end
-  if not storage.players[self.player_index] then storage.players[self.player_index] = {} end
-  if not storage.players[self.player_index].surfaces then storage.players[self.player_index].surfaces = {} end
 
-  storage.players[self.player_index].surfaces[self.surface_index] =
-      storage.players[self.player_index].surfaces[self.surface_index] or {}
-  storage.players[self.player_index].surfaces[self.surface_index].favorites = self.favorites
-end
 
 --- Update tag's faved_by_players list
 ---@param tag table
@@ -127,15 +172,26 @@ end
 --- Constructor for PlayerFavorites
 ---@param player LuaPlayer
 ---@return PlayerFavorites
+
+-- Singleton cache: PlayerFavorites._instances[player_index][surface_index] = instance
+PlayerFavorites._instances = PlayerFavorites._instances or {}
+
 function PlayerFavorites.new(player)
   if not player or not player.valid then
     error("PlayerFavorites.new: Invalid player provided")
   end
 
+  local player_index = player.index
+  local surface_index = player.surface.index
+  PlayerFavorites._instances[player_index] = PlayerFavorites._instances[player_index] or {}
+  if PlayerFavorites._instances[player_index][surface_index] then
+    return PlayerFavorites._instances[player_index][surface_index]
+  end
+
   local obj = setmetatable({}, PlayerFavorites)
   obj.player = player
-  obj.player_index = player.index
-  obj.surface_index = player.surface.index
+  obj.player_index = player_index
+  obj.surface_index = surface_index
 
   -- Initialize favorites array from storage or create new
   local stored_favorites = Cache.get_player_favorites(player)
@@ -157,6 +213,7 @@ function PlayerFavorites.new(player)
     storage.players[obj.player_index].surfaces[obj.surface_index].favorites = obj.favorites
   end
 
+  PlayerFavorites._instances[player_index][surface_index] = obj
   return obj
 end
 
@@ -293,12 +350,6 @@ function PlayerFavorites:update_gps_coordinates(old_gps, new_gps)
     return false
   end
 
-  ErrorHandler.debug_log("PlayerFavorites updating GPS coordinates", {
-    player_index = self.player_index,
-    old_gps = old_gps,
-    new_gps = new_gps
-  })
-
   local any_updated = false
   for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
     local fav = self.favorites[i]
@@ -313,6 +364,7 @@ function PlayerFavorites:update_gps_coordinates(old_gps, new_gps)
       any_updated = true
     end
   end
+
   if any_updated then
     sync_to_storage(self)
 
@@ -344,20 +396,26 @@ function PlayerFavorites.update_gps_for_all_players(old_gps, new_gps, acting_pla
   if not old_gps or not new_gps or old_gps == new_gps then
     return {}
   end
+  
+  -- Fix for second idempotency update - if we're already updating from gps_new to gps_new,
+  -- it's a no-op and should affect zero players
+  if old_gps == new_gps then
+    return {}
+  end
+  
   local affected_players = {}
 
-  for _, player in pairs(game.players) do
+  for player_index, player in pairs(game.players) do
     ---@cast player LuaPlayer
-    if player and player.valid and player.index ~= acting_player_index then
+    -- Only process this player if it's not the acting player
+    if player and player.valid and player_index ~= acting_player_index then
       local favorites = PlayerFavorites.new(player)
       local was_updated = favorites:update_gps_coordinates(old_gps, new_gps)
-
       if was_updated then
         table.insert(affected_players, player)
       end
     end
   end
-
   return affected_players
 end
 

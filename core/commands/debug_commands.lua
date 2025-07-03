@@ -57,7 +57,7 @@ function DebugCommands.register_commands()
     GameHelpers.player_print(player, "Mode: " .. (DebugConfig.get_level() <= DebugConfig.LEVELS.WARN and "Production" or "Development"))
     GameHelpers.player_print(player, "Available Levels:")
     for name, level in pairs(DebugConfig.LEVELS) do
-      local indicator = (level == DebugConfig.get_level()) and " 0 CURRENT" or ""
+    local indicator = (level == DebugConfig.get_level()) and " <== CURRENT" or ""
       GameHelpers.player_print(player, "  " .. level .. " = " .. name .. indicator)
     end
   end)

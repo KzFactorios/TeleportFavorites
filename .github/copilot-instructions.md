@@ -5,6 +5,16 @@
 
 ---
 
+## 0. ABOUT ME
+I have a condition called essential-tremor, which affects my hands and makes it difficult to type. I rely on AI assistance to help me write code and documentation. Please ensure that your responses are clear, concise, and follow the guidelines below to minimize the need for corrections. I highly appreciate your assitance and attention to detail. When in agent mode, I expect you to create the patches, etc unless there is ambiguity in the request. In that case, The agent should ask for clarification.
+I feel that coding agents are a godsend and I am grateful for your help. I hope that you can help me to create a great mod for Factorio. 
+I may get frustrated if you do not follow the instructions below, so please read them carefully and apply them to your responses. I will also be using these instructions to help me understand how to use the agent effectively.
+Please, please, please let me know hhow I can better communicate to the agent what I need. I am an experienced c# developer, but I am new to Lua and Factorio modding. I am learning as I go, so please be patient with me. And let me know how I can communicate my expectations for the code. And occasionally, tell me a joke.
+
+If you are ide-terminal aware, read the output to know what errors may be occurring and how to fix them. If you are not ide-terminal aware, please let me know so I can adjust my expectations.
+
+---
+
 ## 1. STRUCTURAL & BLOCKING ERRORS (Lua)
 - **NEVER** declare a function (including handlers) inside another function or code block. All functions must be top-level.
 - **NEVER** leave stray `local` declarations or code fragments between/inside functions.
@@ -128,6 +138,8 @@ all mock files should be placed in the /tests/mocks folder. use that for all moc
 all fake files should be placed in the /tests/fakes folder. use that for all fakes used in testing
 Comprehensive summary files are unnecessary. I will ask when I would like them. Do not create without permission
 we need to write tests and fakes to test both single-player and multiplayer scenarios. so when i ask for a test, please ensure that it is written in a way that can be run in both single-player and multiplayer modes.
+
+when creating test code, do not change, update or otherwise modify the production code. If you or I determine that the production code needs to be changed, please ask for permission first and explain why the production codes needs amending. I will then decide if the change is necessary and if so, I will ask you to make the change.
 
 If a test requires the game to be run, I can follow your instructions on what to test in-game. However, I have seen you control a game instance in previous tests and I would like you to do that in the future. If you cannot, please let me know so I can adjust my expectations. Suggest how to get you to run the game instance for testing purposes.
 
