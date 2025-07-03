@@ -7,6 +7,7 @@ Handles player controller changes to show/hide favorites bar in editor mode.
 
 local GuiHelpers = require("core.utils.gui_helpers")
 local GuiValidation = require("core.utils.gui_validation")
+local SmallHelpers = require("core.utils.small_helpers")
 
 local PlayerControllerHandler = {}
 
@@ -25,9 +26,21 @@ function PlayerControllerHandler.update_fave_bar_visibility(player)
     local fave_bar_frame = _get_fave_bar_frame(player)
     if not fave_bar_frame or not fave_bar_frame.valid then return end
     
-    -- Hide favorites bar when in editor mode, show in all other modes
-    local is_editor = (player.controller_type == defines.controllers.editor)
-    fave_bar_frame.visible = not is_editor
+    -- Use the same logic as fave_bar.build for consistency
+    local should_hide = false
+    
+    -- Use shared space platform detection logic
+    if SmallHelpers.should_hide_favorites_bar_for_space_platform(player) then
+        should_hide = true
+    end
+    
+    -- Also hide for god mode and spectator mode
+    if player.controller_type == defines.controllers.god or 
+       player.controller_type == defines.controllers.spectator then
+        should_hide = true
+    end
+    
+    fave_bar_frame.visible = not should_hide
 end
 
 -- Event handler for controller changes

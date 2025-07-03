@@ -87,4 +87,34 @@ function SmallHelpers.update_success_message(update_fn, player, message)
   end
 end
 
+-- ===========================
+-- SPACE PLATFORM DETECTION
+-- ===========================
+
+--- Check if player should have favorites bar hidden due to space platform editing
+---@param player LuaPlayer The player to check
+---@return boolean should_hide_bar True if the bar should be hidden
+function SmallHelpers.should_hide_favorites_bar_for_space_platform(player)
+  if not player or not player.valid then return false end
+  
+  local surface = player.surface
+  
+  -- Check if player is on a space platform surface
+  if surface and surface.platform then
+    return true
+  end
+  
+  -- Check if player is in editor mode and the surface appears to be space-related
+  -- This handles the case where player is editing a space platform but not physically on it
+  if player.controller_type == defines.controllers.editor then
+    local surface_name = surface and surface.name or ""
+    -- Hide bar if editing any space-related surface
+    if surface_name:lower():find("space") or surface_name:lower():find("platform") then
+      return true
+    end
+  end
+  
+  return false
+end
+
 return SmallHelpers

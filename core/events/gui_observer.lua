@@ -49,6 +49,7 @@ local Cache = require("core.cache.cache")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local ErrorHandler = require("core.utils.error_handler")
 local GuiHelpers = require("core.utils.gui_helpers")
+local SmallHelpers = require("core.utils.small_helpers")
 local Enum = require("prototypes.enums.enum")
 local GameHelpers = require("core.utils.game_helpers")
 
@@ -455,13 +456,12 @@ function DataObserver:update(event_data)
   -- Check if conditions are right for building the bar
   local player = self.player
   
-  -- Skip if on space platform
-  local surface = player.surface
-  if surface and surface.platform then
+  -- Use shared space platform detection logic
+  if SmallHelpers.should_hide_favorites_bar_for_space_platform(player) then
     return
   end
   
-  -- Skip for god mode and spectator mode (but allow editor mode on main surface)
+  -- Skip for god mode and spectator mode
   if player.controller_type == defines.controllers.god or 
      player.controller_type == defines.controllers.spectator then
     return

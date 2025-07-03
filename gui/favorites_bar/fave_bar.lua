@@ -120,16 +120,15 @@ end
 function fave_bar.build(player, force_show)
   if not player or not player.valid then return end
   
-  -- Hide favorites bar when editing space platforms (but allow on main surface even in editor mode)
+  -- Hide favorites bar when editing space platforms
   -- Allow force_show to override all checks for initialization
   if not force_show then
-    -- Check if player is on a space platform surface
-    local surface = player.surface
-    if surface and surface.platform then
+    -- Use shared space platform detection logic
+    if SmallHelpers.should_hide_favorites_bar_for_space_platform(player) then
       return
     end
     
-    -- Also skip for god mode and spectator mode (but allow editor mode on main surface)
+    -- Also skip for god mode and spectator mode
     if player.controller_type == defines.controllers.god or 
        player.controller_type == defines.controllers.spectator then
       return
