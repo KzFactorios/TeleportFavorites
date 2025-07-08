@@ -1,3 +1,6 @@
+local bootstrap = require("tests.test_bootstrap")
+local Cache = bootstrap.Cache
+local make_spy = bootstrap.make_spy
 -- Focused tests for chart tag handlers in the handlers module
 
 -- Mock global environment for tests
@@ -13,47 +16,7 @@ if not _G.defines then
 end
 
 -- Create mocks for dependencies
-local Cache = {
-  init = function() end,
-  get_player_data = function() return {} end,
-  set_tag_editor_data = function() end,
-  create_tag_editor_data = function() return {} end,
-  get_tag_by_gps = function() return nil end,
-  get_tag_editor_data = function() 
-    return {
-      gps = "gps:100,200,nauvis",
-      tag = {
-        gps = "gps:100,200,nauvis"
-      }
-    }
-  end,
-  set_tag_editor_data = function() end,
-  Lookups = {
-    invalidate_surface_chart_tags = function() end,
-    get_chart_tag_cache = function() return {} end,
-  }
-}
-
-local PositionUtils = {
-  needs_normalization = function(position) 
-    -- Return true if position has fractional coordinates
-    if not position then return false end
-    return position.x ~= math.floor(position.x) or position.y ~= math.floor(position.y)
-  end,
-  normalize_if_needed = function(pos) 
-    if not pos then return pos end
-    return {x = math.floor(pos.x), y = math.floor(pos.y)}
-  end,
-}
-
-local GPSUtils = {
-  gps_from_map_position = function(position, surface_index) 
-    if not position then return nil end
-    return "gps:" .. position.x .. "," .. position.y .. "," .. (surface_index or "nauvis")
-  end,
-  coords_string_from_gps = function(gps) 
-    if not gps then return nil end
-    local x, y = gps:match("gps:([%-%.%d]+),([%-%.%d]+)")
+-- Use mocks from bootstrap
     if not x or not y then return nil end
     return x .. ", " .. y
   end,
@@ -153,9 +116,15 @@ package.loaded["core.utils.settings_access"] = {
   get_chart_tag_click_radius = function() return 5 end
 }
 package.loaded["core.favorite.player_favorites"] = {
-  new = function() 
+  new = function(player)
     return {
-      get_favorite_by_gps = function() return nil end
+      player = player or {},
+      player_index = player and player.index or 1,
+      surface_index = player and player.surface and player.surface.index or 1,
+      favorites = {},
+      get_favorite_by_gps = function(self, gps)
+        return nil
+      end
     }
   end
 }
@@ -280,8 +249,18 @@ describe("Chart Tag Handlers", function()
   end)
   
   it("should handle chart tag added event correctly", function()
-    local norm_spy = spy.on(TagEditorEventHelpers, "normalize_and_replace_chart_tag")
-    local log_spy = spy.on(ErrorHandler, "debug_log")
+    local TagEditorEventHelpers = require("core.events.tag_editor_event_helpers")
+    local ErrorHandler = require("core.utils.error_handler")
+    -- Manual spy for normalize_and_replace_chart_tag
+    local norm_spy_calls = {}
+    TagEditorEventHelpers.normalize_and_replace_chart_tag = function(...)
+      table.insert(norm_spy_calls, {...})
+    end
+    -- Manual spy for debug_log
+    local log_spy_calls = {}
+    ErrorHandler.debug_log = function(...)
+      table.insert(log_spy_calls, {...})
+    end
     local event = {
       player_index = 1,
       tag = {
@@ -291,14 +270,16 @@ describe("Chart Tag Handlers", function()
       }
     }
     Handlers.on_chart_tag_added(event)
-    assert(#norm_spy.calls > 0)
-    assert(#log_spy.calls > 0)
-    norm_spy.revert()
-    log_spy.revert()
+    assert(#norm_spy_calls > 0)
+    assert(#log_spy_calls > 0)
   end)
 
   it("should not normalize chart tag with integer positions", function()
-    local norm_spy = spy.on(TagEditorEventHelpers, "normalize_and_replace_chart_tag")
+    local TagEditorEventHelpers = require("core.events.tag_editor_event_helpers")
+    local norm_spy_calls = {}
+    TagEditorEventHelpers.normalize_and_replace_chart_tag = function(...)
+      table.insert(norm_spy_calls, {...})
+    end
     local event = {
       player_index = 1,
       tag = {
@@ -308,14 +289,25 @@ describe("Chart Tag Handlers", function()
       }
     }
     Handlers.on_chart_tag_added(event)
-    assert(#norm_spy.calls == 0)
+    assert(#norm_spy_calls == 0)
     norm_spy.revert()
   end)
 
   it("should handle chart tag modification correctly with normalization", function()
-    local norm_spy = spy.on(TagEditorEventHelpers, "normalize_and_replace_chart_tag")
-    local update_tag_spy = spy.on(ChartTagModificationHelpers, "update_tag_and_cleanup")
-    local update_fav_spy = spy.on(ChartTagModificationHelpers, "update_favorites_gps")
+    local TagEditorEventHelpers = require("core.events.tag_editor_event_helpers")
+    local ChartTagModificationHelpers = require("core.events.chart_tag_modification_helpers")
+    local norm_spy_calls = {}
+    TagEditorEventHelpers.normalize_and_replace_chart_tag = function(...)
+      table.insert(norm_spy_calls, {...})
+    end
+    local update_tag_spy_calls = {}
+    ChartTagModificationHelpers.update_tag_and_cleanup = function(...)
+      table.insert(update_tag_spy_calls, {...})
+    end
+    local update_fav_spy_calls = {}
+    ChartTagModificationHelpers.update_favorites_gps = function(...)
+      table.insert(update_fav_spy_calls, {...})
+    end
     local event = {
       player_index = 1,
       tag = {
@@ -328,18 +320,29 @@ describe("Chart Tag Handlers", function()
     }
     PositionUtils.needs_normalization = function() return true end
     Handlers.on_chart_tag_modified(event)
-    assert(#norm_spy.calls > 0)
-    assert(#update_tag_spy.calls > 0)
-    assert(#update_fav_spy.calls > 0)
+    assert(#norm_spy_calls > 0)
+    assert(#update_tag_spy_calls > 0)
+    assert(#update_fav_spy_calls > 0)
     norm_spy.revert()
     update_tag_spy.revert()
     update_fav_spy.revert()
   end)
 
   it("should handle chart tag modification correctly without normalization", function()
-    local norm_spy = spy.on(TagEditorEventHelpers, "normalize_and_replace_chart_tag")
-    local update_tag_spy = spy.on(ChartTagModificationHelpers, "update_tag_and_cleanup")
-    local update_fav_spy = spy.on(ChartTagModificationHelpers, "update_favorites_gps")
+    local TagEditorEventHelpers = require("core.events.tag_editor_event_helpers")
+    local ChartTagModificationHelpers = require("core.events.chart_tag_modification_helpers")
+    local norm_spy_calls = {}
+    TagEditorEventHelpers.normalize_and_replace_chart_tag = function(...)
+      table.insert(norm_spy_calls, {...})
+    end
+    local update_tag_spy_calls = {}
+    ChartTagModificationHelpers.update_tag_and_cleanup = function(...)
+      table.insert(update_tag_spy_calls, {...})
+    end
+    local update_fav_spy_calls = {}
+    ChartTagModificationHelpers.update_favorites_gps = function(...)
+      table.insert(update_fav_spy_calls, {...})
+    end
     local event = {
       player_index = 1,
       tag = {
@@ -352,16 +355,21 @@ describe("Chart Tag Handlers", function()
     }
     PositionUtils.needs_normalization = function() return false end
     Handlers.on_chart_tag_modified(event)
-    assert(#norm_spy.calls == 0)
-    assert(#update_tag_spy.calls > 0)
-    assert(#update_fav_spy.calls > 0)
+    assert(#norm_spy_calls == 0)
+    assert(#update_tag_spy_calls > 0)
+    assert(#update_fav_spy_calls > 0)
     norm_spy.revert()
     update_tag_spy.revert()
     update_fav_spy.revert()
   end)
 
   it("should update tag_editor data when chart tag is modified", function()
-    local set_data_spy = spy.on(Cache, "set_tag_editor_data")
+    local set_data_spy_calls = {}
+    Cache.set_tag_editor_data = function(...)
+      table.insert(set_data_spy_calls, {...})
+    end
+    Handlers.on_chart_tag_modified(event)
+    assert(#set_data_spy_calls > 0)
     local original_gps = "gps:90,180,nauvis"
     local new_gps = "gps:100,200,nauvis"
     Cache.get_tag_editor_data = function()

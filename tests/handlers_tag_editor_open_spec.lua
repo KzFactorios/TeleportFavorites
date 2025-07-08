@@ -1,3 +1,6 @@
+local bootstrap = require("tests.test_bootstrap")
+local Cache = bootstrap.Cache
+local make_spy = bootstrap.make_spy
 -- tests/handlers_tag_editor_open_spec.lua
 -- Focused tests for the on_open_tag_editor_custom_input handler function
 
@@ -28,42 +31,7 @@ if not _G.defines then
 end
 
 -- Create mocks for dependencies
-local Cache = {
-  init = function() end,
-  get_player_data = function() return { tag_editor_data = nil } end,
-  set_tag_editor_data = function() end,
-  create_tag_editor_data = function() return {} end,
-  get_tag_by_gps = function() return nil end,
-  get_tag_editor_data = function(player)
-    return player._cached_tag_editor_data
-  end,
-  set_tag_editor_data = function(player, data)
-    player._cached_tag_editor_data = data
-  end,
-  create_tag_editor_data = function() 
-    return {
-      chart_tag = nil,
-      tag = nil,
-      gps = nil,
-      is_favorite = false,
-      icon = nil,
-      text = nil
-    }
-  end
-}
-
--- Remove duplicate keys in Cache mock
-do
-  local orig = Cache
-  Cache = {
-    init = orig.init,
-    get_player_data = orig.get_player_data,
-    set_tag_editor_data = orig.set_tag_editor_data,
-    create_tag_editor_data = orig.create_tag_editor_data,
-    get_tag_by_gps = orig.get_tag_by_gps,
-    get_tag_editor_data = orig.get_tag_editor_data
-  }
-end
+-- Use mocks from bootstrap
 
 local PositionUtils = {
   needs_normalization = function(position) 
@@ -210,9 +178,14 @@ describe("Handlers.on_open_tag_editor_custom_input", function()
   
   it("should validate tag editor opening", function()
     local validate_calls = 0
-    TagEditorEventHelpers.validate_tag_editor_opening = function() validate_calls = validate_calls + 1; return true end
+    local TagEditorEventHelpers = require("core.events.tag_editor_event_helpers")
+    local validate_calls = {}
+    TagEditorEventHelpers.validate_tag_editor_opening = function(...)
+      table.insert(validate_calls, {...})
+      return true
+    end
     Handlers.on_open_tag_editor_custom_input(mock_event)
-    assert(validate_calls > 0, "validate_tag_editor_opening should be called")
+    assert(#validate_calls > 0, "validate_tag_editor_opening should be called")
   end)
   
   it("should not proceed if validation fails", function()
@@ -227,17 +200,26 @@ describe("Handlers.on_open_tag_editor_custom_input", function()
   it("should end drag favorite if validation fails with 'Drag mode active'", function()
     -- Setup: Validation fails with drag mode active
     local drag_calls = 0
-    CursorUtils.end_drag_favorite = function() drag_calls = drag_calls + 1 end
+    local CursorUtils = require("core.utils.cursor_utils")
+    local drag_calls = {}
+    CursorUtils.end_drag_favorite = function(...)
+      table.insert(drag_calls, {...})
+    end
+    local TagEditorEventHelpers = require("core.events.tag_editor_event_helpers")
     TagEditorEventHelpers.validate_tag_editor_opening = function() return false, "Drag mode active" end
     Handlers.on_open_tag_editor_custom_input(mock_event)
-    assert(drag_calls > 0, "end_drag_favorite should be called if validation fails with 'Drag mode active'")
+    assert(#drag_calls > 0, "end_drag_favorite should be called if validation fails with 'Drag mode active'")
   end)
   
   it("should check for nearby chart tag if cursor position is provided", function()
     local call_count = 0
-    TagEditorEventHelpers.find_nearby_chart_tag = function(...) call_count = call_count + 1 end
+    local TagEditorEventHelpers = require("core.events.tag_editor_event_helpers")
+    local find_calls = {}
+    TagEditorEventHelpers.find_nearby_chart_tag = function(...)
+      table.insert(find_calls, {...})
+    end
     Handlers.on_open_tag_editor_custom_input(mock_event)
-    assert(call_count > 0, "find_nearby_chart_tag should be called when cursor position is provided")
+    assert(#find_calls > 0, "find_nearby_chart_tag should be called when cursor position is provided")
   end)
   
   it("should not check for nearby chart tag if cursor position is missing", function()
@@ -246,7 +228,7 @@ describe("Handlers.on_open_tag_editor_custom_input", function()
 
     -- Patch: use a local call-tracking variable for find_nearby_chart_tag
     local call_count = 0
-    TagEditorEventHelpers.find_nearby_chart_tag = function(...) call_count = call_count + 1 end
+    TagEditorEventHelpers.find_nearby_chart_tag = function(pos, surf_idx, radius) call_count = call_count + 1 end
 
     Handlers.on_open_tag_editor_custom_input(mock_event)
 
@@ -256,14 +238,15 @@ describe("Handlers.on_open_tag_editor_custom_input", function()
   it("should populate tag data with cursor position if no chart tag found", function()
     -- Setup: No chart tag found
     local set_tag_editor_data_calls = {}
-    Cache.set_tag_editor_data = function(player, data)
-      table.insert(set_tag_editor_data_calls, {player, data})
+    Cache.set_tag_editor_data = function(...)
+      table.insert(set_tag_editor_data_calls, {...})
     end
     local build_calls = {}
-    tag_editor.build = function(...) table.insert(build_calls, {...}) end
-
+    local tag_editor = require("gui.tag_editor.tag_editor")
+    tag_editor.build = function(...)
+      table.insert(build_calls, {...})
+    end
     Handlers.on_open_tag_editor_custom_input(mock_event)
-
     assert(#set_tag_editor_data_calls > 0, "set_tag_editor_data should be called")
     assert(#build_calls > 0, "tag_editor.build should be called")
     -- The tag editor data should contain GPS from cursor position
@@ -289,16 +272,19 @@ describe("Handlers.on_open_tag_editor_custom_input", function()
       icon = "some-icon"
     }
     local set_tag_editor_data_calls = {}
-    Cache.set_tag_editor_data = function(player, data)
-      table.insert(set_tag_editor_data_calls, {player, data})
+    Cache.set_tag_editor_data = function(...)
+      table.insert(set_tag_editor_data_calls, {...})
     end
     local build_calls = {}
-    tag_editor.build = function(...) table.insert(build_calls, {...}) end
+    local tag_editor = require("gui.tag_editor.tag_editor")
+    tag_editor.build = function(...)
+      table.insert(build_calls, {...})
+    end
+    local TagEditorEventHelpers = require("core.events.tag_editor_event_helpers")
     TagEditorEventHelpers.find_nearby_chart_tag = function() return mock_chart_tag end
+    local GPSUtils = require("core.utils.gps_utils")
     GPSUtils.gps_from_map_position = function() return "gps:100,200,1" end
-
     Handlers.on_open_tag_editor_custom_input(mock_event)
-
     assert(#set_tag_editor_data_calls > 0, "set_tag_editor_data should be called")
     assert(#build_calls > 0, "tag_editor.build should be called")
     -- The tag editor data should contain information from the chart tag
@@ -341,12 +327,16 @@ describe("Handlers.on_open_tag_editor_custom_input", function()
       return mock_player_favorites
     end
     local set_tag_editor_data_calls = {}
-    Cache.set_tag_editor_data = function(player, data)
-      table.insert(set_tag_editor_data_calls, {player, data})
+    Cache.set_tag_editor_data = function(...)
+      table.insert(set_tag_editor_data_calls, {...})
     end
-
+    local TagEditorEventHelpers = require("core.events.tag_editor_event_helpers")
+    TagEditorEventHelpers.find_nearby_chart_tag = function() return mock_chart_tag end
+    local PlayerFavorites = require("core.favorite.player_favorites")
+    PlayerFavorites.new = function() return {
+      get_favorite_by_gps = function() return { gps = "gps:100,200,1" }, 1 end
+    } end
     Handlers.on_open_tag_editor_custom_input(mock_event)
-
     -- The tag editor data should indicate this is a favorite
     local has_is_favorite_true = false
     for _, call_args in ipairs(set_tag_editor_data_calls) do
@@ -375,12 +365,12 @@ describe("Handlers.on_open_tag_editor_custom_input", function()
       return { tag_editor_data = existing_tag_data } 
     end
     local set_tag_editor_data_calls = {}
-    Cache.set_tag_editor_data = function(player, data)
-      table.insert(set_tag_editor_data_calls, {player, data})
+    Cache.set_tag_editor_data = function(...)
+      table.insert(set_tag_editor_data_calls, {...})
     end
-
+    local TagEditorEventHelpers = require("core.events.tag_editor_event_helpers")
+    TagEditorEventHelpers.find_nearby_chart_tag = function() return nil end
     Handlers.on_open_tag_editor_custom_input(mock_event)
-
     -- The tag editor data should contain the existing GPS
     local has_existing_gps = false
     for _, call_args in ipairs(set_tag_editor_data_calls) do
@@ -395,7 +385,10 @@ describe("Handlers.on_open_tag_editor_custom_input", function()
   
   it("should build tag editor after setting data", function()
     local build_calls = {}
-    tag_editor.build = function(...) table.insert(build_calls, {...}) end
+    local tag_editor = require("gui.tag_editor.tag_editor")
+    tag_editor.build = function(...)
+      table.insert(build_calls, {...})
+    end
     Handlers.on_open_tag_editor_custom_input(mock_event)
     assert(#build_calls > 0, "tag_editor.build should be called")
     local called_with_player = false
