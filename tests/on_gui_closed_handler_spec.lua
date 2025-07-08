@@ -1,3 +1,4 @@
+require("tests.test_bootstrap")
 -- tests/events/on_gui_closed_handler_spec.lua
 
 if not _G.storage then _G.storage = {} end

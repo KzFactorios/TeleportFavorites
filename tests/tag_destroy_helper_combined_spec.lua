@@ -1,3 +1,4 @@
+require("tests.test_bootstrap")
 -- tests/tag_destroy_helper_combined_spec.lua
 -- Combined and deduplicated tests for core.tag.tag_destroy_helper
 
@@ -122,11 +123,15 @@ describe("tag_destroy_helper internal helpers", function()
     local tag = { gps = "1.2.3", chart_tag = { valid = true, destroy = function() end }, faved_by_players = {1} }
     _G.game = { players = { [1] = { index = 1 } } }
     _G.mock_favorites = { [1] = { { gps = "1.2.3", locked = true } } }
-    assert.is_true(helpers.safe_destroy_with_cleanup(tag, tag.chart_tag))
+    local r1 = helpers.safe_destroy_with_cleanup(tag, tag.chart_tag)
+    assert.is_true(r1)
     local tag2 = { gps = "2.2.2", chart_tag = { valid = false, destroy = function() end }, faved_by_players = {1} }
-    assert.is_true(helpers.safe_destroy_with_cleanup(tag2, tag2.chart_tag))
+    local r2 = helpers.safe_destroy_with_cleanup(tag2, tag2.chart_tag)
+    assert.is_true(r2)
     local tag3 = { gps = "3.3.3", faved_by_players = {1} }
-    assert.is_true(helpers.safe_destroy_with_cleanup(tag3, nil))
-    assert.is_true(helpers.safe_destroy_with_cleanup(nil, nil))
+    local r3 = helpers.safe_destroy_with_cleanup(tag3, nil)
+    assert.is_true(r3)
+    local r4 = helpers.safe_destroy_with_cleanup(nil, nil)
+    assert.is_true(r4)
   end)
 end)

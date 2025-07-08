@@ -1,3 +1,4 @@
+require("tests.test_bootstrap")
 -- tests/events/gui_event_dispatcher_spec.lua
 
 if not _G.storage then _G.storage = {} end

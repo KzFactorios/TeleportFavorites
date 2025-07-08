@@ -17,6 +17,7 @@ local Cache = {
   set_player_surface = function() end,
   get_tag_by_gps = function() return nil end,
   get_tag_editor_data = function() return {} end,
+  create_tag_editor_data = function() return {} end, -- Added missing function
   Lookups = {
     ensure_surface_cache = function() end
   }
@@ -51,9 +52,9 @@ package.loaded["core.utils.gps_utils"] = {
 package.loaded["core.utils.error_handler"] = { debug_log = function() end }
 package.loaded["core.utils.cursor_utils"] = { end_drag_favorite = function() end }
 package.loaded["gui.tag_editor.tag_editor"] = { build = function() end }
-package.loaded["core.events.tag_editor_event_helpers"] = { 
+package.loaded["core.events.tag_editor_event_helpers"] = {
   validate_tag_editor_opening = function() return true end,
-  find_nearby_chart_tag = function() return nil end 
+  find_nearby_chart_tag = function() return nil end
 }
 package.loaded["core.utils.settings_access"] = { get_chart_tag_click_radius = function() return 5 end }
 package.loaded["core.favorite.player_favorites"] = {
@@ -112,30 +113,46 @@ _G.game = {
 -- Import the handlers module
 local Handlers = require("core.events.handlers")
 package.loaded["core.events.handlers"] = Handlers
-Handlers.on_player_joined_game = require("core.events.handlers").on_player_joined_game
 
 describe("Player Event Handlers", function()
   -- Setup before each test
-  before_each(function()
-    -- Reset our mocks
-    mock_players = {}
-    -- Set up players using canonical mock
-    mock_players[1] = PlayerFavoritesMocks.mock_player(1, "player1", 1)
-    mock_players[2] = PlayerFavoritesMocks.mock_player(2, "player2", 1)
-    
-    -- Set up spies
-    make_spy(Cache, "reset_transient_player_states")
-    make_spy(fave_bar, "build")
-    make_spy(FaveBarGuiLabelsManager, "register_all")
-    make_spy(FaveBarGuiLabelsManager, "initialize_all_players")
-    make_spy(FaveBarGuiLabelsManager, "update_label_for_player")
-    
-    -- Add spies for package.loaded mocks used in assertions
-    local tag_editor = package.loaded["gui.tag_editor.tag_editor"]
-    local cursor_utils = package.loaded["core.utils.cursor_utils"]
-    make_spy(tag_editor, "build")
-    make_spy(cursor_utils, "end_drag_favorite")
-  end)
+
+before_each(function()
+  -- Reset our mocks
+  mock_players = {}
+  -- Set up players using canonical mock
+  mock_players[1] = PlayerFavoritesMocks.mock_player(1, "player1", 1)
+  mock_players[2] = PlayerFavoritesMocks.mock_player(2, "player2", 1)
+
+  -- Patch game.get_player to return our mock players
+  if not _G.game then _G.game = {} end
+  _G.game.get_player = function(idx) return mock_players[idx] end
+  _G.game.players = mock_players
+
+  -- Set up spies
+  make_spy(Cache, "reset_transient_player_states")
+  make_spy(fave_bar, "build")
+  make_spy(FaveBarGuiLabelsManager, "register_all")
+  make_spy(FaveBarGuiLabelsManager, "initialize_all_players")
+  make_spy(FaveBarGuiLabelsManager, "update_label_for_player")
+
+  -- Add spies for package.loaded mocks used in assertions
+  local tag_editor = package.loaded["gui.tag_editor.tag_editor"]
+  local cursor_utils = package.loaded["core.utils.cursor_utils"]
+  make_spy(tag_editor, "build")
+  make_spy(cursor_utils, "end_drag_favorite")
+
+  -- Patch global and package.loaded TagEditorEventHelpers for all tests
+  local default_helpers = {
+    validate_tag_editor_opening = function() return true end,
+    find_nearby_chart_tag = function() return nil end
+  }
+  package.loaded["core.events.tag_editor_event_helpers"] = default_helpers
+  _G.TagEditorEventHelpers = default_helpers
+
+  package.loaded["core.events.handlers"] = nil
+  Handlers = require("core.events.handlers")
+end)
   
   -- Clean up after each test
   after_each(function()
@@ -258,15 +275,23 @@ describe("Player Event Handlers", function()
 
   it("should handle on_open_tag_editor_custom_input with invalid tag editor opening", function()
     -- Replace the entire tag_editor_event_helpers table for this test
-    package.loaded["core.events.tag_editor_event_helpers"] = {
+    local fake_helpers = {
       validate_tag_editor_opening = function()
         return false, "Drag mode active"
-      end
+      end,
+      find_nearby_chart_tag = function() return nil end
     }
-    local tag_helpers = package.loaded["core.events.tag_editor_event_helpers"]
-    -- Set up spy
+    package.loaded["core.events.tag_editor_event_helpers"] = fake_helpers
+    _G.TagEditorEventHelpers = fake_helpers
+
+    -- Re-require the handler to ensure it picks up the new mocks
+    package.loaded["core.events.handlers"] = nil
+    Handlers = require("core.events.handlers")
+
+    -- Set up spy on CursorUtils after all mocks
     local cursor_utils = package.loaded["core.utils.cursor_utils"]
     make_spy(cursor_utils, "end_drag_favorite")
+
     local event = {
       player_index = 1,
       cursor_position = {x = 100, y = 200}

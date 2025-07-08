@@ -492,7 +492,16 @@ PlayerFavoritesMocks.FavoriteUtils = {
     end,
     
     get_blank_favorite = function()
-        return { gps = "", locked = false }
+        return { gps = "1000000.1000000.1", locked = false }
+    end,
+
+    ---@param fav table
+    ---@return table
+    normalize_blank_favorite = function(fav)
+        if fav and (fav.gps == nil or fav.gps == "") then
+            fav.gps = "1000000.1000000.1"
+        end
+        return fav
     end,
     
     new = function(gps)

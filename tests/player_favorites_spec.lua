@@ -1,5 +1,3 @@
--- Print file with line numbers for easier debugging
-
 -- Minimal assert utility for missing idioms
 local custom_assert = {
   equals = function(a, b, msg) if a ~= b then error(msg or (tostring(a) .. " ~= " .. tostring(b))) end end,
@@ -88,6 +86,44 @@ require("core.events.gui_observer")
 -- Tests
 
 describe("PlayerFavorites", function()
+    before_each(function()
+        -- Reset all global and storage state to ensure test isolation
+        if _G.storage then
+            for k in pairs(_G.storage) do _G.storage[k] = nil end
+        end
+        if global then
+            for k in pairs(global) do global[k] = nil end
+        end
+        if game and game.players then
+            for k in pairs(game.players) do game.players[k] = nil end
+        end
+        -- Reset PlayerFavorites singleton cache
+        local PlayerFavorites = require("core.favorite.player_favorites")
+        PlayerFavorites._instances = {}
+        -- Reset notified
+        if PlayerFavoritesMocks and PlayerFavoritesMocks.reset_notified then
+            PlayerFavoritesMocks.reset_notified()
+        end
+        -- Ensure Constants mock is always correct
+        _G.Constants = require("tests.mocks.constants_mock")
+    end)
+    after_each(function()
+        -- Clean up again after each test
+        if _G.storage then
+            for k in pairs(_G.storage) do _G.storage[k] = nil end
+        end
+        if global then
+            for k in pairs(global) do global[k] = nil end
+        end
+        if game and game.players then
+            for k in pairs(game.players) do game.players[k] = nil end
+        end
+        local PlayerFavorites = require("core.favorite.player_favorites")
+        PlayerFavorites._instances = {}
+        if PlayerFavoritesMocks and PlayerFavoritesMocks.reset_notified then
+            PlayerFavoritesMocks.reset_notified()
+        end
+    end)
     it("should synchronize tag faved_by_players and favorites across multiplayer add/move/delete", function()
         local assert = custom_assert
         local FakeDataFactory = require("tests.fakes.fake_data_factory")
@@ -186,8 +222,12 @@ describe("PlayerFavorites", function()
         local player = PlayerFavoritesMocks.mock_player(1)
         local pf = PlayerFavorites.new(player)
         pf:add_favorite("gps1")
+        -- print("Before move:")
+        -- for i, fav in ipairs(pf.favorites) do print(i, fav and fav.gps or nil, fav and fav.locked or nil) end
         -- Do not add a second favorite, so slot 2 is blank
         local ok, err = pf:move_favorite(1, 2)
+        -- print("After move:")
+        -- for i, fav in ipairs(pf.favorites) do print(i, fav and fav.gps or nil, fav and fav.locked or nil) end
         assert.is_true(ok)
         assert.is_nil(err)
         assert.equals(pf.favorites[2].gps, "gps1")
@@ -556,6 +596,8 @@ describe("PlayerFavorites", function()
         local assert = custom_assert
         local player = game.players[1]
         local pf = PlayerFavorites.new(player)
+        -- print("Constructed favorites:")
+        -- for i, fav in ipairs(pf.favorites) do print(i, fav and fav.gps or nil, fav and fav.locked or nil) end
         assert.is_table(pf.favorites)
         assert.equals(#pf.favorites, Constants.settings.MAX_FAVORITE_SLOTS)
         for _, fav in ipairs(pf.favorites) do

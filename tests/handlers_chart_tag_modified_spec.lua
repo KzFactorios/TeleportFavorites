@@ -230,6 +230,7 @@ describe("Handlers.on_chart_tag_modified", function()
     make_spy(Cache, "set_tag_editor_data")
     make_spy(PositionUtils, "needs_normalization")
     make_spy(ErrorHandler, "debug_log")
+    _G.ChartTagModificationHelpers = ChartTagModificationHelpers
     Handlers = require("core.events.handlers")
     _G.game.get_player = function(index) return mock_players[index] end
   end)

@@ -1,3 +1,4 @@
+require("tests.test_bootstrap")
 -- Shared Factorio test environment (globals, settings, etc.)
 require("tests.mocks.factorio_test_env")
 

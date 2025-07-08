@@ -1,3 +1,4 @@
+require("tests.test_bootstrap")
 -- tests/tag_combined_spec.lua
 -- Combined and deduplicated tests for core.tag.tag
 

@@ -1,3 +1,11 @@
+---@param fav Favorite?
+---@return Favorite?
+function FavoriteUtils.normalize_blank_favorite(fav)
+  if fav and (fav.gps == nil or fav.gps == "") then
+    fav.gps = Constants.settings.BLANK_GPS
+  end
+  return fav
+end
 --[[
 core/favorite/favorite.lua
 TeleportFavorites Factorio Mod

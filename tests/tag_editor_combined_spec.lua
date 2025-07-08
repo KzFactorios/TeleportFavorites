@@ -1,3 +1,5 @@
+require("tests.test_bootstrap")
+
 -- tests/tag_editor_combined_spec.lua
 -- Combined and deduplicated tests for tag editor and event helpers
 

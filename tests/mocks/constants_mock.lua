@@ -1,11 +1,13 @@
 -- tests/mocks/constants_mock.lua
 -- Provides a robust global Constants mock for tests
 
-_G.Constants = {
+local constants_mock = {
     settings = {
-        MAX_FAVORITE_SLOTS = 8,
-        -- Add other settings as needed
+        MAX_FAVORITE_SLOTS = 10,
+        -- Add other settings as needed for tests
     }
 }
 
-return _G.Constants
+_G.Constants = constants_mock
+return constants_mock
+

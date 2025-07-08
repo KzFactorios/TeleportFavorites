@@ -1,5 +1,6 @@
 -- tests/control/control_shared_utils_spec.lua
 
+require("tests.test_bootstrap")
 if not _G.storage then _G.storage = {} end
 local SharedUtils = require("core.control.control_shared_utils")
 

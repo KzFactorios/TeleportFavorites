@@ -1,6 +1,7 @@
 -- tests/data_viewer_combined_spec.lua
 -- Combined and deduplicated tests for DataViewer (GUI and control)
 
+require("tests.test_bootstrap")
 if not _G.storage then _G.storage = {} end
 
 -- GUI DataViewer module

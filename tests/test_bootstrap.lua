@@ -1,3 +1,7 @@
+-- Patch FavoriteUtils mock globally before any SUT loads
+local favorite_utils_mock = require("tests.mocks.favorite_utils_mock")
+_G.FavoriteUtils = favorite_utils_mock
+package.loaded["core.favorite.favorite_utils"] = favorite_utils_mock
 -- tests/test_bootstrap.lua
 -- Canonical test bootstrap for TeleportFavorites
 -- Ensures all mocks and package.loaded patches are in place BEFORE any SUT or test code is loaded.
@@ -14,16 +18,17 @@ local Cache = {
   reset_transient_player_states = function() end,
   get_player_data = function() return {} end,
   set_tag_editor_data = function() end,
-  ensure_surface_cache = function(...)
-    print("[DIAGNOSTIC] ensure_surface_cache called with:", ...)
-  end,
+  ensure_surface_cache = function(...) end,
   set_player_surface = function() end,
   get_tag_by_gps = function() return nil end,
   get_tag_editor_data = function() return {} end,
   Lookups = {
     ensure_surface_cache = function() end,
     invalidate_surface_chart_tags = function() end
-  }
+  },
+  remove_stored_tag = function(gps)
+    return true
+  end
 }
 
 local FaveBarGuiLabelsManager = {
@@ -96,13 +101,8 @@ package.loaded["core.events.chart_tag_modification_helpers"] = {
   update_tag_and_cleanup = function() end,
   update_favorites_gps = function() end
 }
-package.loaded["prototypes.enums.enum"] = {
-  GuiEnum = {
-    GUI_FRAME = {
-      TAG_EDITOR = "tag_editor_frame"
-    }
-  }
-}
+local enum_mock = require("tests.mocks.enum_mock")
+package.loaded["prototypes.enums.enum"] = enum_mock
 
 -- Patch Lua package.path to include tests/ and tests/mocks/ for require()
 package.path = table.concat({
@@ -113,6 +113,12 @@ package.path = table.concat({
 
 -- Optionally, patch busted output to always flush prints
 io.stdout:setvbuf('no')
+
+-- Patch constants to always use the production slot count for all tests
+local constants_mock = require("tests.mocks.constants_mock")
+constants_mock.settings.MAX_FAVORITE_SLOTS = 10
+package.loaded["constants"] = constants_mock
+_G.Constants = constants_mock
 
 -- Set up spies for all handler dependencies BEFORE SUT is loaded
 make_spy(fave_bar, "build")

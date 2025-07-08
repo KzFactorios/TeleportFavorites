@@ -1,5 +1,6 @@
 -- tests/control/control_tag_editor_spec.lua
 
+require("tests.test_bootstrap")
 if not _G.storage then _G.storage = {} end
 local TagEditor = require("core.control.control_tag_editor")
 

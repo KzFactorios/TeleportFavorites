@@ -1,3 +1,4 @@
+require("tests.test_bootstrap")
 -- tests/control/slot_interaction_handlers_spec.lua
 
 if not _G.storage then _G.storage = {} end

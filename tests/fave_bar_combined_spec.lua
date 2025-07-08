@@ -1,3 +1,4 @@
+require("tests.test_bootstrap")
 -- tests/fave_bar_combined_spec.lua
 -- Combined test suite for FaveBar, FaveBarGuiLabelsManager, and ControlFaveBar
 

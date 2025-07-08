@@ -1,6 +1,7 @@
 -- Require canonical test bootstrap to patch all mocks before any SUT or test code
 require("tests.test_bootstrap")
 
+
 local spy_utils = require("tests.mocks.spy_utils")
 local make_spy = spy_utils.make_spy
 local PlayerFavoritesMocks = require("tests.mocks.player_favorites_mocks")
@@ -17,14 +18,31 @@ _G.game = {
   surfaces = mock_surfaces
 }
 
+
+
+-- Patch spies BEFORE loading SUT
+make_spy(package.loaded["core.cache.cache"], "ensure_surface_cache")
+make_spy(package.loaded["core.cache.cache"], "set_player_surface")
+
+-- Now load SUT (handlers) AFTER patching spies
+package.loaded["core.events.handlers"] = nil
 local Handlers = require("core.events.handlers")
+
 
 describe("Surface Event Handlers", function()
   before_each(function()
     mock_players = {}
     mock_players[1] = PlayerFavoritesMocks.mock_player(1, "player1", 1)
+    _G.game.players[1] = mock_players[1] -- Ensure the handler can find the mock player
+    -- Reset spies and reload SUT to ensure spies are attached to the correct instance
+    package.loaded["core.cache.cache"].ensure_surface_cache_spy:reset()
+    package.loaded["core.cache.cache"].ensure_surface_cache_spy:revert()
+    package.loaded["core.cache.cache"].set_player_surface_spy:reset()
+    package.loaded["core.cache.cache"].set_player_surface_spy:revert()
     make_spy(package.loaded["core.cache.cache"], "ensure_surface_cache")
     make_spy(package.loaded["core.cache.cache"], "set_player_surface")
+    package.loaded["core.events.handlers"] = nil
+    Handlers = require("core.events.handlers")
   end)
 
   after_each(function()
@@ -36,7 +54,7 @@ describe("Surface Event Handlers", function()
 
   it("should call ensure_surface_cache when player changes surface", function()
     local event = { player_index = 1, surface_index = 2 }
-    mock_players[1].surface = mock_surfaces[2]
+    mock_players[1].surface = mock_surfaces[1] -- Start on surface 1, event is for surface 2
     Handlers.on_player_changed_surface(event)
     assert(package.loaded["core.cache.cache"].ensure_surface_cache_spy:was_called(), "ensure_surface_cache should be called")
     local call_args = package.loaded["core.cache.cache"].ensure_surface_cache_spy.calls[1]

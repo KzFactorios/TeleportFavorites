@@ -1,3 +1,5 @@
+require("tests.test_bootstrap") -- Ensure test bootstrap is loaded first for global mocks
+
 -- tests/events/player_controller_handler_spec.lua
 
 if not _G.storage then _G.storage = {} end
