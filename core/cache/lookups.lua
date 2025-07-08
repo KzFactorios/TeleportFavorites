@@ -227,4 +227,5 @@ return {
   invalidate_surface_chart_tags = clear_surface_cache_chart_tags, -- Alias for consistency
   remove_chart_tag_from_cache_by_gps = remove_chart_tag_from_cache_by_gps,
   clear_all_caches = clear_all_caches,
+  ensure_surface_cache = ensure_surface_cache,
 }

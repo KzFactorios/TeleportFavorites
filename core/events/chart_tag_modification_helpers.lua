@@ -33,8 +33,22 @@ local ChartTagModificationHelpers = {}
 ---@param player LuaPlayer|nil Player who triggered the modification
 ---@return boolean valid True if modification should be processed
 function ChartTagModificationHelpers.is_valid_tag_modification(event, player)
-  if not player or not player.valid then return false end
-  if not event.tag or not event.tag.valid then return false end
+  if not player or not player.valid then
+    ErrorHandler.debug_log("Chart tag modification rejected: invalid player", { event = event })
+    return false
+  end
+  if not event.tag or not event.tag.valid then
+    ErrorHandler.debug_log("Chart tag modification rejected: invalid tag", { event = event, player = player and player.name or nil })
+    return false
+  end
+  if not event.tag.position then
+    ErrorHandler.debug_log("Chart tag modification rejected: invalid tag position", { event = event, player = player and player.name or nil })
+    return false
+  end
+  if not event.old_position then
+    ErrorHandler.debug_log("Chart tag modification rejected: invalid old position", { event = event, player = player and player.name or nil })
+    return false
+  end
 
   -- Check permissions using AdminUtils
   local can_edit, _is_owner, is_admin_override = AdminUtils.can_edit_chart_tag(player, event.tag)
@@ -50,8 +64,7 @@ function ChartTagModificationHelpers.is_valid_tag_modification(event, player)
 
   -- Log admin action if this is an admin override
   if is_admin_override then
-    AdminUtils.log_admin_action(player, "modify_chart_tag", event.tag, {
-    })
+    AdminUtils.log_admin_action(player, "modify_chart_tag", event.tag, {})
   end
 
   -- Transfer ownership to admin if last_user is unspecified

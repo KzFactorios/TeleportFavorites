@@ -1,3 +1,17 @@
+-- Shared Factorio test environment (globals, settings, etc.)
+require("tests.mocks.factorio_test_env")
+
+local custom_assert = {
+  equals = function(a, b, msg) if a ~= b then error(msg or (tostring(a) .. " ~= " .. tostring(b))) end end,
+  is_true = function(a, msg) if not a then error(msg or "expected true but was false") end end,
+  is_false = function(a, msg) if a then error(msg or "expected false but was true") end end,
+  is_nil = function(a, msg) if a ~= nil then error(msg or ("expected nil but was " .. tostring(a))) end end,
+  is_not_nil = function(a, msg) if a == nil then error(msg or "expected not nil but was nil") end end,
+  not_equals = function(a, b, msg) if a == b then error(msg or (tostring(a) .. " == " .. tostring(b))) end end,
+  is_table = function(a, msg) if type(a) ~= "table" then error(msg or ("expected table but was " .. type(a))) end end
+}
+local assert = custom_assert
+
 local Constants = require("constants")
 local mock_player_data = require("tests.mocks.mock_player_data")
 

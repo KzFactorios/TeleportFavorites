@@ -126,4 +126,14 @@ local function cleanup_old_chart_tag(chart_tag)
   end
 end
 
+
+if _G._TEST_EXPOSE_TAG_HELPERS then
+  Tag._test_expose = {
+    collect_linked_favorites = collect_linked_favorites,
+    create_new_chart_tag = create_new_chart_tag,
+    update_favorites_gps = update_favorites_gps,
+    cleanup_old_chart_tag = cleanup_old_chart_tag
+  }
+end
+
 return Tag

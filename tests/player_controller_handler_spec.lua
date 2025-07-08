@@ -2,6 +2,8 @@
 
 if not _G.storage then _G.storage = {} end
 local PlayerControllerHandler = require("core.events.player_controller_handler")
+local spy_utils = require("tests.mocks.spy_utils")
+local make_spy = spy_utils.make_spy
 
 describe("PlayerControllerHandler", function()
     it("should be a table/module", function()

@@ -396,23 +396,26 @@ function PlayerFavorites.update_gps_for_all_players(old_gps, new_gps, acting_pla
   if not old_gps or not new_gps or old_gps == new_gps then
     return {}
   end
-  
-  -- Fix for second idempotency update - if we're already updating from gps_new to gps_new,
-  -- it's a no-op and should affect zero players
-  if old_gps == new_gps then
-    return {}
-  end
-  
+
   local affected_players = {}
 
   for player_index, player in pairs(game.players) do
-    ---@cast player LuaPlayer
-    -- Only process this player if it's not the acting player
     if player and player.valid and player_index ~= acting_player_index then
       local favorites = PlayerFavorites.new(player)
-      local was_updated = favorites:update_gps_coordinates(old_gps, new_gps)
-      if was_updated then
-        table.insert(affected_players, player)
+      -- Only update if the player's favorite is still old_gps (not already updated)
+      local needs_update = false
+      for i = 1, #favorites.favorites do
+        local fav = favorites.favorites[i]
+        if fav and fav.gps == old_gps then
+          needs_update = true
+          break
+        end
+      end
+      if needs_update then
+        local was_updated = favorites:update_gps_coordinates(old_gps, new_gps)
+        if was_updated then
+          table.insert(affected_players, player)
+        end
       end
     end
   end

@@ -1,3 +1,6 @@
+-- DEPRECATED: This file is obsolete and should be deleted. All player mocks should use PlayerFavoritesMocks.mock_player from player_favorites_mocks.lua.
+-- This file is retained temporarily for reference only.
+
 -- tests/mocks/mock_player_data.lua
 -- Mock for player data using FakeDataFactory for test integration
 

@@ -2,6 +2,8 @@
 
 if not _G.storage then _G.storage = {} end
 local OnGuiClosedHandler = require("core.events.on_gui_closed_handler")
+local spy_utils = require("tests.mocks.spy_utils")
+local make_spy = spy_utils.make_spy
 
 describe("OnGuiClosedHandler", function()
     it("should be a table/module", function()

@@ -2,6 +2,8 @@
 
 if not _G.storage then _G.storage = {} end
 local SlotHandlers = require("core.control.slot_interaction_handlers")
+local spy_utils = require("tests.mocks.spy_utils")
+local make_spy = spy_utils.make_spy
 
 describe("SlotInteractionHandlers", function()
     it("should be a table/module", function()

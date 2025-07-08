@@ -47,11 +47,9 @@ function GPSUtils.gps_from_map_position(map_position, surface_index)
   if not map_position or type(map_position.x) ~= "number" or type(map_position.y) ~= "number" then
     return tostring(BLANK_GPS)
   end
-  
   surface_index = surface_index or 1
-  local x = basic_helpers.normalize_index(map_position.x)
-  local y = basic_helpers.normalize_index(map_position.y)
-  
+  local x = math.floor(map_position.x + 0.5)
+  local y = math.floor(map_position.y + 0.5)
   return basic_helpers.pad(x, padlen) .. "." .. basic_helpers.pad(y, padlen) .. "." .. tostring(surface_index)
 end
 

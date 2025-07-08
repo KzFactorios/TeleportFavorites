@@ -489,4 +489,21 @@ function Cache.get_player_teleport_history(player, surface_index)
   return player_data.surfaces[surface_index].teleport_history
 end
 
+--- Ensure the runtime cache for a surface is initialized (pass-through to Lookups)
+---@param surface_index uint
+function Cache.ensure_surface_cache(surface_index)
+  if not Cache.Lookups or not Cache.Lookups.ensure_surface_cache then
+    error("Lookups.ensure_surface_cache not available")
+  end
+  return Cache.Lookups.ensure_surface_cache(surface_index)
+end
+
+--- Set the player's surface (for test and event handler use)
+---@param player LuaPlayer
+---@param surface_index uint
+function Cache.set_player_surface(player, surface_index)
+  if not player or not player.valid then return end
+  player.surface = game.surfaces[surface_index]
+end
+
 return Cache
