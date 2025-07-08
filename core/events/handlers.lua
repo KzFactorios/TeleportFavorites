@@ -203,7 +203,6 @@ function handlers.on_open_tag_editor_custom_input(event)
     tag_editor.build(player)
   end)
 end
-
 function handlers.on_chart_tag_added(event)
   -- Get the player object from the event.player_index
   local player = game.get_player(event.player_index)
@@ -213,11 +212,12 @@ function handlers.on_chart_tag_added(event)
   local chart_tag = event.tag
   if chart_tag and chart_tag.valid and chart_tag.position then
     if PositionUtils.needs_normalization(chart_tag.position) then
+      print("[HANDLER] Calling ErrorHandler.debug_log for chart tag added")
       ErrorHandler.debug_log("Chart tag added with fractional coordinates, normalizing", {
         player_name = player.name,
         position = chart_tag.position
       })
-      -- Delete the original tag and create a new one at normalized coords
+      print("[HANDLER] Calling TagEditorEventHelpers.normalize_and_replace_chart_tag for chart tag added")
       local new_chart_tag, position_pair = TagEditorEventHelpers.normalize_and_replace_chart_tag(chart_tag, player)
       -- Optionally, you may want to update lookups here as well
     end
@@ -231,77 +231,86 @@ end
 
 function handlers.on_chart_tag_modified(event)
   if not event or not event.old_position then return end
-  with_valid_player(event.player_index, function(player)
-    if not ChartTagModificationHelpers.is_valid_tag_modification(event, player) then
-      ErrorHandler.debug_log("Chart tag modification validation failed", {
-        player_name = player.name
+  local player = game.get_player(event.player_index)
+  if not player or not player.valid then return end
+  if not ChartTagModificationHelpers.is_valid_tag_modification(event, player) then
+    print("[HANDLER] Calling ErrorHandler.debug_log for chart tag modification validation failed")
+    ErrorHandler.debug_log("Chart tag modification validation failed", {
+      player_name = player.name
+    })
+    return
+  end
+  local new_gps, old_gps = ChartTagModificationHelpers.extract_gps(event, player)
+  -- Check if this tag is currently open in the tag editor and update it
+  local tag_editor_data = Cache.get_tag_editor_data(player)
+  if tag_editor_data and tag_editor_data.gps == old_gps then
+    -- Update the GPS in tag editor data
+    tag_editor_data.gps = new_gps
+    if tag_editor_data.tag then
+      tag_editor_data.tag.gps = new_gps
+    end
+    Cache.set_tag_editor_data(player, tag_editor_data)
+    -- Update the teleport button caption to show new coordinates
+    local tag_editor_frame = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+    if tag_editor_frame and tag_editor_frame.valid then
+      local teleport_btn = GuiValidation.find_child_by_name(tag_editor_frame, "tag_editor_teleport_button")
+      if teleport_btn and teleport_btn.valid then
+        ---@diagnostic disable-next-line: assign-type-mismatch, param-type-mismatch
+        local coords_result = GPSUtils.coords_string_from_gps(new_gps)
+        local coords = coords_result or ""
+        ---@diagnostic disable-next-line: assign-type-mismatch
+        teleport_btn.caption = { "tf-gui.teleport_to", coords }
+      end
+    end
+  end
+  local chart_tag = event.tag
+  if chart_tag and chart_tag.valid and chart_tag.position then
+    -- Only normalize if the tag position has fractional coordinates
+    local needs_normalization = PositionUtils.needs_normalization(chart_tag.position)
+    if needs_normalization then
+      print("[HANDLER] Calling ErrorHandler.debug_log for chart tag modification normalization")
+      ErrorHandler.debug_log("Chart tag has fractional coordinates, normalizing", {
+        player_name = player.name,
+        position = chart_tag.position,
+        old_gps = old_gps,
+        new_gps = new_gps
       })
-      return
-    end
-    local new_gps, old_gps = ChartTagModificationHelpers.extract_gps(event, player)
-    -- Check if this tag is currently open in the tag editor and update it
-    local tag_editor_data = Cache.get_tag_editor_data(player)
-    if tag_editor_data and tag_editor_data.gps == old_gps then
-      -- Update the GPS in tag editor data
-      tag_editor_data.gps = new_gps
-      if tag_editor_data.tag then
-        tag_editor_data.tag.gps = new_gps
-      end
-      Cache.set_tag_editor_data(player, tag_editor_data)
-      -- Update the teleport button caption to show new coordinates
-      local tag_editor_frame = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
-      if tag_editor_frame and tag_editor_frame.valid then
-        local teleport_btn = GuiValidation.find_child_by_name(tag_editor_frame, "tag_editor_teleport_button")
-        if teleport_btn and teleport_btn.valid then
-          ---@diagnostic disable-next-line: assign-type-mismatch, param-type-mismatch
-          local coords_result = GPSUtils.coords_string_from_gps(new_gps)
-          local coords = coords_result or ""
-          ---@diagnostic disable-next-line: assign-type-mismatch
-          teleport_btn.caption = { "tf-gui.teleport_to", coords }
+      print("[HANDLER] Calling TagEditorEventHelpers.normalize_and_replace_chart_tag for chart tag modification")
+      local new_chart_tag, position_pair = TagEditorEventHelpers.normalize_and_replace_chart_tag(chart_tag, player)
+      if new_chart_tag then
+        -- After normalization, recalculate GPS coordinates for the new chart tag
+        local surface_index = new_chart_tag.surface and new_chart_tag.surface.index or 1
+        local normalized_gps = GPSUtils.gps_from_map_position(new_chart_tag.position, tonumber(surface_index) or 1)
+        -- Update using the normalized GPS as the final new GPS
+        if old_gps and normalized_gps and old_gps ~= normalized_gps then
+          print("[HANDLER] Calling ChartTagModificationHelpers.update_tag_and_cleanup for normalized_gps")
+          -- Create a modified event with the new chart tag for cleanup
+          local normalized_event = {
+            tag = new_chart_tag,
+            old_position = event.old_position,
+            player_index = event.player_index
+          }
+          ChartTagModificationHelpers.update_tag_and_cleanup(old_gps, normalized_gps, normalized_event, player)
+          print("[HANDLER] Calling ChartTagModificationHelpers.update_favorites_gps for normalized_gps")
+          ChartTagModificationHelpers.update_favorites_gps(old_gps, normalized_gps, player)
         end
       end
-    end
-    local chart_tag = event.tag
-    if chart_tag and chart_tag.valid and chart_tag.position then
-      -- Only normalize if the tag position has fractional coordinates
-      local needs_normalization = PositionUtils.needs_normalization(chart_tag.position)
-      if needs_normalization then
-        ErrorHandler.debug_log("Chart tag has fractional coordinates, normalizing", {
-          player_name = player.name,
-          position = chart_tag.position,
-          old_gps = old_gps,
-          new_gps = new_gps
-        })
-        local new_chart_tag, position_pair = TagEditorEventHelpers.normalize_and_replace_chart_tag(chart_tag, player)
-        if new_chart_tag then
-          -- After normalization, recalculate GPS coordinates for the new chart tag
-          local surface_index = new_chart_tag.surface and new_chart_tag.surface.index or 1
-          local normalized_gps = GPSUtils.gps_from_map_position(new_chart_tag.position, tonumber(surface_index) or 1)
-          -- Update using the normalized GPS as the final new GPS
-          if old_gps and normalized_gps and old_gps ~= normalized_gps then
-            -- Create a modified event with the new chart tag for cleanup
-            local normalized_event = {
-              tag = new_chart_tag,
-              old_position = event.old_position,
-              player_index = event.player_index
-            }
-            ChartTagModificationHelpers.update_tag_and_cleanup(old_gps, normalized_gps, normalized_event, player)
-            ChartTagModificationHelpers.update_favorites_gps(old_gps, normalized_gps, player)
-          end
-        end
-        if old_gps and new_gps and old_gps ~= new_gps then
-          -- Update tag data and cache using the original chart tag
-          ChartTagModificationHelpers.update_tag_and_cleanup(old_gps, new_gps, event, player)
-          -- Update all player favorites that reference this GPS
-          ChartTagModificationHelpers.update_favorites_gps(old_gps, new_gps, player)
-        end
-      elseif old_gps and new_gps and old_gps ~= new_gps then
-        -- If position changed but no normalization needed, still update tag and favorites
+      if old_gps and new_gps and old_gps ~= new_gps then
+        print("[HANDLER] Calling ChartTagModificationHelpers.update_tag_and_cleanup for new_gps")
+        -- Update tag data and cache using the original chart tag
         ChartTagModificationHelpers.update_tag_and_cleanup(old_gps, new_gps, event, player)
+        print("[HANDLER] Calling ChartTagModificationHelpers.update_favorites_gps for new_gps")
+        -- Update all player favorites that reference this GPS
         ChartTagModificationHelpers.update_favorites_gps(old_gps, new_gps, player)
       end
+    elseif old_gps and new_gps and old_gps ~= new_gps then
+      print("[HANDLER] Calling ChartTagModificationHelpers.update_tag_and_cleanup for non-normalized case")
+      -- If position changed but no normalization needed, still update tag and favorites
+      ChartTagModificationHelpers.update_tag_and_cleanup(old_gps, new_gps, event, player)
+      print("[HANDLER] Calling ChartTagModificationHelpers.update_favorites_gps for non-normalized case")
+      ChartTagModificationHelpers.update_favorites_gps(old_gps, new_gps, player)
     end
-  end)
+  end
 end
 
 function handlers.on_chart_tag_removed(event)
@@ -342,6 +351,8 @@ function handlers.on_chart_tag_removed(event)
     if Cache and Cache.Lookups and Cache.Lookups.invalidate_surface_chart_tags then
       Cache.Lookups.invalidate_surface_chart_tags(player.surface.index)
     end
+
+    -- TODO does the above actions notify observers? Were they triggered elsewhere in factorioland?
   end)
 end
 
