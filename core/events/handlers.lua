@@ -61,6 +61,7 @@ local GuiHelpers = require("core.utils.gui_helpers")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local Enum = require("prototypes.enums.enum")
 local FaveBarGuiLabelsManager = require("core.control.fave_bar_gui_labels_manager")
+local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 
 -- Helper: Validate player and run handler logic
 local function with_valid_player(player_index, handler_fn, ...)
@@ -92,32 +93,29 @@ function handlers.on_player_changed_surface(event)
 end
 
 function handlers.on_init()
-
   Cache.init()
-  
+
   for _, player in pairs(game.players) do
     register_gui_observers(player)
     fave_bar.build(player, true) -- Force show during initialization
   end
-  
+
   -- Register the label managers AFTER GUI is built
   FaveBarGuiLabelsManager.register_all(script)
-  
+
   -- Initialize labels for all existing players AFTER registration and GUI building
   -- Use a delay to ensure GUI is fully built
   script.on_nth_tick(30, function() -- Short delay to ensure GUIs are ready
     FaveBarGuiLabelsManager.initialize_all_players(script)
-    script.on_nth_tick(30, nil) -- Unregister this one-time handler
+    script.on_nth_tick(30, nil)     -- Unregister this one-time handler
   end)
-  
-
 end
 
 function handlers.on_load()
   -- Re-initialize runtime-only structures if needed
   -- Re-register label managers for existing game AFTER ensuring GUIs exist
   FaveBarGuiLabelsManager.register_all(script)
-  
+
   -- Initialize labels for all connected players in loaded games
   FaveBarGuiLabelsManager.initialize_all_players(script)
 end
@@ -128,8 +126,10 @@ function handlers.on_player_created(event)
     fave_bar.build(player, true) -- Force show for new players
     register_gui_observers(player)
     -- Register the player for automatic label updates AND force immediate update
-    FaveBarGuiLabelsManager.update_label_for_player("player_coords", player, script, "show-player-coords", "fave_bar_coords_label", FaveBarGuiLabelsManager.get_coords_caption)
-    FaveBarGuiLabelsManager.update_label_for_player("teleport_history", player, script, "show-teleport-history", "fave_bar_teleport_history_label", FaveBarGuiLabelsManager.get_history_caption)
+    FaveBarGuiLabelsManager.update_label_for_player("player_coords", player, script, "show-player-coords",
+      "fave_bar_coords_label", FaveBarGuiLabelsManager.get_coords_caption)
+    FaveBarGuiLabelsManager.update_label_for_player("teleport_history", player, script, "show-teleport-history",
+      "fave_bar_teleport_history_label", FaveBarGuiLabelsManager.get_history_caption)
   end)
 end
 
@@ -137,8 +137,10 @@ function handlers.on_player_joined_game(event)
   with_valid_player(event.player_index, function(player)
     fave_bar.build(player, true) -- Force show for joining players
     -- Register the player for automatic label updates AND force immediate update
-    FaveBarGuiLabelsManager.update_label_for_player("player_coords", player, script, "show-player-coords", "fave_bar_coords_label", FaveBarGuiLabelsManager.get_coords_caption)
-    FaveBarGuiLabelsManager.update_label_for_player("teleport_history", player, script, "show-teleport-history", "fave_bar_teleport_history_label", FaveBarGuiLabelsManager.get_history_caption)
+    FaveBarGuiLabelsManager.update_label_for_player("player_coords", player, script, "show-player-coords",
+      "fave_bar_coords_label", FaveBarGuiLabelsManager.get_coords_caption)
+    FaveBarGuiLabelsManager.update_label_for_player("teleport_history", player, script, "show-teleport-history",
+      "fave_bar_teleport_history_label", FaveBarGuiLabelsManager.get_history_caption)
   end)
 end
 
@@ -166,7 +168,8 @@ function handlers.on_open_tag_editor_custom_input(event)
     end
 
     if chart_tag and chart_tag.valid then
-      local gps = GPSUtils.gps_from_map_position(chart_tag.position, tonumber(chart_tag.surface and chart_tag.surface.index or player.surface.index) or 1)
+      local gps = GPSUtils.gps_from_map_position(chart_tag.position,
+        tonumber(chart_tag.surface and chart_tag.surface.index or player.surface.index) or 1)
       local tag_fave = Cache.get_tag_by_gps(player, gps)
       local player_favorites = PlayerFavorites.new(player)
       local favorite_entry, favorite_slot = player_favorites:get_favorite_by_gps(gps)
@@ -225,14 +228,15 @@ function handlers.on_chart_tag_added(event)
     Cache.Lookups.invalidate_surface_chart_tags(player.surface.index)
   end
 end
+
 function handlers.on_chart_tag_modified(event)
   if not event or not event.old_position then return end
   with_valid_player(event.player_index, function(player)
-    if not ChartTagModificationHelpers.is_valid_tag_modification(event, player) then 
+    if not ChartTagModificationHelpers.is_valid_tag_modification(event, player) then
       ErrorHandler.debug_log("Chart tag modification validation failed", {
         player_name = player.name
       })
-      return 
+      return
     end
     local new_gps, old_gps = ChartTagModificationHelpers.extract_gps(event, player)
     -- Check if this tag is currently open in the tag editor and update it
@@ -253,7 +257,7 @@ function handlers.on_chart_tag_modified(event)
           local coords_result = GPSUtils.coords_string_from_gps(new_gps)
           local coords = coords_result or ""
           ---@diagnostic disable-next-line: assign-type-mismatch
-          teleport_btn.caption = {"tf-gui.teleport_to", coords}
+          teleport_btn.caption = { "tf-gui.teleport_to", coords }
         end
       end
     end
@@ -301,12 +305,44 @@ function handlers.on_chart_tag_modified(event)
 end
 
 function handlers.on_chart_tag_removed(event)
-  -- No-op for now. Add cleanup logic here if needed.
+  with_valid_player(event.player_index, function(player)
+    local chart_tag = event.tag
+    if not chart_tag or not chart_tag.valid then return end
 
-  -- if the player is not an admin or the owner of the chart_tag then we should not remove the tag and should put it back at the original location
-  -- else, we need to remove/update any associated tags, favorites, etc
-  -- reset the lookups cache for chart_tags and update the map (remove corresponding entries)
+    -- Only allow removal if player is admin or owner
+    local is_admin = player.admin
+    local is_owner = (chart_tag.last_user and chart_tag.last_user.name == player.name)
+    if not is_admin and not is_owner then
+      -- Restore the tag at its original location (Factorio will have already removed it, so recreate)
+      if chart_tag.position and chart_tag.surface then
+        player.surface.create_entity {
+          name = chart_tag.name or "tf-chart-tag",
+          position = chart_tag.position,
+          force = player.force,
+          text = chart_tag.text or "",
+          icon = chart_tag.icon,
+          last_user = player
+        }
+      end
+      if Cache and Cache.Lookups and Cache.Lookups.invalidate_surface_chart_tags then
+        Cache.Lookups.invalidate_surface_chart_tags(player.surface.index)
+      end
+      return
+    end
 
+    -- Remove/update associated tags, favorites, etc.
+    local gps = GPSUtils.gps_from_map_position(chart_tag.position,
+      chart_tag.surface and chart_tag.surface.index or player.surface.index)
+    local tag = Cache.get_tag_by_gps(player, gps)
+    if tag then
+      tag_destroy_helper.destroy_tag_and_chart_tag(tag, chart_tag)
+    end
+
+    -- Reset the lookups cache for chart_tags and update the map
+    if Cache and Cache.Lookups and Cache.Lookups.invalidate_surface_chart_tags then
+      Cache.Lookups.invalidate_surface_chart_tags(player.surface.index)
+    end
+  end)
 end
 
 return handlers
