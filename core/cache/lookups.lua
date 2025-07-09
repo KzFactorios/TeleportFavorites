@@ -9,18 +9,21 @@ Handles the non-persistent, runtime in-game data cache for fast lookups of chart
 - Provides O(1) lookup for chart tags by GPS string and surface index.
 - Used for efficient access to chart tags, tag caches, and related runtime data.
 - Not persistent: rebuilt as needed from game state.
-
-Data Structure:
+---------------
+Data Structure (runtime, non-persistent):
 ---------------
 global["Lookups"] = {
   surfaces = {
     [surface_index] = {
-      chart_tags = { ... },         -- Array of LuaCustomChartTag objects
-      chart_tags_mapped_by_gps = { ... },  -- Map: gps string -> LuaCustomChartTag
+      chart_tags = { LuaCustomChartTag, ... },           -- Array of chart tag objects for this surface
+      chart_tags_mapped_by_gps = {                       -- Map: gps string -> LuaCustomChartTag
+        [gps_string] = LuaCustomChartTag,
+        ...
+      }
     },
     ...
-  },
-  ...
+  }
+}
 }
 --]]
 

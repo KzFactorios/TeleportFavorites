@@ -13,33 +13,40 @@ Persistent and runtime cache management for mod data, including player, surface,
 - Player and surface data are always initialized and normalized for safe multiplayer and multi-surface support.
 - All access to persistent cache should use the Cache API; do not access  storage directly.
 
-Data Structure:
+Data Structure (as of v2.0+):
 ---------------
 storage = {
-  mod_version = string,
-  ... other game-wide settings ...
+  mod_version = string, -- Current mod version
   players = {
     [player_index] = {
-      player_name = "FactorioPlayerName", -- ADDED: stores the player's name for easier debugging
-      tag_editor_data = { ... },
-      render_mode = string, -- ADDED: render mode for the player
+      player_name = string,         -- Factorio player name
+      render_mode = string,         -- Player's render mode
+      tag_editor_data = table,      -- Tag editor UI state (see Cache.create_tag_editor_data)
+      fave_bar_slots_visible = bool,-- Whether the favorites bar is visible
+      show_player_coords = bool,    -- Show player coordinates in UI
+      drag_favorite = table,        -- Drag state for favorites bar
+      modal_dialog = table,         -- Modal dialog state
       surfaces = {
         [surface_index] = {
-          favorites = Favorite[], -- Array of Favorite objects for this surface
+          favorites = { Favorite, ... },      -- Array of Favorite objects for this surface
+          teleport_history = {                -- Teleport history for this surface
+            stack = { gps_string, ... },
+            pointer = number
+          }
         },
         ...
-      },
-      ...
+      }
     },
     ...
   },
   surfaces = {
     [surface_index] = {
-      tags = Tag[],
+      tags = { [gps_string] = Tag }, -- Persistent tags for this surface, indexed by GPS string
     },
     ...
-  },
+  }
 }
+--[[
 ]]
 
 
@@ -67,9 +74,10 @@ end
 
 -- Lazy-loaded Lookups module to avoid circular dependency
 -- Observer Pattern Integration
-local function notify_observers_safe(event_type, data)
-  -- Safe notification that handles module load order
-local success, gui_observer = pcall(require, "core.events.gui_observer")
+
+--- Safe notification that handles module load order
+function Cache.notify_observers_safe(event_type, data)
+  local success, gui_observer = pcall(require, "core.events.gui_observer")
   if success and gui_observer.GuiEventBus then
     gui_observer.GuiEventBus.notify(event_type, data)
   end
@@ -201,10 +209,16 @@ function Cache.get_player_data(player)
 end
 
 ---@param player LuaPlayer
--- Returns the player's favorites array, or an empty table if not found.
----@return table[]
+--- Returns the player's favorites array, or nil if not found/invalid.
+---@return table[]|nil
 function Cache.get_player_favorites(player)
+  if not player or not player.valid or not player.surface or not player.surface.index then
+    return nil
+  end
   local player_data = Cache.get_player_data(player)
+  if not player_data.surfaces or not player_data.surfaces[player.surface.index] then
+    return nil
+  end
   local favorites = player_data.surfaces[player.surface.index].favorites or {}
   return favorites
 end
@@ -215,6 +229,7 @@ end
 function Cache.is_player_favorite(player, gps)
   if not player or not player.valid or not gps or gps == "" then return nil end
   local player_faves = Cache.get_player_favorites(player)
+  if not player_faves then return nil end
   for _, v in pairs(player_faves) do
     if v.gps == gps then
       return v
@@ -237,16 +252,21 @@ end
 
 
 --- Get persistent surface data for a given surface index.
----@param surface_index uint
----@return table Surface data table (persistent)
+---@return table|nil Surface data table (persistent) or nil if invalid
 function Cache.get_surface_data(surface_index)
+  if not surface_index or type(surface_index) ~= "number" then
+    return nil
+  end
   return init_surface_data(surface_index)
 end
 
 --- Get the persistent tag table for a given surface index.
 ---@param surface_index uint
----@return table<string, any> Table of tags indexed by GPS string.
+---@return table<string, any>|nil Table of tags indexed by GPS string, or nil if invalid
 function Cache.get_surface_tags(surface_index)
+  if not surface_index or type(surface_index) ~= "number" then
+    return nil
+  end
   local sdata = init_surface_data(surface_index)
   return sdata and sdata.tags or {}
 end
@@ -331,7 +351,7 @@ function Cache.get_tag_by_gps(player, gps)
   end
 
   -- Notify player if chart_tag is invalid
-  notify_observers_safe("invalid_chart_tag", { player = player, gps = gps })
+  Cache.notify_observers_safe("invalid_chart_tag", { player = player, gps = gps })
   return nil
 end
 
@@ -349,6 +369,9 @@ end
 function Cache.set_tag_editor_data(player, data)
   if not data then data = {} end
   local pdata = Cache.get_player_data(player)
+  if not pdata or not pdata.tag_editor_data then
+    return nil
+  end
 
   -- If data is empty table, clear all tag_editor_data
   local is_empty = true

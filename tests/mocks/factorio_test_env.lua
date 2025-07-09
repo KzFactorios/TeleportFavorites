@@ -22,5 +22,6 @@ if not _G.defines then
     }
 end
 
--- Export as a module (no-op, just for require semantics)
+-- Always require the FavoriteUtils mock for all test environments
+require("tests.mocks.favorite_utils_mock")
 return true
