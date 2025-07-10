@@ -55,10 +55,7 @@ function MockCache.get_player_favorites(player)
   return player_data.favorites
 end
 
--- Get tag by GPS
-function MockCache.get_tag_by_gps(gps)
-  return nil -- Default implementation returns nil
-end
+
 
 -- Lookups submodule
 MockCache.Lookups = {
@@ -66,11 +63,44 @@ MockCache.Lookups = {
   get_chart_tag_cache = function(surface_index)
     return {} -- Default empty cache
   end,
-  
   -- Invalidate surface chart tags
   invalidate_surface_chart_tags = function(surface_index)
     -- No-op for tests
+  end,
+  -- Add stub for find_chart_tags to avoid nil error in lookups
+  find_chart_tags = function(surface, force)
+    return {} -- Return empty for test
   end
 }
+
+-- Set player favorites for a given player (for test control)
+function MockCache.set_player_favorites(favorites)
+  -- For simplicity, always set for player index 1
+  if not player_data_storage[1] then
+    player_data_storage[1] = {
+      favorites = {},
+      drag_favorite = { active = false },
+      tag_editor_data = {},
+      fave_bar_slots_visible = true,
+      show_player_coords = true
+    }
+  end
+  player_data_storage[1].favorites = favorites
+end
+
+-- Set tag by GPS (for test control)
+local tag_by_gps = nil
+function MockCache.set_tag_by_gps(tag)
+  tag_by_gps = tag
+end
+
+function MockCache.get_tag_by_gps(gps)
+  return tag_by_gps
+end
+
+function MockCache.clear()
+  for k in pairs(player_data_storage) do player_data_storage[k] = nil end
+  tag_by_gps = nil
+end
 
 return MockCache

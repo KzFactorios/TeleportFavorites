@@ -15,7 +15,9 @@ These functions were extracted from large GUI builder methods to improve
 maintainability and reduce function complexity.
 ]]
 
-local GuiBase = require("gui.gui_base")
+-- Allow dependency injection for GuiBase (for testing)
+local _G = _G or _ENV or {}
+local GuiBase = _G.__TF_GUIBASE__ or require("gui.gui_base")
 
 local ErrorHandler = require("core.utils.error_handler")
 local Enum = require("prototypes.enums.enum")

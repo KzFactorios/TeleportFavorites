@@ -27,7 +27,7 @@ local DeleteFavoriteCommand = {}
 
 --- Handler for the delete favorite by slot command
 ---@param command table Command data from Factorio API
-local function _handle_delete_favorite_by_slot(command)
+function DeleteFavoriteCommand._handle_delete_favorite_by_slot(command)
     local player = game.get_player(command.player_index)
     if not player or not player.valid then return end
 
@@ -115,11 +115,13 @@ local function _handle_delete_favorite_by_slot(command)
 end
 
 --- Register all delete favorite commands
+
+--- Register all delete favorite commands
 function DeleteFavoriteCommand.register_commands()
     commands.add_command(
-        Constants.COMMANDS.DELETE_FAVORITE_BY_SLOT, 
-        {"teleport-favorites.command-delete-favorite-help"}, 
-        _handle_delete_favorite_by_slot
+        Constants.COMMANDS.DELETE_FAVORITE_BY_SLOT,
+        {"teleport-favorites.command-delete-favorite-help"},
+        DeleteFavoriteCommand._handle_delete_favorite_by_slot
     )
 end
 

@@ -102,14 +102,15 @@ function ChartTagOwnershipManager.on_player_left_game(event)
     return
   end
 
-  local player_name = player.name
   ErrorHandler.debug_log("Player left game - checking chart tag ownership", {
     player_name = player_name,
     player_index = event.player_index
   })
   local reset_count = 0
   local reason = event.reason or ""
-  if reason == (defines.disconnect_reason.switching_servers or defines.disconnect_reason.kicked_and_deleted or defines.disconnect_reason.banned) then
+  if reason == defines.disconnect_reason.switching_servers
+      or reason == defines.disconnect_reason.kicked_and_deleted
+      or reason == defines.disconnect_reason.banned then
     -- Reset ownership for all chart tags owned by this player
     ---@diagnostic disable-next-line: assign-type-mismatch
     reset_count = ChartTagOwnershipManager.reset_ownership_for_player(player_name)

@@ -11,10 +11,15 @@ local mock_map = {
     ["core.utils.error_handler"] = "tests.mocks.mock_error_handler",
     ["core.utils.game_helpers"] = "tests.mocks.mock_game_helpers",
     ["gui.favorites_bar.fave_bar"] = "tests.mocks.mock_fave_bar",
-    ["gui.gui_base"] = "tests.mocks.mock_gui_base"
+    ["gui.gui_base"] = "tests.mocks.mock_gui_base",
+    ["settings"] = "tests.mocks.mock_settings"
 }
 
 function require(name)
+    -- Never mock the SUT file, always load the real one for coverage
+    if name == "core.commands.debug_commands" then
+        return real_require(name)
+    end
     if mock_map[name] then
         return real_require(mock_map[name])
     end

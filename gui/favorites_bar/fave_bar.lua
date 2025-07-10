@@ -119,15 +119,22 @@ end
 
 function fave_bar.build(player, force_show)
   if not player or not player.valid then return end
-  
+
   -- Hide favorites bar when editing space platforms
   -- Allow force_show to override all checks for initialization
   if not force_show then
     -- Use shared space platform detection logic
-    if SmallHelpers.should_hide_favorites_bar_for_space_platform(player) then
+    if fave_bar.SmallHelpers == nil then
+      fave_bar.SmallHelpers = SmallHelpers or (remote and remote.interfaces and remote.interfaces["SmallHelpers"] and remote.interfaces["SmallHelpers"]) or nil
+    end
+    local should_hide = false
+    if fave_bar.SmallHelpers and fave_bar.SmallHelpers.should_hide_favorites_bar_for_space_platform then
+      should_hide = fave_bar.SmallHelpers.should_hide_favorites_bar_for_space_platform(player)
+    end
+    if should_hide then
       return
     end
-    
+
     -- Also skip for god mode and spectator mode
     if player.controller_type == defines.controllers.god or 
        player.controller_type == defines.controllers.spectator then

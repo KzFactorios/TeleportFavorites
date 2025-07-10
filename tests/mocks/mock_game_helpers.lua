@@ -12,4 +12,5 @@ function GameHelpers.player_print(player, msg)
     player:print(msg)
   end
 end
+function GameHelpers.clear() end
 return GameHelpers

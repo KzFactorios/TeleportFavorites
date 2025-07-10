@@ -20,7 +20,9 @@ Functions:
 
 --]]
 
-local GuiBase = require("gui.gui_base")
+-- Allow dependency injection for GuiBase (for testing)
+local _G = _G or _ENV or {}
+local GuiBase = _G.__TF_GUIBASE__ or require("gui.gui_base")
 local GuiValidation = require("core.utils.gui_validation")
 local GuiHelpers = require("core.utils.gui_helpers")
 local GameHelpers = require("core.utils.game_helpers")

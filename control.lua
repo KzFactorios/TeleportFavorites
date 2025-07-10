@@ -103,3 +103,5 @@ script.on_event(defines.events.on_tick, function(event)
   end
 end)
 
+
+if script.active_mods["gvv"] then require("__gvv__.gvv")() end

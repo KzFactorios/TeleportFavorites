@@ -4,7 +4,9 @@
 local mock_fave_bar = {}
 
 function mock_fave_bar.build(player, force)
-    -- No-op for tests
+    if player and player.valid then
+        player._fave_bar_built = (force and "forced" or "normal")
+    end
     return true
 end
 

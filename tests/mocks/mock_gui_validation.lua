@@ -11,6 +11,8 @@ function mock_gui_validation.find_child_by_name(parent, name)
         local found = mock_gui_validation.find_child_by_name(child, name)
         if found then return found end
     end
+    -- Also check direct property for test convenience
+    if parent[name] and parent[name].valid then return parent[name] end
     return nil
 end
 
