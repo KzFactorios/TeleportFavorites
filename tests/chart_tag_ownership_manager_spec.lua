@@ -1,36 +1,3 @@
-  it("on_player_removed does not log reset when no tags owned (reset_count == 0)", function()
-    local tag = make_chart_tag("Carol", true)
-    local surface = make_surface(1, { tag })
-    -- Bob owns no tags
-    _G.game = { surfaces = { [1] = surface }, get_player = function(idx) return { name = "Bob" } end }
-    mock_cache.Lookups.get_chart_tag_cache = function() return { tag } end
-    mock_error_handler.clear()
-    local event = { player_index = 1 }
-    ChartTagOwnershipManager.on_player_removed(event)
-    local calls = mock_error_handler.get_calls()
-    local found = false
-    for _, call in ipairs(calls) do
-      if call.msg == "Reset chart tag ownership due to player removal" then found = true end
-    end
-    assert(not found, "Should not log reset due to player removal when reset_count == 0")
-  end)
-
-  it("on_player_left_game does not log reset when reason does not match and reset_count == 0", function()
-    local tag = make_chart_tag("Carol", true)
-    local surface = make_surface(1, { tag })
-    -- Bob owns no tags
-    _G.game = { surfaces = { [1] = surface }, get_player = function(idx) return { name = "Bob" } end }
-    mock_cache.Lookups.get_chart_tag_cache = function() return { tag } end
-    mock_error_handler.clear()
-    local event = { player_index = 1, reason = defines.disconnect_reason.afk }
-    ChartTagOwnershipManager.on_player_left_game(event)
-    local calls = mock_error_handler.get_calls()
-    local found = false
-    for _, call in ipairs(calls) do
-      if call.msg == "Reset chart tag ownership due to player leaving" then found = true end
-    end
-    assert(not found, "Should not log reset due to player leaving when reset_count == 0 and reason does not match")
-  end)
 -- tests/chart_tag_ownership_manager_spec.lua
 -- Test coverage for core/control/chart_tag_ownership_manager.lua
 
@@ -59,6 +26,7 @@ _G.defines = {
 
 local ChartTagOwnershipManager = old_require("core.control.chart_tag_ownership_manager")
 
+-- Helper functions must be defined before use
 local function make_surface(index, tags)
   return {
     index = index,
@@ -102,8 +70,8 @@ describe("ChartTagOwnershipManager", function()
     end
     local count = ChartTagOwnershipManager.reset_ownership_for_player("Alice")
     assert(count == 2, "Should reset 2 tags owned by Alice")
-    assert(tag1.last_user == "", "Tag1 owner reset")
-    assert(tag3.last_user == "", "Tag3 owner reset")
+    assert(tag1.last_user == nil, "Tag1 owner reset")
+    assert(tag3.last_user == nil, "Tag3 owner reset")
   end)
 
   it("reset_ownership_for_player returns 0 for invalid player and logs warning", function()
@@ -122,7 +90,7 @@ describe("ChartTagOwnershipManager", function()
     mock_error_handler.clear()
     local event = { player_index = 1, reason = defines.disconnect_reason.switching_servers }
     ChartTagOwnershipManager.on_player_left_game(event)
-    assert(tag.last_user == "" or tag.last_user.name == nil or tag.last_user == nil)
+    assert(tag.last_user == nil, "Tag owner should be reset to nil for switching_servers")
     local calls = mock_error_handler.get_calls()
     local found = false
     for _, call in ipairs(calls) do
@@ -139,7 +107,7 @@ describe("ChartTagOwnershipManager", function()
     mock_error_handler.clear()
     local event = { player_index = 1, reason = defines.disconnect_reason.kicked_and_deleted }
     ChartTagOwnershipManager.on_player_left_game(event)
-    assert(tag.last_user == "" or tag.last_user.name == nil or tag.last_user == nil)
+    assert(tag.last_user == nil, "Tag owner should be reset to nil for kicked_and_deleted")
     local calls = mock_error_handler.get_calls()
     local found = false
     for _, call in ipairs(calls) do
@@ -156,7 +124,7 @@ describe("ChartTagOwnershipManager", function()
     mock_error_handler.clear()
     local event = { player_index = 1, reason = defines.disconnect_reason.banned }
     ChartTagOwnershipManager.on_player_left_game(event)
-    assert(tag.last_user == "" or tag.last_user.name == nil or tag.last_user == nil)
+    assert(tag.last_user == nil, "Tag owner should be reset to nil for banned")
     local calls = mock_error_handler.get_calls()
     local found = false
     for _, call in ipairs(calls) do
@@ -173,7 +141,7 @@ describe("ChartTagOwnershipManager", function()
     mock_error_handler.clear()
     local event = { player_index = 1 }
     ChartTagOwnershipManager.on_player_removed(event)
-    assert(tag.last_user == "" or tag.last_user.name == nil or tag.last_user == nil)
+    assert(tag.last_user == nil, "Tag owner should be reset to nil for player removal")
     local calls = mock_error_handler.get_calls()
     local found = false
     for _, call in ipairs(calls) do
@@ -194,5 +162,39 @@ describe("ChartTagOwnershipManager", function()
       if call.type == "warn" then warn_count = warn_count + 1 end
     end
     assert(warn_count >= 2, "Should log warn for both left and removed invalid player")
+  end)
+
+  it("on_player_removed does not log reset when no tags owned (reset_count == 0)", function()
+    local tag = make_chart_tag("Carol", true)
+    local surface = make_surface(1, { tag })
+    -- Bob owns no tags
+    _G.game = { surfaces = { [1] = surface }, get_player = function(idx) return { name = "Bob" } end }
+    mock_cache.Lookups.get_chart_tag_cache = function() return { tag } end
+    mock_error_handler.clear()
+    local event = { player_index = 1 }
+    ChartTagOwnershipManager.on_player_removed(event)
+    local calls = mock_error_handler.get_calls()
+    local found = false
+    for _, call in ipairs(calls) do
+      if call.msg == "Reset chart tag ownership due to player removal" then found = true end
+    end
+    assert(not found, "Should not log reset due to player removal when reset_count == 0")
+  end)
+
+  it("on_player_left_game does not log reset when reason does not match and reset_count == 0", function()
+    local tag = make_chart_tag("Carol", true)
+    local surface = make_surface(1, { tag })
+    -- Bob owns no tags
+    _G.game = { surfaces = { [1] = surface }, get_player = function(idx) return { name = "Bob" } end }
+    mock_cache.Lookups.get_chart_tag_cache = function() return { tag } end
+    mock_error_handler.clear()
+    local event = { player_index = 1, reason = defines.disconnect_reason.afk }
+    ChartTagOwnershipManager.on_player_left_game(event)
+    local calls = mock_error_handler.get_calls()
+    local found = false
+    for _, call in ipairs(calls) do
+      if call.msg == "Reset chart tag ownership due to player leaving" then found = true end
+    end
+    assert(not found, "Should not log reset due to player leaving when reset_count == 0 and reason does not match")
   end)
 end)
