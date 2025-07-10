@@ -21,8 +21,9 @@ _G.game = {
 
 
 -- Patch spies BEFORE loading SUT
-make_spy(package.loaded["core.cache.cache"], "ensure_surface_cache")
-make_spy(package.loaded["core.cache.cache"], "set_player_surface")
+local Cache = require("core.cache.cache")
+make_spy(Cache, "ensure_surface_cache")
+make_spy(Cache, "set_player_surface")
 
 -- Now load SUT (handlers) AFTER patching spies
 package.loaded["core.events.handlers"] = nil

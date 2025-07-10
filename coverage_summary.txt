@@ -1,0 +1,14 @@
+TeleportFavorites Test Coverage Report
+========================================
+Generated: 2025-07-10 00:48:01
+Overall Coverage: 86/128 lines (67.19%)
+
+
+Core Modules
+------------
+core/utils/locale_utils.lua: 17/59 lines (28.81%) LOW
+core/control/chart_tag_ownership_manager.lua: 53/53 lines (100.00%) HIGH
+
+Other Modules
+-------------
+      -- Centralized enum access point for TeleportFavorites: 16/16 lines (100.00%) HIGH

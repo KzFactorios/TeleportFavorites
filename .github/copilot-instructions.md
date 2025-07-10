@@ -164,7 +164,7 @@ prioritize fixing errors over fixing failures
 when creating test code, do not change, update or otherwise modify the production code. If you or I determine that the production code needs to be changed, please ask for permission first and explain why the production codes needs amending. I will then decide if the change is necessary and if so, I will ask you to make the change.
 
 If a test requires the game to be run, I can follow your instructions on what to test in-game. However, I have seen you control a game instance in previous tests and I would like you to do that in the future. If you cannot, please let me know so I can adjust my expectations. Suggest how to get you to run the game instance for testing purposes.
-Do not append the more flag/parameter to powershell commands. Always try to present information to be easily digested by the developer.
+Do not append any pager flags/parameters to powershell commands. Always try to present information to be easily digested by the developer.
 
 
 

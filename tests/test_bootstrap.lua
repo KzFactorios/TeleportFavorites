@@ -1,3 +1,15 @@
+if not _G.storage then
+  _G.storage = {
+    cache = {},
+    players = {},
+    surfaces = {},
+  }
+end
+-- Try to load luacov for coverage, but don't fail if it's not available
+local success, luacov = pcall(require, "luacov")
+if not success then
+  print("LuaCov not found. Coverage will not be collected.")
+end
 -- Patch FavoriteUtils mock globally before any SUT loads
 local favorite_utils_mock = require("tests.mocks.favorite_utils_mock")
 _G.FavoriteUtils = favorite_utils_mock
@@ -9,12 +21,18 @@ package.loaded["core.favorite.favorite_utils"] = favorite_utils_mock
 -- Patch AdminUtils mock before any other require
 require("tests.mocks.admin_utils_mock")
 
+-- Setup global Factorio environment with proper settings mock
+require("tests.mocks.factorio_test_env")
+
 -- Canonical player mocks
 local PlayerFavoritesMocks = require("tests.mocks.player_favorites_mocks")
 
 -- Create mocks for dependencies
 local Cache = {
-  init = function() end,
+  init = function() 
+    if not _G.storage then _G.storage = {} end
+    if not _G.storage.mod_version then _G.storage.mod_version = "1.0.0" end
+  end,
   reset_transient_player_states = function() end,
   get_player_data = function() return {} end,
   set_tag_editor_data = function() end,
@@ -22,6 +40,14 @@ local Cache = {
   set_player_surface = function() end,
   get_tag_by_gps = function() return nil end,
   get_tag_editor_data = function() return {} end,
+  get_surface_data = function() return {} end,
+  sanitize_for_storage = function(data) return data end,
+  get_player_teleport_history = function() return {} end,
+  set_tag_editor_delete_mode = function() end,
+  reset_tag_editor_delete_mode = function() end,
+  get_mod_version = function() return "1.0.0" end,
+  get = function(key) return nil end,
+  create_tag_editor_data = function(options) return options or {} end,
   Lookups = {
     ensure_surface_cache = function() end,
     invalidate_surface_chart_tags = function() end
@@ -48,10 +74,22 @@ local spy_utils = require("tests.mocks.spy_utils")
 local make_spy = spy_utils.make_spy
 
 -- Patch all required modules BEFORE any SUT is loaded
-package.loaded["core.cache.cache"] = Cache
+-- Don't patch core.cache.cache - let it load normally since it's being tested
+-- but ensure it has access to Lookups
+local Cache = require("core.cache.cache")
+if not Cache.Lookups then
+  Cache.Lookups = {
+    ensure_surface_cache = function() end,
+    invalidate_surface_chart_tags = function() end
+  }
+end
+-- package.loaded["core.cache.cache"] = Cache
 package.loaded["core.control.fave_bar_gui_labels_manager"] = FaveBarGuiLabelsManager
 package.loaded["gui.favorites_bar.fave_bar"] = fave_bar
-package.loaded["core.utils.position_utils"] = { needs_normalization = function() return false end }
+package.loaded["core.utils.position_utils"] = { 
+  needs_normalization = function() return false end,
+  is_walkable_position = function() return true end
+}
 -- Patch GPSUtils with all required methods for tests
 local function pad(num, len)
   local s = tostring(math.floor(num + 0.5))
@@ -80,6 +118,8 @@ package.loaded["core.events.tag_editor_event_helpers"] = {
   find_nearby_chart_tag = function() return nil end
 }
 package.loaded["core.utils.settings_access"] = { get_chart_tag_click_radius = function() return 5 end }
+--[[
+-- Don't patch player_favorites - let it load normally for testing
 package.loaded["core.favorite.player_favorites"] = setmetatable({
   new = function(player)
     return {
@@ -88,11 +128,16 @@ package.loaded["core.favorite.player_favorites"] = setmetatable({
       surface_index = (player and player.surface and player.surface.index) or 1,
       favorites = {},
       get_favorite_by_gps = function() return nil end,
-      update_gps_coordinates = function() return true end
+      update_gps_coordinates = function() return true end,
+      add_favorite = function() return true, nil end,
+      remove_favorite = function() return true end,
+      toggle_favorite_lock = function() return true end,
+      get_favorite_by_slot = function() return nil end
     }
   end,
   update_gps_for_all_players = function() return {} end
 }, { __index = function() return function() end end })
+--]]
 package.loaded["core.utils.gui_validation"] = { find_child_by_name = function() return nil end }
 package.loaded["core.utils.gui_helpers"] = {}
 package.loaded["core.events.chart_tag_modification_helpers"] = {
@@ -101,8 +146,17 @@ package.loaded["core.events.chart_tag_modification_helpers"] = {
   update_tag_and_cleanup = function() end,
   update_favorites_gps = function() end
 }
-local enum_mock = require("tests.mocks.enum_mock")
-package.loaded["prototypes.enums.enum"] = enum_mock
+-- Let enum load normally - it has utility functions the tests need
+-- local enum_mock = require("tests.mocks.enum_mock")
+-- package.loaded["prototypes.enums.enum"] = enum_mock
+-- 
+-- -- Add CoreEnums to the enum mock for tests that expect it
+-- enum_mock.CoreEnums = {
+--   TELEPORT_STRATEGY = {
+--     SAFE_TELEPORT = "safe_teleport",
+--     FORCE_TELEPORT = "force_teleport"
+--   }
+-- }
 
 -- Patch Lua package.path to include tests/ and tests/mocks/ for require()
 package.path = table.concat({
@@ -114,11 +168,12 @@ package.path = table.concat({
 -- Optionally, patch busted output to always flush prints
 io.stdout:setvbuf('no')
 
--- Patch constants to always use the production slot count for all tests
-local constants_mock = require("tests.mocks.constants_mock")
-constants_mock.settings.MAX_FAVORITE_SLOTS = 10
-package.loaded["constants"] = constants_mock
-_G.Constants = constants_mock
+-- Let constants load normally - don't patch it
+-- local constants_mock = require("tests.mocks.constants_mock")
+-- constants_mock.settings.MAX_FAVORITE_SLOTS = 10
+-- constants_mock.settings.TAG_TEXT_MAX_LENGTH = 100 -- Add missing constant
+-- package.loaded["constants"] = constants_mock
+-- _G.Constants = constants_mock
 
 -- Set up spies for all handler dependencies BEFORE SUT is loaded
 make_spy(fave_bar, "build")

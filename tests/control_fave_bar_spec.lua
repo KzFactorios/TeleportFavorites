@@ -11,7 +11,13 @@ CursorUtils.is_dragging_favorite = function() return false end
 if not _G.game then _G.game = {} end
 if not _G.game.get_player then
   _G.game.get_player = function(idx)
-    return { name = "TestPlayer", index = idx or 1, valid = true, print = function() end }
+    return { 
+      name = "TestPlayer", 
+      index = idx or 1, 
+      valid = true, 
+      print = function() end,
+      surface = { index = 1, name = "nauvis" }
+    }
   end
 end
 local ControlFaveBar = require("core.control.control_fave_bar")

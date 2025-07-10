@@ -46,9 +46,7 @@ storage = {
     ...
   }
 }
---[[
 ]]
-
 
 local mod_version = require("core.utils.version")
 local FavoriteUtils = require("core.favorite.favorite")
@@ -152,7 +150,6 @@ local function init_player_data(player)
 
   local player_data = storage.players[player.index]
   player_data.surfaces[player.surface.index] = player_data.surfaces[player.surface.index] or {}
-
   player_data.surfaces[player.surface.index].favorites = init_player_favorites(player)
   player_data.player_name = player.name or "Unknown"
   player_data.render_mode = player_data.render_mode or player.render_mode
@@ -165,8 +162,9 @@ local function init_player_data(player)
   player_data.show_player_coords = player_data.show_player_coords
   if player_data.show_player_coords == nil then
     -- Default to the player's setting or true if setting doesn't exist
-    local settings = settings.get_player_settings(player)
-    player_data.show_player_coords = settings and settings["show-player-coords"] and settings["show-player-coords"].value or true
+    ---@diagnostic disable-next-line: redundant-parameter
+    local player_settings = settings.get_player_settings(player)
+    player_data.show_player_coords = player_settings and player_settings["show-player-coords"] and player_settings["show-player-coords"].value or true
   end
 
   player_data.drag_favorite = player_data.drag_favorite or {
@@ -239,7 +237,7 @@ function Cache.is_player_favorite(player, gps)
 end
 
 --- Initialize and retrieve persistent surface data for a given surface index.
----@param surface_index uint
+---@param surface_index integer
 ---@return table Surface data table (persistent)
 local function init_surface_data(surface_index)
   Cache.init()
@@ -261,7 +259,7 @@ function Cache.get_surface_data(surface_index)
 end
 
 --- Get the persistent tag table for a given surface index.
----@param surface_index uint
+---@param surface_index integer
 ---@return table<string, any>|nil Table of tags indexed by GPS string, or nil if invalid
 function Cache.get_surface_tags(surface_index)
   if not surface_index or type(surface_index) ~= "number" then
@@ -280,9 +278,9 @@ function Cache.remove_stored_tag(gps)
   if not surface_index or surface_index < 1 then return end
   local safe_surface_index = tonumber(surface_index) and math.floor(surface_index) or nil
   if not safe_surface_index or safe_surface_index < 1 then return end
-  local uint_surface_index = safe_surface_index --[[@as uint]]
-  local tag_cache = Cache.get_surface_tags(uint_surface_index)
-  if not tag_cache[gps] then return end
+  local integer_surface_index = safe_surface_index --[[@as integer]]
+  local tag_cache = Cache.get_surface_tags(integer_surface_index)
+  if not tag_cache or not tag_cache[gps] then return end
   tag_cache[gps] = nil
 
   -- Remove the tag from the Lookups cache as well
@@ -299,7 +297,9 @@ function Cache.get_tag_by_gps(player, gps)
   if not gps or gps == "" then return nil end
   local surface_index = player.surface.index
 
-  local tag_cache = Cache.get_surface_tags(surface_index --[[@as uint]])
+  local tag_cache = Cache.get_surface_tags(surface_index --[[@as integer]])
+  if not tag_cache then return nil end
+  
   local cache_keys = {}
   for k, _ in pairs(tag_cache) do
     table.insert(cache_keys, k)
@@ -365,7 +365,7 @@ end
 --- Set the tag editor data for a player (persistent, per-player)
 ---@param player LuaPlayer
 ---@param data table|nil
----@return table
+---@return table|nil
 function Cache.set_tag_editor_data(player, data)
   if not data then data = {} end
   local pdata = Cache.get_player_data(player)
@@ -500,7 +500,7 @@ function Cache.sanitize_for_storage(obj, exclude_fields)
 end
 
 ---@param player LuaPlayer
----@param surface_index uint
+---@param surface_index integer
 ---@return table teleport_history
 function Cache.get_player_teleport_history(player, surface_index)
   if not player or not player.valid then return { stack = {}, pointer = 0 } end
@@ -513,17 +513,19 @@ function Cache.get_player_teleport_history(player, surface_index)
 end
 
 --- Ensure the runtime cache for a surface is initialized (pass-through to Lookups)
----@param surface_index uint
+---@param surface_index integer
 function Cache.ensure_surface_cache(surface_index)
+  ---@diagnostic disable-next-line: undefined-field
   if not Cache.Lookups or not Cache.Lookups.ensure_surface_cache then
     error("Lookups.ensure_surface_cache not available")
   end
+  ---@diagnostic disable-next-line: undefined-field
   return Cache.Lookups.ensure_surface_cache(surface_index)
 end
 
 --- Set the player's surface (for test and event handler use)
 ---@param player LuaPlayer
----@param surface_index uint
+---@param surface_index integer
 function Cache.set_player_surface(player, surface_index)
   if not player or not player.valid then return end
   player.surface = game.surfaces[surface_index]

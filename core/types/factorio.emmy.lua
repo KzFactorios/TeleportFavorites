@@ -79,8 +79,8 @@
 ---@field right_bottom MapPosition
 
 ---@class ChunkPosition
----@field x int
----@field y int
+---@field x integer
+---@field y integer
 
 ---@class Vector
 ---@field x number
@@ -108,10 +108,10 @@
 ---@field entity LuaEntity                
 ---@field circuit_connector_id defines.circuit_connector_id 
 ---@field network_id uint                
----@field signals table<SignalID, {signal: SignalID, count: int}>? 
+---@field signals table<SignalID, {signal: SignalID, count: integer}>? 
 ---@field wires table<defines.wire_type, LuaCircuitNetwork> 
 ---@field valid boolean                  
----@field get_signal fun(signal: SignalID): int
+---@field get_signal fun(signal: SignalID): integer
 ---@field get_circuit_network fun(wire: defines.wire_type): LuaCircuitNetwork?
 
 ---@class LuaCliff
@@ -197,8 +197,8 @@
 ---@field get_request_slot fun(index: uint): SimpleItemStack
 ---@field set_request_slot fun(index: uint, request: SimpleItemStack)
 ---@field clear_request_slot fun(index: uint)
----@field get_signal fun(signal: SignalID): int
----@field get_merged_signal fun(signal: SignalID): int
+---@field get_signal fun(signal: SignalID): integer
+---@field get_merged_signal fun(signal: SignalID): integer
 ---@field get_circuit_network fun(wire: defines.wire_type, circuit_connector?: defines.circuit_connector_id): LuaCircuitNetwork
 ---@field connect_neighbour fun(target: LuaEntity|table): boolean
 ---@field disconnect_neighbour fun(target?: LuaEntity|table): boolean
@@ -248,6 +248,13 @@
 ---@field set_location fun(location: MapPosition)      # Sets the location of the GUI
 ---@field get_auto_center fun(): boolean                 # Gets whether the GUI is auto-centered
 ---@field set_auto_center fun(auto_center: boolean)# Sets whether the GUI is auto-centered
+
+-- Global settings object
+---@class LuaSettings
+---@field get_player_settings fun(player: LuaPlayer): table<string, {value: any}>
+
+---@diagnostic disable-next-line: lowercase-global
+settings = settings or {} ---@type LuaSettings
 
 ---@class LuaGroup
 ---@class LuaHeatBufferPrototype

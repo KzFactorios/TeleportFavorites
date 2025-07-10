@@ -8,7 +8,7 @@ if not _G.storage then _G.storage = {} end
 if not _G.storage.players then _G.storage.players = {} end
 if not _G.settings then _G.settings = {} end
 if not _G.settings.get_player_settings then
-    _G.settings.get_player_settings = function()
+    _G.settings.get_player_settings = function(player)
         return { ["show-player-coords"] = { value = true } }
     end
 end
