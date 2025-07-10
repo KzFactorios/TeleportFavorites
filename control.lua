@@ -14,12 +14,11 @@ Features:
 ]]
 
 -- Import controllers for various mod components
+
 -- Required for favorites bar functionality
 local control_fave_bar = require("core.control.control_fave_bar")
 -- Required for tag editor functionality
 local control_tag_editor = require("core.control.control_tag_editor")
--- Used for data viewer registration
-local control_data_viewer = require("core.control.control_data_viewer")
 
 local event_registration_dispatcher = require("core.events.event_registration_dispatcher")
 local handlers = require("core.events.handlers")
@@ -36,10 +35,10 @@ local success, module = pcall(require, "core.events.gui_observer")
 if success then gui_observer = module end
 
 -- Register all commands
+
 local function register_commands()
   -- Register debug commands
   DebugCommands.register_commands()
-  
   -- Register delete favorite command
   DeleteFavoriteCommand.register_commands()
 end
@@ -73,6 +72,7 @@ local function custom_on_load()
   handlers.on_load()
 end
 
+
 script.on_init(custom_on_init)
 script.on_load(custom_on_load)
 
@@ -84,6 +84,7 @@ script.on_load(custom_on_load)
 --  local player = game.players[event.player_index]
 --  player.exit_cutscene()
 --end)
+
 
 -- Register all mod events through centralized dispatcher
 event_registration_dispatcher.register_all_events(script)
