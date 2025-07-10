@@ -31,7 +31,7 @@ This policy applies to all Lua modules in the codebase.
 ## Module Breakdown
 - All modules should use a class paradigm. Use emmylua definitions to achieve this goal. Store external type in the core/types folder
 - `core/cache/` – Persistent data cache, schema, init methods and helpers.
-- `core/control/` – Lifecycle, event, and utility modules. Top-level event handlers are now split into extension modules (see `control_fave_bar.lua`, `control_tag_editor.lua`, `control_data_viewer.lua`).
+- `core/control/` – Lifecycle, event, and utility modules. Top-level event handlers are now split into extension modules (see `control_fave_bar.lua`, `control_tag_editor.lua`).
 - `core/pattern/` – eg: Observer, singleton, etc modules. Base files to handle design pattern logic
 - `core/tag/sync.lua` – tag synchronization and migration logic.
 - `core/types/` – for external type definitions
@@ -42,7 +42,7 @@ This policy applies to all Lua modules in the codebase.
 - `core/favorite.lua` – Favorite object logic and helpers.
 - `core/tag.lua` – Map tag object logic and helpers.
 - `core/error_handling.lua` – Centralizes error handling and displying the information to the user and/or logging to the correct files
-- `gui/` – GUI modules for favorite bar, tag editor, and cache viewer.
+- `gui/` – GUI modules for favorite bar, tag editor.
 - `core/gps.lua` - used for helper file for gps conversion to a map position and vice versa. Includes any helper methods related to gps
 
 ---

@@ -300,7 +300,7 @@ This standard ensures a stable, professional, and maintainable codebase for the 
 
 ## GUI Naming Convention (2025-06-10)
 
-All GUI element names in the mod use the `{gui_context}_{purpose}_{type}` convention. This is strictly enforced for all new and refactored elements. Example: `tag_editor_move_button`, `fave_bar_slot_button_1`, `data_viewer_close_btn`.
+All GUI element names in the mod use the `{gui_context}_{purpose}_{type}` convention. This is strictly enforced for all new and refactored elements. Example: `tag_editor_move_button`, `fave_bar_slot_button_1`.
 
 ## Event Filtering and Builder/Command Pattern
 

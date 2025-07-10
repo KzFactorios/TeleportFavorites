@@ -5,7 +5,7 @@
 │                  TeleportFavorites Mod                     │
 │                                                            │
 │  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐   │
-│  │ Favorites Bar │  │   Tag Editor  │  │  Data Viewer  │   │
+│  │ Favorites Bar │  │   Tag Editor  │  │  NA  │   │
 │  │               │  │               │  │               │   │
 │  │ - Quick access│  │ - Create/edit │  │ - Debug tool  │   │
 │  │ - Slot mgmt   │  │ - Move mode   │  │ - Browse data │   │
@@ -37,10 +37,6 @@ TeleportFavorites is a robust, multiplayer-safe Factorio mod for managing telepo
   - Move-mode for relocating tags on the map.
   - Ownership and favorite state management.
   - Confirm/cancel dialogs and error feedback.
-- **Data Viewer:**
-  - Inspect player, surface, and lookup data in a scrollable, tabbed GUI.
-  - Adjustable font size and opacity.
-  - Designed for developer and power-user workflows.
 - **Robust Data Handling:**
   - All persistent data is managed via the `Cache` module.
   - Multiplayer-safe, surface-aware, and extensible.
@@ -53,11 +49,9 @@ TeleportFavorites is a robust, multiplayer-safe Factorio mod for managing telepo
 - **Favorites Bar Visibility:** The favorites bar is shown or hidden automatically based on mod settings and game state. There is no dedicated hotkey or command to open it.
 - **Edit a Tag:** Right-click a favorite or use the tag editor hotkey. Edit text/icon, move or delete the tag, or toggle favorite status.
 - **Move a Tag:** Enter move mode in the tag editor, then click a new location on the map.
-- **View Data:** Open the data viewer with Ctrl+F12 (default hotkey) or via command. Switch tabs for player, surface, or lookup data. Adjust font/opacity as needed.
 
 ### Advanced/Developer Features
 - All GUIs are modular and extensible.
-- Data viewer exposes internal state for debugging and development.
 - All persistent data is surface- and player-aware.
 - All public APIs and helpers are EmmyLua-annotated for IDE support.
 
@@ -87,7 +81,6 @@ TeleportFavorites is a robust, multiplayer-safe Factorio mod for managing telepo
 - Continue modularizing event logic and helpers.
 - Expand test coverage, especially for multiplayer and edge cases.
 - Add more robust error handling and user feedback for all GUIs, with a touch of fantasy and mystique. Error and confirmation messages now include flavorful, lore-inspired phrasing to enhance immersion and fun, in keeping with the Factorio v2 spirit.
-- Consider lazy loading or paging for large data sets in the data viewer if needed.
 - All custom button styles are now unified: every interactive button in the mod uses the `tf_slot_button` style, defined in `prototypes/styles.lua` and referenced in all GUI modules. This ensures a consistent, accessible, and vanilla-aligned look across the entire mod.
 - Continue to update documentation as the project evolves.
 

@@ -163,13 +163,6 @@ data:extend {
   },
   {
     type = "custom-input",
-    name = "dv-toggle-data-viewer",
-    key_sequence = "CONTROL + F12",
-    consuming = "game-only",
-    order = "z[data-viewer]"
-  },
-  {
-    type = "custom-input",
     name = "tf-open-tag-editor",
     key_sequence = "mouse-button-2",
     consuming = "none",
@@ -262,21 +255,6 @@ data:extend {
     name = "tf_font_24",
     from = "default",
     size = 24
-  },
-  -- Data viewer and utility shortcuts
-  {
-    type = "custom-input",
-    name = "tf-data-viewer-tab-next",
-    key_sequence = "TAB",
-    consuming = "none",
-    order = "da[data-viewer-1]"
-  },
-  {
-    type = "custom-input",
-    name = "tf-data-viewer-tab-prev",
-    key_sequence = "SHIFT + TAB",
-    consuming = "none",
-    order = "da[data-viewer-2]"
   },
   {
     type = "sprite",

@@ -1,3 +1,0 @@
-NOTE: The following files may contain shared code or helpers that were originally used by the data_viewer feature. Review and refactor as needed for shared use, or remove if no longer needed after all data_viewer code is gone:
-- gui/data_viewer/data_parsing_helpers.lua
-- tests/data_parsing_helpers_spec.lua

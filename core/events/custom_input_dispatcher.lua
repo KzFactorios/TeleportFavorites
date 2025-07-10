@@ -34,7 +34,6 @@ end
 --]]
 
 -- Dependencies
-local control_data_viewer = require("core.control.control_data_viewer")
 local GameHelpers = require("core.utils.game_helpers")
 local ErrorHandler = require("core.utils.error_handler")
 local PlayerFavorites = require("core.favorite.player_favorites")
@@ -119,7 +118,6 @@ local function handle_teleport_to_favorite_slot(event, slot_number)
 end
 
 local default_custom_input_handlers = {
-  ["dv-toggle-data-viewer"] = control_data_viewer.on_toggle_data_viewer,
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "1"] = function(event) handle_teleport_to_favorite_slot(event, 1) end,
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "2"] = function(event) handle_teleport_to_favorite_slot(event, 2) end,
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "3"] = function(event) handle_teleport_to_favorite_slot(event, 3) end,

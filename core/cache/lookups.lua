@@ -178,15 +178,6 @@ local function get_chart_tag_by_gps(gps)
   return match_chart_tag
 end
 
---- Get GPS mapping table for a surface (for data viewer)
----@param surface_index number
----@return table<string, LuaCustomChartTag> gps_mapping Map of GPS strings to chart tags
-local function get_gps_mapping_for_surface(surface_index)
-  local surface_cache = ensure_surface_cache(surface_index)
-  if not surface_cache then return {} end
-  return surface_cache.chart_tags_mapped_by_gps or {}
-end
-
 --- Selectivly remove a chart tag from the cache by GPS.
 --- This is useful when a chart tag is deleted or modified and we want to ensure the cache is up-to-date.
 ---@param gps string
@@ -225,7 +216,6 @@ return {
   get_chart_tag_cache = get_chart_tag_cache,
   get_surface_chart_tags = get_chart_tag_cache, -- Alias for consistency
   get_chart_tag_by_gps = get_chart_tag_by_gps,
-  get_gps_mapping_for_surface = get_gps_mapping_for_surface,
   clear_surface_cache_chart_tags = clear_surface_cache_chart_tags,
   invalidate_surface_chart_tags = clear_surface_cache_chart_tags, -- Alias for consistency
   remove_chart_tag_from_cache_by_gps = remove_chart_tag_from_cache_by_gps,

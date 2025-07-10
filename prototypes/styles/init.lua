@@ -32,7 +32,6 @@ caption_label: Use this style for any other labels in the subheader
 
 require("prototypes.styles.fave_bar")
 require("prototypes.styles.tag_editor")
-require("prototypes.styles.data_viewer")
 
 -- Load enums for color definitions
 local UIEnums = require("prototypes.enums.ui_enums")
@@ -80,7 +79,7 @@ end
 
 --- Place all shared/global style definitions below this line ---
 
--- (No GUI-specific styles should be defined here. See prototypes/styles/fave_bar.lua, styles/tag_editor.lua, styles/data_viewer.lua)
+-- (No GUI-specific styles should be defined here. See prototypes/styles/fave_bar.lua, styles/tag_editor.lua)
 
 gui_style.tf_titlebar_flow = {
   type = "horizontal_flow_style",

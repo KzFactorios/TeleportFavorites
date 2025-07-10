@@ -59,7 +59,6 @@ local gui_event_dispatcher = require("core.events.gui_event_dispatcher")
 local custom_input_dispatcher = require("core.events.custom_input_dispatcher")
 local on_gui_closed_handler = require("core.events.on_gui_closed_handler")
 local handlers = require("core.events.handlers")
-local control_data_viewer = require("core.control.control_data_viewer")
 
 local fave_bar_gui_labels_manager = require("core.control.fave_bar_gui_labels_manager")
 
@@ -514,25 +513,6 @@ function EventRegistrationDispatcher.register_observer_events(script)
   return true
 end
 
---- Register data viewer events (specialized control module)
----@param script table The Factorio script object
----@return boolean success
-function EventRegistrationDispatcher.register_data_viewer_events(script)
-  if not script or type(script.on_event) ~= "function" then
-    ErrorHandler.warn_log("Invalid script object for data viewer events registration")
-    return false
-  end
-
-  local success = pcall(control_data_viewer.register, script)
-  if not success then
-    ErrorHandler.warn_log("Failed to register data viewer events")
-    return false
-  end
-
-  ErrorHandler.debug_log("Data viewer events registration complete")
-  return true
-end
-
 --- Register all mod events in proper order
 ---@param script table The Factorio script object
 ---@return boolean success True if all registrations succeeded
@@ -552,7 +532,6 @@ function EventRegistrationDispatcher.register_all_events(script)
   results.gui = EventRegistrationDispatcher.register_gui_events(script)
   results.custom_input = EventRegistrationDispatcher.register_custom_input_events(script)
   results.observer = EventRegistrationDispatcher.register_observer_events(script)
-  results.data_viewer = EventRegistrationDispatcher.register_data_viewer_events(script)
   
 
   -- Register all favorites bar GUI label updaters and controls

@@ -4,7 +4,7 @@ Shared GUI builder and utility functions for TeleportFavorites
 ============================================================
 Module: gui/GuiBaselua
 
-Provides reusable helpers for constructing all major GUIs in the mod (favorites bar, tag editor, data viewer).
+Provides reusable helpers for constructing all major GUIs in the mod
 
 Features:
 - Consistent creation of frames, buttons, labels, textfields, flows, and draggable titlebars.

@@ -15,7 +15,7 @@ Architecture:
 
 Supported Events:
 -----------------
-- on_gui_click: Dispatches to control_fave_bar, control_tag_editor, control_data_viewer
+- on_gui_click: Dispatches to control_fave_bar, control_tag_editor
 - on_gui_text_changed: Handles immediate text input storage (tag editor)
 - on_gui_elem_changed: Handles icon picker changes (tag editor)
 - on_gui_confirmed: Handles modal dialog confirmations
@@ -25,7 +25,6 @@ Integration Pattern:
 Each GUI control module implements standardized event handler signatures:
 - control_fave_bar.on_fave_bar_gui_click(event)
 - control_tag_editor.on_tag_editor_gui_click(event, script)
-- control_data_viewer.on_data_viewer_gui_click(event)
 
 Error Handling:
 ---------------
@@ -50,7 +49,6 @@ local DebugCommands = require("core.commands.debug_commands")
 local Constants = require("constants")
 local Enum = require("prototypes.enums.enum")
 local ErrorHandler = require("core.utils.error_handler")
-local control_data_viewer = require("core.control.control_data_viewer")
 local Cache = require("core.cache.cache")
 local GuiValidation = require("core.utils.gui_validation")
 local GameHelpers = require("core.utils.game_helpers")
@@ -187,9 +185,6 @@ function M.register_gui_handlers(script)
       -- Dispatch based on parent_gui
       if parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR or parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM then
         control_tag_editor.on_tag_editor_gui_click(event, script)
-        return true
-      elseif parent_gui.name == Enum.GuiEnum.GUI_FRAME.DATA_VIEWER then
-        control_data_viewer.on_data_viewer_gui_click(event)
         return true
       else
         -- Special handling for tag editor elements that might have wrong parent detection

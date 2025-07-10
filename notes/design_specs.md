@@ -26,7 +26,7 @@ This document provides a high-level overview of the mod's goals, architecture, a
 │                │                  │                     │  │
 │ - Tag Editor   │ - Input Events   │ - Tag Management    │  │
 │ - Favorites Bar│ - Button Clicks  │ - Favorite Logic    │  │
-│ - Data Viewer  │ - Mouse Events   │ - Teleport Strategy │  │
+│ - NA           │ - Mouse Events   │ - Teleport Strategy │  │
 ├────────────────┴──────────────────┴─────────────────────┤  │
 │              Cache / Storage (Source of Truth)          │  │
 ├──────────────────────────────────────────────────────┬──┤  │
@@ -56,7 +56,7 @@ The mod implements a strict "storage as source of truth" pattern for all GUI sta
 - Simplifies multiplayer state management
 - Enables reliable undo/redo functionality
 
-This pattern is implemented consistently across all complex GUIs (tag editor, favorites bar, data viewer).
+This pattern is implemented consistently across all complex GUIs
 
 ### Modular Event Handling
 
@@ -92,12 +92,12 @@ All data operations are surface-aware through the `Cache` module:
 - `core/cache/` – Persistent data cache and helpers (all persistent data is stored in `storage`).
 - `core/chart_tag/` – Class definitions and methods for managing chart_tags
 - `core/tag/` – Class definitions and methods for managing tags
-- `core/control/` – Lifecycle, event, and utility modules. Top-level event handlers are now split into extension modules (see `control_fave_bar.lua`, `control_tag_editor.lua`, `control_data_viewer.lua`).
+- `core/control/` – Lifecycle, event, and utility modules. Top-level event handlers are now split into extension modules (see `control_fave_bar.lua`, `control_tag_editor.lua`).
 - `core/pattern/` – Class definitions and methods for managing design patterns
 - `core/sync_tag/` – sync taghronization and migration logic.
 - `core/types/` – Annotations and definitions for external types
 - `core/utils/` – Helper files
-- `gui/` – GUI modules for the favorite bar, tag editor, and cache viewer. All gui modules should use base_gui.lua for shared properties and methods
+- `gui/` – GUI modules for the favorite bar, tag editor. All gui modules should use base_gui.lua for shared properties and methods
 - `tests/` – Automated test suite for all major modules.
 - `notes/` – Design specs, data schema, and architecture documentation. This will be updated as the project progresses
 
@@ -137,7 +137,7 @@ All data operations are surface-aware through the `Cache` module:
 - The `{gui_context}_{purpose}_{type}` naming convention is enforced and documented for all GUIs.
 - Event filtering and builder/command pattern usage are described in each GUI's notes file.
 - Best practices for accessibility, error handling, and multiplayer safety are documented and implemented.
-- See `tag_editor.md`, `fave_bar.md`, and `data_viewer.md` for details.
+- See `tag_editor.md`, `fave_bar.md` for details.
 
 ## See Also
 - `data_schema.md` – Persistent data schema and structure.

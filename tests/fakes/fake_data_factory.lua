@@ -88,7 +88,6 @@ function FakeDataFactory:generate_players(favorites, histories, config)
     players[idx] = {
       player_name = name,
       render_mode = render_mode,
-      data_viewer_settings = { font_size = font_size },
       favorites = favorites and favorites[name] or {},
       teleport_history = history,
       fave_bar_slots_visible = bar_visible

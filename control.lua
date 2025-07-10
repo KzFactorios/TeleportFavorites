@@ -6,7 +6,7 @@ Main event handler and public API entry points.
 
 Features:
 - Robust, multiplayer-safe GUI and data handling for favorites, tags, and teleportation.
-- Centralized event wiring for all GUIs (favorites bar, tag editor, data viewer).
+- Centralized event wiring for all GUIs (favorites bar, tag editor).
 - EmmyLua-annotated helpers for safe player messaging, teleportation, and GUI frame destruction.
 - Move-mode UX for tag editor, with robust state management and multiplayer safety.
 - All persistent data access is via the Cache module for consistency and safety.

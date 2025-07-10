@@ -28,9 +28,6 @@ local Constants = {
     -- GPS settings
     GPS_PAD_NUMBER = 3,              -- Min digits for GPS coordinate display
     BLANK_GPS = "1000000.1000000.1", -- Default empty GPS string for initialization
-    
-    -- Data display settings
-    DATA_VIEWER_INDENT = 4,          -- Number of spaces for indentation in data viewer
   
     -- Feature toggles
     FAVORITES_ON = "favorites_on",   -- Setting name for enabling/disabling favorites feature

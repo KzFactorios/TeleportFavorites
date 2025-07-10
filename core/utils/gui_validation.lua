@@ -153,8 +153,7 @@ function GuiValidation.get_gui_frame_by_element(element)
       local name = current.name or ""
       -- Use enum constants instead of hardcoded strings
       if name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR or
-         name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM or  
-         name == Enum.GuiEnum.GUI_FRAME.DATA_VIEWER or
+         name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM or
          name == Enum.GuiEnum.GUI_FRAME.FAVE_BAR then
         return current
       end

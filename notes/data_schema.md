@@ -45,10 +45,6 @@ storage = {
       render_mode = string,            -- Player's current render mode
       fave_bar_slots_visible = boolean,-- Whether favorites bar slots are visible (true = visible, false = hidden)
                                        -- Controls the eye/eyelash icon: eyelash when visible, eye when hidden
-      data_viewer_settings = {
-        active_tab = string,           -- "player_data", "surface_data", "lookup", "all_data"
-        font_size = number,            -- Font size for data viewer (6-24)
-      },
       tag_editor_data = {              -- Created via Cache.create_tag_editor_data()
         gps = string,                  -- GPS where tag editor was opened
         move_gps = string,             -- GPS during move operations (temporary)

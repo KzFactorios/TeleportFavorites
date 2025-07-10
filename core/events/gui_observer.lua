@@ -20,7 +20,7 @@ Observer Types:
 - FavoriteObserver: Responds to favorite add/remove/update events
 - TagObserver: Handles tag creation/modification/deletion
 - TeleportObserver: Manages teleportation-related GUI updates
-- DataObserver: Updates data viewer when cache changes
+- DataObserver: Updates when cache changes
 - ValidationObserver: Handles real-time validation feedback
 
 Event Types:
