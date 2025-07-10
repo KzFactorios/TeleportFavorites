@@ -6,12 +6,8 @@
 -- Ensure debug output is visible in test logs
 _G.print = print
 
--- Busted assertion helpers for local use
-local busted = require("busted")
-local assert = require("luassert")
-local describe = busted.describe
-local it = busted.it
-local before_each = busted.before_each
+-- Use custom test framework
+require("tests.test_framework")
 local mock_luaPlayer = require("tests.mocks.mock_luaPlayer")
 require("tests.mocks.mock_require_patch")
 require("tests.test_bootstrap")

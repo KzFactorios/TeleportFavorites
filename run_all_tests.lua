@@ -3,8 +3,19 @@ package.path = "./?.lua;" .. package.path
 
 -- Add luacov paths to package.path (if available)
 local lua_version = _VERSION:match("Lua (%d+%.%d+)")
-local luarocks_path = "C:/Users/Dev/scoop/apps/luarocks/current/rocks/share/lua/" .. (lua_version or "5.1")
-package.path = package.path .. ";" .. luarocks_path .. "/?.lua"
+print("Detected Lua version: " .. (lua_version or "unknown"))
+
+-- Add multiple possible LuaRocks paths
+local possible_paths = {
+  "C:/Users/Dev/scoop/apps/luarocks/current/rocks/share/lua/" .. (lua_version or "5.1"),
+  "C:/Users/Dev/scoop/apps/luarocks/current/rocks/share/lua/5.4",
+  "C:/Users/Dev/scoop/apps/luarocks/current/rocks/share/lua/5.1"
+}
+
+for _, path in ipairs(possible_paths) do
+  package.path = package.path .. ";" .. path .. "/?.lua"
+  package.path = package.path .. ";" .. path .. "/?/init.lua"
+end
 
 -- Mock for game global
 _G.game = _G.game or {
@@ -26,77 +37,28 @@ else
   print("Consider installing LuaCov with: luarocks install luacov")
 end
 
--- Create basic test framework functions
-_G.describe = function(desc, fn)
-  print("\nDESCRIBE: " .. desc)
-  fn()
-end
-
-local before_each_fn = nil
-_G.before_each = function(fn)
-  before_each_fn = fn
-end
-
-_G.it = function(desc, fn)
-  print("  IT: " .. desc)
-  
-  -- Run before_each if set
-  if before_each_fn then
-    pcall(before_each_fn)
-  end
-  
-  -- Run the test
-  local success, err = pcall(fn)
-  if success then
-    print("    ✓ PASS")
-  else
-    print("    ✗ FAIL: " .. tostring(err))
-  end
-end
-
--- Functions needed by tests
-_G.are_same = function(a, b, msg)
-  if a ~= b then
-    error((msg or "Assertion failed: values not equal") .. "\nExpected: " .. tostring(a) .. "\nActual:   " .. tostring(b), 2)
-  end
-end
-
-_G.is_true = function(v, msg)
-  if not v then
-    error((msg or "Assertion failed: value is not true") .. "\nActual: " .. tostring(v), 2)
-  end
-end
-
-_G.is_nil = function(v, msg)
-  if v ~= nil then
-    error((msg or "Assertion failed: value is not nil") .. "\nActual: " .. tostring(v), 2)
-  end
-end
-
-_G.has_error = function(fn, msg)
-  local ok = pcall(fn)
-  if ok then
-    error((msg or "Assertion failed: function did not error as expected"), 2)
-  end
-end
-
--- Function to run a test file
+-- Function to run a single test file
 local function run_test_file(file_path)
   print("\n==== Running " .. file_path .. " ====")
   
-  -- Reset test environment (clean globals that might be set by previous tests)
-  before_each_fn = nil
+  -- Clear any existing test framework state
+  package.loaded["tests.test_framework"] = nil
+  
+  -- Load fresh test framework for this file
+  local test_framework = require("tests.test_framework")
   
   local success, err = pcall(function()
     dofile(file_path)
   end)
   
   if not success then
-    print("ERROR in " .. file_path .. ": " .. tostring(err))
+    print("ERROR loading " .. file_path .. ": " .. tostring(err))
     return false
   end
   
-  return true
+  -- Run the tests using the framework
+  local test_success = test_framework.run()
+  return test_success
 end
 
 -- Get all test files
@@ -118,19 +80,21 @@ end
 -- Run all tests
 print("==== Running All Tests ====")
 local test_files = get_test_files()
-local tests_run = 0
-local tests_passed = 0
+local total_files = 0
+local successful_files = 0
 
 for _, file in ipairs(test_files) do
-  local passed = run_test_file(file)
-  tests_run = tests_run + 1
-  if passed then tests_passed = tests_passed + 1 end
+  total_files = total_files + 1
+  local file_success = run_test_file(file)
+  if file_success then 
+    successful_files = successful_files + 1 
+  end
 end
 
-print("\n==== Test Summary ====")
-print("Tests run: " .. tests_run)
-print("Tests passed: " .. tests_passed)
-print("Tests failed: " .. (tests_run - tests_passed))
+print("\n==== Overall Test Summary ====")
+print("Test files processed: " .. total_files)
+print("Test files successful: " .. successful_files)
+print("Test files failed: " .. (total_files - successful_files))
 
 -- Generate coverage report if LuaCov was enabled
 if has_luacov then

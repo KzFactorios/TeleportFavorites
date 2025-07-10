@@ -11,7 +11,8 @@ _G.describe = function(desc, fn)
   current_describe = {
     description = desc,
     tests = {},
-    before_each = nil
+    before_each = nil,
+    after_each = nil
   }
   table.insert(tests, current_describe)
   fn()
@@ -39,9 +40,35 @@ _G.before_each = function(fn)
   end
 end
 
+_G.after_each = function(fn)
+  if not current_describe then
+    -- Global after_each - not implemented
+    print("Warning: global after_each not implemented")
+  else
+    -- Local after_each for current describe block
+    current_describe.after_each = fn
+  end
+end
+
+-- Deep equality check for tables
+local function deep_equals(a, b)
+  if a == b then return true end
+  if type(a) ~= type(b) then return false end
+  if type(a) ~= "table" then return false end
+  
+  -- Check if both tables have the same keys and values
+  for k, v in pairs(a) do
+    if not deep_equals(v, b[k]) then return false end
+  end
+  for k, v in pairs(b) do
+    if not deep_equals(v, a[k]) then return false end
+  end
+  return true
+end
+
 -- Define assertion functions
 _G.are_same = function(a, b, msg)
-  if a ~= b then
+  if not deep_equals(a, b) then
     error((msg or "Assertion failed: values not equal") .. "\nExpected: " .. tostring(a) .. "\nActual:   " .. tostring(b), 2)
   end
   return true
@@ -67,6 +94,182 @@ _G.has_error = function(fn, msg)
     error((msg or "Assertion failed: function did not error as expected"), 2)
   end
   return true
+end
+
+-- Add compatibility for Busted-style assert syntax
+_G.assert = setmetatable({}, {
+  __index = function(t, k)
+    if k == "has_no" then
+      return {
+        errors = function(fn, msg)
+          local ok, err = pcall(fn)
+          if not ok then
+            error((msg or "Assertion failed: function errored unexpectedly") .. "\nError: " .. tostring(err), 2)
+          end
+          return true
+        end
+      }
+    elseif k == "is_true" then
+      return is_true
+    elseif k == "is_false" then
+      return function(v, msg)
+        if v then
+          error((msg or "Assertion failed: value is not false") .. "\nActual: " .. tostring(v), 2)
+        end
+        return true
+      end
+    elseif k == "is_table" then
+      return function(v, msg)
+        if type(v) ~= "table" then
+          error((msg or "Assertion failed: value is not a table") .. "\nActual type: " .. type(v), 2)
+        end
+        return true
+      end
+    elseif k == "is_function" then
+      return function(v, msg)
+        if type(v) ~= "function" then
+          error((msg or "Assertion failed: value is not a function") .. "\nActual type: " .. type(v), 2)
+        end
+        return true
+      end
+    elseif k == "is_string" then
+      return function(v, msg)
+        if type(v) ~= "string" then
+          error((msg or "Assertion failed: value is not a string") .. "\nActual type: " .. type(v), 2)
+        end
+        return true
+      end
+    elseif k == "is_nil" then
+      return is_nil
+    elseif k == "is_not_nil" then
+      return function(v, msg)
+        if v == nil then
+          error((msg or "Assertion failed: value is nil"), 2)
+        end
+        return true
+      end
+    elseif k == "equals" then
+      return are_same
+    elseif k == "same" then
+      return are_same
+    elseif k == "are" then
+      return {
+        same = are_same
+      }
+    elseif k == "spy" then
+      return function(spy_obj)
+        return {
+          was_called = function()
+            if not spy_obj or not spy_obj.was_called then
+              error("Expected to be called >0 time(s), but was called 0 time(s)", 2)
+            end
+            return true
+          end,
+          was_not_called = function()
+            if spy_obj and spy_obj.was_called then
+              error("Expected to not be called, but was called", 2)
+            end
+            return true
+          end
+        }
+      end
+    else
+      -- Fallback for any other assert methods
+      return function(...)
+        error("Unsupported assertion: assert." .. k, 2)
+      end
+    end
+  end,
+  __call = function(t, condition, msg)
+    -- Handle basic assert(condition, message)
+    if not condition then
+      error(msg or "Assertion failed", 2)
+    end
+    return true
+  end
+})
+
+-- Add spy functionality
+_G.spy = {
+  new = function(fn)
+    local spy_data = {
+      calls = {},
+      was_called = false
+    }
+    
+    local function wrapper(...)
+      spy_data.was_called = true
+      table.insert(spy_data.calls, {args = {...}})
+      if fn then
+        return fn(...)
+      end
+    end
+    
+    -- Add spy methods directly to the wrapper function
+    wrapper.calls = spy_data.calls
+    wrapper.was_called = spy_data.was_called
+    wrapper.was_called_with = function(...)
+      local args = {...}
+      for _, call in ipairs(spy_data.calls) do
+        local match = true
+        for i, arg in ipairs(args) do
+          if call.args[i] ~= arg then
+            match = false
+            break
+          end
+        end
+        if match then return true end
+      end
+      return false
+    end
+    
+    -- Update wrapper's was_called status
+    local original_wrapper = wrapper
+    wrapper = function(...)
+      spy_data.was_called = true
+      original_wrapper.was_called = true
+      table.insert(spy_data.calls, {args = {...}})
+      if fn then
+        return fn(...)
+      end
+    end
+    
+    -- Copy methods to new wrapper
+    wrapper.calls = spy_data.calls
+    wrapper.was_called_with = original_wrapper.was_called_with
+    
+    return wrapper
+  end,
+  on = function(target, method_name)
+    if not target or not target[method_name] then
+      error("spy.on: method '" .. method_name .. "' does not exist on target")
+    end
+    
+    local original = target[method_name]
+    local spy_fn = _G.spy.new(original)
+    target[method_name] = spy_fn
+    
+    return spy_fn
+  end
+}
+
+-- Add basic assertion support for spies by extending the assert metatable
+local original_assert_index = getmetatable(_G.assert).__index
+getmetatable(_G.assert).__index = function(t, k)
+  if k == "spy" then
+    return function(spy_obj)
+      return {
+        was_called = function()
+          if not spy_obj or not spy_obj.was_called then
+            error("Expected to be called >0 time(s), but was called 0 time(s)", 2)
+          end
+          return true
+        end
+      }
+    end
+  else
+    return original_assert_index and original_assert_index(t, k)
+  end
 end
 
 -- Function to run all tests
@@ -108,6 +311,12 @@ local function run_tests()
           test = test.description,
           error = err
         })
+      end
+      
+      -- Run after_each if defined
+      local local_after_each = describe.after_each  -- Save local reference
+      if local_after_each then
+        pcall(local_after_each)
       end
     end
   end

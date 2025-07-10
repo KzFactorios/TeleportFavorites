@@ -69,8 +69,8 @@ local ErrorHandler = {
   debug_log = function() end
 }
 
-local assert = require('luassert')
-local spy = require('luassert.spy')
+-- Use our custom test framework instead of luassert
+require('tests.test_framework')
 
 -- Mock package.loaded for dependencies
 package.loaded["core.cache.cache"] = Cache

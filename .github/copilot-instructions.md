@@ -154,17 +154,61 @@ This project uses Windows PowerShell as the default shell. When providing termin
 
 **REMEMBER**: Complete 3 things perfectly rather than attempt 10 and get stuck halfway.
 
-// the next line was added as an ad-hoc instruction
-all test files should end with _spec.lua and must reside in the /tests folder
-all mock files should be placed in the /tests/mocks folder. use that for all mocks used in testing
-all fake files should be placed in the /tests/fakes folder. use that for all fakes used in testing
-Comprehensive summary files are unnecessary. I will ask when I would like them. Do not create without permission
-we need to write tests and fakes to test both single-player and multiplayer scenarios. so when i ask for a test, please ensure that it is written in a way that can be run in both single-player and multiplayer modes.
-prioritize fixing errors over fixing failures
-when creating test code, do not change, update or otherwise modify the production code. If you or I determine that the production code needs to be changed, please ask for permission first and explain why the production codes needs amending. I will then decide if the change is necessary and if so, I will ask you to make the change.
+## 13. TESTING GUIDELINES & STANDARDS
 
-If a test requires the game to be run, I can follow your instructions on what to test in-game. However, I have seen you control a game instance in previous tests and I would like you to do that in the future. If you cannot, please let me know so I can adjust my expectations. Suggest how to get you to run the game instance for testing purposes.
-Do not append any pager flags/parameters to powershell commands. Always try to present information to be easily digested by the developer.
+### File Structure & Organization
+- [ ] **Test Files**: All test files MUST end with `_spec.lua` and reside in the `/tests` folder
+- [ ] **Mock Files**: Place all mocks in `/tests/mocks` folder for consistency
+- [ ] **Fake Files**: Place all fakes in `/tests/fakes` folder for test doubles
+- [ ] **No Individual Test Runners**: Do NOT add individual test runners to test files
+
+### Test Execution & Coverage
+- [ ] **Use Centralized Runner**: Execute tests using `lua run_all_tests.lua` in the project root
+- [ ] **Automatic Discovery**: The test runner automatically finds all `*_spec.lua` files
+- [ ] **Coverage Reports**: LuaCov integration generates coverage automatically when available
+- [ ] **Coverage Analysis**: Python scripts generate formatted coverage summaries post-test
+- [ ] **Test Framework**: Uses custom framework from `tests/test_framework.lua` with proper isolation
+- [ ] **Framework Reset**: Test framework state is cleared between each test file execution
+
+### Test Design Requirements
+- [ ] **Multi-Mode Support**: Write tests to work in both single-player and multiplayer scenarios
+- [ ] **Error Priority**: Prioritize fixing syntax/compile errors over test failures
+- [ ] **Production Code Protection**: NEVER modify production code when writing tests
+  - If production code changes are needed, ask permission first and explain why
+  - User will decide if changes are necessary and authorize modifications
+- [ ] **Use Framework Functions**: Use `is_true()`, `are_same()`, `is_nil()` NOT `assert.is_true()`
+- [ ] **Lua 5.1 Compatibility**: Use `table.unpack` fallbacks for Lua 5.1 compatibility
+
+### Test Development Workflow
+1. **Test Creation**: Focus only on test logic, use established mocking patterns
+2. **Error Handling**: Handle both valid and invalid inputs gracefully
+3. **Isolation**: Ensure tests don't interfere with each other
+4. **Documentation**: Test names should clearly describe what is being tested
+
+### Current Test Status & Known Issues
+- [ ] **Working Coverage**: LuaCov successfully integrated, generates detailed reports
+- [ ] **Test Framework**: Custom framework works with proper `describe()` and `it()` blocks
+- [ ] **Assertion Issues**: Some tests use wrong assertion syntax (legacy external framework)
+- [ ] **Missing Functions**: Some tests reference `after_each()` which isn't implemented
+- [ ] **Lua Version**: Running on Lua 5.1.5 with LuaRocks 5.4 compatibility layer
+
+### Game Instance Testing
+- [ ] **In-Game Testing**: For tests requiring actual game execution, provide clear instructions
+- [ ] **Automated Game Control**: Agent should control game instances when possible
+- [ ] **Capability Declaration**: If unable to control game instances, inform user to adjust expectations
+
+### Coverage Analysis Results
+- [ ] **Overall Coverage**: Currently 48.16% (1908/3962 lines)
+- [ ] **Perfect Modules**: 4 modules at 100% coverage
+- [ ] **Module Breakdown**: 43 production files analyzed
+- [ ] **Report Generation**: Automatic coverage summaries in multiple formats
+- [ ] **Low Coverage Areas**: GUI and drag-drop utilities need more test coverage
+
+### Reporting Standards
+- [ ] **No Comprehensive Summaries**: Do not create summary files without explicit permission
+- [ ] **PowerShell Commands**: Never append pager flags/parameters to commands
+- [ ] **Digestible Output**: Present information in easily readable format for developer
+- [ ] **Coverage Reports**: Generated automatically in `luacov.report.out` and formatted summaries
 
 
 

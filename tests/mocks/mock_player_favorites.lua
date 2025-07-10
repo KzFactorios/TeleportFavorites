@@ -9,7 +9,8 @@ end
 
 function MockPlayerFavorites:remove_favorite(gps)
     table.insert(calls, { action = "remove_favorite", player = self.player, gps = gps })
-    return table.unpack(MockPlayerFavorites._remove_result)
+    -- Lua 5.1 compatibility: use unpack instead of table.unpack
+    return (table.unpack or unpack)(MockPlayerFavorites._remove_result)
 end
 
 function MockPlayerFavorites.set_remove_result(result)

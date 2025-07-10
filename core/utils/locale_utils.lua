@@ -96,7 +96,8 @@ function LocaleUtils.get_string(player, category, key, params)
     
     -- Return a localized string table that Factorio can process
     if params and type(params) == "table" and #params > 0 then
-        return {locale_key, table.unpack(params)}
+        -- Lua 5.1 compatibility: use unpack instead of table.unpack
+        return {locale_key, (table.unpack or unpack)(params)}
     else
         return {locale_key}
     end

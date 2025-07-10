@@ -86,7 +86,12 @@ def generate_coverage_report(modules, total_covered, total_lines):
     report.append("TeleportFavorites Test Coverage Report")
     report.append("=" * 40)
     report.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    report.append(f"Overall Coverage: {total_covered}/{total_lines} lines ({total_covered/total_lines*100:.2f}%)\n")
+    
+    # Handle division by zero case
+    if total_lines == 0:
+        report.append(f"Overall Coverage: {total_covered}/{total_lines} lines (No data available)\n")
+    else:
+        report.append(f"Overall Coverage: {total_covered}/{total_lines} lines ({total_covered/total_lines*100:.2f}%)\n")
     
     # Group modules by type
     core_modules = {}

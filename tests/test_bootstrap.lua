@@ -27,36 +27,6 @@ require("tests.mocks.factorio_test_env")
 -- Canonical player mocks
 local PlayerFavoritesMocks = require("tests.mocks.player_favorites_mocks")
 
--- Create mocks for dependencies
-local Cache = {
-  init = function() 
-    if not _G.storage then _G.storage = {} end
-    if not _G.storage.mod_version then _G.storage.mod_version = "1.0.0" end
-  end,
-  reset_transient_player_states = function() end,
-  get_player_data = function() return {} end,
-  set_tag_editor_data = function() end,
-  ensure_surface_cache = function(...) end,
-  set_player_surface = function() end,
-  get_tag_by_gps = function() return nil end,
-  get_tag_editor_data = function() return {} end,
-  get_surface_data = function() return {} end,
-  sanitize_for_storage = function(data) return data end,
-  get_player_teleport_history = function() return {} end,
-  set_tag_editor_delete_mode = function() end,
-  reset_tag_editor_delete_mode = function() end,
-  get_mod_version = function() return "1.0.0" end,
-  get = function(key) return nil end,
-  create_tag_editor_data = function(options) return options or {} end,
-  Lookups = {
-    ensure_surface_cache = function() end,
-    invalidate_surface_chart_tags = function() end
-  },
-  remove_stored_tag = function(gps)
-    return true
-  end
-}
-
 local FaveBarGuiLabelsManager = {
   register_all = function() end,
   initialize_all_players = function() end,
@@ -73,9 +43,7 @@ local fave_bar = {
 local spy_utils = require("tests.mocks.spy_utils")
 local make_spy = spy_utils.make_spy
 
--- Patch all required modules BEFORE any SUT is loaded
--- Don't patch core.cache.cache - let it load normally since it's being tested
--- but ensure it has access to Lookups
+-- Load real Cache module and ensure it has proper dependencies
 local Cache = require("core.cache.cache")
 if not Cache.Lookups then
   Cache.Lookups = {
@@ -83,7 +51,7 @@ if not Cache.Lookups then
     invalidate_surface_chart_tags = function() end
   }
 end
--- package.loaded["core.cache.cache"] = Cache
+
 package.loaded["core.control.fave_bar_gui_labels_manager"] = FaveBarGuiLabelsManager
 package.loaded["gui.favorites_bar.fave_bar"] = fave_bar
 package.loaded["core.utils.position_utils"] = { 
@@ -110,7 +78,9 @@ package.loaded["core.utils.gps_utils"] = setmetatable({
   map_position_from_gps = function() return {x=100, y=200} end,
   get_surface_index_from_gps = function(gps) return 1 end
 }, { __index = function() return function() end end })
-package.loaded["core.utils.error_handler"] = { debug_log = function() end }
+-- Load real ErrorHandler module instead of mock
+local ErrorHandler = require("core.utils.error_handler")
+package.loaded["core.utils.error_handler"] = ErrorHandler
 package.loaded["core.utils.cursor_utils"] = { end_drag_favorite = function() end }
 package.loaded["gui.tag_editor.tag_editor"] = { build = function() end }
 package.loaded["core.events.tag_editor_event_helpers"] = {
