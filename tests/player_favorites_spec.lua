@@ -13,6 +13,18 @@ local custom_assert = {
 -- Shared Factorio test environment (globals, settings, etc.)
 require("tests.mocks.factorio_test_env")
 
+-- Setup global settings BEFORE loading any modules that depend on it
+_G.settings = {
+    global = {
+        ["tf-max-favorite-slots"] = { value = 10 },
+        ["tf-enable-teleport-history"] = { value = true },
+        ["tf-max-teleport-history"] = { value = 20 }
+    },
+    get_player_settings = function(player)
+        return { ["show-player-coords"] = { value = true } }
+    end
+}
+
 -- Mock player factory (must be defined before any use)
 local PlayerFavoritesMocks = require("tests.mocks.player_favorites_mocks")
 
@@ -45,9 +57,6 @@ spy_utils.make_spy(_G.GuiObserver.GuiEventBus, "notify")
 -- Now require the production observer module, so it uses the test mock
 require("core.events.gui_observer")
 
--- Require PlayerFavorites only after all mocks are set up
-local PlayerFavorites = require("core.favorite.player_favorites")
-
 if not global then
     global = {}
 end
@@ -58,30 +67,6 @@ end
 if not storage then
     storage = {}
 end
-
-
-
--- Mock Cache
-local Cache = require("core.cache.cache")
--- Patch Cache.get_player_favorites to return the correct favorites array for the given player
-Cache.get_player_favorites = function(player)
-    if not player or not player.valid then return {} end
-    if not storage.players then return {} end
-    local pdata = storage.players[player.index]
-    if not pdata or not pdata.surfaces then return {} end
-    local sdata = pdata.surfaces[player.surface.index]
-    if not sdata or not sdata.favorites then return {} end
-    return sdata.favorites
-end
-if not Cache.get_tag_by_gps then
-    function Cache.get_tag_by_gps(player, gps)
-        return nil
-    end
-end
-
-
--- Now require the production observer module, so it uses the test mock
-require("core.events.gui_observer")
 
 -- Tests
 
@@ -97,15 +82,67 @@ describe("PlayerFavorites", function()
         if game and game.players then
             for k in pairs(game.players) do game.players[k] = nil end
         end
-        -- Reset PlayerFavorites singleton cache
-        local PlayerFavorites = require("core.favorite.player_favorites")
-        PlayerFavorites._instances = {}
+        
+        -- CRITICAL: PlayerFavorites needs the REAL Cache module, not the mock
+        package.loaded["core.cache.cache"] = nil
+        package.loaded["core.favorite.player_favorites"] = nil
+        
+        -- Re-require Cache first and patch it for testing
+        Cache = require("core.cache.cache")
+        
+        -- Patch Cache.get_player_favorites to return the correct favorites array for the given player
+        Cache.get_player_favorites = function(player)
+            if not player or not player.valid then return {} end
+            if not storage.players then return {} end
+            local pdata = storage.players[player.index]
+            if not pdata or not pdata.surfaces then return {} end
+            local sdata = pdata.surfaces[player.surface.index]
+            if not sdata or not sdata.favorites then return {} end
+            return sdata.favorites
+        end
+        if not Cache.get_tag_by_gps then
+            Cache.get_tag_by_gps = function(player, gps)
+                return nil
+            end
+        end
+        
+        -- Recreate player mocks after clearing
+        _G.game = {
+            players = {
+                [1] = PlayerFavoritesMocks.mock_player(1)
+            },
+            tick = 123456
+        }
+        
+        -- Reset storage and reset PlayerFavorites singleton cache
+        _G.storage = { players = {} }
+        
+        local success, result = pcall(require, "core.favorite.player_favorites")
+        if success then
+            _G.PlayerFavorites = result
+            print("[DEBUG] After require - PlayerFavorites type:", type(_G.PlayerFavorites))
+            print("[DEBUG] After require - PlayerFavorites.new:", type(_G.PlayerFavorites.new))
+            print("[DEBUG] After require - PlayerFavorites.add_favorite:", type(_G.PlayerFavorites.add_favorite))
+            print("[DEBUG] After require - PlayerFavorites.__index:", _G.PlayerFavorites.__index)
+        else
+            print("[ERROR] Failed to require PlayerFavorites:", result)
+            error("Cannot continue without PlayerFavorites: " .. tostring(result))
+        end
+        _G.PlayerFavorites._instances = {}
+        
         -- Reset notified
         if PlayerFavoritesMocks and PlayerFavoritesMocks.reset_notified then
             PlayerFavoritesMocks.reset_notified()
         end
         -- Ensure Constants mock is always correct
         _G.Constants = require("tests.mocks.constants_mock")
+        
+        -- Create PlayerFavorites instance for testing
+        -- This MUST be done after all setup is complete
+        local player = _G.game.players[1]
+        if player and player.valid then
+            playerFavorites = _G.PlayerFavorites.new(player)
+        end
     end)
     after_each(function()
         -- Clean up again after each test
@@ -118,8 +155,7 @@ describe("PlayerFavorites", function()
         if game and game.players then
             for k in pairs(game.players) do game.players[k] = nil end
         end
-        local PlayerFavorites = require("core.favorite.player_favorites")
-        PlayerFavorites._instances = {}
+        _G.PlayerFavorites._instances = {}
         if PlayerFavoritesMocks and PlayerFavoritesMocks.reset_notified then
             PlayerFavoritesMocks.reset_notified()
         end
@@ -146,7 +182,14 @@ describe("PlayerFavorites", function()
         local pfs = {}
         -- Each player adds the same favorite (should update faved_by_players)
         for i = 1, 5 do
-            pfs[i] = PlayerFavorites.new(game.players[i])
+            pfs[i] = _G.PlayerFavorites.new(game.players[i])
+            print("[DEBUG] Created PlayerFavorites for player", i, "type:", type(pfs[i]))
+            print("[DEBUG] PlayerFavorites module add_favorite:", type(_G.PlayerFavorites.add_favorite))
+            print("[DEBUG] _G.PlayerFavorites.__index:", type(_G.PlayerFavorites.__index))
+            if pfs[i] then
+                print("[DEBUG] PlayerFavorites has add_favorite method:", type(pfs[i].add_favorite))
+                print("[DEBUG] PlayerFavorites metatable:", getmetatable(pfs[i]))
+            end
             pfs[i]:add_favorite(tag_id)
             assert.is_not_nil(table.concat(tag.faved_by_players, ","):find(tostring(i)), "Player "..i.." should be in faved_by_players after add")
         end
@@ -195,7 +238,7 @@ describe("PlayerFavorites", function()
         local gps = "gps_shared"
         local pfs = {}
         for i = 1, 15 do
-            pfs[i] = PlayerFavorites.new(game.players[i])
+            pfs[i] = _G.PlayerFavorites.new(game.players[i])
             -- Ensure all slots are blank
             for slot = 1, Constants.settings.MAX_FAVORITE_SLOTS do
                 pfs[i].favorites[slot] = FavoriteUtils.get_blank_favorite()
@@ -204,7 +247,7 @@ describe("PlayerFavorites", function()
             pfs[i]:add_favorite(gps)
         end
         -- Update GPS for all players except player 1
-        local affected = PlayerFavorites.update_gps_for_all_players(gps, "gps_new", 1)
+        local affected = _G.PlayerFavorites.update_gps_for_all_players(gps, "gps_new", 1)
         assert.is_table(affected)
         assert.equals(#affected, 14)
         -- All players except player 1 should have their GPS updated
@@ -213,14 +256,14 @@ describe("PlayerFavorites", function()
         end
         
         -- Second update should affect zero players (idempotency check)
-        local affected2 = PlayerFavorites.update_gps_for_all_players(gps, "gps_new", 1)
+        local affected2 = _G.PlayerFavorites.update_gps_for_all_players(gps, "gps_new", 1)
         assert.is_table(affected2)
         assert.equals(#affected2, 0)
     end)
     it("should move a favorite from one slot to another", function()
         local assert = custom_assert
         local player = PlayerFavoritesMocks.mock_player(1)
-        local pf = PlayerFavorites.new(player)
+        local pf = _G.PlayerFavorites.new(player)
         pf:add_favorite("gps1")
         -- print("Before move:")
         -- for i, fav in ipairs(pf.favorites) do print(i, fav and fav.gps or nil, fav and fav.locked or nil) end
@@ -242,8 +285,8 @@ describe("PlayerFavorites", function()
         game.players[1] = player1
         game.players[2] = player2
         -- Each gets a favorite with the same GPS, ensure all slots are blank first using the API only
-        local pf1 = PlayerFavorites.new(player1)
-        local pf2 = PlayerFavorites.new(player2)
+        local pf1 = _G.PlayerFavorites.new(player1)
+        local pf2 = _G.PlayerFavorites.new(player2)
         -- Remove all existing favorites using the API to ensure a clean state
         for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
             local fav1 = pf1.favorites[i]
@@ -259,7 +302,7 @@ describe("PlayerFavorites", function()
         pf1:add_favorite("gps_shared")
         pf2:add_favorite("gps_shared")
         -- Update GPS for all players except player1
-        local affected = PlayerFavorites.update_gps_for_all_players("gps_shared", "gps_new", 1)
+        local affected = _G.PlayerFavorites.update_gps_for_all_players("gps_shared", "gps_new", 1)
         assert.is_table(affected)
         assert.equals(#affected, 1)
         -- Add nil check before accessing affected[1].index
@@ -272,14 +315,15 @@ describe("PlayerFavorites", function()
         assert.equals(pf1.favorites[1].gps, "gps_shared")
         
         -- Second update should affect zero players (idempotency check)
-        local affected2 = PlayerFavorites.update_gps_for_all_players("gps_shared", "gps_new", 1)
+        local affected2 = _G.PlayerFavorites.update_gps_for_all_players("gps_shared", "gps_new", 1)
         assert.is_table(affected2)
         assert.equals(#affected2, 0)
     end)
     it("should not add a favorite when all slots are full", function()
         local assert = custom_assert
+        
         local player = PlayerFavoritesMocks.mock_player(1)
-        local pf = PlayerFavorites.new(player)
+        local pf = _G.PlayerFavorites.new(player)
         -- Fill all slots
         for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
             local fav, err = pf:add_favorite("gps"..i)
@@ -295,7 +339,7 @@ describe("PlayerFavorites", function()
     it("should fail gracefully when removing a non-existent favorite", function()
         local assert = custom_assert
         local player = PlayerFavoritesMocks.mock_player(1)
-        local pf = PlayerFavorites.new(player)
+        local pf = _G.PlayerFavorites.new(player)
         local ok, err = pf:remove_favorite("not_a_gps")
         assert.is_false(ok)
         assert.is_not_nil(err)
@@ -304,7 +348,7 @@ describe("PlayerFavorites", function()
     it("should fail gracefully when toggling lock on invalid slot", function()
         local assert = custom_assert
         local player = PlayerFavoritesMocks.mock_player(1)
-        local pf = PlayerFavorites.new(player)
+        local pf = _G.PlayerFavorites.new(player)
         local ok, err = pf:toggle_favorite_lock(999)
         assert.is_false(ok)
         assert.is_not_nil(err)
@@ -313,7 +357,7 @@ describe("PlayerFavorites", function()
     it("should fail gracefully when updating GPS for non-existent favorite", function()
         local assert = custom_assert
         local player = PlayerFavoritesMocks.mock_player(1)
-        local pf = PlayerFavorites.new(player)
+        local pf = _G.PlayerFavorites.new(player)
         local ok = pf:update_gps_coordinates("not_a_gps", "new_gps")
         assert.is_false(ok)
     end)
@@ -321,7 +365,7 @@ describe("PlayerFavorites", function()
     it("should return nil for get_favorite_by_slot with out-of-bounds index", function()
         local assert = custom_assert
         local player = PlayerFavoritesMocks.mock_player(1)
-        local pf = PlayerFavorites.new(player)
+        local pf = _G.PlayerFavorites.new(player)
         local fav, slot = pf:get_favorite_by_slot(999)
         assert.is_nil(fav)
         assert.is_nil(slot)
@@ -340,8 +384,8 @@ describe("PlayerFavorites", function()
             storage[k] = nil
         end
         -- Clear PlayerFavorites singleton cache to avoid cross-test contamination
-        local PlayerFavorites = require("core.favorite.player_favorites")
-        PlayerFavorites._instances = {}
+        
+        _G.PlayerFavorites._instances = {}
     end)
     
     it("should recover gracefully from corrupted favorites data", function()
@@ -376,7 +420,7 @@ describe("PlayerFavorites", function()
         storage.players[player.index].surfaces[player.surface.index].favorites = corrupted_data
         
         -- Should gracefully handle corrupted data
-        local pf = PlayerFavorites.new(player)
+        local pf = _G.PlayerFavorites.new(player)
         assert.is_table(pf.favorites)
         -- Test should match the actual array size used, which is 5 elements in the corrupted data
         assert.equals(#pf.favorites, 5, "Should have correct number of slots")
@@ -403,7 +447,7 @@ describe("PlayerFavorites", function()
     it("should enforce unique GPS per player", function()
         local assert = custom_assert
         local player = PlayerFavoritesMocks.mock_player(1)
-        local pf = PlayerFavorites.new(player)
+        local pf = _G.PlayerFavorites.new(player)
         
         -- Clear all existing favorites first to ensure a clean state
         for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
@@ -459,11 +503,11 @@ describe("PlayerFavorites", function()
         local gps = "shared_gps"
         local pfs = {}
         for i = 1, 3 do
-            pfs[i] = PlayerFavorites.new(game.players[i])
+            pfs[i] = _G.PlayerFavorites.new(game.players[i])
             pfs[i]:add_favorite(gps)
         end
         -- Test with invalid acting player index (999)
-        local affected = PlayerFavorites.update_gps_for_all_players(gps, "new_gps", 999)
+        local affected = _G.PlayerFavorites.update_gps_for_all_players(gps, "new_gps", 999)
         assert.is_table(affected)
         -- All players except acting player (which does not exist) should be updated
         assert.equals(#affected, 3, "All players should be affected with invalid acting player index")
@@ -471,7 +515,7 @@ describe("PlayerFavorites", function()
             assert.equals(pfs[i].favorites[1].gps, "new_gps", "Player "..i.." favorite should be updated with invalid acting player index")
         end
         -- Test with nil acting player index
-        local affected2 = PlayerFavorites.update_gps_for_all_players("new_gps", "final_gps", nil)
+        local affected2 = _G.PlayerFavorites.update_gps_for_all_players("new_gps", "final_gps", nil)
         assert.is_table(affected2)
         assert.equals(#affected2, 3, "All players should be affected with nil acting player")
         for i = 1, 3 do
@@ -506,7 +550,7 @@ describe("PlayerFavorites", function()
         -- Each player gets the same favorite
         local pfs = {}
         for i = 1, 3 do
-            pfs[i] = PlayerFavorites.new(game.players[i])
+            pfs[i] = _G.PlayerFavorites.new(game.players[i])
             pfs[i]:add_favorite(tag_id)
         end
         
@@ -557,7 +601,7 @@ describe("PlayerFavorites", function()
         local pfs = {}
         local start_time = os.clock()
         for i = 1, num_players do
-            pfs[i] = PlayerFavorites.new(game.players[i])
+            pfs[i] = _G.PlayerFavorites.new(game.players[i])
             pfs[i]:add_favorite("mass_gps")
         end
         local create_time = os.clock() - start_time
@@ -583,19 +627,20 @@ describe("PlayerFavorites", function()
         assert.equals(slot_counts[1], num_players, "All players should have favorite in slot 1")
         -- Update all GPS at once, measuring performance
         start_time = os.clock()
-        local affected = PlayerFavorites.update_gps_for_all_players("mass_gps", "updated_mass_gps", nil)
+        local affected = _G.PlayerFavorites.update_gps_for_all_players("mass_gps", "updated_mass_gps", nil)
         local update_time = os.clock() - start_time
         -- Verify all were updated - now all players should be affected
         assert.equals(#affected, num_players, "All players should be affected with nil acting player index")
         -- Update excluding first player - should affect all except player 1
-        affected = PlayerFavorites.update_gps_for_all_players("updated_mass_gps", "final_mass_gps", 1)
+        affected = _G.PlayerFavorites.update_gps_for_all_players("updated_mass_gps", "final_mass_gps", 1)
         assert.equals(#affected, num_players - 1, "All except player 1 should be affected with acting player index = 1")
     end)
 
     it("should construct with blank favorites if none in storage", function()
         local assert = custom_assert
-        local player = game.players[1]
-        local pf = PlayerFavorites.new(player)
+        local player = PlayerFavoritesMocks.mock_player(1, "test_player", 1)
+        game.players[1] = player
+        local pf = _G.PlayerFavorites.new(player)
         -- print("Constructed favorites:")
         -- for i, fav in ipairs(pf.favorites) do print(i, fav and fav.gps or nil, fav and fav.locked or nil) end
         assert.is_table(pf.favorites)
@@ -607,8 +652,9 @@ describe("PlayerFavorites", function()
 
     it("should add and remove a favorite", function()
         local assert = custom_assert
-        local player = game.players[1]
-        local pf = PlayerFavorites.new(player)
+        local player = PlayerFavoritesMocks.mock_player(1, "test_player", 1)
+        game.players[1] = player
+        local pf = _G.PlayerFavorites.new(player)
         local fav, err = pf:add_favorite("gps1")
         assert.is_table(fav)
         assert.is_nil(err)

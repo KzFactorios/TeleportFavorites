@@ -6,6 +6,16 @@ local Favorite = require("core.favorite.favorite")
 local CollectionUtils = require("core.utils.collection_utils")
 local mock_player_data = require("tests.mocks.mock_player_data")
 
+-- Simple deep copy fallback for tests
+local function simple_deep_copy(obj)
+  if type(obj) ~= "table" then return obj end
+  local copy = {}
+  for k, v in pairs(obj) do
+    copy[k] = simple_deep_copy(v)
+  end
+  return copy
+end
+
 -- Favorite object tests (from favorite_spec.lua)
 describe("Favorite object", function()
   it("should create a favorite with correct properties", function()
@@ -99,7 +109,7 @@ describe("FavoriteUtils 100% coverage", function()
     assert.is_true(fav.locked)
     Favorite.update_property(fav, "locked")
     assert.is_false(fav.locked)
-    local before = CollectionUtils.deep_copy(fav)
+    local before = (CollectionUtils and CollectionUtils.deep_copy) and CollectionUtils.deep_copy(fav) or simple_deep_copy(fav)
     Favorite.update_property(fav, "invalid_property", "some value")
     assert.same(before, fav)
   end)

@@ -10,22 +10,27 @@ local function make_spy(target_table, method_name)
     error("make_spy: method '" .. tostring(method_name) .. "' must exist and be a function on the target table")
   end
   local spy_tbl = {
-    calls = {},
-    call_count = function(self)
-      return #self.calls
-    end,
-    was_called = function(self)
-      return #self.calls > 0
-    end,
-    reset = function(self)
-      self.calls = {}
-    end,
-    revert = function(self)
-      if self._original then
-        target_table[method_name] = self._original
-      end
-    end
+    calls = {}
   }
+  
+  -- Define methods that properly bind to spy_tbl
+  spy_tbl.call_count = function(self)
+    return #(self or spy_tbl).calls
+  end
+  
+  spy_tbl.was_called = function(self)
+    return #(self or spy_tbl).calls > 0
+  end
+  
+  spy_tbl.reset = function(self)
+    (self or spy_tbl).calls = {}
+  end
+  
+  spy_tbl.revert = function(self)
+    if (self or spy_tbl)._original then
+      target_table[method_name] = (self or spy_tbl)._original
+    end
+  end
   spy_tbl._original = orig
   target_table[method_name] = function(...)
     table.insert(spy_tbl.calls, {...})

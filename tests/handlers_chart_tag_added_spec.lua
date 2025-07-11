@@ -198,11 +198,20 @@ describe("Handlers.on_chart_tag_added", function()
         }
       end
     }
-    -- Attach spies to the actual objects in package.loaded
-    needs_normalization_spy = require('luassert.spy').on(package.loaded["core.utils.position_utils"], "needs_normalization")
-    normalize_and_replace_chart_tag_spy = require('luassert.spy').on(package.loaded["core.events.tag_editor_event_helpers"], "normalize_and_replace_chart_tag")
-    debug_log_spy = require('luassert.spy').on(package.loaded["core.utils.error_handler"], "debug_log")
-    invalidate_surface_chart_tags_spy = require('luassert.spy').on(package.loaded["core.cache.cache"].Lookups, "invalidate_surface_chart_tags")
+    -- Create spies using our custom spy system
+    local spy_utils = require("tests.mocks.spy_utils")
+    local make_spy = spy_utils.make_spy
+    
+    make_spy(package.loaded["core.utils.position_utils"], "needs_normalization")
+    make_spy(package.loaded["core.events.tag_editor_event_helpers"], "normalize_and_replace_chart_tag")
+    make_spy(package.loaded["core.utils.error_handler"], "debug_log")
+    make_spy(package.loaded["core.cache.cache"].Lookups, "invalidate_surface_chart_tags")
+    
+    -- Store references for easy access - get the spy objects, not the functions
+    needs_normalization_spy = package.loaded["core.utils.position_utils"].needs_normalization_spy
+    normalize_and_replace_chart_tag_spy = package.loaded["core.events.tag_editor_event_helpers"].normalize_and_replace_chart_tag_spy
+    debug_log_spy = package.loaded["core.utils.error_handler"].debug_log_spy
+    invalidate_surface_chart_tags_spy = package.loaded["core.cache.cache"].Lookups.invalidate_surface_chart_tags_spy
     -- Now require the handler (after patching and spying)
     Handlers = require("core.events.handlers")
   end)
@@ -225,7 +234,7 @@ describe("Handlers.on_chart_tag_added", function()
 
   it("should not normalize coordinates that are already integers", function()
     mock_event.tag.position = {x = 100, y = 200}
-    needs_normalization_spy:clear()
+    needs_normalization_spy:reset()
     PositionUtils.needs_normalization = function() return false end
     Handlers.on_chart_tag_added(mock_event)
     assert.spy(needs_normalization_spy).was_called()
@@ -236,7 +245,7 @@ describe("Handlers.on_chart_tag_added", function()
 
   it("should normalize coordinates that are fractional", function()
     mock_event.tag.position = {x = 100.5, y = 200.5}
-    needs_normalization_spy:clear()
+    needs_normalization_spy:reset()
     PositionUtils.needs_normalization = function() return true end
     Handlers.on_chart_tag_added(mock_event)
     assert.spy(needs_normalization_spy).was_called()
@@ -274,7 +283,7 @@ describe("Handlers.on_chart_tag_added", function()
 
   it("should normalize chart tags with very large fractional positions", function()
     mock_event.tag.position = {x = 1000.9999, y = 2000.9999}
-    needs_normalization_spy:clear()
+    needs_normalization_spy:reset()
     PositionUtils.needs_normalization = function() return true end
     Handlers.on_chart_tag_added(mock_event)
     assert.spy(normalize_and_replace_chart_tag_spy).was_called()
@@ -282,11 +291,10 @@ describe("Handlers.on_chart_tag_added", function()
 
   it("should normalize chart tags with negative fractional positions", function()
     mock_event.tag.position = {x = -100.5, y = -200.5}
-    needs_normalization_spy:clear()
+    needs_normalization_spy:reset()
     PositionUtils.needs_normalization = function() return true end
     Handlers.on_chart_tag_added(mock_event)
     assert.spy(normalize_and_replace_chart_tag_spy).was_called()
   end)
 end)
 
-local assert = require('luassert')

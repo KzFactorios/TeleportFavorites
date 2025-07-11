@@ -158,15 +158,32 @@ _G.assert = setmetatable({}, {
       }
     elseif k == "spy" then
       return function(spy_obj)
+        if not spy_obj then
+          error("assert.spy() called with nil spy object", 2)
+        end
+        if type(spy_obj) ~= "table" then
+          error("assert.spy() called with non-table spy object: " .. type(spy_obj), 2)
+        end
+        if not spy_obj.was_called then
+          error("assert.spy() called with object missing was_called method", 2)
+        end
         return {
           was_called = function()
-            if not spy_obj or not spy_obj.was_called then
+            local success, result = pcall(function() return spy_obj:was_called() end)
+            if not success then
+              error("Error calling spy.was_called(): " .. tostring(result), 2)
+            end
+            if not result then
               error("Expected to be called >0 time(s), but was called 0 time(s)", 2)
             end
             return true
           end,
           was_not_called = function()
-            if spy_obj and spy_obj.was_called then
+            local success, result = pcall(function() return spy_obj:was_called() end)
+            if not success then
+              error("Error calling spy.was_called(): " .. tostring(result), 2)
+            end
+            if result then
               error("Expected to not be called, but was called", 2)
             end
             return true
@@ -207,7 +224,12 @@ _G.spy = {
     
     -- Add spy methods directly to the wrapper function
     wrapper.calls = spy_data.calls
-    wrapper.was_called = spy_data.was_called
+    wrapper.was_called = function()
+      return spy_data.was_called
+    end
+    wrapper.was_not_called = function()
+      return not spy_data.was_called
+    end
     wrapper.was_called_with = function(...)
       local args = {...}
       for _, call in ipairs(spy_data.calls) do
@@ -222,21 +244,6 @@ _G.spy = {
       end
       return false
     end
-    
-    -- Update wrapper's was_called status
-    local original_wrapper = wrapper
-    wrapper = function(...)
-      spy_data.was_called = true
-      original_wrapper.was_called = true
-      table.insert(spy_data.calls, {args = {...}})
-      if fn then
-        return fn(...)
-      end
-    end
-    
-    -- Copy methods to new wrapper
-    wrapper.calls = spy_data.calls
-    wrapper.was_called_with = original_wrapper.was_called_with
     
     return wrapper
   end,
@@ -260,8 +267,14 @@ getmetatable(_G.assert).__index = function(t, k)
     return function(spy_obj)
       return {
         was_called = function()
-          if not spy_obj or not spy_obj.was_called then
+          if not spy_obj or not spy_obj.was_called() then
             error("Expected to be called >0 time(s), but was called 0 time(s)", 2)
+          end
+          return true
+        end,
+        was_not_called = function()
+          if spy_obj and spy_obj.was_called() then
+            error("Expected to not be called, but was called", 2)
           end
           return true
         end
@@ -269,6 +282,54 @@ getmetatable(_G.assert).__index = function(t, k)
     end
   else
     return original_assert_index and original_assert_index(t, k)
+  end
+end
+
+-- Test isolation: reset global state between tests
+local function reset_test_state()
+  -- Preserve test exposure flags
+  local test_flags = {}
+  for k, v in pairs(_G) do
+    if k:match("^_TEST_EXPOSE_") then
+      test_flags[k] = v
+    end
+  end
+  
+  -- Reset package.loaded for ALL modules except test framework and essential Lua modules
+  for module_name, _ in pairs(package.loaded) do
+    -- Keep essential Lua modules and test framework
+    if not module_name:match("^io$") and 
+       not module_name:match("^os$") and
+       not module_name:match("^math$") and
+       not module_name:match("^string$") and
+       not module_name:match("^table$") and
+       not module_name:match("^debug$") and
+       not module_name:match("^package$") and
+       not module_name:match("^coroutine$") and
+       module_name ~= "tests.test_framework" and 
+       module_name ~= "tests.test_bootstrap" then
+      package.loaded[module_name] = nil
+    end
+  end
+  
+  -- Restore test exposure flags
+  for k, v in pairs(test_flags) do
+    _G[k] = v
+  end
+  
+  -- Set up global Cache mock that works for most tests
+  local cache_mock = require("tests.mocks.mock_cache")
+  package.loaded["core.cache.cache"] = cache_mock
+  
+  -- Reset global storage
+  if _G.storage then
+    _G.storage = {}
+  end
+  
+  -- Reset global game state but don't clear the players table itself
+  -- Individual tests will recreate players in their before_each
+  if _G.game then
+    _G.game.players = {}
   end
 end
 
@@ -286,6 +347,9 @@ local function run_tests()
     for _, test in ipairs(describe.tests) do
       io.write("  - " .. test.description .. " ... ")
       io.flush()
+      
+      -- Reset test state before each test
+      reset_test_state()
       
       -- Run before_each if defined
       local global_before_each_fn = before_each_fn  -- Save local reference

@@ -33,6 +33,9 @@ local DeleteFavoriteCommand = old_require("core.commands.delete_favorite_command
 local handler = old_require("core.commands.delete_favorite_command")._handle_delete_favorite_by_slot or
 old_require("core.commands.delete_favorite_command").handle_delete_favorite_by_slot
 
+-- CRITICAL: Restore the original require to prevent test isolation issues
+_G.require = old_require
+
 local function make_player(valid)
     return {
         valid = valid ~= false,

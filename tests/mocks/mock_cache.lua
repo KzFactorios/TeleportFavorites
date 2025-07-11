@@ -4,6 +4,9 @@ local MockCache = {}
 -- Storage for mock player data
 local player_data_storage = {}
 
+-- Storage for tag by GPS (for test control)
+local tag_by_gps = nil
+
 -- Initialize the cache
 function MockCache.init()
   -- No-op for tests
@@ -29,6 +32,19 @@ function MockCache.get_player_data(player)
   return player_data_storage[index]
 end
 
+-- Get surface data or create if it doesn't exist
+function MockCache.get_surface_data(surface_index)
+  return {} -- Default empty surface data
+end
+
+-- Get tag editor data
+function MockCache.get_tag_editor_data(player)
+  if not player or not player.valid then return nil end
+  
+  local player_data = MockCache.get_player_data(player)
+  return player_data.tag_editor_data
+end
+
 -- Set tag editor data
 function MockCache.set_tag_editor_data(player, tag_editor_data)
   if not player or not player.valid then return end
@@ -38,23 +54,113 @@ function MockCache.set_tag_editor_data(player, tag_editor_data)
 end
 
 -- Create tag editor data
-function MockCache.create_tag_editor_data()
-  return {
+function MockCache.create_tag_editor_data(options)
+  local data = {
     gps = nil,
     position = nil,
     chart_tag = nil,
     favorite = nil
   }
+  -- Merge options if provided
+  if options then
+    for k, v in pairs(options) do
+      data[k] = v
+    end
+  end
+  return data
 end
 
 -- Get player favorites
 function MockCache.get_player_favorites(player)
-  if not player or not player.valid then return nil end
+  if not player or not player.valid then return {} end
   
   local player_data = MockCache.get_player_data(player)
+  -- Ensure we return an array-like table, not an empty object
+  if not player_data.favorites then
+    player_data.favorites = {}
+  end
   return player_data.favorites
 end
 
+-- Set player favorites
+function MockCache.set_player_favorites(player, favorites)
+  if not player or not player.valid then return end
+  
+  local player_data = MockCache.get_player_data(player)
+  player_data.favorites = favorites or {}
+end
+
+-- Get player teleport history
+function MockCache.get_player_teleport_history(player)
+  return {} -- Default empty history
+end
+
+-- Reset transient player states
+function MockCache.reset_transient_player_states(player)
+  if not player or not player.valid then return end
+  
+  local player_data = MockCache.get_player_data(player)
+  if player_data.drag_favorite then
+    player_data.drag_favorite.active = false
+  end
+end
+
+-- Ensure surface cache
+function MockCache.ensure_surface_cache(surface_index)
+  -- No-op for tests
+end
+
+-- Sanitize for storage
+function MockCache.sanitize_for_storage(obj)
+  return obj -- Pass through for tests
+end
+
+-- Get mod version
+function MockCache.get_mod_version()
+  return "1.0.0"
+end
+
+-- Generic get/set
+function MockCache.get(key)
+  return nil
+end
+
+function MockCache.set(key, value)
+  -- No-op for tests
+end
+
+-- Observer notifications
+function MockCache.notify_observers_safe(event_type, data)
+  -- No-op for tests
+end
+
+-- Remove stored tag
+function MockCache.remove_stored_tag(gps, chart_tag)
+  -- No-op for tests
+end
+
+-- Tag editor delete mode
+function MockCache.set_tag_editor_delete_mode(player, enabled)
+  -- No-op for tests
+end
+
+function MockCache.reset_tag_editor_delete_mode(player)
+  -- No-op for tests
+end
+
+-- Modal dialog state
+function MockCache.get_modal_dialog_state(player)
+  return false
+end
+
+function MockCache.set_modal_dialog_state(player, state)
+  -- No-op for tests
+end
+
+-- Set player surface
+function MockCache.set_player_surface(player, surface_index)
+  -- No-op for tests
+end
 
 
 -- Lookups submodule
@@ -67,34 +173,30 @@ MockCache.Lookups = {
   invalidate_surface_chart_tags = function(surface_index)
     -- No-op for tests
   end,
+  -- Get chart tag by GPS
+  get_chart_tag_by_gps = function(gps)
+    return tag_by_gps
+  end,
+  -- Remove chart tag from cache by GPS
+  remove_chart_tag_from_cache_by_gps = function(gps)
+    -- No-op for tests
+  end,
+  -- Clear all caches
+  clear_all_caches = function()
+    -- No-op for tests
+  end,
   -- Add stub for find_chart_tags to avoid nil error in lookups
   find_chart_tags = function(surface, force)
     return {} -- Return empty for test
   end
 }
 
--- Set player favorites for a given player (for test control)
-function MockCache.set_player_favorites(favorites)
-  -- For simplicity, always set for player index 1
-  if not player_data_storage[1] then
-    player_data_storage[1] = {
-      favorites = {},
-      drag_favorite = { active = false },
-      tag_editor_data = {},
-      fave_bar_slots_visible = true,
-      show_player_coords = true
-    }
-  end
-  player_data_storage[1].favorites = favorites
-end
-
 -- Set tag by GPS (for test control)
-local tag_by_gps = nil
 function MockCache.set_tag_by_gps(tag)
   tag_by_gps = tag
 end
 
-function MockCache.get_tag_by_gps(gps)
+function MockCache.get_tag_by_gps(player, gps)
   return tag_by_gps
 end
 

@@ -60,7 +60,7 @@ end
 function FaveBarGuiLabelsManager.get_history_caption(player)
     local surface_index = player.surface.index
     local hist = Cache.get_player_teleport_history(player, surface_index)
-    local stack = hist.stack
+    local stack = hist.stack or {}
     local pointer = hist.pointer or 0
     --return "→ " .. pointer .. " | " .. #stack
     --return #stack .. " → " .. pointer
