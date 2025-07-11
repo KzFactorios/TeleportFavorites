@@ -1,4 +1,3 @@
-
 # TeleportFavorites Factorio Mod — Copilot Instructions
 
 ## ⚠️ MANDATORY: READ AND APPLY BEFORE EVERY CODE RESPONSE ⚠️
@@ -53,7 +52,7 @@ CODE TO INCORPORATE AN ADDITIONAL PARAMETER AND LOGIC AND REFACTOR EXISTING REFE
 ## Surgical Code Modification
 
 -   **Preserve Existing Code**: The current codebase is the source of truth and must be respected. Your primary goal is to preserve its structure, style, and logic whenever possible.
--   **Minimal Necessary Changes**: When adding a new feature or making a modification, alter the absolute minimum amount of existing code required to implement the change successfully.
+-   **Minimal Necessary Changes**: When adding a new feature or making a modification, alter the absolute minimum of existing code required to implement the change successfully.
 -   **Explicit Instructions Only**: Only modify, refactor, or delete code that has been explicitly targeted by the user's request. Do not perform unsolicited refactoring, cleanup, or style changes on untouched parts of the code.
 -   **Integrate, Don't Replace**: Whenever feasible, integrate new logic into the existing structure rather than replacing entire functions or blocks of code.
 
@@ -129,6 +128,7 @@ This project uses Windows PowerShell as the default shell. When providing termin
 - [ ] Clear, intention-revealing function names to reduce the need for comments
 - [ ] Use descriptive variable names
 - [ ] Immutable data flow where possible
+- [ ] Adding code is not always warranted to fix an issue. Sometimes, the best solution is to remove unnecessary code or refactor existing logic to be more efficient.
 
 ## 10. CRITICAL VIOLATIONS TO AVOID
 1. **NEVER**: `cd "path" && command` (bash syntax)
@@ -210,8 +210,77 @@ This project uses Windows PowerShell as the default shell. When providing termin
 - [ ] **Digestible Output**: Present information in easily readable format for developer
 - [ ] **Coverage Reports**: Generated automatically in `luacov.report.out` and formatted summaries
 
+## 14. TESTING METHODOLOGY & PHILOSOPHY
 
+### Current Testing Approach (Simplified Smoke Testing)
+This project uses a **simplified smoke testing approach** optimized for the custom test framework:
 
+#### **Core Testing Philosophy**
+- **Execution Validation**: Tests verify that code executes without errors rather than deep behavior validation
+- **Comprehensive Mocking**: All dependencies are mocked to ensure complete test isolation
+- **Framework Compatibility**: Optimized for the custom `tests/test_framework.lua` rather than external frameworks
+- **Regression Protection**: Primary goal is catching breaking changes during development
 
+#### **Test Pattern Requirements**
+- [ ] **Use `pcall/assert(success)` Pattern**: Standard pattern for all tests
+  ```lua
+  local success, err = pcall(function()
+    -- Call the function under test
+    SomeModule.some_function(test_data)
+  end)
+  assert(success, "Function should execute without errors: " .. tostring(err))
+  ```
+- [ ] **Mock All Dependencies**: Use comprehensive mocks at the module level
+- [ ] **Avoid Complex Assertions**: No spy frameworks, behavior verification, or complex state checking
+- [ ] **Focus on Error-Free Execution**: Primary success criteria is no runtime errors
+
+#### **Mock Strategy**
+- [ ] **Module-Level Mocking**: Mock entire modules via `package.loaded["module.path"] = mock_table`
+- [ ] **Simple Mock Functions**: Return basic expected data types (tables, strings, etc.)
+- [ ] **Avoid Mock Verification**: Don't verify mock calls or interactions
+- [ ] **Static Test Data**: Use predictable, hard-coded test data
+
+#### **Coverage Philosophy** 
+- **Expected Coverage**: 0% from LuaCov due to comprehensive mocking strategy
+- **Coverage Alternative**: Test count and execution success rate are the primary metrics
+- **Regression Value**: Tests catch compilation errors, syntax issues, and major breaking changes
+- **Maintenance Focus**: Simple, reliable tests that are easy to maintain and understand
+
+#### **When to Use This Approach**
+- ✅ **Unit Testing**: Testing individual functions and modules
+- ✅ **Regression Testing**: Catching breaking changes during refactoring
+- ✅ **Integration Smoke Tests**: Verifying modules load and basic execution paths work
+- ❌ **Behavior Verification**: Use manual testing or integration tests for complex behavior validation
+- ❌ **State Validation**: When you need to verify specific outcomes or state changes
+
+#### **Test File Standards**
+- [ ] **Descriptive Test Names**: Tests should clearly describe what scenario is being tested
+- [ ] **Edge Case Coverage**: Include tests for invalid inputs, missing data, error conditions
+- [ ] **Isolated Test Data**: Each test should use its own mock data and not share state
+- [ ] **Error Message Quality**: Provide clear, actionable error messages for test failures
+
+#### **Migration from Legacy Tests**
+- [ ] **Convert Spy Logic**: Replace spy/mock verification with simple execution checks
+- [ ] **Simplify Assertions**: Replace complex assertions with basic `assert(success)` patterns
+- [ ] **Remove Framework Dependencies**: Remove references to Busted, LuaUnit, or other external frameworks
+- [ ] **Update Mock Patterns**: Use the established `package.loaded` mocking approach
+
+This approach provides reliable regression testing while remaining compatible with the project's custom test framework and development workflow.
+
+#### **Production Code Hygiene**
+- [ ] **No Test Exposure Patterns**: Production modules should not contain `_TEST_EXPOSE_*` flags or test-specific code paths
+- [ ] **No Test-Only Exports**: Avoid exposing internal functions solely for testing purposes
+- [ ] **Dependency Injection for Commands**: Debug/development commands may use dependency injection for testability
+- [ ] **Clean Production Logic**: All production code should be free of test-specific branches or hooks
+
+#### **Rationale for This Testing Strategy**
+This simplified approach was chosen because:
+1. **Framework Compatibility**: External test frameworks (Busted, LuaUnit) proved incompatible with the custom test runner
+2. **Dependency Complexity**: Factorio mods have complex interdependencies that are difficult to mock granularly  
+3. **Maintenance Efficiency**: Simple smoke tests require less maintenance than complex behavior verification
+4. **Regression Focus**: The primary goal is catching compilation and structural errors during development
+5. **Coverage Reality**: Comprehensive mocking means traditional coverage metrics are not meaningful
+
+This strategy prioritizes test reliability and maintainability over deep behavioral testing, which is better handled through manual integration testing in the actual game environment.
 
 please don't write broken code and if you do, fix it before completing the task

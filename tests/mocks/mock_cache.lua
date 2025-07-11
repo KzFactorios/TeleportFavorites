@@ -91,8 +91,8 @@ function MockCache.set_player_favorites(player, favorites)
 end
 
 -- Get player teleport history
-function MockCache.get_player_teleport_history(player)
-  return {} -- Default empty history
+function MockCache.get_player_teleport_history(player, surface_index)
+  return { stack = {}, pointer = 0 } -- Default empty history with proper structure
 end
 
 -- Reset transient player states

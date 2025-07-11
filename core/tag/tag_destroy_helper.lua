@@ -238,14 +238,4 @@ local export = {
   should_destroy = should_destroy
 }
 
-if _G._TEST_EXPOSE_TAG_DESTROY_HELPERS then
-  export._test_expose = {
-    has_any_favorites = has_any_favorites,
-    cleanup_player_favorites = cleanup_player_favorites,
-    cleanup_faved_by_players = cleanup_faved_by_players,
-    validate_destruction_inputs = validate_destruction_inputs,
-    safe_destroy_with_cleanup = safe_destroy_with_cleanup
-  }
-end
-
 return export
