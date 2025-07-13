@@ -264,6 +264,7 @@ def print_analysis_report(file_results: List[FileAnalysis],
     
     print()
     print(f"GRAND TOTAL: {grand_total_lines:,} lines of Lua")
+    print(f"  Total files: {len(file_results)}")
     print(f"  Code lines: {grand_total_code:,}")
     print(f"  Annotation lines: {grand_total_annotations:,} ({annotation_percentage:.1f}%)")
     print("(Excluding regular comments and blank lines)")
