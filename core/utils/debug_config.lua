@@ -45,7 +45,7 @@ local function detect_environment()
   local dev_indicators = {
     "tests/validate_syntax.lua",
     "notes/TODO.md", 
-    "py_scripts/",
+    ".scripts/",
     ".github/"
   }
   
