@@ -17,8 +17,11 @@ function mock_gui_validation.find_child_by_name(parent, name)
 end
 
 function mock_gui_validation.apply_style_properties(element, style_overrides)
-    -- No-op for tests
-    return element
+    -- Mock function should return boolean like the real one
+    if element and element.valid and type(style_overrides) == "table" then
+        return true
+    end
+    return false
 end
 
 return mock_gui_validation
