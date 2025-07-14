@@ -99,7 +99,7 @@ All data operations are surface-aware through the `Cache` module:
 - `core/utils/` – Helper files
 - `gui/` – GUI modules for the favorite bar, tag editor. All gui modules should use base_gui.lua for shared properties and methods
 - `tests/` – Automated test suite for all major modules.
-- `notes/` – Design specs, data schema, and architecture documentation. This will be updated as the project progresses
+- `.project/` – Design specs, data schema, and architecture documentation. This will be updated as the project progresses
 
 ---
 

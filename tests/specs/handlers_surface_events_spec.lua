@@ -1,8 +1,9 @@
 -- Require canonical test bootstrap to patch all mocks before any SUT or test code
 require("test_bootstrap")
 
--- Require canonical player mocks
-local PlayerFavoritesMocks = require("mocks.player_favorites_mocks")
+-- Use centralized factories
+local GameSetupFactory = require("mocks.game_setup_factory")
+local EventFactories = require("mocks.event_factories")
 
 -- Mock the modules that will be required
 local Cache = {
@@ -12,26 +13,17 @@ local Cache = {
 
 package.loaded["core.cache.cache"] = Cache
 
-local mock_surfaces = {
-  [1] = { index = 1, name = "nauvis", valid = true },
-  [2] = { index = 2, name = "space", valid = true }
-}
-
-_G.script = { on_nth_tick = function() end }
-
-local mock_players = {}
-
-_G.game = {
-  players = mock_players,
-  get_player = function(player_index) return mock_players[player_index] end,
-  surfaces = mock_surfaces
-}
+-- Setup test environment with multiple surfaces
+GameSetupFactory.setup_test_globals({
+  { index = 1, name = "player1", surface_index = 1 }
+}, {
+  { index = 1, name = "nauvis" },
+  { index = 2, name = "space" }
+})
 
 describe("Surface Event Handlers", function()
   it("should call ensure_surface_cache when player changes surface", function()
-    mock_players[1] = PlayerFavoritesMocks.mock_player(1, "player1", 1)
-    
-    local event = { player_index = 1, surface_index = 2 }
+    local event = EventFactories.create_surface_change_event(1, 2)
     
     local success, err = pcall(function()
       local Handlers = require("core.events.handlers")
@@ -42,7 +34,7 @@ describe("Surface Event Handlers", function()
   end)
 
   it("should handle invalid player gracefully", function()
-    local event = { player_index = 999, surface_index = 2 }
+    local event = EventFactories.create_surface_change_event(999, 2) -- Invalid player
     
     local success, err = pcall(function()
       local Handlers = require("core.events.handlers")
@@ -53,9 +45,7 @@ describe("Surface Event Handlers", function()
   end)
 
   it("should handle player with same surface gracefully", function()
-    mock_players[1] = PlayerFavoritesMocks.mock_player(1, "player1", 1)
-    
-    local event = { player_index = 1, surface_index = 1 }
+    local event = EventFactories.create_surface_change_event(1, 1) -- Same surface
     
     local success, err = pcall(function()
       local Handlers = require("core.events.handlers")

@@ -6,7 +6,7 @@
 local tag_editor = require("gui.tag_editor.tag_editor")
 local Cache = require("core.cache.cache")
 local GuiValidation = require("core.utils.gui_validation")
-local GameHelpers = require("core.utils.game_helpers")
+local PlayerHelpers = require("core.utils.player_helpers")
 local GPSUtils = require("core.utils.gps_utils")
 local Constants = require("constants")
 local Enum = require("prototypes.enums.enum")
@@ -18,9 +18,10 @@ local ChartTagUtils = require("core.utils.chart_tag_utils")
 local ValidationUtils = require("core.utils.validation_utils")
 local AdminUtils = require("core.utils.admin_utils")
 local SettingsAccess = require("core.utils.settings_access")
+local BasicHelpers = require("core.utils.basic_helpers")
 local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 local SharedUtils = require("core.control.control_shared_utils")
-local SmallHelpers = require("core.utils.small_helpers")
+local BasicHelpers = require("core.utils.basic_helpers")
 
 local M = {}
 
@@ -420,7 +421,7 @@ local function handle_delete_confirm(player)
   Cache.reset_tag_editor_delete_mode(player)
 
   -- Always show destination messages
-  GameHelpers.player_print(player, { "tf-gui.tag_deleted" })
+  PlayerHelpers.safe_player_print(player, { "tf-gui.tag_deleted" })
 end
 
 -- User cancelled deletion - close confirmation dialog and return to tag editor
@@ -473,10 +474,10 @@ end
 --- Tag editor GUI click handler for shared dispatcher
 local function on_tag_editor_gui_click(event, script)
   local element = event.element
-  if not element or not element.valid then return end
+  if not BasicHelpers.is_valid_element(element) then return end
 
   local player = game.get_player(event.player_index)
-  if not player or not player.valid then return end
+  if not BasicHelpers.is_valid_player(player) then return end
 
   local tag_data = Cache.get_tag_editor_data(player) or {}
 
@@ -522,12 +523,12 @@ end
 --- Handle text input changes - save immediately to storage
 local function on_tag_editor_gui_text_changed(event)
   local element = event.element
-  if not element or not element.valid then return end
+  if not BasicHelpers.is_valid_element(element) then return end
   local name = element.name or ""
   if not name:find("tag_editor") then return end
 
   local player = game.get_player(event.player_index)
-  if not player or not player.valid then return end
+  if not BasicHelpers.is_valid_player(player) then return end
 
   if element.name == "tag_editor_rich_text_input" then
     local tag_data = Cache.get_tag_editor_data(player) or {}
@@ -565,12 +566,12 @@ end
 --- Handle element changes (for icon selection) - save immediately to storage
 local function on_tag_editor_gui_elem_changed(event)
   local element = event.element
-  if not element or not element.valid then return end
+  if not BasicHelpers.is_valid_element(element) then return end
   local name = element.name or ""
   if not name:find("tag_editor") then return end
 
   local player = game.get_player(event.player_index)
-  if not player or not player.valid then return end
+  if not BasicHelpers.is_valid_player(player) then return end
 
   if element.name == "tag_editor_icon_button" then
     local tag_data = Cache.get_tag_editor_data(player) or {}

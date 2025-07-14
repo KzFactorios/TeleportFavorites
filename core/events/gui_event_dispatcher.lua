@@ -51,9 +51,10 @@ local Enum = require("prototypes.enums.enum")
 local ErrorHandler = require("core.utils.error_handler")
 local Cache = require("core.cache.cache")
 local GuiValidation = require("core.utils.gui_validation")
-local GameHelpers = require("core.utils.game_helpers")
+local PlayerHelpers = require("core.utils.player_helpers")
 local CursorUtils = require("core.utils.cursor_utils")
 local FavoriteUtils = require("core.favorite.favorite")
+local BasicHelpers = require("core.utils.basic_helpers")
 
 local M = {}
 
@@ -105,7 +106,7 @@ function M.register_gui_handlers(script)
       -- Check if a modal dialog is active and block non-dialog interactions
       if Cache.is_modal_dialog_active(player) then
         local element = event.element
-        if not element or not element.valid then return end
+        if not BasicHelpers.is_valid_element(element) then return end
         
         -- Allow interactions only with the active modal dialog elements
         local parent_gui = GuiValidation.get_gui_frame_by_element(element)
@@ -136,7 +137,7 @@ function M.register_gui_handlers(script)
             raw_button = event.button
           })
           CursorUtils.end_drag_favorite(player)
-          GameHelpers.player_print(player, {"tf-gui.fave_bar_drag_canceled"})
+          PlayerHelpers.safe_player_print(player, {"tf-gui.fave_bar_drag_canceled"})
           
           -- Set a flag to prevent tag editor opening on this tick
           if not player_data.suppress_tag_editor then
@@ -151,7 +152,7 @@ function M.register_gui_handlers(script)
       
       -- Continue with normal processing
       local element = event.element
-      if not element or not element.valid then return end 
+      if not BasicHelpers.is_valid_element(element) then return end 
         
       -- Global/utility buttons (not tied to a specific GUI)
       -- Check for debug level buttons first

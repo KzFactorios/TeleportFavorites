@@ -31,6 +31,7 @@ local basic_helpers = require("core.utils.basic_helpers")
 local PositionUtils = require("core.utils.position_utils")
 local GPSUtils = require("core.utils.gps_utils")
 local ErrorHandler = require("core.utils.error_handler")
+local BasicHelpers = require("core.utils.basic_helpers")
 
 
 -- Handles the non-persistent in-game data cache for runtime lookups.
@@ -133,7 +134,7 @@ end
 ---@param gps string
 ---@return LuaCustomChartTag|nil
 local function get_chart_tag_by_gps(gps)
-  if not gps or gps == "" then return nil end
+  if not BasicHelpers.is_valid_gps(gps) then return nil end
   local surface_index = GPSUtils.get_surface_index_from_gps(gps)
   local surface = game.surfaces[surface_index]
   if not surface then return nil end

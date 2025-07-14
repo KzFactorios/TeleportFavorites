@@ -1,11 +1,6 @@
 -- tests/mocks/module_function_mocks.lua
 -- Provides stubs for missing module function fields required by tests
 
--- PositionNormalizer mock
-package.loaded["core.utils.position_normalizer"] = {
-    needs_normalization = function(...) return false end
-}
-
 -- ChartTagModificationHelpers mock (add all required stub functions, and patch as global)
 local ctmh = {
     is_valid_tag_modification = function(...) return true end,

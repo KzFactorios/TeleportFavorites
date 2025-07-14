@@ -31,7 +31,7 @@ describe("TagEditor Control Module", function()
         -- Load required modules for mocking
         Cache = require("core.cache.cache")
         GuiValidation = require("core.utils.gui_validation")
-        SmallHelpers = require("core.utils.small_helpers")
+        SmallHelpers = require("core.utils.basic_helpers")
         ErrorHandler = require("core.utils.error_handler")
         
         -- Mock defines.events

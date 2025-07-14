@@ -49,9 +49,9 @@ local Cache = require("core.cache.cache")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local ErrorHandler = require("core.utils.error_handler")
 local GuiHelpers = require("core.utils.gui_helpers")
-local SmallHelpers = require("core.utils.small_helpers")
+local BasicHelpers = require("core.utils.basic_helpers")
 local Enum = require("prototypes.enums.enum")
-local GameHelpers = require("core.utils.game_helpers")
+local PlayerHelpers = require("core.utils.player_helpers")
 
 ---@class GuiEventBus
 ---@field _observers table<string, table[]>
@@ -417,7 +417,7 @@ end
 function NotificationObserver:update(event_data)
   if not self:is_valid() or not event_data then return end
   if event_data.player and event_data.player.valid then
-    GameHelpers.player_print(event_data.player, {"tf-gui.invalid_chart_tag_warning"})
+    PlayerHelpers.safe_player_print(event_data.player, {"tf-gui.invalid_chart_tag_warning"})
   end
 end
 

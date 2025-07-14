@@ -13,6 +13,10 @@ package.loaded["core.utils.small_helpers"] = {
 package.loaded["core.utils.basic_helpers"] = {
   normalize_index = function(value) 
     return math.floor(value)
+  end,
+  is_whole_number = function(n)
+    if type(n) ~= "number" then return false end
+    return n == math.floor(n)
   end
 }
 

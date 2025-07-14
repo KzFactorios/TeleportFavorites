@@ -105,6 +105,23 @@ Currently, you can have up to 10 favorites per surface (slots 1-0).
 
 If something's not working as expected, please report it on the mod portal.
 
+## 🔧 Development & Testing
+
+For developers and contributors, the mod includes a comprehensive test suite. Run tests from anywhere in the project using:
+
+```powershell
+# PowerShell (recommended)
+.\test.ps1
+
+# Batch file  
+test.bat
+
+# Or Lua directly
+lua test.lua
+```
+
+See `tests/docs/README.md` for detailed testing documentation.
+
 ---
 
 ## Need More Info or Clarification?

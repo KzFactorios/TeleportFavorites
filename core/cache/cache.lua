@@ -53,6 +53,7 @@ local FavoriteUtils = require("core.favorite.favorite")
 local Constants = require("constants")
 local GPSUtils = require("core.utils.gps_utils")
 local Lookups = require("core.cache.lookups")
+local BasicHelpers = require("core.utils.basic_helpers")
 
 
 --- Persistent and runtime cache management for TeleportFavorites mod.
@@ -294,7 +295,7 @@ end
 --- @return Tag|nil
 function Cache.get_tag_by_gps(player, gps)
   if not player then return nil end
-  if not gps or gps == "" then return nil end
+  if not BasicHelpers.is_valid_gps(gps) then return nil end
   local surface_index = player.surface.index
 
   local tag_cache = Cache.get_surface_tags(surface_index --[[@as integer]])

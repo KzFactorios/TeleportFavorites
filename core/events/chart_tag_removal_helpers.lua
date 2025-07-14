@@ -17,7 +17,7 @@ maintainability and testability.
 
 local Cache = require("core.cache.cache")
 local GPSUtils = require("core.utils.gps_utils")
-local GameHelpers = require("core.utils.game_helpers")
+local PlayerHelpers = require("core.utils.player_helpers")
 local AdminUtils = require("core.utils.admin_utils")
 local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
@@ -86,7 +86,7 @@ function ChartTagRemovalHelpers.recreate_protected_chart_tag(chart_tag, player, 
     Cache.Lookups.invalidate_surface_chart_tags(surface_index)
     
     local deletion_msg = RichTextFormatter.deletion_prevention_notification(new_chart_tag)
-    GameHelpers.player_print(player, deletion_msg)
+    PlayerHelpers.safe_player_print(player, deletion_msg)
     
     return true
   end

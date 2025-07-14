@@ -24,6 +24,7 @@ local Settings = require("core.utils.settings_access")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local Enum = require("prototypes.enums.enum")
 local basic_helpers = require("core.utils.basic_helpers")
+local BasicHelpers = require("core.utils.basic_helpers")
 
 ---@class TagEditorEventHelpers
 local TagEditorEventHelpers = {}
@@ -33,7 +34,7 @@ local TagEditorEventHelpers = {}
 ---@return boolean can_open Whether tag editor can be opened
 ---@return string? reason Reason if cannot open (for debugging)
 function TagEditorEventHelpers.validate_tag_editor_opening(player)
-  if not player or not player.valid then
+  if not BasicHelpers.is_valid_player(player) then
     return false, "Invalid player"
   end
 
@@ -108,7 +109,7 @@ end
 ---@return LuaCustomChartTag? new_chart_tag New chart tag if replacement occurred
 ---@return table? position_pair Old and new position pair if replacement occurred
 function TagEditorEventHelpers.normalize_and_replace_chart_tag(chart_tag, player)
-  if not player or not player.valid then return nil, nil end
+  if not BasicHelpers.is_valid_player(player) then return nil, nil end
   
   local position = chart_tag.position
   if not position then return nil, nil end

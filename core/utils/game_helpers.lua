@@ -6,9 +6,10 @@ Game-specific utilities: teleport, sound, space/water detection, tag collision, 
 Extracted from helpers_suite.lua for better organization and maintainability.
 ]]
 
+local ErrorHandler = require("core.utils.error_handler")
 local SettingsAccess = require("core.utils.settings_access")
 local TeleportUtils = require("core.utils.teleport_utils")
-local TileUtils = require("core.utils.tile_utils")
+local PositionUtils = require("core.utils.position_utils")
 
 ---@class GameHelpers
 local GameHelpers = {}
@@ -19,7 +20,7 @@ local GameHelpers = {}
 ---@param position MapPosition
 ---@return boolean appears_walkable
 local function appears_walkable(surface, position)
-  return TileUtils.appears_walkable(surface, position)
+  return PositionUtils.appears_walkable(surface, position)
 end
 
 function GameHelpers.safe_play_sound(player, sound)
@@ -27,7 +28,7 @@ function GameHelpers.safe_play_sound(player, sound)
     local success, err = pcall(function() player.play_sound(sound, {}) end)if not success then
       -- Log directly without using PlayerComm
       pcall(function()
-        log("[TeleportFavorites] DEBUG: Failed to play sound for player | player_name=" .. 
+        ErrorHandler.debug_log("[TeleportFavorites] DEBUG: Failed to play sound for player | player_name=" .. 
           (player.name or "unknown") .. " sound_path=" .. (sound.path or "unknown") .. 
           " error_message=" .. tostring(err))
       end)

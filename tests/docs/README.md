@@ -2,22 +2,42 @@
 
 This README provides comprehensive instructions for running and managing the TeleportFavorites mod test suite using PowerShell and Lua.
 
-## 🚨 CRITICAL: Correct Usage Pattern
+## � SIMPLE: Easy Test Running
 
-**The test suite ONLY works when run from the tests directory. Always follow this pattern:**
+**The test suite now works from ANY directory! Use these simple commands:**
 
+### ✅ EASIEST METHODS (Pick Your Favorite):
+
+**PowerShell Script (RECOMMENDED):**
 ```powershell
-# STEP 1: Navigate to tests directory 
-Set-Location "V:\Fac2orios\2_Gemini\mods\TeleportFavorites\tests"
+# From ANYWHERE in the project:
+.\test.ps1
+```
 
-# STEP 2: Run tests using infrastructure runner
+**Batch File:**
+```cmd
+# From ANYWHERE in the project:
+test.bat
+```
+
+**Lua Script:**
+```powershell
+# From ANYWHERE in the project:
+lua test.lua
+```
+
+**From Tests Directory (Classic Method):**
+```powershell
+# Navigate to tests directory first
+Set-Location "V:\Fac2orios\2_Gemini\mods\TeleportFavorites\tests"
 lua infrastructure/run_all_tests.lua
 ```
 
-**❌ Common mistakes that cause errors:**
-- Running from project root directory
-- Running from infrastructure subdirectory  
-- Using incorrect paths or Select-String pipes
+**✅ All methods automatically:**
+- Find the project root
+- Change to the correct directory  
+- Run tests with proper paths
+- Show clear success/failure status
 
 ## ⚠️ CRITICAL PowerShell Pipeline Warning
 
@@ -68,13 +88,36 @@ tests/
 ├── docs/               # Documentation (this file)
 ├── run_tests.lua       # Convenience runner (forwards to infrastructure/)
 └── run_tests.ps1       # PowerShell test runner script
+
+**PROJECT ROOT RUNNERS (NEW!):**
+- `test.ps1`           # Universal PowerShell test runner
+- `test.bat`           # Universal batch test runner  
+- `test.lua`           # Universal Lua test runner
 ```
 
 ## 🚀 Running Tests
 
-### ✅ CORRECT Usage - Always Use These Commands
+### ✅ EASIEST METHODS (Work from Anywhere!)
 
-**Method 1: From Tests Directory (RECOMMENDED)**
+**PowerShell Script (RECOMMENDED)**
+```powershell
+# Run from ANY directory in the project:
+.\test.ps1
+```
+
+**Batch File**
+```cmd
+# Run from ANY directory in the project:
+test.bat
+```
+
+**Lua Script**
+```powershell
+# Run from ANY directory in the project:
+lua test.lua
+```
+
+**Direct Method (Classic)**
 ```powershell
 # Navigate to tests directory first
 Set-Location "V:\Fac2orios\2_Gemini\mods\TeleportFavorites\tests"
@@ -83,7 +126,7 @@ Set-Location "V:\Fac2orios\2_Gemini\mods\TeleportFavorites\tests"
 lua infrastructure/run_all_tests.lua
 ```
 
-**Method 2: Using Convenience Script**
+**Convenience Wrapper**
 ```powershell
 # Navigate to tests directory first
 Set-Location "V:\Fac2orios\2_Gemini\mods\TeleportFavorites\tests"
@@ -92,12 +135,25 @@ Set-Location "V:\Fac2orios\2_Gemini\mods\TeleportFavorites\tests"
 lua run_tests.lua
 ```
 
-### ❌ AVOID These Common Errors
+### ✅ Benefits of New Universal Runners
+
+- **Work from ANY directory** - no more path confusion!
+- **Automatic project detection** - finds the right location automatically
+- **Clear success/failure reporting** - immediate feedback with colored output
+- **Consistent behavior** - same experience regardless of where you run from
+
+### ❌ Legacy Warnings (These Still Apply)
 
 ```powershell
-# DON'T run from project root - causes path issues
-# Set-Location "V:\Fac2orios\2_Gemini\mods\TeleportFavorites"
-# lua tests/infrastructure/run_all_tests.lua  # ← PATH ERROR
+# DON'T pipe lua output directly to Select-String - causes binding errors
+# lua infrastructure/run_all_tests.lua | Select-String "Test files processed"  # ← BINDING ERROR
+
+# DO use file redirection instead:
+lua infrastructure/run_all_tests.lua > results.txt 2>&1
+Select-String "Test files processed" results.txt  # ← WORKS
+```
+
+**The new universal runners handle all path issues automatically, but if using the classic method, be sure to run from the tests directory.**
 
 # DON'T run from infrastructure directory - can't find specs
 # Set-Location "V:\Fac2orios\2_Gemini\mods\TeleportFavorites\tests\infrastructure"

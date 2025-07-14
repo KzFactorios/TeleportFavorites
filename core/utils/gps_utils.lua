@@ -18,6 +18,7 @@ Provides a unified API for all GPS-related operations throughout the mod.
 local basic_helpers = require("core.utils.basic_helpers")
 local Constants = require("constants")
 local ErrorHandler = require("core.utils.error_handler")
+local BasicHelpers = require("core.utils.basic_helpers")
 
 local padlen, BLANK_GPS = Constants.settings.GPS_PAD_NUMBER, Constants.settings.BLANK_GPS
 
@@ -129,7 +130,7 @@ end
 ---@return boolean can_tag
 ---@return string? error_message
 function GPSUtils.position_can_be_tagged(player, map_position)
-  if not player or not player.valid then
+  if not BasicHelpers.is_valid_player(player) then
     return false, "Invalid player"
   end
   

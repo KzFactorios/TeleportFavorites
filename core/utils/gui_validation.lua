@@ -12,6 +12,7 @@ local GameHelpers = require("core.utils.game_helpers")
 local LocaleUtils = require("core.utils.locale_utils")
 local GuiBase = require("gui.gui_base")
 local Enum = require("prototypes.enums.ui_enums")
+local BasicHelpers = require("core.utils.basic_helpers")
 
 ---@class GuiValidation
 local GuiValidation = {}
@@ -77,7 +78,7 @@ end
 ---@param enabled boolean? Whether the button should be enabled (default: true)
 ---@param style_overrides table? Style properties to override
 function GuiValidation.set_button_state(element, enabled, style_overrides)
-  if not element or not element.valid then
+  if not BasicHelpers.is_valid_element(element) then
     Logger.debug_log("set_button_state: element is nil or invalid")
     return
   end
@@ -102,48 +103,11 @@ function GuiValidation.set_button_state(element, enabled, style_overrides)
   end
 end
 
---- Show error label in a GUI frame
----@param parent LuaGuiElement Parent GUI element
----@param message string Error message to display
-function GuiValidation.show_error_label(parent, message)
-  if not parent or not parent.valid then return end
-  local error_label = nil
-  for _, child in pairs(parent.children) do
-    if child.name == "tf_error_label" then
-      error_label = child
-      break
-    end
-  end
-  if not error_label or not error_label.valid then
-    error_label = GuiBase.create_label(parent, "tf_error_label", "", "tf_error_label")
-  end
-  error_label.caption = message and LocaleUtils.get_string(nil, message) or ""
-  error_label.visible = true
-end
-
---- Clear error label from a GUI frame  
----@param parent LuaGuiElement Parent GUI element
-function GuiValidation.clear_error_label(parent)
-  if not parent or not parent.valid then return end
-  local error_label = nil
-  for _, child in pairs(parent.children) do
-    if child.name == "tf_error_label" and child.valid then
-      error_label = child
-      break
-    end
-  end
-  if not error_label or not error_label.valid then
-    error_label = GuiBase.create_label(parent, "tf_error_label", "", "tf_error_label")
-  end
-  error_label.visible = false
-  error_label.caption = nil
-end
-
 --- Get the top-level GUI frame that contains an element
 ---@param element LuaGuiElement Element to search from
 ---@return LuaGuiElement|nil Top-level frame or nil if not found
 function GuiValidation.get_gui_frame_by_element(element)
-  if not element or not element.valid then return nil end
+  if not BasicHelpers.is_valid_element(element) then return nil end
   local current = element
   local iterations = 0
   local max_iterations = 20
@@ -239,7 +203,6 @@ end
 ---@return string sprite_path Valid sprite path (never blank unless allow_blank)
 ---@return boolean used_fallback True if fallback was used
 ---@return table debug_info Debug info for logging
-
 function GuiValidation.get_validated_sprite_path(icon, opts)
   opts = opts or {}
   local fallback = opts.fallback or "utility/unknown"

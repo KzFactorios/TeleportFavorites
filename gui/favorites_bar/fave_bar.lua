@@ -53,6 +53,8 @@ Event handling for slot clicks and drag is managed externally (see control.lua).
 --]]
 
 local GuiBase = require("gui.gui_base")
+local GuiElementBuilders = require("core.utils.gui_element_builders")
+local ErrorMessageHelpers = require("core.utils.error_message_helpers")
 local Constants = require("constants")
 local ErrorHandler = require("core.utils.error_handler")
 local FavoriteUtils = require("core.favorite.favorite")
@@ -63,6 +65,7 @@ local Settings = require("core.utils.settings_access")
 local Cache = require("core.cache.cache")
 local Enum = require("prototypes.enums.enum")
 local FaveBarGuiLabelsManager = require("core.control.fave_bar_gui_labels_manager")
+local BasicHelpers = require("core.utils.basic_helpers")
 
 local fave_bar = {}
 
@@ -81,14 +84,12 @@ function fave_bar.build_quickbar_style(player, parent)           -- Add a horizo
   local toggle_flow = GuiBase.create_hflow(toggle_container, "fave_bar_toggle_flow", "tf_fave_toggle_flow")
 
   ---@type LocalisedString
+  ---@diagnostic disable-next-line: assign-type-mismatch
   local toggle_tooltip = { "tf-gui.toggle_fave_bar" }  
   -- Determine which visibility icon to use based on slots visibility state
-  -- Icon logic: eyelash (closed eye) when slots visible, eye (open) when slots hidden
   local player_data = Cache.get_player_data(player)  
-  local visibility_icon = player_data.fave_bar_slots_visible and Enum.SpriteEnum.EYELASH or Enum.SpriteEnum.EYE
-  local visibility_style = player_data.fave_bar_slots_visible and "tf_fave_bar_visibility_on" or "tf_fave_bar_visibility_off"
-  local toggle_visibility_button = GuiBase.create_sprite_button(toggle_flow, "fave_bar_visibility_toggle", 
-  visibility_icon, toggle_tooltip, visibility_style)
+  local toggle_visibility_button = GuiElementBuilders.create_visibility_toggle_button(
+    toggle_flow, "fave_bar_visibility_toggle", player_data.fave_bar_slots_visible, toggle_tooltip)
 
   -- history/position info
   local teleport_history= GuiBase.create_label(toggle_container, "fave_bar_teleport_history_label", "", "fave_bar_teleport_history_label_style")
@@ -103,9 +104,9 @@ end
 
 local function handle_overflow_error(frame, fav_btns, pfaves)
   if pfaves and #pfaves > Constants.settings.MAX_FAVORITE_SLOTS then
-    GuiValidation.show_error_label(frame, "tf-gui.fave_bar_overflow_error")
+    ErrorMessageHelpers.show_simple_error_label(frame, "tf-gui.fave_bar_overflow_error")
   else  
-    GuiValidation.clear_error_label(frame)
+    ErrorMessageHelpers.clear_simple_error_label(frame)
   end
 end
 
@@ -118,7 +119,7 @@ local function get_fave_bar_gui_refs(player)
 end
 
 function fave_bar.build(player, force_show)
-  if not player or not player.valid then return end
+  if not BasicHelpers.is_valid_player(player) then return end
 
   -- Hide favorites bar when editing space platforms
   -- Allow force_show to override all checks for initialization
@@ -283,7 +284,7 @@ end
 -- Update only the slots row without rebuilding the entire bar
 -- parent: the bar_flow container (parent of fave_bar_slots_flow)
 function fave_bar.update_slot_row(player, parent_flow)
-  if not player or not player.valid then return end
+  if not BasicHelpers.is_valid_player(player) then return end
   if not parent_flow or not parent_flow.valid then return end
 
   local slots_frame = GuiValidation.find_child_by_name(parent_flow, "fave_bar_slots_flow")
@@ -307,7 +308,7 @@ end
 --- Destroy/hide the favorites bar for a player
 ---@param player LuaPlayer
 function fave_bar.destroy(player)
-  if not player or not player.valid then return end
+  if not BasicHelpers.is_valid_player(player) then return end
 
   local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   if not main_flow or not main_flow.valid then return end
@@ -319,7 +320,7 @@ end
 ---@param player LuaPlayer
 ---@param slot_index number Slot index (1-based)
 function fave_bar.update_single_slot(player, slot_index)
-  if not player or not player.valid then return end
+  if not BasicHelpers.is_valid_player(player) then return end
   local _, _, _, slots_frame = get_fave_bar_gui_refs(player)
   if not slots_frame then return end
   local slot_button = GuiValidation.find_child_by_name(slots_frame, "fave_bar_slot_" .. slot_index)
@@ -352,6 +353,7 @@ function fave_bar.update_single_slot(player, slot_index)
       else
         -- Chart tag is invalid, treat as blank favorite
         slot_button.sprite = ""
+        ---@diagnostic disable-next-line: assign-type-mismatch
         slot_button.tooltip = { "tf-gui.favorite_slot_empty" }
         return
       end
@@ -367,6 +369,7 @@ function fave_bar.update_single_slot(player, slot_index)
     slot_button.tooltip = GuiHelpers.build_favorite_tooltip(fav, { slot = slot_index })
   else
     slot_button.sprite = ""
+    ---@diagnostic disable-next-line: assign-type-mismatch
     slot_button.tooltip = { "tf-gui.favorite_slot_empty" }
   end
 end
@@ -375,7 +378,7 @@ end
 ---@param player LuaPlayer
 ---@param slots_visible boolean Whether slots should be visible
 function fave_bar.update_toggle_state(player, slots_visible)
-  if not player or not player.valid then return end
+  if not BasicHelpers.is_valid_player(player) then return end
   
   local _, _, bar_flow, slots_frame = get_fave_bar_gui_refs(player)
   
@@ -403,7 +406,7 @@ end
 ---@param player LuaPlayer
 ---@return boolean exists
 function fave_bar.exists(player)
-  if not player or not player.valid then return false end
+  if not BasicHelpers.is_valid_player(player) then return false end
   
   local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   local bar_frame = main_flow and GuiValidation.find_child_by_name(main_flow, "fave_bar_frame")

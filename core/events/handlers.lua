@@ -62,13 +62,10 @@ local fave_bar = require("gui.favorites_bar.fave_bar")
 local Enum = require("prototypes.enums.enum")
 local FaveBarGuiLabelsManager = require("core.control.fave_bar_gui_labels_manager")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
+local EventHandlerHelpers = require("core.utils.event_handler_helpers")
 
--- Helper: Validate player and run handler logic
-local function with_valid_player(player_index, handler_fn, ...)
-  local player = game.get_player(player_index)
-  if not player or not player.valid then return end
-  return handler_fn(player, ...)
-end
+-- Helper: Validate player and run handler logic (using centralized helper)
+local with_valid_player = EventHandlerHelpers.with_valid_player
 
 local function register_gui_observers(player)
   local ok, gui_observer = pcall(require, "core.pattern.gui_observer")
@@ -82,12 +79,8 @@ function handlers.on_player_changed_surface(event)
     local new_surface_index = event.surface_index
     if not player.surface or not player.surface.valid then return end
     if player.surface.index ~= new_surface_index then
-      if Cache.ensure_surface_cache then
-        Cache.ensure_surface_cache(new_surface_index)
-      end
-      if Cache.set_player_surface then
-        Cache.set_player_surface(player, new_surface_index)
-      end
+      Cache.ensure_surface_cache(new_surface_index)
+      Cache.set_player_surface(player, new_surface_index)
     end
   end)
 end
@@ -205,7 +198,7 @@ function handlers.on_open_tag_editor_custom_input(event)
 end
 function handlers.on_chart_tag_added(event)
   -- Get the player object from the event.player_index
-  local player = game.get_player(event.player_index)
+  local player = game.players[event.player_index]
   if not player or not player.valid then return end
 
   -- Ensure the position of the added tag is normalized
@@ -231,7 +224,7 @@ end
 
 function handlers.on_chart_tag_modified(event)
   if not event or not event.old_position then return end
-  local player = game.get_player(event.player_index)
+  local player = game.players[event.player_index]
   if not player or not player.valid then return end
   if not ChartTagModificationHelpers.is_valid_tag_modification(event, player) then
     print("[HANDLER] Calling ErrorHandler.debug_log for chart tag modification validation failed")

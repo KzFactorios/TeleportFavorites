@@ -78,7 +78,7 @@ function ErrorHandler.handle_error(result, player, should_print)
     -- Log message for debugging (this will always work)
     pcall(function() log("[TeleportFavorites] PLAYER MSG: " .. player.name .. " - " .. (result.message or "Unknown error")) end)
     
-    -- Use GameHelpers for player messaging
+    -- Use PlayerHelpers for player messaging
     -- We know this works but requires importing GameHelpers which would create a circular dependency
     -- Instead we'll use a dynamic approach that bypasses the static analyzer
     local print_fn = player.print

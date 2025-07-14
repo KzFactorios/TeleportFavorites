@@ -10,6 +10,7 @@ if not _G.game then
 end
 
 local LocaleUtils = require("core.utils.locale_utils")
+local MockFactories = require("mocks.mock_factories")
 local original_print = game.print
 local print_calls = {}
 
@@ -35,21 +36,21 @@ describe("LocaleUtils Combined", function()
   end)
 
   it("should provide gui, error, and handler strings with correct prefix", function()
-    local mock_player = { valid = true }
+    local mock_player = MockFactories.create_player()
     assert.same({"tf-gui.test_key"}, LocaleUtils.get_gui_string(mock_player, "test_key"))
     assert.same({"tf-error.test_key"}, LocaleUtils.get_error_string(mock_player, "test_key"))
     assert.same({"tf-handler.test_key"}, LocaleUtils.get_handler_string(mock_player, "test_key"))
   end)
 
   it("should handle all category prefixes", function()
-    local mock_player = {valid = true}
+    local mock_player = MockFactories.create_player()
     assert.same({"tf-command.test_key"}, LocaleUtils.get_string(mock_player, "command", "test_key"))
     assert.same({"mod-setting-name.test_key"}, LocaleUtils.get_string(mock_player, "setting_name", "test_key"))
     assert.same({"mod-setting-description.test_key"}, LocaleUtils.get_string(mock_player, "setting_desc", "test_key"))
   end)
 
   it("should handle parameters in locale strings", function()
-    local mock_player = { valid = true }
+    local mock_player = MockFactories.create_player()
     assert.same({"tf-gui.test_key", "param1", "param2"}, LocaleUtils.get_gui_string(mock_player, "test_key", {"param1", "param2"}))
     local complex_params = {"first", {"nested1", "nested2"}, {key = "value"}}
     local result = LocaleUtils.get_gui_string(mock_player, "test_key", complex_params)

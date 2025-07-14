@@ -59,8 +59,8 @@ local gui_event_dispatcher = require("core.events.gui_event_dispatcher")
 local custom_input_dispatcher = require("core.events.custom_input_dispatcher")
 local on_gui_closed_handler = require("core.events.on_gui_closed_handler")
 local handlers = require("core.events.handlers")
-
 local fave_bar_gui_labels_manager = require("core.control.fave_bar_gui_labels_manager")
+local EventHandlerHelpers = require("core.utils.event_handler_helpers")
 
 
 ---@class EventRegistrationDispatcher
@@ -69,34 +69,8 @@ local EventRegistrationDispatcher = {}
 -- Track registration state (use rawget to avoid static analysis issues)
 local _registration_state = {}
 
---- Create a safe wrapper for event handlers with comprehensive error handling
----@param handler function The event handler function
----@param handler_name string Name for logging and debugging
----@param event_type string Type of event (for context)
----@return function Safe wrapper function
-local function create_safe_event_handler(handler, handler_name, event_type)
-  return function(event)
-    local success, err = pcall(handler, event)
-    if not success then
-      ErrorHandler.warn_log("Event handler failed: " .. handler_name .. " - " .. tostring(err), {
-        handler = handler_name,
-        event_type = event_type,
-        error = err,
-        player_index = event and event.player_index
-      })
-      -- Show player message for user-facing errors if applicable
-      if event and event.player_index then
-        local player = game.get_player(event.player_index)
-        if player and player.valid then
-          -- Only show generic error message for critical failures
-          if event_type:find("gui") or event_type:find("input") then
-            GameHelpers.player_print(player, { "tf-error.event_handler_error" })
-          end
-        end
-      end
-    end
-  end
-end
+--- Create a safe wrapper for event handlers (using centralized helper)
+local create_safe_event_handler = EventHandlerHelpers.create_safe_handler
 
 --- Register core lifecycle and player events
 ---@param script table The Factorio script object

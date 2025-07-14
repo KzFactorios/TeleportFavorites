@@ -1,4 +1,4 @@
----@diagnostic disable: undefined-global, need-check-nil, assign-type-mismatch
+---@diagnostic disable: undefined-global, need-check-nil, assign-type-mismatch, param-type-mismatch, undefined-field
 
 --[[
 TeleportFavorites Factorio Mod - Control Script
@@ -10,7 +10,7 @@ Features:
 - EmmyLua-annotated helpers for safe player messaging, teleportation, and GUI frame destruction.
 - Move-mode UX for tag editor, with robust state management and multiplayer safety.
 - All persistent data access is via the Cache module for consistency and safety.
-- All new/changed features are documented inline and in notes/ as appropriate.
+- All new/changed features are documented inline and in .project/ as appropriate.
 ]]
 
 -- Import controllers for various mod components
@@ -72,9 +72,14 @@ local function custom_on_load()
   handlers.on_load()
 end
 
+-- Register script lifecycle handlers
+script.on_init(function()
+  custom_on_init()
+end)
 
-script.on_init(custom_on_init)
-script.on_load(custom_on_load)
+script.on_load(function()
+  custom_on_load()
+end)
 
 -- KEEP THIS CODE for development (disabled in production)
 -- Instantly skip any cutscene (including intro) for all players

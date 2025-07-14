@@ -31,8 +31,9 @@ local GPSUtils = require("core.utils.gps_utils")
 local ErrorHandler = require("core.utils.error_handler")
 local Enum = require("prototypes.enums.enum")
 local LocaleUtils = require("core.utils.locale_utils")
-local TileUtils = require("core.utils.tile_utils")
+local PositionUtils = require("core.utils.position_utils")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
+local PlayerHelpers = require("core.utils.player_helpers")
 
 ---@class TeleportContext
 ---@field force_safe boolean? Force safe teleportation mode
@@ -42,7 +43,7 @@ local ChartTagUtils = require("core.utils.chart_tag_utils")
 
 
 local function find_safe_landing_position(surface, position, radius, precision)
-  return TileUtils.find_safe_landing_position(surface, position, radius, precision)
+  return PositionUtils.find_safe_landing_position(surface, position, radius, precision)
 end
 
 --- Base teleport strategy
@@ -149,14 +150,12 @@ function StandardTeleportStrategy:execute(player, gps, context)
   if not position then
     ErrorHandler.debug_log("Standard teleport failed position normalization", { error = pos_error })
     local error_message = pos_error or LocaleUtils.get_error_string(player, "position_normalization_failed")
-    if player and player.valid then
-      player.print(error_message)
-    end
+    PlayerHelpers.safe_player_print(player, error_message)
     return error_message
   end
   -- Always find the safest landing position regardless of tile type
   local final_position = position
-  local safe_position = TileUtils.find_safe_landing_position(player.surface, position, 16.0, 0.5)
+  local safe_position = PositionUtils.find_safe_landing_position(player.surface, position, 16.0, 0.5)
   if safe_position then
     final_position = safe_position
     ErrorHandler.debug_log("Using optimized landing position", {
@@ -224,18 +223,14 @@ function VehicleTeleportStrategy:execute(player, gps, context)
   -- Check if player is actively driving (not just a passenger)
   if defines and player.riding_state and player.riding_state ~= defines.riding.acceleration.nothing then
     ErrorHandler.debug_log("Teleport blocked: Player is actively driving")
-    if player and player.valid then
-      player.print(LocaleUtils.get_error_string(player, "driving_teleport_blocked"))
-    end
+    PlayerHelpers.safe_player_print(player, LocaleUtils.get_error_string(player, "driving_teleport_blocked"))
     return LocaleUtils.get_error_string(player, "teleport_blocked_driving")
   end
   local position, pos_error = self:get_landing_position(player, gps)
   if not position then
     ErrorHandler.debug_log("Vehicle teleport failed position normalization", { error = pos_error })
     local error_message = pos_error or LocaleUtils.get_error_string(player, "position_normalization_failed")
-    if player and player.valid then
-      player.print(error_message)
-    end
+    PlayerHelpers.safe_player_print(player, error_message)
     return error_message
   end
   -- Always find the safest landing position regardless of tile type
@@ -310,9 +305,7 @@ function SafeTeleportStrategy:execute(player, gps, context)
   if not position then
     ErrorHandler.debug_log("Safe teleport failed position normalization", { error = pos_error })
     local error_message = pos_error or LocaleUtils.get_error_string(player, "position_normalization_failed")
-    if player and player.valid then
-      player.print(error_message)
-    end
+    PlayerHelpers.safe_player_print(player, error_message)
     return error_message
   end
   

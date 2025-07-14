@@ -16,6 +16,7 @@ Each function is annotated with argument and return value details.
 
 local ErrorHandler = require("core.utils.error_handler")
 local Enum = require("prototypes.enums.enum")
+local BasicHelpers = require("core.utils.basic_helpers")
 
 local GuiBase = {}
 
@@ -23,7 +24,7 @@ local GuiBase = {}
 --- @param element LuaGuiElement Starting element
 --- @return LuaGuiElement? frame Found frame or nil
 local function get_gui_frame_by_element(element)
-    if not element or not element.valid then return nil end
+    if not BasicHelpers.is_valid_element(element) then return nil end
 
     local current ---@type LuaGuiElement?  -- allow nil
     current = element
@@ -37,7 +38,7 @@ local function get_gui_frame_by_element(element)
 end
 
 --- NOTE: All requires MUST be at the top of the file. Do NOT move requires inside functions to avoid circular dependencies.
---- This is a strict project policy. See notes/architecture.md and coding_standards.md for rationale.
+--- This is a strict project policy. See .project/architecture.md and coding_standards.md for rationale.
 --- gui_base.lua MUST NOT require any control/event modules (e.g., control_fave_bar, control_tag_editor). It is a pure GUI helper module.
 
 --- Create a sprite button with icon, tooltip, and style.

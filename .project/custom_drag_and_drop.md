@@ -95,7 +95,7 @@ end
 if event.button == defines.mouse_button_type.right then
   if player_data.drag_favorite and player_data.drag_favorite.active then
     CursorUtils.end_drag_favorite(player)
-    GameHelpers.player_print(player, {"tf-gui.fave_bar_drag_canceled"})
+    PlayerHelpers.safe_player_print(player, {"tf-gui.fave_bar_drag_canceled"})
     -- Set flag to suppress tag editor opening
     player_data.suppress_tag_editor = { tick = game.tick }
     return true -- Stop event propagation

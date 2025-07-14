@@ -15,6 +15,8 @@ This document defines the coding standards and best practices for the TeleportFa
 │ • Storage as source       │ • Descriptive naming      │
 │   of truth pattern        │ • Localize all strings    │
 │ • Input → Storage → UI   │ • Test all key functions  │
+│ • Use PlayerHelpers &     │ • Use SafeHelpers for     │
+│   centralized utilities   │   validation everywhere   │
 ├───────────────────────────┴───────────────────────────┤
 │ Commit & Review Process:                              │
 │ • Lint before commit                                  │
@@ -114,7 +116,7 @@ end
 - Use descriptive variable and function names. Avoid abbreviations unless they are widely understood in the Factorio modding community.
 - Write clear, concise comments and documentation. All public functions and modules must be documented with EmmyLua annotations and descriptive comments. Private helpers should be documented where their behavior is non-obvious.
 - When addressing linter issues, do not make more than 2 attempts to fix any linter issues in a single request. Further linter problems should be addressed in separate requests or future passes.
-- Suggest gang of four design patterns whenever applicable and document when they are in use at the top of the file or at the top of a method - where is most appropriate. --- Pattern [pattern name] is acceptable. All pattern base classes are located in `core/pattern/` or `core/patterns/` and are documented in `notes/pattern_class_notes.md`.
+- Suggest gang of four design patterns whenever applicable and document when they are in use at the top of the file or at the top of a method - where is most appropriate. --- Pattern [pattern name] is acceptable. All pattern base classes are located in `core/pattern/` or `core/patterns/` and are documented in `.project/pattern_class_notes.md`.
 - chatGPT said "Tip: You can also use local requires inside functions to break cycles:" this tip maybe true for lua (i have no idea), but it is not for factorio, ABSOLUTELY ALWAYS PUT THE REQUIRES AT THE TOP OF THE FILE!!!!!! Always put require statements at the top of the file. Do not use require statements in method calls. Always use absolute paths from the root. Always order require statements alphabetically upon save or refomatting. This ensures consistency and makes it easy to audit dependencies.
 - It is acceptable to have helper methods within a module if they are only used locally. When a helper method needs to be shared, it should be included in a helper file, appropriately named, in the `core/utils/helper` folder.
 - When referencing Factorio runtime objects (e.g., `LuaCustomChartTag`), be aware that static analysis may not recognize all valid runtime fields or methods. Use per-line suppression comments (e.g., `---@diagnostic disable-next-line: undefined-field`) to silence false positives, especially for methods like `:destroy()` or `:destroy_tag()` on chart tags.
@@ -153,7 +155,7 @@ end
 - Place all persistent data helpers in `core/utils/`. These helpers should be surface-aware and multiplayer-safe, and should never access persistent storage directly (always go through the `Cache` module).
 - Place all GUI logic in `gui/` and submodules. All GUI modules should use `base_gui.lua` for shared properties and methods, and should follow the idiomatic Factorio GUI style guide (see `factorio_specs.md`).
 - Place all test files in `tests/`. Each core module and helper should have a corresponding test file, and all tests should be automated and cover edge cases and multiplayer scenarios.
-- All pattern base classes are located in `core/pattern/` or `core/patterns/` and are documented in `notes/pattern_class_notes.md`.
+- All pattern base classes are located in `core/pattern/` or `core/patterns/` and are documented in `.project/pattern_class_notes.md`.
 - All domain classes (e.g., `Tag`, `Favorite`, `PlayerFavorites`) are located in their respective folders under `core/` and are strictly annotated and documented.
 - Modules and their methods should be modularized for eaier code maintenance and readability
 
@@ -163,7 +165,7 @@ end
 - Store all persistent data in `storage`. Never use `_G` or any other global for persistence. The `storage` table is the official, per-mod persistent data table in Factorio 2.0+ and is managed by the game engine.
 - Use the `Cache` module for all persistent data access and mutation. The `Cache` module provides a strict, surface-aware, and multiplayer-safe interface for all persistent data operations.
 - Use primitive values for persisted storage values. Create helper methods to convert the values back to objects when necessary. Do not store objects in persistent storage! It won't work, as Factorio's serialization only supports primitive types and tables of primitives.
-- The persistent data schema is documented in `notes/data_schema.md`. All changes to the schema must be reflected in this document.
+- The persistent data schema is documented in `.project/data_schema.md`. All changes to the schema must be reflected in this document.
 
 ---
 

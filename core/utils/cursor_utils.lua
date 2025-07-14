@@ -4,6 +4,7 @@
 local ErrorHandler = require("core.utils.error_handler")
 local FavoriteUtils = require("core.favorite.favorite")
 local Cache = require("core.cache.cache")
+local BasicHelpers = require("core.utils.basic_helpers")
 
 ---@class CursorUtils
 local CursorUtils = {}
@@ -14,7 +15,7 @@ local CursorUtils = {}
 ---@param slot_index number The slot index being dragged from (1-based)
 ---@return boolean success
 function CursorUtils.start_drag_favorite(player, favorite, slot_index)
-  if not player or not player.valid then return false end
+  if not BasicHelpers.is_valid_player(player) then return false end
   
   if not favorite or FavoriteUtils.is_blank_favorite(favorite) then
     return false
@@ -48,7 +49,7 @@ end
 ---@param player LuaPlayer The player
 ---@return boolean success
 function CursorUtils.end_drag_favorite(player)
-  if not player or not player.valid then
+  if not BasicHelpers.is_valid_player(player) then
     ErrorHandler.log_error("CursorUtils.end_drag_favorite: Invalid player")
     return false
   end
@@ -82,7 +83,7 @@ end
 ---@return boolean is_dragging
 ---@return number|nil source_slot
 function CursorUtils.is_dragging_favorite(player)
-  if not player or not player.valid then return false, nil end
+  if not BasicHelpers.is_valid_player(player) then return false, nil end
   
   local player_data = Cache.get_player_data(player)
   

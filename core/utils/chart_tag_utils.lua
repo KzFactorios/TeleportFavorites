@@ -16,6 +16,7 @@ local ErrorHandler = require("core.utils.error_handler")
 local GPSUtils = require("core.utils.gps_utils")
 local Cache = require("core.cache.cache")
 local settings_access = require("core.utils.settings_access")
+local BasicHelpers = require("core.utils.basic_helpers")
 
 ---@class ChartTagUtils
 local ChartTagUtils = {}
@@ -28,7 +29,7 @@ local last_clicked_chart_tags = {}
 ---@param cursor_position MapPosition Position to check
 ---@return LuaCustomChartTag? chart_tag Found chart tag or nil
 function ChartTagUtils.find_closest_chart_tag_to_position(player, cursor_position)
-  if not player or not player.valid or not cursor_position then return nil end
+  if not BasicHelpers.is_valid_player(player) or not cursor_position then return nil end
 
   -- Only detect clicks while in map mode
   if player.render_mode ~= defines.render_mode.chart then

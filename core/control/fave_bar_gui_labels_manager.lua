@@ -14,34 +14,30 @@ local ErrorHandler = require("core.utils.error_handler")
 local GuiValidation = require("core.utils.gui_validation")
 local GuiHelpers = require("core.utils.gui_helpers")
 local TeleportHistory = require("core.teleport.teleport_history")
-local GameHelpers = require("core.utils.game_helpers")
+local PlayerHelpers = require("core.utils.player_helpers")
+local basic_helpers = require("core.utils.basic_helpers")
 local Settings = require("core.utils.settings_access")
 local Constants = require("constants")
 
 local FaveBarGuiLabelsManager = {}
 
--- Helper function to count table entries
-local function table_size(t)
-    local count = 0
-    for _ in pairs(t) do count = count + 1 end
-    return count
+-- Compact validation wrapper
+local function with_valid_player(player, fn, default)
+  return (player and player.valid) and fn(player) or default
 end
 
--- Helper function to get update interval from global settings
+-- Compact settings helper
 local function get_update_interval(updater_name)
-    if not settings or not settings.global then
-        -- Fallback to constants if settings not available
-        return (updater_name == "player_coords") and Constants.settings.DEFAULT_COORDS_UPDATE_INTERVAL or Constants.settings.DEFAULT_HISTORY_UPDATE_INTERVAL
-    end
-    
-    local setting_name = (updater_name == "player_coords") and "coords-update-interval" or "history-update-interval"
-    local setting_value = settings.global[setting_name]
-    if setting_value and setting_value.value then
-        return setting_value.value
-    end
-    
-    -- Fallback to constants
-    return (updater_name == "player_coords") and Constants.settings.DEFAULT_COORDS_UPDATE_INTERVAL or Constants.settings.DEFAULT_HISTORY_UPDATE_INTERVAL
+  local setting_name = (updater_name == "player_coords") and "coords-update-interval" or "history-update-interval"
+  local default = (updater_name == "player_coords") and 15 or 30  -- Use direct values to avoid LSP issues
+  return settings and settings.global and settings.global[setting_name] and settings.global[setting_name].value or default
+end
+
+-- Compact table size helper
+local function table_size(t)
+  local count = 0
+  for _ in pairs(t) do count = count + 1 end
+  return count
 end
 
 -- Prevent duplicate registrations
@@ -91,33 +87,19 @@ local function _get_state(updater_name)
 end
 
 local function _get_label(player, label_name)
-    if not player or not player.valid then return nil end
-    local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
-    if not main_flow or not main_flow.valid then 
-        return nil 
-    end
-    
-    -- Use recursive search to find the label anywhere within the main flow
-    local label = GuiValidation.find_child_by_name(main_flow, label_name)
-    if not label or not label.valid then
-        return nil
-    end
-    
-    return label
+    return with_valid_player(player, function(p)
+        local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(p)
+        return main_flow and main_flow.valid and GuiValidation.find_child_by_name(main_flow, label_name)
+    end)
 end
 
 local function _should_register_handler(setting_name)
     if not game then return false end
-    
-    -- Convert setting name to the correct format used by Settings module
     local setting_key = (setting_name == "show-player-coords") and "show_player_coords" or "show_teleport_history"
-    
     for _, player in pairs(game.players) do
         if player and player.valid then
             local player_settings = Settings:getPlayerSettings(player)
-            if player_settings and player_settings[setting_key] then
-                return true
-            end
+            if player_settings and player_settings[setting_key] then return true end
         end
     end
     return false
@@ -342,65 +324,65 @@ function FaveBarGuiLabelsManager.register_history_controls(script)
             local player = game.get_player(command.player_index)
             if not player or not player.valid then return end
             FaveBarGuiLabelsManager.force_update_labels_for_player(player)
-            GameHelpers.player_print(player, "Forced coordinate label update")
+            PlayerHelpers.safe_player_print(player, "Forced coordinate label update")
         end)
         commands.add_command("tf-debug-labels", "Debug label system", function(command)
             local player = game.get_player(command.player_index)
             if not player or not player.valid then return end
             
-            GameHelpers.player_print(player, "=== LABEL DEBUG INFO ===")
+            PlayerHelpers.safe_player_print(player, "=== LABEL DEBUG INFO ===")
             
             -- Check if settings are enabled
             local player_settings = Settings:getPlayerSettings(player)
             local coords_enabled = player_settings and player_settings.show_player_coords
             local history_enabled = player_settings and player_settings.show_teleport_history
-            GameHelpers.player_print(player, "show-player-coords setting: " .. tostring(coords_enabled))
-            GameHelpers.player_print(player, "show-teleport-history setting: " .. tostring(history_enabled))
+            PlayerHelpers.safe_player_print(player, "show-player-coords setting: " .. tostring(coords_enabled))
+            PlayerHelpers.safe_player_print(player, "show-teleport-history setting: " .. tostring(history_enabled))
             
             -- Check GUI hierarchy
             local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
-            GameHelpers.player_print(player, "main_flow exists: " .. tostring(main_flow ~= nil))
+            PlayerHelpers.safe_player_print(player, "main_flow exists: " .. tostring(main_flow ~= nil))
             
             if main_flow then
                 local fave_bar_frame = GuiValidation.find_child_by_name(main_flow, "fave_bar_frame")
-                GameHelpers.player_print(player, "fave_bar_frame exists: " .. tostring(fave_bar_frame ~= nil))
+                PlayerHelpers.safe_player_print(player, "fave_bar_frame exists: " .. tostring(fave_bar_frame ~= nil))
                 
                 -- Check if labels exist
                 local coords_label = _get_label(player, "fave_bar_coords_label")
                 local history_label = _get_label(player, "fave_bar_teleport_history_label")
-                GameHelpers.player_print(player, "coords_label found: " .. tostring(coords_label ~= nil))
-                GameHelpers.player_print(player, "history_label found: " .. tostring(history_label ~= nil))
+                PlayerHelpers.safe_player_print(player, "coords_label found: " .. tostring(coords_label ~= nil))
+                PlayerHelpers.safe_player_print(player, "history_label found: " .. tostring(history_label ~= nil))
                 
                 if coords_label then
-                    GameHelpers.player_print(player, "coords_label current caption: " .. tostring(coords_label.caption))
-                    GameHelpers.player_print(player, "coords_label visible: " .. tostring(coords_label.visible))
+                    PlayerHelpers.safe_player_print(player, "coords_label current caption: " .. tostring(coords_label.caption))
+                    PlayerHelpers.safe_player_print(player, "coords_label visible: " .. tostring(coords_label.visible))
                 end
                 
                 if history_label then
-                    GameHelpers.player_print(player, "history_label current caption: " .. tostring(history_label.caption))
-                    GameHelpers.player_print(player, "history_label visible: " .. tostring(history_label.visible))
+                    PlayerHelpers.safe_player_print(player, "history_label current caption: " .. tostring(history_label.caption))
+                    PlayerHelpers.safe_player_print(player, "history_label visible: " .. tostring(history_label.visible))
                 end
             end
             
             -- Check handler state for coords
             local coords_state = _get_state("player_coords")
-            GameHelpers.player_print(player, "=== COORDS HANDLER STATE ===")
-            GameHelpers.player_print(player, "tick handler registered: " .. tostring(coords_state.is_handler_registered))
-            GameHelpers.player_print(player, "enabled players count: " .. tostring(table_size(coords_state.enabled_players)))
-            GameHelpers.player_print(player, "this player enabled: " .. tostring(coords_state.enabled_players[player.index] ~= nil))
-            GameHelpers.player_print(player, "last update tick: " .. tostring(coords_state.last_update_tick))
+            PlayerHelpers.safe_player_print(player, "=== COORDS HANDLER STATE ===")
+            PlayerHelpers.safe_player_print(player, "tick handler registered: " .. tostring(coords_state.is_handler_registered))
+            PlayerHelpers.safe_player_print(player, "enabled players count: " .. tostring(table_size(coords_state.enabled_players)))
+            PlayerHelpers.safe_player_print(player, "this player enabled: " .. tostring(coords_state.enabled_players[player.index] ~= nil))
+            PlayerHelpers.safe_player_print(player, "last update tick: " .. tostring(coords_state.last_update_tick))
             
             -- Check handler state for history
             local history_state = _get_state("teleport_history")
-            GameHelpers.player_print(player, "=== HISTORY HANDLER STATE ===")
-            GameHelpers.player_print(player, "tick handler registered: " .. tostring(history_state.is_handler_registered))
-            GameHelpers.player_print(player, "enabled players count: " .. tostring(table_size(history_state.enabled_players)))
-            GameHelpers.player_print(player, "this player enabled: " .. tostring(history_state.enabled_players[player.index] ~= nil))
-            GameHelpers.player_print(player, "last update tick: " .. tostring(history_state.last_update_tick))
+            PlayerHelpers.safe_player_print(player, "=== HISTORY HANDLER STATE ===")
+            PlayerHelpers.safe_player_print(player, "tick handler registered: " .. tostring(history_state.is_handler_registered))
+            PlayerHelpers.safe_player_print(player, "enabled players count: " .. tostring(table_size(history_state.enabled_players)))
+            PlayerHelpers.safe_player_print(player, "this player enabled: " .. tostring(history_state.enabled_players[player.index] ~= nil))
+            PlayerHelpers.safe_player_print(player, "last update tick: " .. tostring(history_state.last_update_tick))
             
             -- Check current position
-            GameHelpers.player_print(player, "Current position: " .. tostring(player.position.x) .. ", " .. tostring(player.position.y))
-            GameHelpers.player_print(player, "Current tick: " .. tostring(game.tick))
+            PlayerHelpers.safe_player_print(player, "Current position: " .. tostring(player.position.x) .. ", " .. tostring(player.position.y))
+            PlayerHelpers.safe_player_print(player, "Current tick: " .. tostring(game.tick))
             
             -- Try to update manually
             GameHelpers.player_print(player, "=== FORCING UPDATE ===")

@@ -45,7 +45,9 @@ describe("TagEditorEventHelpers", function()
     }
     
     package.loaded["core.utils.basic_helpers"] = {
-      is_valid_player = function() return true end
+      is_valid_player = function(player) 
+        return player ~= nil and player.valid ~= false 
+      end
     }
     
     -- Mock game objects

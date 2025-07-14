@@ -16,6 +16,7 @@ Functions:
 local GuiValidation = require("core.utils.gui_validation")
 local GuiBase = require("gui.gui_base")
 local GPSUtils = require("core.utils.gps_utils")
+local BasicHelpers = require("core.utils.basic_helpers")
 
 local GuiHelpers = {}
 
@@ -59,7 +60,7 @@ function GuiHelpers.build_favorite_tooltip(fav, opts)
 end
 
 function GuiHelpers.format_gps_display(gps)
-  if not gps or gps == "" then return "N/A" end
+  if not BasicHelpers.is_valid_gps(gps) then return "N/A" end
   return GPSUtils.coords_string_from_gps(gps)
 end
 

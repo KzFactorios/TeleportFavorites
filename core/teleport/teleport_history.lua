@@ -1,8 +1,10 @@
 -- core/teleport/teleport_history.lua
 
 local GameHelpers = require("core.utils.game_helpers")
+local PlayerHelpers = require("core.utils.player_helpers")
 local Cache = require("core.cache.cache")
 local GPSUtils = require("core.utils.gps_utils")
+local BasicHelpers = require("core.utils.basic_helpers")
 
 local HISTORY_STACK_SIZE = 128 -- Only 128 allowed for now (TBA for future options)
 local TeleportHistory = {}
@@ -11,7 +13,7 @@ local TeleportHistory = {}
 
 -- Add a GPS to history (if not duplicate at top)
 function TeleportHistory.add_gps(player, gps)
-    if not player or not player.valid or not gps or not gps.x or not gps.y or not gps.surface then return end
+    if not BasicHelpers.is_valid_player(player) or not gps or not gps.x or not gps.y or not gps.surface then return end
     
     local surface_index = gps.surface
     local hist = Cache.get_player_teleport_history(player, surface_index)
@@ -35,7 +37,7 @@ end
 
 -- Move pointer up/down, teleport if possible
 function TeleportHistory.move_pointer(player, direction, shift)
-    if not player or not player.valid then return end
+    if not BasicHelpers.is_valid_player(player) then return end
     
     local surface_index = player.surface.index
     local hist = Cache.get_player_teleport_history(player, surface_index)
@@ -65,7 +67,7 @@ end
 
 -- Clear stack
 function TeleportHistory.clear(player)
-    if not player or not player.valid then return end
+    if not BasicHelpers.is_valid_player(player) then return end
     local surface_index = player.surface.index
     local hist = Cache.get_player_teleport_history(player, surface_index)
     -- Reset both stack and pointer
@@ -77,7 +79,7 @@ end
 
 -- Teleport to pointer location (with water/space checks)
 function TeleportHistory.teleport_to_pointer(player)
-    if not player or not player.valid then return end
+    if not BasicHelpers.is_valid_player(player) then return end
     local surface_index = player.surface.index
     local hist = Cache.get_player_teleport_history(player, surface_index)
     local stack = hist.stack
@@ -115,16 +117,16 @@ end
 
 -- Debug function to print history stack
 function TeleportHistory.print_history(player)
-    if not player or not player.valid then return end
+    if not BasicHelpers.is_valid_player(player) then return end
     local surface_index = player.surface.index
     local hist = Cache.get_player_teleport_history(player, surface_index)
     local stack = hist.stack
     
-    player.print("==== Teleport History Debug ====")
-    player.print("Surface: " .. surface_index .. " | Stack size: " .. #stack .. " | Pointer: " .. hist.pointer)
+    PlayerHelpers.safe_player_print(player, "==== Teleport History Debug ====")
+    PlayerHelpers.safe_player_print(player, "Surface: " .. surface_index .. " | Stack size: " .. #stack .. " | Pointer: " .. hist.pointer)
     
     if #stack == 0 then
-        player.print("History is empty")
+        PlayerHelpers.safe_player_print(player, "History is empty")
         return
     end
     
@@ -132,9 +134,9 @@ function TeleportHistory.print_history(player)
         local prefix = (i == hist.pointer) and "→ " or "  "
         local gps_display = gps.x .. ", " .. gps.y .. ", surface " .. gps.surface
         local gps_string = TeleportHistory.get_gps_string(gps) or "invalid"
-        player.print(prefix .. i .. ": [" .. gps_display .. "] (GPS: " .. gps_string .. ")")
+        PlayerHelpers.safe_player_print(player, prefix .. i .. ": [" .. gps_display .. "] (GPS: " .. gps_string .. ")")
     end
-    player.print("================================")
+    PlayerHelpers.safe_player_print(player, "================================")
 end
 
 return TeleportHistory

@@ -20,7 +20,7 @@
 
 local FavoriteRehydration = require("core.favorite.favorite_rehydration")
 local FavoriteUtils = require("core.favorite.favorite")
-local SmallHelpers = require("core.utils.small_helpers")
+local BasicHelpers = require("core.utils.basic_helpers")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local Cache = require("core.cache.cache")
 local tag_editor = require("gui.tag_editor.tag_editor")
@@ -28,6 +28,7 @@ local GuiValidation = require("core.utils.gui_validation")
 local GuiHelpers = require("core.utils.gui_helpers")
 local ErrorHandler = require("core.utils.error_handler")
 local LocaleUtils = require("core.utils.locale_utils")
+local PlayerHelpers = require("core.utils.player_helpers")
 local CursorUtils = require("core.utils.cursor_utils")
 local DragDropUtils = require("core.utils.drag_drop_utils")
 local GameHelpers = require("core.utils.game_helpers")
@@ -39,7 +40,7 @@ local SlotInteractionHandlers = {}
 ---@param fav table The favorite to check
 ---@return boolean can_drag
 function SlotInteractionHandlers.can_start_drag(fav)
-  return fav and not SmallHelpers.is_blank_favorite(fav) and not SmallHelpers.is_locked_favorite(fav)
+  return fav and not BasicHelpers.is_blank_favorite(fav) and not BasicHelpers.is_locked_favorite(fav)
 end
 
 --- Handle teleportation to a favorite
@@ -70,8 +71,9 @@ function SlotInteractionHandlers.handle_toggle_lock(event, player, fav, slot, fa
   if event.button == defines.mouse_button_type.left and event.control then
     local success, error_msg = favorites:toggle_favorite_lock(slot)
     if not success then
-      GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "failed_toggle_lock", 
-        {error_msg or LocaleUtils.get_error_string(player, "unknown_error")}))
+      PlayerHelpers.error_message_to_player(player, 
+        LocaleUtils.get_error_string(player, "failed_toggle_lock", 
+          {error_msg or LocaleUtils.get_error_string(player, "unknown_error")}))
       return false
     end
     
@@ -102,7 +104,7 @@ function SlotInteractionHandlers.handle_shift_left_click(event, player, fav, slo
       slot = slot,
       can_drag = SlotInteractionHandlers.can_start_drag(fav),
       fav_is_blank = FavoriteUtils.is_blank_favorite(fav),
-      fav_is_locked = SmallHelpers.is_locked_favorite(fav)
+      fav_is_locked = BasicHelpers.is_locked_favorite(fav)
     })
     
     if SlotInteractionHandlers.can_start_drag(fav) then
@@ -113,8 +115,8 @@ function SlotInteractionHandlers.handle_shift_left_click(event, player, fav, slo
         slot = slot
       })
       return success
-    elseif SmallHelpers.is_locked_favorite(fav) then
-      GameHelpers.player_print(player, SharedUtils.lstr("tf-gui.fave_bar_locked_cant_drag", slot))
+    elseif BasicHelpers.is_locked_favorite(fav) then
+      PlayerHelpers.safe_player_print(player, SharedUtils.lstr("tf-gui.fave_bar_locked_cant_drag", slot))
       return true -- Prevent further processing like teleportation
     end
   end
@@ -176,7 +178,7 @@ function SlotInteractionHandlers.handle_request_to_open_tag_editor(event, player
       ErrorHandler.debug_log("[SLOT_HANDLERS] Right-click detected during drag, canceling drag operation", 
         { player = player.name })
       CursorUtils.end_drag_favorite(player)
-      GameHelpers.player_print(player, {"tf-gui.fave_bar_drag_canceled"})
+      PlayerHelpers.safe_player_print(player, {"tf-gui.fave_bar_drag_canceled"})
       return true
     end
     
@@ -238,8 +240,9 @@ end
 function SlotInteractionHandlers.reorder_favorites(player, favorites, drag_index, slot)
   local success, error_msg = favorites:move_favorite(drag_index, slot)
   if not success then
-    GameHelpers.player_print(player, LocaleUtils.get_error_string(player, "failed_reorder_favorite", 
-      {error_msg or LocaleUtils.get_error_string(player, "unknown_error")}))
+    PlayerHelpers.error_message_to_player(player, 
+      LocaleUtils.get_error_string(player, "failed_reorder_favorite", 
+        {error_msg or LocaleUtils.get_error_string(player, "unknown_error")}))
     CursorUtils.end_drag_favorite(player)
     return false
   end

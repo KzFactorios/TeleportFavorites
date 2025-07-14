@@ -13,7 +13,6 @@ This module consolidates:
 Provides a unified API for all position-related operations throughout the mod.
 ]]
 
-local SmallHelpers = require("core.utils.small_helpers")
 local basic_helpers = require("core.utils.basic_helpers")
 local Constants = require("constants")
 local ErrorHandler = require("core.utils.error_handler")
@@ -30,14 +29,36 @@ local PositionUtils = {}
 ---@param map_position MapPosition
 ---@return MapPosition normalized_position
 function PositionUtils.normalize_position(map_position)
-  return SmallHelpers.normalize_position(map_position)
+  if not map_position then
+    return {x = 0, y = 0}
+  end
+  
+  -- Handle both array-style [x, y] and object-style {x = ..., y = ...} positions
+  local x, y
+  if map_position.x ~= nil and map_position.y ~= nil then
+    x, y = map_position.x, map_position.y
+  elseif type(map_position) == "table" and #map_position >= 2 then
+    x, y = map_position[1], map_position[2]
+  else
+    return {x = 0, y = 0}
+  end
+  
+  return {x = math.floor(x), y = math.floor(y)}
 end
 
 --- Check if a position needs normalization
 ---@param position MapPosition
 ---@return boolean
 function PositionUtils.needs_normalization(position)
-  return SmallHelpers.needs_normalization(position)
+  return position and (not basic_helpers.is_whole_number(position.x) or
+    not basic_helpers.is_whole_number(position.y))
+end
+
+--- Check if a position is valid
+---@param position MapPosition
+---@return boolean
+function PositionUtils.is_valid_position(position)
+  return position and position.x and position.y and true or false
 end
 
 --- Create old/new position pair for tracking position changes
@@ -100,6 +121,41 @@ function PositionUtils.is_space_tile(surface, position)
     return true
   end
   return false
+end
+
+--- Check if a position appears walkable (not water/space) - simplified version
+---@param surface LuaSurface
+---@param position MapPosition
+---@return boolean appears_walkable
+function PositionUtils.appears_walkable(surface, position)
+  if not surface or not position then return false end
+  
+  -- Use existing water and space tile checking
+  if PositionUtils.is_water_tile(surface, position) then
+    return false
+  end
+  
+  if PositionUtils.is_space_tile(surface, position) then
+    return false
+  end
+  
+  return true
+end
+
+--- Find safe landing position near a potentially unsafe tile (like water)
+---@param surface LuaSurface Surface to search on
+---@param position MapPosition Original position
+---@param search_radius number? Search radius (default: 16.0)
+---@param precision number? Search precision (default: 0.5)
+---@return MapPosition? safe_position Safe position or nil if none found
+function PositionUtils.find_safe_landing_position(surface, position, search_radius, precision)
+  if not surface or not position then return nil end
+  
+  search_radius = search_radius or 16.0
+  precision = precision or 0.5
+  
+  -- Use Factorio's built-in collision detection to find a safe position
+  return surface.find_non_colliding_position("character", position, search_radius, precision)
 end
 
 --- Check if a position is walkable (same result as is_valid_tag_position, but does not require a player)

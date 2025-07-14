@@ -23,6 +23,7 @@ Error Handling:
 --]]
 
 local Constants = require("constants")
+local BasicHelpers = require("core.utils.basic_helpers")
 
 --- @class Settings
 --- @field getPlayerSettings fun(self: Settings, player: LuaPlayer): table
@@ -94,7 +95,7 @@ end
 --- @return number click_radius
 function Settings.get_chart_tag_click_radius(player)
   local default = tonumber(Constants.settings.CHART_TAG_CLICK_RADIUS) or 10
-  if not player or not player.valid then return default end
+  if not BasicHelpers.is_valid_player(player) then return default end
   local player_settings = settings.get_player_settings(player)
   local setting = player_settings and player_settings["chart-tag-click-radius"]
   if setting and setting.value then

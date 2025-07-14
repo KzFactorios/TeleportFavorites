@@ -5,6 +5,10 @@
 require("test_framework")
 require("mocks.factorio_test_env")
 
+-- Use centralized test helpers
+local MockFactories = require("mocks.mock_factories")
+local TestHelpers = require("mocks.test_helpers")
+
 -- Mock system - setup mocks BEFORE importing target module
 local mock_cache = require("mocks.mock_cache")
 local mock_error_handler = require("mocks.mock_error_handler")

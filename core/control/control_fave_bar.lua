@@ -17,7 +17,7 @@
 
 local PlayerFavorites = require("core.favorite.player_favorites")
 local FavoriteUtils = require("core.favorite.favorite")
-local SmallHelpers = require("core.utils.small_helpers")
+local BasicHelpers = require("core.utils.basic_helpers")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local ErrorHandler = require("core.utils.error_handler")
 local SlotInteractionHandlers = require("core.control.slot_interaction_handlers")
@@ -27,6 +27,7 @@ local CursorUtils = require("core.utils.cursor_utils")
 local GuiHelpers = require("core.utils.gui_helpers")
 local GuiValidation = require("core.utils.gui_validation")
 local Cache = require("core.cache.cache")
+local BasicHelpers = require("core.utils.basic_helpers")
 
 local M = {}
 
@@ -329,9 +330,9 @@ end
 
 local function on_fave_bar_gui_click(event)
   local element = event.element
-  if not element or not element.valid then return end
+  if not BasicHelpers.is_valid_element(element) then return end
   local player = game.get_player(event.player_index)
-  if not player or not player.valid then return end
+  if not BasicHelpers.is_valid_player(player) then return end
 
   log_click_event(event, player)
 

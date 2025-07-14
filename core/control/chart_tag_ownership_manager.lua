@@ -23,7 +23,7 @@ Core Principle:
 
 local Cache = require("core.cache.cache")
 local ErrorHandler = require("core.utils.error_handler")
-local CollectionUtils = require("core.utils.collection_utils")
+
 
 --- Ensure Cache is initialized before accessing Lookups
 local function ensure_cache_initialized()

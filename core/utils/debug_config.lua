@@ -44,7 +44,7 @@ local function detect_environment()
   -- Look for development-only files/modules
   local dev_indicators = {
     "tests/validate_syntax.lua",
-    "notes/TODO.md", 
+    ".project/TODO.md", 
     ".scripts/",
     ".github/"
   }

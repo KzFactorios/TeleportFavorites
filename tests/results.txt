@@ -1,0 +1,1533 @@
+﻿Detected Lua version: 5.1
+LuaCov found and enabled
+==== Running All Tests ====
+
+==== Running specs/admin_utils_spec.lua ====
+
+==== Running Tests ====
+
+AdminUtils
+  - should load admin_utils without errors ... PASS
+  - should handle admin functions if available ... PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Running specs/basic_helpers_spec.lua ====
+
+==== Running Tests ====
+
+BasicHelpers
+  - should load basic_helpers without errors ... PASS
+  - should execute pad function without errors ... PASS
+  - should execute normalize_index without errors ... PASS
+  - should handle basic helper functions ... PASS
+
+==== Test Summary ====
+Total tests: 4
+Passed: 4
+Failed: 0
+
+==== Running specs/cache_edge_cases_spec.lua ====
+
+==== Running Tests ====
+
+Cache edge cases
+  - should handle storage edge cases without errors ... PASS
+  - should handle invalid inputs gracefully ... PASS
+  - should handle sanitization edge cases ... PASS
+
+==== Test Summary ====
+Total tests: 3
+Passed: 3
+Failed: 0
+
+==== Running specs/cache_spec.lua ====
+
+==== Running Tests ====
+
+Cache module
+  - should load cache module without errors ... PASS
+  - should expose expected cache API methods ... PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Running specs/chart_tag_modification_helpers_spec.lua ====
+Warning: global after_each not implemented
+
+==== Running Tests ====
+
+ChartTagModificationHelpers
+  - should be a table/module ... PASS
+  - should have all required functions ... PASS
+
+is_valid_tag_modification
+  - should return true for valid modifications ... PASS
+  - should return false for invalid player ... PASS
+  - should return false for invalid tag ... PASS
+  - should return false for invalid tag position ... PASS
+  - should return false for invalid old position ... PASS
+  - should return false if player lacks permission ... PASS
+  - should log admin action for admin override ... PASS
+
+extract_gps
+  - should extract GPS coordinates correctly ... PASS
+  - should handle fractional positions correctly ... PASS
+
+update_tag_and_cleanup
+  - should update tag GPS correctly ... PASS
+  - should not update for identical GPS coordinates ... PASS
+  - should handle nil GPS gracefully ... PASS
+  - should handle tag not found gracefully ... PASS
+  - should handle update failure gracefully ... PASS
+
+update_favorites_gps
+  - should update favorite GPS correctly ... PASS
+  - should not update for identical GPS coordinates ... PASS
+
+integration tests
+  - should handle full chart tag modification workflow ... PASS
+
+==== Test Summary ====
+Total tests: 19
+Passed: 19
+Failed: 0
+
+==== Running specs/chart_tag_ownership_manager_spec.lua ====
+
+==== Running Tests ====
+
+ChartTagOwnershipManager
+  - reset_ownership_for_player resets ownership and invalidates cache ... PASS
+  - reset_ownership_for_player returns 0 for invalid player and logs warning ... PASS
+  - on_player_left_game resets ownership for switching_servers and covers reset_count > 0 branch ... [MOCK ERROR HANDLER] debug_log called: 	Reset chart tag ownership due to player leaving
+PASS
+  - on_player_left_game resets ownership for kicked_and_deleted and covers reset_count > 0 branch ... [MOCK ERROR HANDLER] debug_log called: 	Reset chart tag ownership due to player leaving
+PASS
+  - on_player_left_game resets ownership for banned and covers reset_count > 0 branch ... [MOCK ERROR HANDLER] debug_log called: 	Reset chart tag ownership due to player leaving
+PASS
+  - on_player_removed always resets ownership and covers reset_count > 0 branch ... [MOCK ERROR HANDLER] debug_log called: 	Reset chart tag ownership due to player removal
+PASS
+  - handles missing/invalid player in on_player_left_game and on_player_removed and logs warning ... PASS
+  - on_player_removed does not log reset when no tags owned (reset_count == 0) ... PASS
+  - on_player_left_game does not log reset when reason does not match and reset_count == 0 ... PASS
+
+==== Test Summary ====
+Total tests: 9
+Passed: 9
+Failed: 0
+
+==== Running specs/chart_tag_removal_helpers_spec.lua ====
+
+==== Running Tests ====
+
+ChartTagRemovalHelpers
+  - should execute validate_removal_event without errors ... PASS
+  - should handle invalid event gracefully ... PASS
+  - should handle event with invalid tag gracefully ... PASS
+  - should handle event with missing tag gracefully ... PASS
+
+==== Test Summary ====
+Total tests: 4
+Passed: 4
+Failed: 0
+
+==== Running specs/chart_tag_spec_builder_spec.lua ====
+
+==== Running Tests ====
+
+ChartTagSpecBuilder
+  - should execute build without errors ... PASS
+  - should handle nil source_chart_tag gracefully ... PASS
+  - should handle nil player gracefully ... PASS
+  - should handle minimal parameters gracefully ... PASS
+  - should handle invalid chart_tag data gracefully ... PASS
+
+==== Test Summary ====
+Total tests: 5
+Passed: 5
+Failed: 0
+
+==== Running specs/chart_tag_utils_spec.lua ====
+
+==== Running Tests ====
+
+ChartTagUtils
+  - should execute find_closest_chart_tag_to_position without errors ... PASS
+  - should handle nil player gracefully ... PASS
+  - should handle nil position gracefully ... PASS
+  - should handle invalid player gracefully ... PASS
+  - should handle player not in chart mode gracefully ... PASS
+
+==== Test Summary ====
+Total tests: 5
+Passed: 5
+Failed: 0
+
+==== Running specs/collection_utils_spec.lua ====
+
+==== Running Tests ====
+
+CollectionUtils
+  - should compare tables for equality ... PASS
+  - should handle nested table comparisons ... PASS
+  - should create deep copies of tables ... PASS
+  - should create shallow copies of tables ... PASS
+  - should handle non-table inputs in deep_copy ... PASS
+  - should handle empty tables ... PASS
+  - should handle additional utility functions if available ... PASS
+
+==== Test Summary ====
+Total tests: 7
+Passed: 7
+Failed: 0
+
+==== Running specs/command_helpers_spec.lua ====
+
+==== Running Tests ====
+
+CommandHelpers
+  - should load command_helpers without errors ... PASS
+  - should handle basic command registration without errors ... PASS
+  - should handle module command registration without errors ... PASS
+
+==== Test Summary ====
+Total tests: 3
+Passed: 3
+Failed: 0
+
+==== Running specs/constants_spec.lua ====
+
+==== Running Tests ====
+
+Constants.settings
+  - should have correct default values ... PASS
+  - should have correct command definitions ... PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Running specs/control_fave_bar_spec.lua ====
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Default teleportation strategies initialized
+
+==== Running Tests ====
+
+ControlFaveBar.on_fave_bar_gui_click
+  - returns early for invalid element ... PASS
+  - returns early for invalid player ... PASS
+  - handles slot click without errors ... PASS
+  - handles toggle button click without errors ... PASS
+  - handles map right click when dragging ... PASS
+  - does not call any handler for unknown element ... PASS
+  - handles blank slot (no favorite) ... PASS
+  - handles locked slot (should not allow drag) ... PASS
+  - handles invalid slot number gracefully ... PASS
+  - handles drag and drop logic (left click during drag) ... PASS
+  - handles drag cancel (right click during drag) ... PASS
+  - handles ctrl+click without errors ... PASS
+  - handles shift+click without errors ... PASS
+  - handles right-click without errors ... PASS
+  - handles drag drop fallback without errors ... PASS
+  - handles slot interaction without errors ... PASS
+  - handles toggle state update without errors ... PASS
+  - handles invalid GUI elements gracefully ... PASS
+  - handle_map_right_click returns false if not right click or not dragging ... PASS
+
+==== Test Summary ====
+Total tests: 19
+Passed: 19
+Failed: 0
+
+==== Running specs/control_shared_utils_spec.lua ====
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Default teleportation strategies initialized
+
+==== Running Tests ====
+
+SharedUtils
+  - should be a table/module ... PASS
+
+==== Test Summary ====
+Total tests: 1
+Passed: 1
+Failed: 0
+
+==== Running specs/control_spec.lua ====
+
+==== Running Tests ====
+
+Control (Main Entry Point)
+  - should handle script initialization without errors ... PASS
+
+==== Test Summary ====
+Total tests: 1
+Passed: 1
+Failed: 0
+
+==== Running specs/control_tag_editor_spec.lua ====
+
+==== Running Tests ====
+
+TagEditor Control Module
+  - should be loaded as a table module ... [MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Default teleportation strategies initialized
+PASS
+  - should export all required functions ... [MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Default teleportation strategies initialized
+PASS
+  - should close tag editor and call safe_destroy_frame ... [MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Default teleportation strategies initialized
+PASS
+  - should clear cursor when closing in move mode ... [MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Default teleportation strategies initialized
+PASS
+  - should handle invalid player gracefully ... [MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Default teleportation strategies initialized
+PASS
+  - should handle close button clicks ... [MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Default teleportation strategies initialized
+PASS
+  - should handle confirm button clicks ... [MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Default teleportation strategies initialized
+[MOCK ERROR HANDLER] debug_log called: 	[TAG_EDITOR] handle_confirm_btn: entry
+[MOCK ERROR HANDLER] debug_log called: 	[TAG_EDITOR] handle_confirm_btn called
+PASS
+  - should handle invalid GUI elements gracefully ... [MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Default teleportation strategies initialized
+PASS
+  - should handle text input changes ... [MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Default teleportation strategies initialized
+PASS
+  - should ignore non-tag-editor text elements ... [MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Default teleportation strategies initialized
+PASS
+  - should handle icon button changes ... [MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Default teleportation strategies initialized
+PASS
+  - should ignore non-tag-editor element changes ... [MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Default teleportation strategies initialized
+PASS
+
+==== Test Summary ====
+Total tests: 12
+Passed: 12
+Failed: 0
+
+==== Running specs/core_enums_spec.lua ====
+
+==== Running Tests ====
+
+CoreEnums
+  - should load core_enums without errors ... PASS
+  - should handle enum definitions ... PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Running specs/cursor_utils_spec.lua ====
+
+==== Running Tests ====
+
+CursorUtils
+  - should load cursor_utils without errors ... PASS
+  - should handle cursor utility functions ... PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Running specs/custom_input_dispatcher_spec.lua ====
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Default teleportation strategies initialized
+
+==== Running Tests ====
+
+CustomInputDispatcher
+  - should be a table/module ... PASS
+
+==== Test Summary ====
+Total tests: 1
+Passed: 1
+Failed: 0
+
+==== Running specs/data_spec.lua ====
+
+==== Running Tests ====
+
+Data (Data Stage Entry Point)
+  - should handle data extension without errors ... PASS
+
+==== Test Summary ====
+Total tests: 1
+Passed: 1
+Failed: 0
+
+==== Running specs/debug_commands_spec.lua ====
+
+==== Running Tests ====
+
+DebugCommands
+
+/tf_debug_level command
+  - should do nothing if player is invalid (nil) ... PASS
+  - should print usage if parameter is not a number ... PASS
+  - should print error if parameter is negative ... PASS
+  - should work for boundary values 0 and 5 ... PASS
+  - should print usage if no parameter ... PASS
+  - should print error if out of range ... PASS
+  - should set level and print confirmation for valid input ... PASS
+
+/tf_debug_info command
+  - should print debug info ... PASS
+  - should do nothing if player is invalid (nil) ... PASS
+
+/tf_debug_production and /tf_debug_development
+  - should enable production mode ... PASS
+  - should do nothing if player is invalid (nil) for production ... PASS
+  - should enable development mode ... PASS
+  - should do nothing if player is invalid (nil) for development ... PASS
+
+/tf_test_controller and /tf_force_build_bar
+  - should print controller test info ... PASS
+  - should do nothing if player is invalid (nil) for controller ... PASS
+  - should print force build bar info ... PASS
+  - should do nothing if player is invalid (nil) for force build bar ... PASS
+
+DebugCommands.create_debug_level_controls edge cases
+  - should not fail if parent is missing add method ... PASS
+
+DebugCommands.on_debug_level_button_click edge cases
+  - should do nothing if event.element is nil ... FAIL
+  - should do nothing if element is not valid ... FAIL
+  - should do nothing if player is nil ... FAIL
+  - should do nothing if element name does not match pattern ... FAIL
+  - should do nothing if level is not a number ... FAIL
+  - should handle parent missing children ... FAIL
+  - should handle children with missing or invalid names ... FAIL
+
+DebugCommands general functionality
+  - should have a register_commands function ... PASS
+  - should create debug level controls GUI ... PASS
+  - should handle debug level button click ... FAIL
+  - should register commands without error ... PASS
+
+==== Test Summary ====
+Total tests: 29
+Passed: 21
+Failed: 8
+
+Failures:
+1) DebugCommands.on_debug_level_button_click edge cases: should do nothing if event.element is nil
+   specs/debug_commands_spec.lua:448: Assertion failed: value is not true
+Actual: false
+2) DebugCommands.on_debug_level_button_click edge cases: should do nothing if element is not valid
+   specs/debug_commands_spec.lua:460: Assertion failed: value is not true
+Actual: false
+3) DebugCommands.on_debug_level_button_click edge cases: should do nothing if player is nil
+   specs/debug_commands_spec.lua:473: Assertion failed: value is not true
+Actual: false
+4) DebugCommands.on_debug_level_button_click edge cases: should do nothing if element name does not match pattern
+   specs/debug_commands_spec.lua:485: Assertion failed: value is not true
+Actual: false
+5) DebugCommands.on_debug_level_button_click edge cases: should do nothing if level is not a number
+   specs/debug_commands_spec.lua:497: Assertion failed: value is not true
+Actual: false
+6) DebugCommands.on_debug_level_button_click edge cases: should handle parent missing children
+   specs/debug_commands_spec.lua:516: Assertion failed: value is not true
+Actual: false
+7) DebugCommands.on_debug_level_button_click edge cases: should handle children with missing or invalid names
+   specs/debug_commands_spec.lua:533: Assertion failed: value is not true
+Actual: false
+8) DebugCommands general functionality: should handle debug level button click
+   specs/debug_commands_spec.lua:568: Assertion failed: value is not true
+Actual: false
+
+==== Running specs/debug_config_spec.lua ====
+
+==== Running Tests ====
+
+DebugConfig
+  - should load debug_config without errors ... PASS
+  - should handle debug configuration functions ... PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Running specs/delete_favorite_command_spec.lua ====
+
+==== Running Tests ====
+
+DeleteFavoriteCommand
+  - should have a register_commands function ... PASS
+  - should handle invalid player ... PASS
+  - should handle invalid slot number format ... [MOCK ERROR HANDLER] debug_log called: 	Failed to print message to player
+PASS
+  - should handle no favorites found ... [MOCK ERROR HANDLER] debug_log called: 	Failed to print message to player
+PASS
+  - should handle invalid slot ... [MOCK ERROR HANDLER] debug_log called: 	Failed to print message to player
+PASS
+  - should handle blank favorite ... [MOCK ERROR HANDLER] debug_log called: 	Failed to print message to player
+PASS
+  - should handle successful favorite deletion ... [MOCK ERROR HANDLER] debug_log called: 	Failed to print message to player
+PASS
+  - should handle tag with invalid chart_tag ... [MOCK ERROR HANDLER] debug_log called: 	Failed to print message to player
+PASS
+  - should handle failed favorite deletion ... [MOCK ERROR HANDLER] debug_log called: 	Failed to print message to player
+PASS
+  - should notify GUI observer if present ... [MOCK ERROR HANDLER] debug_log called: 	Failed to print message to player
+PASS
+  - should call remote interface fallback if present ... [MOCK ERROR HANDLER] debug_log called: 	Failed to print message to player
+PASS
+  - should call register_commands and cover registration logic ... PASS
+
+==== Test Summary ====
+Total tests: 12
+Passed: 12
+Failed: 0
+
+==== Running specs/drag_and_drop_spec.lua ====
+
+==== Running Tests ====
+
+Drag-and-drop slot logic
+  - should not allow dragging from a blank or locked slot ... PASS
+  - should swap slots if destination is blank ... PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Running specs/enhanced_error_handler_spec.lua ====
+
+==== Running Tests ====
+
+EnhancedErrorHandler
+  - should load enhanced_error_handler without errors ... PASS
+  - should handle error handling functions ... PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Running specs/enum_spec.lua ====
+
+==== Running Tests ====
+
+Enum utility functions
+  - should find enum key by value ... PASS
+  - should check if value is member of enum ... PASS
+  - should return key names for an enum ... PASS
+
+==== Test Summary ====
+Total tests: 3
+Passed: 3
+Failed: 0
+
+==== Running specs/error_handler_spec.lua ====
+
+==== Running Tests ====
+
+ErrorHandler Module
+  - should load without errors ... PASS
+  - should have some basic functions ... PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Running specs/event_handler_helpers_spec.lua ====
+
+==== Running Tests ====
+
+EventHandlerHelpers
+  - should load event handler helpers without errors ... PASS
+  - should validate player and run handler logic ... PASS
+  - should handle invalid player gracefully ... PASS
+  - should create safe handler wrapper ... PASS
+  - should log event errors with context ... PASS
+  - should validate event fields ... PASS
+  - should create event logger with context ... [MOCK ERROR HANDLER] debug_log called: 	test message
+PASS
+
+==== Test Summary ====
+Total tests: 7
+Passed: 7
+Failed: 0
+
+==== Running specs/event_registration_dispatcher_spec.lua ====
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Default teleportation strategies initialized
+
+==== Running Tests ====
+
+EventRegistrationDispatcher
+  - should be a table/module ... PASS
+
+==== Test Summary ====
+Total tests: 1
+Passed: 1
+Failed: 0
+
+==== Running specs/factorio_emmy_spec.lua ====
+
+==== Running Tests ====
+
+FactorioEmmyTypes
+  - should load factorio.emmy without errors ... PASS
+  - should handle type definition loading ... PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Running specs/fave_bar_gui_labels_manager_spec.lua ====
+
+==== Running Tests ====
+
+FaveBarGuiLabelsManager
+  - should be loaded as a table module ... PASS
+  - should export all required functions ... PASS
+
+get_coords_caption
+  - should return formatted coordinates for valid player ... PASS
+  - should handle nil player gracefully ... PASS
+  - should handle player with nil position ... PASS
+
+get_history_caption
+  - should return formatted history caption ... [DEBUG] Actual caption:	0 ΓåÆ 0
+[DEBUG] Expected: 2 ΓåÆ 3
+PASS
+  - should handle nil player gracefully ... PASS
+  - should handle empty history stack ... PASS
+
+update_label_for_player
+  - should update label for enabled setting ... PASS
+  - should handle disabled setting ... PASS
+  - should handle nil or invalid player ... PASS
+
+force_update_labels_for_player
+  - should force update labels without error ... PASS
+  - should handle nil player gracefully ... PASS
+  - should handle invalid player gracefully ... PASS
+
+register_all
+  - should register all event handlers ... PASS
+
+register_history_controls
+  - should register history control events and commands ... PASS
+
+initialize_all_players
+  - should initialize without game object ... PASS
+  - should initialize with valid players ... PASS
+
+edge cases
+  - should handle missing settings gracefully ... PASS
+  - should handle missing GUI elements ... PASS
+  - should handle invalid GUI flow ... PASS
+  - should handle on_tick_handler without errors ... PASS
+  - should handle update_handler_registration without errors ... PASS
+
+on_tick_handler detailed scenarios
+  - should skip update when tick interval not reached ... PASS
+  - should update labels when tick interval reached ... PASS
+  - should remove invalid players from enabled list ... PASS
+  - should unregister handler when no enabled players remain ... PASS
+
+initialize function
+  - should initialize for all connected players ... PASS
+  - should skip disconnected players ... PASS
+  - should skip invalid players ... PASS
+
+register_label_events
+  - should register player creation events ... PASS
+
+handler registration edge cases
+  - should handle both registration states correctly ... PASS
+  - should use default update interval when none provided ... PASS
+
+teleport history functions
+  - should handle history navigation events ... PASS
+
+setting-based behavior
+  - should handle teleport_history updater type ... PASS
+  - should handle different setting keys correctly ... PASS
+
+coverage for helper functions
+  - should handle table_size function ... PASS
+  - should handle get_update_interval with missing settings ... PASS
+  - should handle get_update_interval with nil settings ... PASS
+
+internal function coverage
+  - should handle _get_label with invalid GUI ... PASS
+  - should handle _should_register_handler edge cases ... PASS
+  - should handle event unregistration ... PASS
+
+state management coverage
+  - should handle multiple players in enabled state ... PASS
+  - should handle label update with real caption function ... PASS
+  - should handle history update with real caption function ... PASS
+
+event handler coverage
+  - should handle player creation event ... PASS
+  - should handle setting change events ... PASS
+
+comprehensive edge case coverage
+  - should handle get_update_interval with missing constants ... PASS
+  - should handle _get_label with complex GUI hierarchy ... PASS
+  - should handle _update_label with nil label gracefully ... PASS
+  - should handle caption function that throws errors ... PASS
+  - should handle _should_register_handler with invalid setting names ... PASS
+  - should handle player with missing surface ... PASS
+  - should handle on_tick_handler with disabled setting but enabled player ... PASS
+  - should handle mixed valid and invalid players in enabled list ... PASS
+
+surgical coverage - targeting uncovered lines
+  - should hit table_size function lines 18-21 ... PASS
+  - should hit get_update_interval non-fallback lines 26-33 ... PASS
+  - should hit get_coords_caption return statement line 42 ... PASS
+  - should hit local wrapper function lines 50-55 ... PASS
+  - should hit _get_label return statement line 75 ... PASS
+  - should hit _should_register_handler return true line 87 ... PASS
+  - should hit _update_label function lines 93-99 ... PASS
+  - should hit update_label_for_player enabled branch lines 107-115 ... PASS
+  - should hit update_label_for_player handler management lines 122-126 ... PASS
+  - should hit update_handler_registration lines 134-140 ... PASS
+  - should hit on_tick_handler enabled player loop lines 162-177 ... PASS
+  - should hit player creation event handler lines 191-196 ... PASS
+
+==== Test Summary ====
+Total tests: 67
+Passed: 67
+Failed: 0
+
+==== Running specs/fave_bar_spec.lua ====
+
+==== Running Tests ====
+
+FaveBar
+  - should be a table/module ... PASS
+
+FaveBarGuiLabelsManager
+  - should be a table/module ... PASS
+
+ControlFaveBar
+  - should be a table/module ... PASS
+
+==== Test Summary ====
+Total tests: 3
+Passed: 3
+Failed: 0
+
+==== Running specs/fave_bar_styles_spec.lua ====
+
+==== Running Tests ====
+
+FaveBarStyles
+  - should load fave bar styles without errors ... PASS
+
+==== Test Summary ====
+Total tests: 1
+Passed: 1
+Failed: 0
+
+==== Running specs/favorite_rehydration_spec.lua ====
+
+==== Running Tests ====
+
+FavoriteRehydration
+  - should execute rehydrate_favorite_at_runtime without errors ... PASS
+  - should handle nil player gracefully ... PASS
+  - should handle invalid favorite gracefully ... PASS
+  - should handle blank favorite gracefully ... PASS
+
+==== Test Summary ====
+Total tests: 4
+Passed: 4
+Failed: 0
+
+==== Running specs/favorite_spec.lua ====
+
+==== Running Tests ====
+
+Favorite object
+  - should create a favorite with correct properties ... PASS
+  - should integrate with mock player favorites ... PASS
+
+FavoriteUtils 100% coverage
+  - should handle check_state with invalid check type ... PASS
+  - should handle check_state for empty table ... PASS
+  - should properly check all state types ... PASS
+  - should handle copy with non-table input ... PASS
+  - should copy favorites with additional fields ... PASS
+  - should handle equals with non-table inputs ... PASS
+  - should correctly compare favorites with tags ... PASS
+  - should update all properties correctly ... PASS
+
+==== Test Summary ====
+Total tests: 10
+Passed: 10
+Failed: 0
+
+==== Running specs/game_helpers_spec.lua ====
+
+==== Running Tests ====
+
+GameHelpers
+  - should execute safe_play_sound without errors ... PASS
+  - should execute player_print without errors ... PASS
+  - should execute safe_teleport_to_gps without errors ... PASS
+  - should handle nil player gracefully ... PASS
+  - should handle invalid player gracefully ... PASS
+  - should handle missing play_sound function gracefully ... PASS
+
+==== Test Summary ====
+Total tests: 6
+Passed: 6
+Failed: 0
+
+==== Running specs/gps_utils_spec.lua ====
+
+==== Running Tests ====
+
+GPSUtils
+  - should execute parse_gps_string without errors ... PASS
+  - should execute gps_from_map_position without errors ... PASS
+  - should handle invalid gps string gracefully ... PASS
+  - should handle nil gps string gracefully ... PASS
+  - should handle nil position gracefully ... PASS
+  - should handle invalid position data gracefully ... PASS
+  - should handle blank GPS constant gracefully ... PASS
+
+==== Test Summary ====
+Total tests: 7
+Passed: 7
+Failed: 0
+
+==== Running specs/gui_base_spec.lua ====
+[DEBUG] GuiBase type:	table
+[DEBUG] GuiBase.create_element:	function
+
+==== Running Tests ====
+
+GuiBase
+
+module structure
+  - should be a table ... PASS
+  - should have all expected functions ... PASS
+
+create_element
+  - should create an element with basic properties ... PASS
+  - should handle missing name by generating one ... PASS
+  - should handle missing parent by creating basic mock ... PASS
+
+create_frame
+  - should create a frame with default settings ... PASS
+
+create_icon_button
+  - should create an icon button ... PASS
+
+create_label
+  - should create a label ... PASS
+
+create_button
+  - should create a button ... PASS
+
+create_hflow
+  - should create a horizontal flow ... PASS
+
+create_vflow
+  - should create a vertical flow ... PASS
+
+create_flow
+  - should create a flow with default horizontal direction ... PASS
+
+create_textbox
+  - should create a textbox ... PASS
+
+create_named_element
+  - should create a named element ... PASS
+  - should return nil for invalid parent ... PASS
+
+==== Test Summary ====
+Total tests: 15
+Passed: 15
+Failed: 0
+
+==== Running specs/gui_event_dispatcher_spec.lua ====
+
+==== Running Tests ====
+
+GuiEventDispatcher
+  - should be a table/module ... PASS
+
+==== Test Summary ====
+Total tests: 1
+Passed: 1
+Failed: 0
+
+==== Running specs/gui_helpers_spec.lua ====
+
+==== Running Tests ====
+
+GuiHelpers
+  - should execute get_or_create_gui_flow_from_gui_top without errors ... PASS
+  - should execute build_favorite_tooltip without errors ... PASS
+  - should handle nil favorite in build_favorite_tooltip gracefully ... PASS
+  - should handle missing gui elements gracefully ... PASS
+  - should handle build_favorite_tooltip with options gracefully ... PASS
+
+==== Test Summary ====
+Total tests: 5
+Passed: 5
+Failed: 0
+
+==== Running specs/gui_observer_spec.lua ====
+
+==== Running Tests ====
+
+GuiObserver
+  - should create GUI observer instances ... PASS
+  - should handle observer registration ... PASS
+  - should handle event notifications ... PASS
+  - should handle observer cleanup ... PASS
+  - should handle invalid observer data ... PASS
+
+==== Test Summary ====
+Total tests: 5
+Passed: 5
+Failed: 0
+
+==== Running specs/gui_validation_spec.lua ====
+
+==== Running Tests ====
+
+GuiValidation
+  - should validate GUI runtime elements ... PASS
+  - should handle nil elements ... PASS
+  - should validate GUI elements ... PASS
+  - should apply style properties with validation ... PASS
+  - should handle invalid style properties ... PASS
+
+==== Test Summary ====
+Total tests: 5
+Passed: 5
+Failed: 0
+
+==== Running specs/handlers_chart_tag_added_spec.lua ====
+
+==== Running Tests ====
+
+Handlers.on_chart_tag_added
+  - should not process for invalid players ... PASS
+  - should not normalize coordinates that are already integers ... PASS
+  - should normalize coordinates that are fractional ... [HANDLER] Calling ErrorHandler.debug_log for chart tag added
+[MOCK ERROR HANDLER] debug_log called: 	Chart tag added with fractional coordinates, normalizing
+[HANDLER] Calling TagEditorEventHelpers.normalize_and_replace_chart_tag for chart tag added
+PASS
+  - should invalidate surface chart tags cache after tag added ... PASS
+  - should handle invalid chart tag gracefully ... PASS
+  - should handle chart tag without position gracefully ... PASS
+  - should normalize chart tags with very large fractional positions ... [HANDLER] Calling ErrorHandler.debug_log for chart tag added
+[MOCK ERROR HANDLER] debug_log called: 	Chart tag added with fractional coordinates, normalizing
+[HANDLER] Calling TagEditorEventHelpers.normalize_and_replace_chart_tag for chart tag added
+PASS
+  - should normalize chart tags with negative fractional positions ... [HANDLER] Calling ErrorHandler.debug_log for chart tag added
+[MOCK ERROR HANDLER] debug_log called: 	Chart tag added with fractional coordinates, normalizing
+[HANDLER] Calling TagEditorEventHelpers.normalize_and_replace_chart_tag for chart tag added
+PASS
+
+==== Test Summary ====
+Total tests: 8
+Passed: 8
+Failed: 0
+
+==== Running specs/handlers_chart_tag_modified_spec.lua ====
+
+==== Running Tests ====
+
+Handlers.on_chart_tag_modified
+  - should not process for invalid players ... PASS
+  - should validate tag modifications ... PASS
+  - should not proceed if validation fails ... PASS
+  - should extract GPS coordinates ... PASS
+  - should handle tag editor updates ... PASS
+  - should handle normalization when needed ... PASS
+  - should handle position changes without normalization ... PASS
+  - should handle identical GPS coordinates ... PASS
+  - should handle missing old_position ... PASS
+  - should handle invalid tag ... PASS
+
+==== Test Summary ====
+Total tests: 10
+Passed: 10
+Failed: 0
+
+==== Running specs/handlers_chart_tag_removed_spec.lua ====
+
+==== Running Tests ====
+
+Handlers.on_chart_tag_removed
+  - should have on_chart_tag_removed function ... PASS
+  - should accept an event parameter ... PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Running specs/handlers_chart_tag_spec.lua ====
+
+==== Running Tests ====
+
+Chart Tag Handlers
+  - should handle chart tag added event correctly ... PASS
+  - should not normalize chart tag with integer positions ... PASS
+  - should handle chart tag modification correctly with normalization ... PASS
+  - should handle chart tag modification correctly without normalization ... PASS
+  - should update tag_editor data when chart tag is modified ... PASS
+  - should handle invalid player in chart tag events ... PASS
+  - should do nothing if event.tag is missing in on_chart_tag_added ... PASS
+  - should do nothing if event.tag is invalid in on_chart_tag_added ... PASS
+  - should do nothing if event.tag.position is missing in on_chart_tag_added ... PASS
+  - should do nothing if event.old_position is missing in on_chart_tag_modified ... PASS
+  - should do nothing if event.tag is missing in on_chart_tag_modified ... PASS
+  - should do nothing if event.tag.position is missing in on_chart_tag_modified ... PASS
+  - should do nothing if player is invalid in on_chart_tag_modified ... PASS
+
+==== Test Summary ====
+Total tests: 13
+Passed: 13
+Failed: 0
+
+==== Running specs/handlers_player_events_spec.lua ====
+
+==== Running Tests ====
+
+Player Event Handlers
+  - should handle on_init correctly ... PASS
+  - should handle on_load correctly ... PASS
+  - should handle on_player_created correctly ... PASS
+  - should handle on_player_joined_game correctly ... PASS
+  - should handle invalid player gracefully ... PASS
+
+==== Test Summary ====
+Total tests: 5
+Passed: 5
+Failed: 0
+
+==== Running specs/handlers_spec.lua ====
+
+==== Running Tests ====
+
+Handlers
+  - should be a table/module ... PASS
+
+==== Test Summary ====
+Total tests: 1
+Passed: 1
+Failed: 0
+
+==== Running specs/handlers_surface_events_spec.lua ====
+
+==== Running Tests ====
+
+Surface Event Handlers
+  - should call ensure_surface_cache when player changes surface ... PASS
+  - should handle invalid player gracefully ... PASS
+  - should handle player with same surface gracefully ... PASS
+
+==== Test Summary ====
+Total tests: 3
+Passed: 3
+Failed: 0
+
+==== Running specs/handlers_tag_editor_open_spec.lua ====
+
+==== Running Tests ====
+
+Handlers.on_open_tag_editor_custom_input
+  - should not process for invalid players ... PASS
+  - should validate tag editor opening ... PASS
+  - should not proceed if validation fails ... PASS
+  - should handle validation failure with drag mode ... PASS
+  - should handle cursor position provided ... PASS
+  - should handle missing cursor position ... PASS
+  - should handle chart tag found ... PASS
+  - should handle no chart tag found ... PASS
+
+==== Test Summary ====
+Total tests: 8
+Passed: 8
+Failed: 0
+
+==== Running specs/locale_utils_spec.lua ====
+
+==== Running Tests ====
+
+LocaleUtils Combined
+  - should exist as a module and have all expected functions ... PASS
+  - should provide gui, error, and handler strings with correct prefix ... PASS
+  - should handle all category prefixes ... PASS
+  - should handle parameters in locale strings ... PASS
+  - should use fallback for invalid or nil player ... PASS
+  - should handle unknown category ... PASS
+  - should provide all fallback strings ... PASS
+  - should handle parameter edge cases and substitution ... PASS
+
+==== Test Summary ====
+Total tests: 8
+Passed: 8
+Failed: 0
+
+==== Running specs/lookups_spec.lua ====
+
+==== Running Tests ====
+
+Lookups cache module
+  - initializes cache and fetches chart tags ... PASS
+  - returns chart tag by gps ... [MOCK ERROR HANDLER] debug_log called: 	[LOOKUPS] get_chart_tag_by_gps
+PASS
+  - removes chart tag from cache by gps ... [MOCK ERROR HANDLER] debug_log called: 	[LOOKUPS] get_chart_tag_by_gps
+PASS
+  - clears all caches ... PASS
+  - handles invalid surface index gracefully ... PASS
+  - returns nil for empty or nil gps in get_chart_tag_by_gps ... PASS
+  - returns nil for non-existent surface in get_chart_tag_by_gps ... [MOCK ERROR HANDLER] debug_log called: 	[LOOKUPS] get_chart_tag_by_gps
+PASS
+  - returns nil for invalid chart tag in get_chart_tag_by_gps ... [MOCK ERROR HANDLER] debug_log called: 	[LOOKUPS] get_chart_tag_by_gps
+PASS
+  - returns early in remove_chart_tag_from_cache_by_gps for nil/empty gps ... PASS
+  - returns early in remove_chart_tag_from_cache_by_gps for missing chart tag ... [MOCK ERROR HANDLER] debug_log called: 	[LOOKUPS] get_chart_tag_by_gps
+PASS
+  - handles chart_tag.destroy() failure gracefully in remove_chart_tag_from_cache_by_gps ... [MOCK ERROR HANDLER] debug_log called: 	[LOOKUPS] get_chart_tag_by_gps
+PASS
+  - handles non-walkable chart tag position in get_chart_tag_by_gps ... [MOCK ERROR HANDLER] debug_log called: 	[LOOKUPS] get_chart_tag_by_gps
+PASS
+
+==== Test Summary ====
+Total tests: 12
+Passed: 12
+Failed: 0
+
+==== Running specs/on_gui_closed_handler_spec.lua ====
+
+==== Running Tests ====
+
+OnGuiClosedHandler
+  - should be a table/module ... PASS
+
+==== Test Summary ====
+Total tests: 1
+Passed: 1
+Failed: 0
+
+==== Running specs/player_controller_handler_spec.lua ====
+
+==== Running Tests ====
+
+PlayerControllerHandler
+  - should be a table/module ... PASS
+
+==== Test Summary ====
+Total tests: 1
+Passed: 1
+Failed: 0
+
+==== Running specs/player_favorites_spec.lua ====
+
+==== Running Tests ====
+
+PlayerFavorites module
+  - should load PlayerFavorites module without errors ... PASS
+  - should expose expected PlayerFavorites API methods ... PASS
+  - should create PlayerFavorites instance without errors ... PASS
+  - should handle basic operations without errors ... PASS
+
+==== Test Summary ====
+Total tests: 4
+Passed: 4
+Failed: 0
+
+==== Running specs/player_helpers_spec.lua ====
+
+==== Running Tests ====
+
+PlayerHelpers
+  - should load player_helpers without errors ... PASS
+  - should handle basic functions without errors ... PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Running specs/position_utils_spec.lua ====
+
+==== Running Tests ====
+
+PositionUtils
+  - should execute normalize_position without errors ... PASS
+  - should execute needs_normalization without errors ... PASS
+  - should execute create_position_pair without errors ... PASS
+  - should handle nil position gracefully ... PASS
+  - should handle invalid position data gracefully ... PASS
+
+==== Test Summary ====
+Total tests: 5
+Passed: 5
+Failed: 0
+
+==== Running specs/rich_text_formatter_spec.lua ====
+
+==== Running Tests ====
+
+RichTextFormatter
+  - should load rich_text_formatter without errors ... PASS
+  - should handle text formatting functions ... PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Running specs/selection_tool_spec.lua ====
+
+==== Running Tests ====
+
+SelectionTool
+  - should load selection tool without errors ... PASS
+  - should handle item prototype definitions ... PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Running specs/settings_access_spec.lua ====
+
+==== Running Tests ====
+
+SettingsAccess
+  - should load settings_access without errors ... PASS
+  - should handle settings access functions ... PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Running specs/settings_spec.lua ====
+
+==== Running Tests ====
+
+Settings (Settings Stage Entry Point)
+  - should load settings.lua without errors ... PASS
+  - should handle settings extension without errors ... PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Running specs/slot_interaction_handlers_spec.lua ====
+
+==== Running Tests ====
+
+SlotInteractionHandlers
+  - should be a table/module ... PASS
+
+==== Test Summary ====
+Total tests: 1
+Passed: 1
+Failed: 0
+
+==== Running specs/small_helpers_spec.lua ====
+
+==== Running Tests ====
+
+SmallHelpers
+  - should load small_helpers without errors ... PASS
+  - should handle small helper functions ... PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Running specs/styles_init_spec.lua ====
+
+==== Running Tests ====
+
+StylesInit
+  - should handle style definitions ... PASS
+
+==== Test Summary ====
+Total tests: 1
+Passed: 1
+Failed: 0
+
+==== Running specs/tag_combined_spec.lua ====
+
+==== Running Tests ====
+
+Tag
+  - should load without errors ... [MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Default teleportation strategies initialized
+PASS
+  - should be a valid module ... [MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Default teleportation strategies initialized
+PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Running specs/tag_destroy_helper_spec.lua ====
+
+==== Running Tests ====
+
+TagDestroyHelper
+  - should load without errors ... PASS
+  - should have the expected exported functions ... PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Running specs/tag_editor_event_helpers_spec.lua ====
+
+==== Running Tests ====
+
+TagEditorEventHelpers
+  - should validate tag editor opening conditions ... PASS
+  - should handle invalid player in validation ... PASS
+  - should handle wrong render mode ... PASS
+  - should handle tag data creation if available ... PASS
+  - should handle GPS validation if available ... PASS
+
+==== Test Summary ====
+Total tests: 5
+Passed: 5
+Failed: 0
+
+==== Running specs/tag_editor_spec.lua ====
+
+==== Running Tests ====
+
+TagEditor (GUI)
+  - should be a table/module ... PASS
+
+TagEditorEventHelpers
+  - should be a table/module ... PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Running specs/tag_editor_styles_spec.lua ====
+
+==== Running Tests ====
+
+TagEditorStyles
+  - should load tag editor styles without errors ... PASS
+
+==== Test Summary ====
+Total tests: 1
+Passed: 1
+Failed: 0
+
+==== Running specs/teleport_history_inputs_spec.lua ====
+
+==== Running Tests ====
+
+TeleportHistoryInputs
+  - should load teleport history inputs without errors ... PASS
+  - should handle input prototype definitions ... PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Running specs/teleport_history_spec.lua ====
+
+==== Running Tests ====
+
+TeleportHistory
+  - should execute add_gps without errors ... PASS
+  - should execute move_pointer without errors ... PASS
+  - should handle nil player in add_gps gracefully ... PASS
+  - should handle nil player in move_pointer gracefully ... PASS
+  - should handle invalid gps in add_gps gracefully ... PASS
+
+==== Test Summary ====
+Total tests: 5
+Passed: 5
+Failed: 0
+
+==== Running specs/teleport_strategy_spec.lua ====
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Strategy registered
+[MOCK ERROR HANDLER] debug_log called: 	Default teleportation strategies initialized
+
+==== Running Tests ====
+
+TeleportStrategy
+  - should load module without errors ... PASS
+  - should handle TeleportStrategyManager existence ... PASS
+  - should handle strategy registration if available ... PASS
+  - should handle available strategies query if available ... PASS
+
+==== Test Summary ====
+Total tests: 4
+Passed: 4
+Failed: 0
+
+==== Running specs/teleport_utils_spec.lua ====
+
+==== Running Tests ====
+
+TeleportUtils
+  - should execute teleport_to_gps without errors ... PASS
+  - should execute teleport_to_gps with context without errors ... PASS
+  - should execute teleport_to_gps with return_raw flag without errors ... PASS
+  - should handle nil player gracefully ... [MOCK ERROR HANDLER] debug_log called: 	Teleportation failed: Invalid player
+PASS
+  - should handle invalid gps gracefully ... [MOCK ERROR HANDLER] debug_log called: 	Teleportation failed: Invalid GPS
+PASS
+  - should handle empty gps string gracefully ... [MOCK ERROR HANDLER] debug_log called: 	Teleportation failed: Invalid GPS
+PASS
+
+==== Test Summary ====
+Total tests: 6
+Passed: 6
+Failed: 0
+
+==== Running specs/tile_utils_spec.lua ====
+
+==== Running Tests ====
+
+TileUtils
+  - should load tile_utils without errors ... PASS
+  - should handle tile utility functions ... PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Running specs/ui_enums_spec.lua ====
+
+==== Running Tests ====
+
+UIEnums
+  - should load ui_enums without errors ... PASS
+  - should handle UI enum definitions ... PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Running specs/validation_utils_spec.lua ====
+
+==== Running Tests ====
+
+ValidationUtils
+  - should load validation_utils without errors ... PASS
+  - should handle validation utility functions ... PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Running specs/version_spec.lua ====
+
+==== Running Tests ====
+
+Version
+  - should load version without errors ... PASS
+  - should handle version management functions ... PASS
+
+==== Test Summary ====
+Total tests: 2
+Passed: 2
+Failed: 0
+
+==== Overall Test Summary ====
+Test files processed: 77
+Test files successful: 76
+Test files failed: 1
+Total tests passed: 419
+Total tests failed: 8
+Total tests run: 427
+
+==== Generating Coverage Report ====
+Coverage report generated in luacov.report.out
+TeleportFavorites Test Coverage Report
+========================================
+Generated: 2025-07-13 23:38:57
+Overall Coverage: 0/0 lines (No data available)
+
+
+Report saved to coverage_summary.txt
+
+==== Testing Complete ====

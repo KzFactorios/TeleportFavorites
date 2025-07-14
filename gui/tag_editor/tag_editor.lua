@@ -31,25 +31,21 @@ Main Functions:
 local Enum = require("prototypes.enums.enum")
 local GuiBase = require("gui.gui_base")
 local GuiValidation = require("core.utils.gui_validation")
+local GuiElementBuilders = require("core.utils.gui_element_builders")
+local ErrorMessageHelpers = require("core.utils.error_message_helpers")
 local GPSUtils = require("core.utils.gps_utils")
 local BasicHelpers = require("core.utils.basic_helpers")
 local ValidationUtils = require("core.utils.validation_utils")
 local Cache = require("core.cache.cache")
 local AdminUtils = require("core.utils.admin_utils")
 local PlayerFavorites = require("core.favorite.player_favorites")
+local BasicHelpers = require("core.utils.basic_helpers")
 
 
 local tag_editor = {}
 
 -- Sets up the tag editor UI, including all controls and their state
 -- This function now only sets state, tooltips, and styles. It does NOT create any elements.
-local function set_btn_state_and_tooltip(btn, enabled, tooltip)
-  if btn then
-    GuiValidation.set_button_state(btn, enabled)
-    if tooltip then btn.tooltip = tooltip end
-  end
-end
-
 local function setup_tag_editor_ui(refs, tag_data, player)
   -- Determine ownership and delete permissions
   local tag = tag_data.tag
@@ -70,26 +66,26 @@ local function setup_tag_editor_ui(refs, tag_data, player)
     is_owner = true
   end
 
-  -- Set button enablement
-  set_btn_state_and_tooltip(refs.icon_btn, is_owner, { "tf-gui.icon_tooltip" })
-  set_btn_state_and_tooltip(refs.teleport_btn, true, { "tf-gui.teleport_tooltip" })
+  -- Set button enablement using consolidated helper
+  GuiElementBuilders.set_button_state_and_tooltip(refs.icon_btn, is_owner, { "tf-gui.icon_tooltip" })
+  GuiElementBuilders.set_button_state_and_tooltip(refs.teleport_btn, true, { "tf-gui.teleport_tooltip" })
 
   -- Favorite button: disable if at max favorites for this surface
   local player_faves = PlayerFavorites.new(player)
   local at_max_faves = player_faves:available_slots() == 0
   if refs.favorite_btn then
     if at_max_faves and not (tag_data and tag_data.is_favorite) then
-      set_btn_state_and_tooltip(refs.favorite_btn, false, { "tf-gui.max_favorites_warning" })
+      GuiElementBuilders.set_button_state_and_tooltip(refs.favorite_btn, false, { "tf-gui.max_favorites_warning" })
     else
-      set_btn_state_and_tooltip(refs.favorite_btn, true, { "tf-gui.favorite_tooltip" })
+      GuiElementBuilders.set_button_state_and_tooltip(refs.favorite_btn, true, { "tf-gui.favorite_tooltip" })
     end
   end
-  set_btn_state_and_tooltip(refs.rich_text_input, is_owner, { "tf-gui.text_tooltip" })
+  GuiElementBuilders.set_button_state_and_tooltip(refs.rich_text_input, is_owner, { "tf-gui.text_tooltip" })
 
   -- Delete button logic
   if refs.delete_btn then
     local is_temp_tag = (not tag_data.chart_tag) or (type(tag_data.chart_tag) == "userdata" and not tag_data.chart_tag.valid)
-    set_btn_state_and_tooltip(refs.delete_btn, is_owner and can_delete and not is_temp_tag, { "tf-gui.delete_tooltip" })
+    GuiElementBuilders.set_button_state_and_tooltip(refs.delete_btn, is_owner and can_delete and not is_temp_tag, { "tf-gui.delete_tooltip" })
   end
 
   -- Confirm button enabled if text input has content OR icon is selected
@@ -97,90 +93,27 @@ local function setup_tag_editor_ui(refs, tag_data, player)
   local has_icon = ValidationUtils.has_valid_icon(tag_data.icon)
   local can_confirm = has_text or has_icon
 
-  set_btn_state_and_tooltip(refs.confirm_btn, can_confirm, { "tf-gui.confirm_tooltip" })
+  GuiElementBuilders.set_button_state_and_tooltip(refs.confirm_btn, can_confirm, { "tf-gui.confirm_tooltip" })
 
   if refs.cancel_btn then refs.cancel_btn.tooltip = { "tf-gui.cancel_tooltip" } end
 
-  local error_label = refs.error_label
-  if error_label then
-    error_label.caption = tag_data.error_message or ""
-    error_label.visible = (tag_data.error_message ~= nil and tag_data.error_message ~= "") and true or false
-  end
+  -- Update error message display using centralized helper
+  tag_editor.update_error_message(refs.player, tag_data.error_message)
 end
 
 -- Confirmation dialog for destructive actions (e.g., tag deletion)
 function tag_editor.build_confirmation_dialog(player, opts)
   -- opts: { message }
   -- Present the confirm dialog as a modal overlay, do NOT close the tag editor dialog
-  local frame = player.gui.screen.add {
-    type = "frame",
-    name = Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM,
-    caption = "",
-    direction = "vertical",
-    style = "tf_confirm_dialog_frame",
-    force_auto_center = true, -- idiomatic for modal overlays
-    modal = true              -- idiomatic: blocks interaction with other GUIs
-  }
-  frame.auto_center = true
-  frame.visible = true
-  frame.style.minimal_height = 80
-
-  -- Defensive: ensure message is a valid LocalisedString
-  local message = opts and opts.message
-  if type(message) == "table" then
-    -- Accept as-is
-  elseif type(message) == "string" then
-    message = { message }
-  else
-    message = { "tf-gui.confirm_delete_message" }
-  end
-  ---@diagnostic disable-next-line: param-type-mismatch
-  ---@type LocalisedString
-  message = message
-  GuiBase.create_label(frame, "tag_editor_tf_confirm_dialog_label", message, "tf_dlg_confirm_title")
-
-  -- Button row: idiomatic horizontal flow with left/right flows for true alignment
-  local btn_row = frame.add {
-    type = "flow",
-    name = "tag_editor_tf_confirm_dialog_btn_row",
-    direction = "horizontal",
-    style = "tf_confirm_dialog_btn_row"
-  }
-  btn_row.style.horizontally_stretchable = true
-
-  -- Left-aligned flow for Cancel
-  local left_flow = btn_row.add {
-    type = "flow",
-    name = "tag_editor_tf_confirm_dialog_left_flow",
-    direction = "horizontal"
-  }
-  left_flow.style.horizontally_stretchable = false
-
-  -- Right-aligned flow for Confirm
-  local right_flow = btn_row.add {
-    type = "flow",
-    name = "tag_editor_tf_confirm_dialog_right_flow",
-    direction = "horizontal"
-  }
-  right_flow.style.horizontally_stretchable = true
-  right_flow.style.horizontal_align = "right"
-
-  local cancel_btn = left_flow.add {
-    type = "button",
-    name = "tf_confirm_dialog_cancel_btn",
-    caption = { "tf-gui.confirm_delete_cancel" },
-    style = "back_button"
-  }
-  cancel_btn.tags = { action = "cancel_delete" }
-
-  local confirm_btn = right_flow.add {
-    type = "button",
-    name = "tf_confirm_dialog_confirm_btn",
-    caption = { "tf-gui.confirm_delete_confirm" },
-    style = "tf_dlg_confirm_button"
-  }
-  confirm_btn.tags = { action = "confirm_delete" }
-  confirm_btn.visible = true
+  local message = opts and opts.message or { "tf-gui.confirm_delete_message" }
+  
+  local frame, confirm_btn, cancel_btn = GuiElementBuilders.create_confirmation_dialog(
+    player.gui.screen,
+    Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM,
+    message,
+    "tf_confirm_dialog_confirm_btn",
+    "tf_confirm_dialog_cancel_btn"
+  )
 
   return frame, confirm_btn, cancel_btn
 end
@@ -197,17 +130,12 @@ end
 
 local function build_owner_row(parent, tag_data)
   -- Create a frame with a fixed height for the owner row
-  -- Create a horizontal flow for the label - this will take up all available space
-  local row_frame = GuiBase.create_frame(parent, "tag_editor_owner_row_frame", "horizontal", "tf_owner_row_frame")
-  -- Create the label within the flow - it will stretch with its container
-  local label_flow = GuiBase.create_hflow(row_frame, "tag_editor_label_flow")
-  -- Create a flow for the buttons
+  local row_frame, label_flow, button_flow = GuiElementBuilders.create_label_button_row(
+    parent, "tag_editor_owner_row_frame", "tf_owner_row_frame")
+  
   local label = GuiBase.create_label(label_flow, "tag_editor_owner_label",
     "", "tf_tag_editor_owner_label")
-  local button_flow = GuiBase.create_hflow(row_frame, "tag_editor_button_flow")
-  -- Remove move button creation
-  local delete_button = GuiBase.create_icon_button(button_flow, "tag_editor_delete_button", Enum.SpriteEnum.TRASH,
-    "tf-gui.delete_tooltip", "tf_delete_button")
+  local delete_button = GuiElementBuilders.create_delete_button(button_flow, "tag_editor_delete_button", false)
 
   return row_frame, label, nil, delete_button
 end
@@ -217,15 +145,8 @@ local function build_teleport_favorite_row(parent, tag_data)
   local row = GuiBase.create_frame(parent, "tag_editor_teleport_favorite_row", "horizontal",
     "tf_tag_editor_teleport_favorite_row")
   local is_favorite = tag_data and tag_data.is_favorite == true
-  local star_state = is_favorite and Enum.SpriteEnum.STAR or Enum.SpriteEnum.STAR_DISABLED
-  local fave_style = is_favorite and "slot_orange_favorite_on" or "slot_orange_favorite_off"
-  local favorite_btn = GuiBase.create_icon_button(row, "tag_editor_is_favorite_button", star_state,
-    "tf-gui.favorite_tooltip", fave_style)
-  local teleport_btn = GuiBase.create_icon_button(row, "tag_editor_teleport_button", "", "tf-gui.teleport_tooltip",
-    "tf_teleport_button")
-  local coords = GPSUtils.coords_string_from_gps(tag_data.gps)
-  if not coords or coords == "" then coords = "" end
-  teleport_btn.caption = {"tf-gui.teleport_to", tostring(coords)}
+  local favorite_btn = GuiElementBuilders.create_favorite_button(row, "tag_editor_is_favorite_button", is_favorite, true)
+  local teleport_btn = GuiElementBuilders.create_teleport_button(row, "tag_editor_teleport_button", tag_data.gps, true)
   return row, favorite_btn, teleport_btn
 end
 
@@ -250,20 +171,16 @@ local function create_text_input(row, tag_data)
 end
 
 local function build_rich_text_row(parent, tag_data)
-  local row = GuiBase.create_hflow(parent, "tag_editor_rich_text_row")
+  local row = GuiElementBuilders.create_two_element_row(parent, "tag_editor_rich_text_row")
   local icon_btn = create_icon_button(row, tag_data)
   local text_input = create_text_input(row, tag_data)
   return row, icon_btn, text_input
 end
 
 local function build_error_row(parent, tag_data)
-  local error_row_frame, error_label = nil, nil
-  if tag_data and tag_data.error_message and BasicHelpers.trim(tag_data.error_message) ~= "" then
-    error_row_frame = GuiBase.create_frame(parent, "tag_editor_error_row_frame", "vertical",
-      "tf_tag_editor_error_row_frame")
-    error_label = GuiBase.create_label(error_row_frame, "error_row_error_message", tag_data.error_message or "",
-      "tf_tag_editor_error_label")
-  end
+  -- Use the new centralized error message helper
+  local error_row_frame, error_label = ErrorMessageHelpers.create_conditional_error_row(
+    parent, "tag_editor_error_row_frame", "error_row_error_message", tag_data and tag_data.error_message)
   return error_row_frame, error_label
 end
 
@@ -291,11 +208,11 @@ local function build_last_row(parent)
   return row, confirm_btn
 end
 
--- Main builder for the tag editor, matching the full semantic/nested structure from notes/tag_editor.md
+-- Main builder for the tag editor, matching the full semantic/nested structure from .project/tag_editor.md
 ---
 --- @param player LuaPlayer
 function tag_editor.build(player)
-  if not player or not player.valid then return end
+  if not BasicHelpers.is_valid_player(player) then return end
   local tag_data = Cache.get_player_data(player).tag_editor_data or Cache.create_tag_editor_data()
   if not tag_data.gps or tag_data.gps == "" then
     tag_data.gps = tag_data.move_gps or ""
@@ -393,43 +310,14 @@ end
 
 --- Update only the error message display without rebuilding the entire tag editor
 ---@param player LuaPlayer
----@param message string? Error message to display, nil/empty to hide
+---@param message LocalisedString? Error message to display, nil/empty to hide
 function tag_editor.update_error_message(player, message)
   local outer_frame = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
   if not outer_frame then return end
 
-  local error_row_frame = GuiValidation.find_child_by_name(outer_frame, "tag_editor_error_row_frame")
-  local error_label = error_row_frame and GuiValidation.find_child_by_name(error_row_frame, "error_row_error_message")
-
-  local should_show_error = message and BasicHelpers.trim(message) ~= ""
-
-  if should_show_error then
-    -- Create error row if it doesn't exist
-    if not error_row_frame then
-      local content_frame = GuiValidation.find_child_by_name(outer_frame, "tag_editor_content_frame")
-      if content_frame then
-        error_row_frame = GuiBase.create_frame(outer_frame, "tag_editor_error_row_frame", "vertical",
-          "tf_tag_editor_error_row_frame")
-        error_label = GuiBase.create_label(error_row_frame, "error_row_error_message", message or "",
-          "tf_tag_editor_error_label")
-      end
-    else
-      -- Update existing error label
-      if error_label then
-        error_label.caption = message
-        error_label.visible = true
-      end
-    end
-    
-    if error_row_frame then
-      error_row_frame.visible = true
-    end
-  else
-    -- Hide error row
-    if error_row_frame then
-      error_row_frame.visible = false
-    end
-  end
+  -- Use the centralized error message helper
+  ErrorMessageHelpers.show_or_update_error_row(
+    outer_frame, "tag_editor_error_row_frame", "error_row_error_message", message)
 end
 
 --- Update favorite button state and icon without rebuilding

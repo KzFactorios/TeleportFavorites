@@ -18,7 +18,7 @@ local LocaleUtils = require("core.utils.locale_utils")
 local TeleportUtils = require("core.utils.teleport_utils")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
 local PositionUtils = require("core.utils.position_utils")
-local CollectionUtils = require("core.utils.collection_utils")
+
 local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 
 

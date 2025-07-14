@@ -23,6 +23,30 @@ If you are ide-terminal aware, read the output to know what errors may be occurr
 
 ---
 
+## PROJECT DOCUMENTATION REFERENCES
+
+**⚠️ IMPORTANT: Always reference these key project documentation files when working on this codebase:**
+
+### Core Architecture & Standards
+- **Architecture Overview**: `.project/architecture.md` - Mod structure, data flow, and design patterns
+- **Coding Standards**: `.project/coding_standards.md` - Critical rules, best practices, and commit guidelines
+- **Data Schema**: `.project/data_schema.md` - Storage structure and data management patterns
+- **Source of Truth**: `.project/source_of_truth.md` - Authoritative data flow and synchronization patterns
+
+### Testing Guidelines
+- **Test Suite Documentation**: `tests/docs/README.md` - Comprehensive test running instructions and patterns
+- **Test Framework**: Custom framework requirements and simplified smoke testing approach
+
+### Feature-Specific Documentation  
+- **GUI Design**: `.project/fave_bar.md` and `.project/tag_editor.md` - UI component specifications
+- **Drag & Drop**: `.project/custom_drag_and_drop.md` - Custom drag-drop implementation details
+- **GPS Handling**: `.project/gps.md` - GPS string parsing and coordinate management
+- **Game Rules**: `.project/game_rules.md` - Factorio API interactions and multiplayer considerations
+
+**Read these files BEFORE making significant changes to understand established patterns, constraints, and design decisions.**
+
+---
+
 ## ROLE & COMMITMENT
 You are a specialized Factorio mod development professional. Apply this checklist rigorously BEFORE every response involving code changes.
 Do not write broken code or leave incomplete implementations. Your goal is to produce high-quality, production-ready code that adheres to the project's standards.
@@ -67,9 +91,9 @@ CODE TO INCORPORATE AN ADDITIONAL PARAMETER AND LOGIC AND REFACTOR EXISTING REFE
 - [ ] Use proper Factorio API syntax:
   - Colon (`:`) for method calls: `surface:get_tile()`, `chart_tag:destroy()`
   - Dot (`.`) for property access: `player.name`, `chart_tag.position`
-- [ ] Use `GameHelpers.player_print(player, message)` NOT `player.print()` whenever possible. CREATING A SIMPLE PLAYER_PRINT PER FILE IS 
+- [ ] Use `PlayerHelpers.safe_player_print(player, message)` NOT `player.print()` whenever possible. CREATING A SIMPLE PLAYER_PRINT PER FILE IS 
 ALSO ACCEPTABLE - ESPECIALLY IF THERE ARE SEVERAL CALLS. REQUIRING ADDITIONAL FILES TO HANDLE THIS MAY CAUSE CIRCULAR REQUIRE ISSUES
-- [ ] Handle player validity: `if not player or not player.valid then return end`
+- [ ] Handle player validity: `if not SafeHelpers.is_valid_player(player) then return end`
 
 ## 3. USE ALREADY ESTABLISHED CODE PATTERNS (100% CONSISTENCY REQUIRED)
 
@@ -133,14 +157,14 @@ This project uses Windows PowerShell as the default shell. When providing termin
 ## 10. CRITICAL VIOLATIONS TO AVOID
 1. **NEVER**: `cd "path" && command` (bash syntax)
 2. **NEVER**: `require()` inside functions
-3. **NEVER**: `player.print()` or `player:print()` (use GameHelpers.player_print)
+3. **NEVER**: `player.print()` or `player:print()` (use PlayerHelpers.safe_player_print)
 4. **NEVER**: `chart_tag:position` (wrong - use `chart_tag.position`)
 5. **NEVER**: `local` declarations concatenated on the same line (causes parsing errors)
 6. **NEVER**: Try to tackle everything at once
 
 ## 11. PROJECT ARCHITECTURE PRINCIPLES
 - Maintain 100% consistency in established patterns
-- Use centralized utilities (ChartTagSpecBuilder, PositionNormalizer, ErrorHandler)
+- Use centralized utilities (PositionUtils, ErrorHandler, SafeHelpers, PlayerHelpers, EventHandlerHelpers, GuiElementBuilders, ErrorMessageHelpers)
 - Follow single responsibility principle
 - Clear module boundaries with explicit dependencies
 - Comprehensive error handling at all levels
@@ -163,8 +187,9 @@ This project uses Windows PowerShell as the default shell. When providing termin
 - [ ] **No Individual Test Runners**: Do NOT add individual test runners to test files
 
 ### Test Execution & Coverage
-- [ ] **Use Centralized Runner**: Execute tests using `lua run_all_tests.lua` in the project root
+- [ ] **Use Universal Runners**: Execute tests using `.\test.ps1`, `test.bat`, or `lua test.lua` from any directory in the project
 - [ ] **Automatic Discovery**: The test runner automatically finds all `*_spec.lua` files
+- [ ] **Path Independence**: New universal runners work from any directory and automatically find project root
 - [ ] **Coverage Reports**: LuaCov integration generates coverage automatically when available
 - [ ] **Coverage Analysis**: Python scripts generate formatted coverage summaries post-test
 - [ ] **Test Framework**: Uses custom framework from `tests/test_framework.lua` with proper isolation

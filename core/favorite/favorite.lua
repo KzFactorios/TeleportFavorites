@@ -18,7 +18,7 @@ Notes:
 ]]
 
 local Constants = require("constants")
-local CollectionUtils = require("core.utils.collection_utils")
+local basic_helpers = require("core.utils.basic_helpers")
 
 ---@class Favorite
 ---@field gps string GPS coordinates in 'xxx.yyy.s' format
@@ -101,7 +101,7 @@ end
 ---@return Favorite?
 function FavoriteUtils.copy(fav)
   if type(fav) ~= "table" then return nil end
-  local copy = FavoriteUtils.new(fav.gps, fav.locked, fav.tag and CollectionUtils.deep_copy(fav.tag) or nil)
+  local copy = FavoriteUtils.new(fav.gps, fav.locked, fav.tag and basic_helpers.deep_copy(fav.tag) or nil)
   for k, v in pairs(fav) do
     if copy[k] == nil then copy[k] = v end
   end

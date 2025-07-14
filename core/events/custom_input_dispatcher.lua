@@ -34,7 +34,7 @@ end
 --]]
 
 -- Dependencies
-local GameHelpers = require("core.utils.game_helpers")
+local PlayerHelpers = require("core.utils.player_helpers")
 local ErrorHandler = require("core.utils.error_handler")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local FavoriteUtils = require("core.favorite.favorite")
@@ -73,7 +73,7 @@ local function create_safe_handler(handler, handler_name)
         ---@diagnostic disable-next-line: need-check-nil
         if player and player.valid then
           ---@diagnostic disable-next-line: param-type-mismatch
-          GameHelpers.player_print(player, {"tf-error.input_handler_error"})
+          PlayerHelpers.error_message_to_player(player, "Input handler error occurred")
         end
       end
     end
@@ -92,7 +92,7 @@ local function handle_teleport_to_favorite_slot(event, slot_number)
 
   local player_favorites = PlayerFavorites.new(player)
   if not player_favorites or not player_favorites.favorites then
-    GameHelpers.player_print(player, {"tf-gui.no_favorites_available"})
+    PlayerHelpers.safe_player_print(player, {"tf-gui.no_favorites_available"})
     return
   end
   
@@ -100,7 +100,7 @@ local function handle_teleport_to_favorite_slot(event, slot_number)
   local favorite = player_favorites.favorites[slot_number]
   if not favorite or FavoriteUtils.is_blank_favorite(favorite) then
     ErrorHandler.debug_log("Favorite slot empty", { player = player.name, slot = slot_number })
-    GameHelpers.player_print(player, {"tf-gui.favorite_slot_empty"})
+    PlayerHelpers.safe_player_print(player, {"tf-gui.favorite_slot_empty"})
     return
   end
   

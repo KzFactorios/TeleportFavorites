@@ -1,5 +1,8 @@
--- Require canonical test bootstrap to patch all mocks before any SUT or test code
-require("test_bootstrap")
+require("test_framework")
+
+-- Use centralized test helpers
+local MockFactories = require("mocks.mock_factories")
+local TestHelpers = require("mocks.test_helpers")
 
 -- Mock the required modules
 local mock_error_handler = {
@@ -42,49 +45,32 @@ package.loaded["core.utils.position_utils"] = mock_position_utils
 package.loaded["core.utils.basic_helpers"] = mock_basic_helpers
 package.loaded["core.utils.gps_utils"] = mock_gps_utils
 
--- Mock game environment
-local function create_mock_chart_tag(x, y, valid)
-  return {
-    valid = valid == nil and true or valid,
-    position = {x = x, y = y},
-    icon = "signal-1",
-    text = "Test Tag",
-    destroy = function(self) 
-      self.valid = false 
-    end
-  }
-end
+-- Setup test environment with mock game
+TestHelpers.mock_game()
 
 local mock_surfaces = {
-  [1] = {
+  [1] = MockFactories.create_surface({
     index = 1,
     name = "nauvis",
-    valid = true,
-    get_tile = function(x, y)
-      return {
-        collides_with = function() return false end
-      }
-    end
-  }
+    valid = true
+  })
 }
 
 local mock_chart_tags = {
   [1] = {
-    create_mock_chart_tag(1, 2, true),
-    create_mock_chart_tag(5, 6, true)
+    MockFactories.create_chart_tag({ position = { x = 1, y = 2 } }),
+    MockFactories.create_chart_tag({ position = { x = 5, y = 6 } })
   }
 }
 
-_G.game = {
-  surfaces = mock_surfaces,
-  forces = {
+_G.game.surfaces = mock_surfaces
+_G.game.forces = {
     ["player"] = {
       find_chart_tags = function(surface)
         return mock_chart_tags[surface.index] or {}
       end
     }
   }
-}
 
 describe("Lookups cache module", function()
   it("initializes cache and fetches chart tags", function()

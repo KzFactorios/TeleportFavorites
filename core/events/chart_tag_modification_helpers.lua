@@ -18,7 +18,7 @@ maintainability and testability.
 local Cache = require("core.cache.cache")
 local GPSUtils = require("core.utils.gps_utils")
 local ErrorHandler = require("core.utils.error_handler")
-local GameHelpers = require("core.utils.game_helpers")
+local PlayerHelpers = require("core.utils.player_helpers")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local RichTextFormatter = require("core.utils.rich_text_formatter")
 local AdminUtils = require("core.utils.admin_utils")
@@ -249,7 +249,7 @@ function ChartTagModificationHelpers.update_favorites_gps(old_gps, new_gps, acti
         local position_msg = RichTextFormatter.position_change_notification(
           affected_player, chart_tag, old_position or { x = 0, y = 0 }, new_position or { x = 0, y = 0 }
         )
-        GameHelpers.player_print(affected_player, position_msg)
+        PlayerHelpers.safe_player_print(affected_player, position_msg)
       end
     end
   end

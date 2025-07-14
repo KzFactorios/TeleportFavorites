@@ -1,4 +1,5 @@
 local test_framework = require("test_framework")
+local MockFactories = require("tests.mocks.mock_factories")
 
 -- Mock chart tag spec builder (no dependencies to avoid circular imports)
 local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
@@ -10,7 +11,7 @@ describe("ChartTagSpecBuilder", function()
       text = "test tag",
       last_user = {name = "player1"}
     }
-    local mock_player = {valid = true, name = "player1"}
+    local mock_player = MockFactories.create_player({index = 1, name = "player1"})
     
     local success, err = pcall(function()
       ChartTagSpecBuilder.build(mock_position, mock_chart_tag, mock_player, "custom text", true)
@@ -20,7 +21,7 @@ describe("ChartTagSpecBuilder", function()
   
   it("should handle nil source_chart_tag gracefully", function()
     local mock_position = {x = 100, y = 200}
-    local mock_player = {valid = true, name = "player1"}
+    local mock_player = MockFactories.create_player({index = 1, name = "player1"})
     
     local success, err = pcall(function()
       ChartTagSpecBuilder.build(mock_position, nil, mock_player, "custom text", true)

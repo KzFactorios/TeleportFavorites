@@ -20,6 +20,8 @@ Features:
 - Consistent API across all mod components
 ]]
 
+local BasicHelpers = require("core.utils.basic_helpers")
+
 local LocaleUtils = {}
 
 -- Locale key prefixes for different categories
@@ -77,7 +79,7 @@ Core function to get any localized string
 @return localized string
 ]]
 function LocaleUtils.get_string(player, category, key, params)
-    if not player or not player.valid then
+    if not BasicHelpers.is_valid_player(player) then
         if DEBUG_MISSING_TRANSLATIONS then
             game.print("[LocaleUtils] Warning: Invalid player for localization")
         end

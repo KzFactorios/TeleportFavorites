@@ -32,6 +32,19 @@ function ValidationUtils.validate_player(player)
   return ValidationUtils.validate_factorio_object(player, "Player")
 end
 
+--- Higher-level helper to reduce repeated player validation + early return patterns
+--- Executes callback only if player is valid, otherwise returns default_return value
+---@param player LuaPlayer|nil
+---@param callback fun(player: LuaPlayer): any
+---@param default_return any? Value to return if player is invalid (default: nil)
+---@return any result Result from callback or default_return
+function ValidationUtils.with_valid_player(player, callback, default_return)
+  if not player or not player.valid then 
+    return default_return 
+  end
+  return callback(player)
+end
+
 --- Extended player validation for position operations
 ---@param player LuaPlayer|nil
 ---@return boolean is_valid

@@ -15,7 +15,7 @@ Command:
 
 local Constants = require("constants")
 local Cache = require("core.cache.cache")
-local GameHelpers = require("core.utils.game_helpers")
+local PlayerHelpers = require("core.utils.player_helpers")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local ErrorHandler = require("core.utils.error_handler")
 local FavoriteUtils = require("core.favorite.favorite")
@@ -36,33 +36,33 @@ function DeleteFavoriteCommand._handle_delete_favorite_by_slot(command)
 
     -- Validate input
     if not slot_number then
-        GameHelpers.player_print(player, {"teleport-favorites.command-delete-favorite-invalid-format"})
+        PlayerHelpers.safe_player_print(player, {"teleport-favorites.command-delete-favorite-invalid-format"})
         return
     end
 
     -- Validate slot number
     local player_favorites = Cache.get_player_favorites(player)
     if not player_favorites then
-        GameHelpers.player_print(player, {"teleport-favorites.no-favorites-found"})
+        PlayerHelpers.safe_player_print(player, {"teleport-favorites.no-favorites-found"})
         return
     end
 
     -- Check if the slot exists and has a valid favorite
     if not player_favorites[slot_number] then
-        GameHelpers.player_print(player, {"teleport-favorites.command-delete-favorite-invalid-slot", slot_number})
+        PlayerHelpers.safe_player_print(player, {"teleport-favorites.command-delete-favorite-invalid-slot", slot_number})
         return
     end
 
     -- Get the favorite data
     local favorite = player_favorites[slot_number]
     if not favorite then
-        GameHelpers.player_print(player, {"teleport-favorites.command-delete-favorite-invalid-slot", slot_number})
+        PlayerHelpers.safe_player_print(player, {"teleport-favorites.command-delete-favorite-invalid-slot", slot_number})
         return
     end
     
     -- If there's no GPS or it's a blank favorite, there's nothing to delete
     if not favorite.gps or favorite.gps == Constants.settings.BLANK_GPS then
-        GameHelpers.player_print(player, {"teleport-favorites.command-delete-favorite-blank-slot", slot_number})
+        PlayerHelpers.safe_player_print(player, {"teleport-favorites.command-delete-favorite-blank-slot", slot_number})
         return
     end
 
@@ -103,9 +103,9 @@ function DeleteFavoriteCommand._handle_delete_favorite_by_slot(command)
     end
 
     if removed and success then
-        GameHelpers.player_print(player, {"teleport-favorites.command-delete-favorite-success", slot_number})
+        PlayerHelpers.safe_player_print(player, {"teleport-favorites.command-delete-favorite-success", slot_number})
     else
-        GameHelpers.player_print(player, {"teleport-favorites.command-delete-favorite-failed", slot_number})
+        PlayerHelpers.safe_player_print(player, {"teleport-favorites.command-delete-favorite-failed", slot_number})
         ErrorHandler.debug_log("Failed to delete favorite using tag_destroy_helper", { 
             slot = slot_number,
             gps = gps,

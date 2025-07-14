@@ -52,8 +52,14 @@ local function run_test_file(file_path)
   -- Load fresh test framework for this file
   local test_framework = require("test_framework")
   
+  -- Adjust path for running from infrastructure directory  
+  local actual_path = file_path
+  if file_path:match("^specs/") then
+    actual_path = file_path  -- specs directory is at the same level when running from tests directory
+  end
+  
   local success, err = pcall(function()
-    dofile(file_path)
+    dofile(actual_path)
   end)
   
   -- Restore original path
