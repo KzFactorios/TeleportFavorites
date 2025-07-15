@@ -40,9 +40,9 @@ package.loaded["core.utils.rich_text_formatter"] = {
   format_message = function(template, params) return "formatted message" end
 }
 
-local ChartTagRemovalHelpers = require("core.events.chart_tag_removal_helpers")
+local ChartTagHelpers = require("core.events.chart_tag_helpers")
 
-describe("ChartTagRemovalHelpers", function()
+describe("ChartTagHelpers", function()
   it("should execute validate_removal_event without errors", function()
     local mock_event = {
       tag = {
@@ -53,14 +53,14 @@ describe("ChartTagRemovalHelpers", function()
     }
     
     local success, err = pcall(function()
-      ChartTagRemovalHelpers.validate_removal_event(mock_event)
+      ChartTagHelpers.validate_removal_event(mock_event)
     end)
     assert(success, "validate_removal_event should execute without errors: " .. tostring(err))
   end)
   
   it("should handle invalid event gracefully", function()
     local success, err = pcall(function()
-      ChartTagRemovalHelpers.validate_removal_event(nil)
+      ChartTagHelpers.validate_removal_event(nil)
     end)
     assert(success, "validate_removal_event should handle nil event: " .. tostring(err))
   end)
@@ -71,7 +71,7 @@ describe("ChartTagRemovalHelpers", function()
     }
     
     local success, err = pcall(function()
-      ChartTagRemovalHelpers.validate_removal_event(mock_event)
+      ChartTagHelpers.validate_removal_event(mock_event)
     end)
     assert(success, "validate_removal_event should handle invalid tag: " .. tostring(err))
   end)
@@ -80,7 +80,7 @@ describe("ChartTagRemovalHelpers", function()
     local mock_event = {}
     
     local success, err = pcall(function()
-      ChartTagRemovalHelpers.validate_removal_event(mock_event)
+      ChartTagHelpers.validate_removal_event(mock_event)
     end)
     assert(success, "validate_removal_event should handle missing tag: " .. tostring(err))
   end)

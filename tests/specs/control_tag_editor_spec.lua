@@ -138,7 +138,7 @@ describe("TagEditor Control Module", function()
 
     it("should handle close button clicks", function()
         mock_element.name = "tag_editor_title_row_close"
-        TagEditor.on_tag_editor_gui_click(mock_event, nil)
+        TagEditor.on_tag_editor_gui_click(mock_event)
         is_true(call_counts["safe_destroy_frame"] > 0, "safe_destroy_frame should be called for close button")
     end)
     
@@ -159,7 +159,7 @@ describe("TagEditor Control Module", function()
         mock_player.surface = { index = 1 }
         
         local success, error_msg = pcall(function()
-            TagEditor.on_tag_editor_gui_click(mock_event, nil)
+            TagEditor.on_tag_editor_gui_click(mock_event)
         end)
         
         -- If it failed, at least it should be a controlled failure, not a crash
@@ -171,7 +171,7 @@ describe("TagEditor Control Module", function()
         local original_element = mock_event.element
         mock_event.element = nil
         local success = pcall(function()
-            TagEditor.on_tag_editor_gui_click(mock_event, nil)
+            TagEditor.on_tag_editor_gui_click(mock_event)
         end)
         mock_event.element = original_element
         is_true(success, "Should handle invalid element gracefully")

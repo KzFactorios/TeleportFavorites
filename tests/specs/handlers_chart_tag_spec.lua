@@ -10,7 +10,7 @@ local EventFactories = require("mocks.event_factories")
 local GameSetupFactory = require("mocks.game_setup_factory")
 
 -- Mock package.loaded
-package.loaded["core.events.chart_tag_modification_helpers"] = {
+package.loaded["core.events.chart_tag_helpers"] = {
   is_valid_tag_modification = function() return true end,
   extract_gps = function() return "gps:100.200.1", "gps:90.180.1" end,
   update_tag_and_cleanup = function() end,

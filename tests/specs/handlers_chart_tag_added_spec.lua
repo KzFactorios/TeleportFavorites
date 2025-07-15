@@ -80,10 +80,10 @@ package.loaded["core.events.tag_editor_event_helpers"] = TagEditorEventHelpers
 package.loaded["core.utils.error_handler"] = ErrorHandler
 package.loaded["gui.tag_editor.tag_editor"] = {build = function() end}
 package.loaded["core.utils.cursor_utils"] = {end_drag_favorite = function() end}
-package.loaded["core.utils.settings_access"] = {get_chart_tag_click_radius = function() return 5 end}
+package.loaded["core.cache.settings_cache"] = {get_chart_tag_click_radius = function() return 5 end}
 package.loaded["gui.favorites_bar.fave_bar"] = {build = function() end}
 package.loaded["core.utils.gui_helpers"] = {}
-package.loaded["core.events.chart_tag_modification_helpers"] = {
+package.loaded["core.events.chart_tag_helpers"] = {
   is_valid_tag_modification = function() return true end
 }
 package.loaded["core.utils.gui_validation"] = {find_child_by_name = function() return nil end}
@@ -162,7 +162,7 @@ describe("Handlers.on_chart_tag_added", function()
     package.loaded["core.utils.gps_utils"] = GPSUtils
     package.loaded["gui.tag_editor.tag_editor"] = {build = function() end}
     package.loaded["core.utils.cursor_utils"] = {end_drag_favorite = function() end}
-    package.loaded["core.utils.settings_access"] = {get_chart_tag_click_radius = function() return 5 end}
+    package.loaded["core.cache.settings_cache"] = {get_chart_tag_click_radius = function() return 5 end}
     package.loaded["gui.favorites_bar.fave_bar"] = {build = function() end}
     package.loaded["core.utils.gui_helpers"] = {}
     package.loaded["core.utils.gui_validation"] = {find_child_by_name = function() return nil end}

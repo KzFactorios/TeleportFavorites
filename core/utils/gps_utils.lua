@@ -15,10 +15,9 @@ This module consolidates:
 Provides a unified API for all GPS-related operations throughout the mod.
 ]]
 
-local basic_helpers = require("core.utils.basic_helpers")
+local BasicHelpers = require("core.utils.basic_helpers")
 local Constants = require("constants")
 local ErrorHandler = require("core.utils.error_handler")
-local BasicHelpers = require("core.utils.basic_helpers")
 
 local padlen, BLANK_GPS = Constants.settings.GPS_PAD_NUMBER, Constants.settings.BLANK_GPS
 
@@ -51,7 +50,7 @@ function GPSUtils.gps_from_map_position(map_position, surface_index)
   surface_index = surface_index or 1
   local x = math.floor(map_position.x + 0.5)
   local y = math.floor(map_position.y + 0.5)
-  return basic_helpers.pad(x, padlen) .. "." .. basic_helpers.pad(y, padlen) .. "." .. tostring(surface_index)
+  return BasicHelpers.pad(x, padlen) .. "." .. BasicHelpers.pad(y, padlen) .. "." .. tostring(surface_index)
 end
 
 --- Convert a GPS string to a map position
@@ -79,7 +78,7 @@ function GPSUtils.coords_string_from_gps(gps)
   local parsed = GPSUtils.parse_gps_string(gps)
   if not parsed then return nil end
   
-  return basic_helpers.pad(parsed.x, padlen) .. "." .. basic_helpers.pad(parsed.y, padlen)
+  return BasicHelpers.pad(parsed.x, padlen) .. "." .. BasicHelpers.pad(parsed.y, padlen)
 end
 
 --- Get coordinate string from map position (x.y format without surface)
@@ -95,7 +94,7 @@ function GPSUtils.coords_string_from_map_position(map_position)
   local y = math.floor(map_position.y + 0.5)
   
   -- Use the padding function to ensure at least 3 digits
-  return basic_helpers.pad(x, 3) .. "." .. basic_helpers.pad(y, 3)
+  return BasicHelpers.pad(x, 3) .. "." .. BasicHelpers.pad(y, 3)
 end
 
 --- Validate map position for GPS conversion

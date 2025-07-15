@@ -87,7 +87,7 @@ package.loaded["core.events.tag_editor_event_helpers"] = {
   validate_tag_editor_opening = function() return true end,
   find_nearby_chart_tag = function() return nil end
 }
-package.loaded["core.utils.settings_access"] = { get_chart_tag_click_radius = function() return 5 end }
+package.loaded["core.cache.settings_cache"] = { get_chart_tag_click_radius = function() return 5 end }
 --[[
 -- Don't patch player_favorites - let it load normally for testing
 package.loaded["core.favorite.player_favorites"] = setmetatable({

@@ -15,7 +15,7 @@ Provides a unified API for all chart tag operations throughout the mod.
 local ErrorHandler = require("core.utils.error_handler")
 local GPSUtils = require("core.utils.gps_utils")
 local Cache = require("core.cache.cache")
-local settings_access = require("core.utils.settings_access")
+local SettingsCache = require("core.cache.settings_cache")
 local BasicHelpers = require("core.utils.basic_helpers")
 
 ---@class ChartTagUtils
@@ -51,7 +51,7 @@ function ChartTagUtils.find_closest_chart_tag_to_position(player, cursor_positio
   end
   
   -- Get click radius from player settings
-  local click_radius = settings_access.get_chart_tag_click_radius(player)
+  local click_radius = SettingsCache.get_chart_tag_click_radius(player)
 
   -- Find the closest chart tag within detection radius
   local closest_tag = nil

@@ -1,7 +1,7 @@
 local test_framework = require("test_framework")
 
 -- Mock all dependencies first
-package.loaded["core.utils.settings_access"] = {
+package.loaded["core.cache.settings_cache"] = {
   get_setting = function(key) return {} end
 }
 

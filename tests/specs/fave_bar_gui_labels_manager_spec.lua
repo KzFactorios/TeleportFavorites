@@ -5,9 +5,10 @@
 require("test_framework")
 require("mocks.factorio_test_env")
 
--- Use centralized test helpers
+-- Use centralized test helpers and shared mocks
 local MockFactories = require("mocks.mock_factories")
 local TestHelpers = require("mocks.test_helpers")
+local SharedMocks = require("mocks.shared_mocks")
 
 -- Mock system - setup mocks BEFORE importing target module
 local mock_cache = require("mocks.mock_cache")
@@ -61,8 +62,15 @@ local function setup_mocks()
     ensure_gps_utils_mock()
     
     -- Mock settings access
-    package.loaded["core.utils.settings_access"] = {
-        getPlayerSettings = function(player)
+    package.loaded["core.cache.settings_cache"] = {
+        get_player_settings = function(player)
+            if not player or not player.valid then return nil end
+            return {
+                show_player_coords = player._test_coords_enabled or false,
+                show_teleport_history = player._test_history_enabled or false
+            }
+        end,
+        get_player_settings = function(player)
             if not player or not player.valid then return nil end
             return {
                 show_player_coords = player._test_coords_enabled or false,
@@ -588,8 +596,8 @@ describe("FaveBarGuiLabelsManager", function()
         it("should unregister handler when no enabled players remain", function()
             -- Set up scenario with player that will be disabled
             mock_player._test_coords_enabled = false
-            package.loaded["core.utils.settings_access"] = {
-                getPlayerSettings = function(player)
+            package.loaded["core.cache.settings_cache"] = {
+                get_player_settings = function(player)
                     return { show_player_coords = false, show_teleport_history = false }
                 end
             }
@@ -705,8 +713,8 @@ describe("FaveBarGuiLabelsManager", function()
             is_true(success1)
             
             -- Test unregistering when should not be registered
-            package.loaded["core.utils.settings_access"] = {
-                getPlayerSettings = function(player)
+            package.loaded["core.cache.settings_cache"] = {
+                get_player_settings = function(player)
                     return { show_player_coords = false, show_teleport_history = false }
                 end
             }
@@ -1145,8 +1153,8 @@ describe("FaveBarGuiLabelsManager", function()
             )
             
             -- Mock settings to show disabled
-            package.loaded["core.utils.settings_access"] = {
-                getPlayerSettings = function(player)
+            package.loaded["core.cache.settings_cache"] = {
+                get_player_settings = function(player)
                     return { show_player_coords = false, show_teleport_history = false }
                 end
             }
@@ -1369,8 +1377,8 @@ describe("FaveBarGuiLabelsManager", function()
             }
             
             -- Mock settings access 
-            package.loaded["core.utils.settings_access"] = {
-                getPlayerSettings = function(player)
+            package.loaded["core.cache.settings_cache"] = {
+                get_player_settings = function(player)
                     return { show_player_coords = true }
                 end
             }
@@ -1423,8 +1431,8 @@ describe("FaveBarGuiLabelsManager", function()
             }
             
             -- Mock settings to return true for the setting check
-            package.loaded["core.utils.settings_access"] = {
-                getPlayerSettings = function(player)
+            package.loaded["core.cache.settings_cache"] = {
+                get_player_settings = function(player)
                     return { show_player_coords = true }
                 end
             }
@@ -1452,8 +1460,8 @@ describe("FaveBarGuiLabelsManager", function()
                 end
             }
             
-            package.loaded["core.utils.settings_access"] = {
-                getPlayerSettings = function(player)
+            package.loaded["core.cache.settings_cache"] = {
+                get_player_settings = function(player)
                     return { show_player_coords = true }
                 end
             }
@@ -1480,8 +1488,8 @@ describe("FaveBarGuiLabelsManager", function()
                 end
             }
             
-            package.loaded["core.utils.settings_access"] = {
-                getPlayerSettings = function(player)
+            package.loaded["core.cache.settings_cache"] = {
+                get_player_settings = function(player)
                     return { show_player_coords = true }
                 end
             }
@@ -1510,8 +1518,8 @@ describe("FaveBarGuiLabelsManager", function()
                 end
             }
             
-            package.loaded["core.utils.settings_access"] = {
-                getPlayerSettings = function(player)
+            package.loaded["core.cache.settings_cache"] = {
+                get_player_settings = function(player)
                     return { show_player_coords = true }
                 end
             }
@@ -1536,8 +1544,8 @@ describe("FaveBarGuiLabelsManager", function()
                 get_player = function(index) return _G.game.players[index] end
             }
             
-            package.loaded["core.utils.settings_access"] = {
-                getPlayerSettings = function(player)
+            package.loaded["core.cache.settings_cache"] = {
+                get_player_settings = function(player)
                     return { show_player_coords = true }
                 end
             }
@@ -1569,8 +1577,8 @@ describe("FaveBarGuiLabelsManager", function()
                 function(p) return "enabled" end
             )
             
-            package.loaded["core.utils.settings_access"] = {
-                getPlayerSettings = function(player)
+            package.loaded["core.cache.settings_cache"] = {
+                get_player_settings = function(player)
                     return { show_player_coords = true }
                 end
             }
@@ -1613,7 +1621,10 @@ describe("FaveBarGuiLabelsManager", function()
             _G.game = {
                 get_player = function(index) 
                     return { index = index, valid = true }
-                end
+                end,
+                players = {
+                    [1] = { index = 1, valid = true }
+                }
             }
             
             -- Register the event
@@ -1627,7 +1638,7 @@ describe("FaveBarGuiLabelsManager", function()
                 local success = pcall(function()
                     event_handlers[defines.events.on_player_created]({ player_index = 1 })
                 end)
-                is_true(success)
+                assert(success == true, "Player creation event handler should execute successfully")
                 
                 -- Trigger the delayed handler too
                 if delayed_handlers[60] then

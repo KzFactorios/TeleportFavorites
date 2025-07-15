@@ -160,6 +160,16 @@ def should_exclude_file(file_path: Path, project_root: Path) -> bool:
     if any(indicator in filename for indicator in ['test_', '_test', 'spec_', '_spec']):
         return True
     
+    # Exclude development/tooling files in project root
+    if len(path_parts) == 1:  # Files in project root
+        filename = file_path.name.lower()
+        if filename in ['.test.lua', 'test.lua', '.test.ps1', 'test.ps1', '.test.bat', 'test.bat']:
+            return True
+    
+    # Exclude factorio.emmy.lua (type definitions, not production code)
+    if filename == 'factorio.emmy.lua':
+        return True
+    
     return False
 
 def analyze_lua_files(project_root: str) -> Tuple[List[FileAnalysis], Dict[str, Tuple[int, int]], int, int]:
@@ -268,7 +278,7 @@ def print_analysis_report(file_results: List[FileAnalysis],
     print(f"  Code lines: {grand_total_code:,}")
     print(f"  Annotation lines: {grand_total_annotations:,} ({annotation_percentage:.1f}%)")
     print("(Excluding regular comments and blank lines)")
-    print("(Excluding test files)")
+    print("(Excluding test files, development tools, and factorio.emmy.lua)")
     print("(Annotations are lines starting with ---@param, ---@return, etc.)")
 
 def main():
@@ -279,7 +289,7 @@ def main():
     
     print(f"Analyzing Lua files in: {project_root}")
     print("Excluding: comments and blank lines (but keeping annotations like ---@param)")
-    print("Excluding: test files")
+    print("Excluding: test files, development tools (.test.* files), and factorio.emmy.lua")
     print()
     
     try:

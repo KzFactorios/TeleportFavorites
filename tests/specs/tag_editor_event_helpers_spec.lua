@@ -28,7 +28,7 @@ describe("TagEditorEventHelpers", function()
       normalize_position = function() return {x = 0, y = 0} end
     }
     
-    package.loaded["core.utils.settings_access"] = {
+    package.loaded["core.cache.settings_cache"] = {
       get_setting = function() return true end
     }
     

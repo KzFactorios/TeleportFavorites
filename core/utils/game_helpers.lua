@@ -7,8 +7,9 @@ Extracted from helpers_suite.lua for better organization and maintainability.
 ]]
 
 local ErrorHandler = require("core.utils.error_handler")
-local SettingsAccess = require("core.utils.settings_access")
-local TeleportUtils = require("core.utils.teleport_utils")
+local SettingsCache = require("core.cache.settings_cache")
+local TeleportStrategies = require("core.utils.teleport_strategy")
+local TeleportUtils = TeleportStrategies.TeleportUtils
 local PositionUtils = require("core.utils.position_utils")
 
 ---@class GameHelpers

@@ -17,18 +17,17 @@ local ErrorHandler = require("core.utils.error_handler")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
 local ValidationUtils = require("core.utils.validation_utils")
 local AdminUtils = require("core.utils.admin_utils")
-local SettingsAccess = require("core.utils.settings_access")
 local BasicHelpers = require("core.utils.basic_helpers")
 local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 local SharedUtils = require("core.control.control_shared_utils")
-local BasicHelpers = require("core.utils.basic_helpers")
+local GameHelpers = require("core.utils.game_helpers")
 
 local M = {}
 
 local function show_tag_editor_error(player, tag_data, message)
   tag_data.error_message = message
   -- Use partial update instead of full rebuild for error messages
-  SmallHelpers.update_error_message(tag_editor.update_error_message, player, message)
+  BasicHelpers.update_error_message(tag_editor.update_error_message, player, message)
   Cache.set_tag_editor_data(player, tag_data)
 end
 
@@ -350,7 +349,7 @@ local function handle_favorite_btn(player, tag_data)
   -- Update the tag_data and refresh the UI to show new state
   Cache.set_tag_editor_data(player, tag_data)
   -- Use partial update instead of full rebuild for favorite toggle
-  SmallHelpers.update_state(tag_editor.update_favorite_state, player, tag_data.is_favorite)
+  BasicHelpers.update_state(tag_editor.update_favorite_state, player, tag_data.is_favorite)
 end
 
 local function handle_delete_confirm(player)
@@ -466,20 +465,66 @@ local function handle_delete_btn(player, tag_data)
 end
 
 local function handle_teleport_btn(player, map_position)
-  if not player or not map_position then return end
-  GameHelpers.safe_teleport_to_gps(player, GPSUtils.gps_from_map_position(map_position, player.surface.index))
+  if not player or not map_position then 
+    ErrorHandler.warn_log("Invalid teleport parameters", {
+      player_valid = player and player.valid or false,
+      map_position_provided = map_position ~= nil
+    })
+    return 
+  end
+  
+  if not player.valid then
+    ErrorHandler.warn_log("Player invalid during teleport", {
+      player_name = "invalid_player"
+    })
+    return
+  end
+  
+  if not player.surface or not player.surface.valid then
+    ErrorHandler.warn_log("Player surface invalid during teleport", {
+      player_name = player.name
+    })
+    return
+  end
+  
+  local gps = GPSUtils.gps_from_map_position(map_position, player.surface.index)
+  if not gps or gps == "" then
+    ErrorHandler.warn_log("Failed to create GPS from map position", {
+      player_name = player.name,
+      map_position_x = map_position.x,
+      map_position_y = map_position.y,
+      surface_index = player.surface.index
+    })
+    return
+  end
+  
+  GameHelpers.safe_teleport_to_gps(player, gps)
   close_tag_editor(player)
 end
 
 --- Tag editor GUI click handler for shared dispatcher
-local function on_tag_editor_gui_click(event, script)
+local function on_tag_editor_gui_click(event)
   local element = event.element
   if not BasicHelpers.is_valid_element(element) then return end
 
   local player = game.get_player(event.player_index)
   if not BasicHelpers.is_valid_player(player) then return end
 
-  local tag_data = Cache.get_tag_editor_data(player) or {}
+  local tag_data
+  local success, result = pcall(function()
+    return Cache.get_tag_editor_data(player)
+  end)
+  
+  if success and result then
+    tag_data = result
+  else
+    ErrorHandler.warn_log("Failed to get tag editor data", {
+      player_name = player and player.name or "unknown",
+      error = tostring(result),
+      element_name = element and element.name or "unknown"
+    })
+    tag_data = {}
+  end
 
   -- Robust close for all close/cancel buttons
   if element.name == "tag_editor_title_row_close" then
@@ -497,7 +542,22 @@ local function on_tag_editor_gui_click(event, script)
   elseif element.name == "tag_editor_is_favorite_button" then
     return handle_favorite_btn(player, tag_data)
   elseif element.name == "tag_editor_teleport_button" then
+    if not tag_data.gps or tag_data.gps == "" then
+      ErrorHandler.warn_log("Teleport button clicked with invalid GPS", {
+        player_name = player and player.name or "unknown",
+        gps = tostring(tag_data.gps),
+        tag_data_type = type(tag_data)
+      })
+      return
+    end
     local tele_pos = GPSUtils.map_position_from_gps(tag_data.gps)
+    if not tele_pos then
+      ErrorHandler.warn_log("Failed to parse GPS for teleport", {
+        player_name = player and player.name or "unknown",
+        gps = tostring(tag_data.gps)
+      })
+      return
+    end
     return handle_teleport_btn(player, tele_pos)
   elseif element.name == "tag_editor_icon_button" then
     -- Icon selection changed - immediately save to storage
@@ -505,7 +565,7 @@ local function on_tag_editor_gui_click(event, script)
     tag_data.icon = new_icon
     Cache.set_tag_editor_data(player, tag_data)
     -- Update confirm button state based on new icon selection
-    SmallHelpers.update_state(tag_editor.update_confirm_button_state, player, tag_data)
+    BasicHelpers.update_state(tag_editor.update_confirm_button_state, player, tag_data)
     return
   end
   -- Handle confirmation dialog buttons without checking button type
@@ -559,7 +619,7 @@ local function on_tag_editor_gui_text_changed(event)
       tag_editor.update_error_message(player, nil)
     end
     -- Update confirm button state based on new text content
-    SmallHelpers.update_state(tag_editor.update_confirm_button_state, player, tag_data)
+    BasicHelpers.update_state(tag_editor.update_confirm_button_state, player, tag_data)
   end
 end
 
@@ -580,7 +640,7 @@ local function on_tag_editor_gui_elem_changed(event)
     tag_data.icon = new_icon
     Cache.set_tag_editor_data(player, tag_data)
 
-    SmallHelpers.update_state(tag_editor.update_confirm_button_state, player, tag_data)
+    BasicHelpers.update_state(tag_editor.update_confirm_button_state, player, tag_data)
   end
 end
 

@@ -55,13 +55,11 @@ end
 
 
 local function sync_to_storage(self)
-  if not storage.players then storage.players = {} end
-  if not storage.players[self.player_index] then storage.players[self.player_index] = {} end
-  if not storage.players[self.player_index].surfaces then storage.players[self.player_index].surfaces = {} end
-
-  storage.players[self.player_index].surfaces[self.surface_index] =
-      storage.players[self.player_index].surfaces[self.surface_index] or {}
-  storage.players[self.player_index].surfaces[self.surface_index].favorites = self.favorites
+  local player = game.players[self.player_index]
+  if not player or not player.valid then return false end
+  
+  -- Use Cache module instead of direct storage access
+  return Cache.set_player_favorites(player, self.favorites)
 end
 
 local function notify_observers_safe(event_type, data)
@@ -203,14 +201,10 @@ function PlayerFavorites.new(player)
     for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
       obj.favorites[i] = FavoriteUtils.get_blank_favorite()
     end
-    -- Sync to storage after object is fully constructed
-    if not storage.players then storage.players = {} end
-    if not storage.players[obj.player_index] then storage.players[obj.player_index] = {} end
-    if not storage.players[obj.player_index].surfaces then storage.players[obj.player_index].surfaces = {} end
-
-    storage.players[obj.player_index].surfaces[obj.surface_index] =
-        storage.players[obj.player_index].surfaces[obj.surface_index] or {}
-    storage.players[obj.player_index].surfaces[obj.surface_index].favorites = obj.favorites
+    -- Sync to storage after object is fully constructed using Cache module
+    if player and player.valid then
+      Cache.set_player_favorites(player, obj.favorites)
+    end
   end
 
   PlayerFavorites._instances[player_index][surface_index] = obj

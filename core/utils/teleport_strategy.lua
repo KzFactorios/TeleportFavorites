@@ -454,6 +454,51 @@ local function initialize_default_strategies()
   })
 end
 
+-- ====== TELEPORT UTILS MODULE (consolidated from teleport_utils.lua) ======
+-- Shared teleportation logic wrapper for high-level API
+
+local TeleportUtils = {}
+
+--- Teleport player to GPS location using strategy pattern with comprehensive error handling
+---@param player LuaPlayer Player to teleport
+---@param gps string GPS coordinates in 'xxx.yyy.s' format
+---@param context table? Optional teleportation context
+---@param return_raw boolean? If true, return raw result (string|integer), else boolean
+---@return boolean|string|integer
+function TeleportUtils.teleport_to_gps(player, gps, context, return_raw)
+  if not player or not player.valid then
+    ErrorHandler.debug_log("Teleportation failed: Invalid player")
+    if return_raw then return "invalid_player" end
+    return false
+  end
+  if not gps or type(gps) ~= "string" or gps == "" then
+    ErrorHandler.debug_log("Teleportation failed: Invalid GPS", { gps = gps })
+    if return_raw then return "invalid_gps" end
+    return false
+  end
+  local result = TeleportStrategyManager.execute_teleport(player, gps, context)
+  if return_raw then
+    if type(result) == "string" or type(result) == "number" then
+      return result
+    else
+      return "teleport_failed"
+    end
+  else
+    if result == Enum.ReturnStateEnum.SUCCESS then
+      -- Notify teleport history via remote interface
+      pcall(function()
+        if remote.interfaces["TeleportFavorites_History"] and 
+           remote.interfaces["TeleportFavorites_History"].add_to_history then
+          remote.call("TeleportFavorites_History", "add_to_history", player.index)
+        end
+      end)
+      return true
+    else
+      return false
+    end
+  end
+end
+
 -- Initialize strategies when module is loaded
 initialize_default_strategies()
 
@@ -463,5 +508,6 @@ return {
   BaseTeleportStrategy = BaseTeleportStrategy,
   StandardTeleportStrategy = StandardTeleportStrategy,
   VehicleTeleportStrategy = VehicleTeleportStrategy,
-  SafeTeleportStrategy = SafeTeleportStrategy
+  SafeTeleportStrategy = SafeTeleportStrategy,
+  TeleportUtils = TeleportUtils
 }

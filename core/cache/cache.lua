@@ -48,7 +48,8 @@ storage = {
 }
 ]]
 
-local mod_version = require("core.utils.version")
+local TinyUtils = require("core.utils.tiny_utils")
+local mod_version = TinyUtils.VERSION
 local FavoriteUtils = require("core.favorite.favorite")
 local Constants = require("constants")
 local GPSUtils = require("core.utils.gps_utils")
@@ -152,6 +153,7 @@ local function init_player_data(player)
   local player_data = storage.players[player.index]
   player_data.surfaces[player.surface.index] = player_data.surfaces[player.surface.index] or {}
   player_data.surfaces[player.surface.index].favorites = init_player_favorites(player)
+  player_data.surfaces[player.surface.index].teleport_history = player_data.surfaces[player.surface.index].teleport_history or { stack = {}, pointer = 0 }
   player_data.player_name = player.name or "Unknown"
   player_data.render_mode = player_data.render_mode or player.render_mode
   player_data.tag_editor_data = player_data.tag_editor_data or Cache.create_tag_editor_data()
@@ -530,6 +532,24 @@ end
 function Cache.set_player_surface(player, surface_index)
   if not player or not player.valid then return end
   player.surface = game.surfaces[surface_index]
+end
+
+---@param player LuaPlayer
+---@param favorites table[]
+function Cache.set_player_favorites(player, favorites)
+  if not player or not player.valid or not player.surface or not player.surface.index then
+    return false
+  end
+  local player_data = Cache.get_player_data(player)
+  if not player_data then return false end
+  
+  -- Ensure surface data structure exists
+  player_data.surfaces = player_data.surfaces or {}
+  player_data.surfaces[player.surface.index] = player_data.surfaces[player.surface.index] or {}
+  
+  -- Set the favorites
+  player_data.surfaces[player.surface.index].favorites = favorites or {}
+  return true
 end
 
 return Cache

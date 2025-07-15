@@ -5,7 +5,7 @@ require("test_bootstrap")
 require("test_framework")
 
 -- Simple mocks for dependencies
-local ChartTagModificationHelpers = {
+local ChartTagHelpers = {
   is_valid_tag_modification = function() return true end,
   extract_gps = function() return "gps:100.200.1", "gps:90.180.1" end,
   update_tag_and_cleanup = function() end,
@@ -30,7 +30,7 @@ local ErrorHandler = {
 }
 
 -- Mock package.loaded
-package.loaded["core.events.chart_tag_modification_helpers"] = ChartTagModificationHelpers
+package.loaded["core.events.chart_tag_helpers"] = ChartTagHelpers
 package.loaded["core.events.tag_editor_event_helpers"] = TagEditorEventHelpers
 package.loaded["core.cache.cache"] = Cache
 package.loaded["core.utils.error_handler"] = ErrorHandler
@@ -79,7 +79,7 @@ describe("Handlers.on_chart_tag_modified", function()
   end)
   
   it("should not proceed if validation fails", function()
-    ChartTagModificationHelpers.is_valid_tag_modification = function() return false end
+    ChartTagHelpers.is_valid_tag_modification = function() return false end
     local event = { 
       player_index = 1,
       tag = { valid = true, position = { x = 100, y = 200 } },
@@ -143,7 +143,7 @@ describe("Handlers.on_chart_tag_modified", function()
   end)
   
   it("should handle identical GPS coordinates", function()
-    ChartTagModificationHelpers.extract_gps = function() return "gps:100.200.1", "gps:100.200.1" end
+    ChartTagHelpers.extract_gps = function() return "gps:100.200.1", "gps:100.200.1" end
     local event = { 
       player_index = 1,
       tag = { valid = true, position = { x = 100, y = 200 } },

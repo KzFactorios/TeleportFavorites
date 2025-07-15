@@ -4,39 +4,9 @@ require("test_framework")
 describe("PlayerHelpers", function()
     
     before_each(function()
-        -- Mock dependencies
-        package.loaded["core.utils.safe_helpers"] = {
-            is_valid_player = function(player)
-                return player and player.valid == true
-            end
-        }
-        
-        package.loaded["core.utils.error_handler"] = {
-            debug_log = function() end
-        }
-        
-        package.loaded["core.utils.settings_access"] = {
-            getPlayerSettings = function(player)
-                return {
-                    favorites_on = true,
-                    show_player_coords = true,
-                    show_teleport_history = true
-                }
-            end
-        }
-        
-        package.loaded["core.utils.small_helpers"] = {
-            should_hide_favorites_bar_for_space_platform = function() return false end
-        }
-        
-        -- Mock defines global
-        _G.defines = {
-            controllers = {
-                god = "god",
-                spectator = "spectator",
-                character = "character"
-            }
-        }
+        -- Use shared mock setup for consistency
+        local SharedMocks = require("tests.mocks.shared_mocks")
+        SharedMocks.setup_standard_test_env()
     end)
     
     it("should load player_helpers without errors", function()

@@ -23,7 +23,7 @@ package.loaded["core.cache.cache"] = {
   }
 }
 
-package.loaded["core.utils.settings_access"] = {
+package.loaded["core.cache.settings_cache"] = {
   get_settings = function() return {} end,
   get_chart_tag_click_radius = function() return 5 end
 }

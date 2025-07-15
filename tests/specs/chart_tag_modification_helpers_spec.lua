@@ -124,7 +124,7 @@ local function patch_dependencies()
   package.loaded["core.utils.error_handler"] = ErrorHandler
 end
 
-local ChartTagModificationHelpers
+local ChartTagHelpers
 local luassert = require('luassert')
 local spy = require('luassert.spy')
 
@@ -140,8 +140,8 @@ before_each(function()
   cache_update_tag_gps_spy = spy.on(Cache, "update_tag_gps")
   pf_update_gps_spy = spy.on(PlayerFavorites, "update_gps_for_all_players")
   error_debug_log_spy = spy.on(ErrorHandler, "debug_log")
-  package.loaded["core.events.chart_tag_modification_helpers"] = nil
-  ChartTagModificationHelpers = require("core.events.chart_tag_modification_helpers")
+  package.loaded["core.events.chart_tag_helpers"] = nil
+  ChartTagHelpers = require("core.events.chart_tag_helpers")
 end)
 after_each(function()
   cache_update_tag_gps_spy:revert()
@@ -150,15 +150,15 @@ after_each(function()
   admin_log_action_spy:revert()
 end)
 
-describe("ChartTagModificationHelpers", function()
+describe("ChartTagHelpers", function()
   it("should be a table/module", function()
-    assert(type(ChartTagModificationHelpers) == "table")
+    assert(type(ChartTagHelpers) == "table")
   end)
   it("should have all required functions", function()
-    assert(type(ChartTagModificationHelpers.is_valid_tag_modification) == "function")
-    assert(type(ChartTagModificationHelpers.extract_gps) == "function")
-    assert(type(ChartTagModificationHelpers.update_tag_and_cleanup) == "function")
-    assert(type(ChartTagModificationHelpers.update_favorites_gps) == "function")
+    assert(type(ChartTagHelpers.is_valid_tag_modification) == "function")
+    assert(type(ChartTagHelpers.extract_gps) == "function")
+    assert(type(ChartTagHelpers.update_tag_and_cleanup) == "function")
+    assert(type(ChartTagHelpers.update_favorites_gps) == "function")
   end)
 
   describe("is_valid_tag_modification", function()
@@ -174,13 +174,13 @@ describe("ChartTagModificationHelpers", function()
       test_admin_utils.reset_log_calls = _G.AdminUtils.reset_log_calls
       package.loaded["core.utils.admin_utils"] = test_admin_utils
       _G.AdminUtils = test_admin_utils
-      package.loaded["core.events.chart_tag_modification_helpers"] = nil
-      ChartTagModificationHelpers = require("core.events.chart_tag_modification_helpers")
+      package.loaded["core.events.chart_tag_helpers"] = nil
+      ChartTagHelpers = require("core.events.chart_tag_helpers")
       local event = {
         tag = { valid = true, position = {x = 100, y = 200}, surface = {index = 1} },
         old_position = {x = 90, y = 180}
       }
-      local result = ChartTagModificationHelpers.is_valid_tag_modification(event, mock_players[1])
+      local result = ChartTagHelpers.is_valid_tag_modification(event, mock_players[1])
       assert(result == true)
     end)
     it("should return false for invalid player", function()
@@ -188,28 +188,28 @@ describe("ChartTagModificationHelpers", function()
         tag = { position = { x = 100, y = 100 }, valid = true }
       }
       ---@diagnostic disable-next-line: param-type-mismatch
-      local result = ChartTagModificationHelpers.is_valid_tag_modification(event, nil)
+      local result = ChartTagHelpers.is_valid_tag_modification(event, nil)
       assert(result == false)
       assert(#error_debug_log_spy.calls > 0)
     end)
     it("should return false for invalid tag", function()
       local event = { tag = nil }
       ---@diagnostic disable-next-line: param-type-mismatch
-      local result = ChartTagModificationHelpers.is_valid_tag_modification(event, mock_players[1])
+      local result = ChartTagHelpers.is_valid_tag_modification(event, mock_players[1])
       assert(result == false)
       assert(#error_debug_log_spy.calls > 0)
     end)
     it("should return false for invalid tag position", function()
       local event = { tag = { valid = true, position = nil }, old_position = {x = 90, y = 180} }
       ---@diagnostic disable-next-line: param-type-mismatch
-      local result = ChartTagModificationHelpers.is_valid_tag_modification(event, mock_players[1])
+      local result = ChartTagHelpers.is_valid_tag_modification(event, mock_players[1])
       assert(result == false)
       assert(#error_debug_log_spy.calls > 0)
     end)
     it("should return false for invalid old position", function()
       local event = { tag = { valid = true, position = {x = 100, y = 200} }, old_position = nil }
       ---@diagnostic disable-next-line: param-type-mismatch
-      local result = ChartTagModificationHelpers.is_valid_tag_modification(event, mock_players[1])
+      local result = ChartTagHelpers.is_valid_tag_modification(event, mock_players[1])
       assert(result == false)
       assert(#error_debug_log_spy.calls > 0)
     end)
@@ -222,10 +222,10 @@ describe("ChartTagModificationHelpers", function()
       test_admin_utils.reset_log_calls = _G.AdminUtils.reset_log_calls
       package.loaded["core.utils.admin_utils"] = test_admin_utils
       _G.AdminUtils = test_admin_utils
-      package.loaded["core.events.chart_tag_modification_helpers"] = nil
-      ChartTagModificationHelpers = require("core.events.chart_tag_modification_helpers")
+      package.loaded["core.events.chart_tag_helpers"] = nil
+      ChartTagHelpers = require("core.events.chart_tag_helpers")
       local event = { tag = { position = { x = 100, y = 100 }, valid = true } }
-      local result = ChartTagModificationHelpers.is_valid_tag_modification(event, mock_players[1])
+      local result = ChartTagHelpers.is_valid_tag_modification(event, mock_players[1])
       luassert(result == false)
     end)
     it("should log admin action for admin override", function()
@@ -243,11 +243,11 @@ describe("ChartTagModificationHelpers", function()
       test_admin_utils.reset_log_calls = _G.AdminUtils.reset_log_calls
       package.loaded["core.utils.admin_utils"] = test_admin_utils
       _G.AdminUtils = test_admin_utils
-      package.loaded["core.events.chart_tag_modification_helpers"] = nil
-      ChartTagModificationHelpers = require("core.events.chart_tag_modification_helpers")
+      package.loaded["core.events.chart_tag_helpers"] = nil
+      ChartTagHelpers = require("core.events.chart_tag_helpers")
       local event = { tag = { position = { x = 100, y = 100 }, valid = true }, old_position = { x = 90, y = 90 } }
       mock_players[1].admin = true
-      local result = ChartTagModificationHelpers.is_valid_tag_modification(event, mock_players[1])
+      local result = ChartTagHelpers.is_valid_tag_modification(event, mock_players[1])
       luassert(result)
       luassert(log_admin_action_called > 0)
       luassert(#_G.log_calls > 0)
@@ -260,13 +260,13 @@ describe("ChartTagModificationHelpers", function()
         tag = { valid = true, position = {x = 100, y = 200}, surface = {index = 1} },
         old_position = {x = 90, y = 180}
       }
-      local new_gps, old_gps = ChartTagModificationHelpers.extract_gps(event, mock_players[1])
+      local new_gps, old_gps = ChartTagHelpers.extract_gps(event, mock_players[1])
       luassert(new_gps == "100.200.1")
       luassert(old_gps == "090.180.1")
     end)
     it("should handle fractional positions correctly", function()
       local event = { tag = { valid = true, position = {x = 100.5, y = 200.7, surface = {index = 1} } }, old_position = {x = 50.3, y = 150.9} }
-      local new_gps, old_gps = ChartTagModificationHelpers.extract_gps(event, mock_players[1])
+      local new_gps, old_gps = ChartTagHelpers.extract_gps(event, mock_players[1])
       luassert(new_gps == "101.201.1")
       luassert(old_gps == "050.151.1")
     end)
@@ -282,23 +282,23 @@ describe("ChartTagModificationHelpers", function()
       }
       Cache.get_tag_by_gps = function() return { gps = old_gps, text = "Test Tag" } end
       -- Just ensure the function completes without error
-      ChartTagModificationHelpers.update_tag_and_cleanup(old_gps, new_gps, event, mock_players[1])
+      ChartTagHelpers.update_tag_and_cleanup(old_gps, new_gps, event, mock_players[1])
       luassert(true)
     end)
     it("should not update for identical GPS coordinates", function()
       local same_gps = "100.200.1"
-      ChartTagModificationHelpers.update_tag_and_cleanup(same_gps, same_gps, {tag = {valid = true}}, mock_players[1])
+      ChartTagHelpers.update_tag_and_cleanup(same_gps, same_gps, {tag = {valid = true}}, mock_players[1])
       luassert(true)
     end)
     it("should handle nil GPS gracefully", function()
-      ChartTagModificationHelpers.update_tag_and_cleanup(nil, "100.200.1", {}, mock_players[1])
+      ChartTagHelpers.update_tag_and_cleanup(nil, "100.200.1", {}, mock_players[1])
       luassert(true)
-      ChartTagModificationHelpers.update_tag_and_cleanup("100.200.1", nil, {}, mock_players[1])
+      ChartTagHelpers.update_tag_and_cleanup("100.200.1", nil, {}, mock_players[1])
       luassert(true)
     end)
     it("should handle tag not found gracefully", function()
       Cache.get_tag_by_gps = function() return nil end
-      ChartTagModificationHelpers.update_tag_and_cleanup("090.180.1", "100.200.1", {}, mock_players[1])
+      ChartTagHelpers.update_tag_and_cleanup("090.180.1", "100.200.1", {}, mock_players[1])
       luassert(true)
     end)
     it("should handle update failure gracefully", function()
@@ -309,7 +309,7 @@ describe("ChartTagModificationHelpers", function()
       Cache.get_tag_by_gps = function() return { gps = old_gps, text = "Test Tag" } end
       Cache.update_tag_gps = function() return false end
       spy.on(Cache, "update_tag_gps")
-      ChartTagModificationHelpers.update_tag_and_cleanup(old_gps, new_gps, event, mock_players[1])
+      ChartTagHelpers.update_tag_and_cleanup(old_gps, new_gps, event, mock_players[1])
       luassert(true)
     end)
   end)
@@ -318,12 +318,12 @@ describe("ChartTagModificationHelpers", function()
     it("should update favorite GPS correctly", function()
       local old_gps = "090.180.1"
       local new_gps = "100.200.1"
-      ChartTagModificationHelpers.update_favorites_gps(old_gps, new_gps, mock_players[1])
+      ChartTagHelpers.update_favorites_gps(old_gps, new_gps, mock_players[1])
       luassert(true)
     end)
     it("should not update for identical GPS coordinates", function()
       local same_gps = "100.200.1"
-      ChartTagModificationHelpers.update_favorites_gps(same_gps, same_gps, mock_players[1])
+      ChartTagHelpers.update_favorites_gps(same_gps, same_gps, mock_players[1])
       luassert(true)
     end)
   end)
@@ -338,20 +338,20 @@ describe("ChartTagModificationHelpers", function()
       test_admin_utils.reset_log_calls = _G.AdminUtils.reset_log_calls
       package.loaded["core.utils.admin_utils"] = test_admin_utils
       _G.AdminUtils = test_admin_utils
-      package.loaded["core.events.chart_tag_modification_helpers"] = nil
-      ChartTagModificationHelpers = require("core.events.chart_tag_modification_helpers")
+      package.loaded["core.events.chart_tag_helpers"] = nil
+      ChartTagHelpers = require("core.events.chart_tag_helpers")
       local event = {
         tag = { valid = true, position = {x = 100, y = 200}, surface = {index = 1} },
         old_position = {x = 90, y = 180}
       }
       Cache.get_tag_by_gps = function() return { gps = "090.180.1", text = "Test Tag" } end
-      local result = ChartTagModificationHelpers.is_valid_tag_modification(event, mock_players[1])
+      local result = ChartTagHelpers.is_valid_tag_modification(event, mock_players[1])
       luassert(result == true)
-      local new_gps, old_gps = ChartTagModificationHelpers.extract_gps(event, mock_players[1])
+      local new_gps, old_gps = ChartTagHelpers.extract_gps(event, mock_players[1])
       luassert(new_gps == "100.200.1")
       luassert(old_gps == "090.180.1")
-      ChartTagModificationHelpers.update_tag_and_cleanup(old_gps, new_gps, event, mock_players[1])
-      ChartTagModificationHelpers.update_favorites_gps(old_gps, new_gps, mock_players[1])
+      ChartTagHelpers.update_tag_and_cleanup(old_gps, new_gps, event, mock_players[1])
+      ChartTagHelpers.update_favorites_gps(old_gps, new_gps, mock_players[1])
       luassert(true)
     end)
   end)

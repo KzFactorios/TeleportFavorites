@@ -58,58 +58,7 @@ local function reorder_favorites(player, favorites, drag_index, slot)
   return SlotInteractionHandlers.reorder_favorites(player, favorites, drag_index, slot)
 end
 
---- Handle teleport operation
----@param event table The GUI event
----@param player LuaPlayer The player
----@param fav table The favorite
----@param slot number The slot number
----@param did_drag boolean Whether this was part of a drag operation
----@return boolean handled
-local function handle_teleport(event, player, fav, slot, did_drag)
-  return SlotInteractionHandlers.handle_teleport(event, player, fav, slot, did_drag)
-end
 
---- Handle request to open tag editor
----@param event table The GUI event
----@param player LuaPlayer The player
----@param fav table The favorite
----@param slot number The slot number
----@return boolean handled
-local function handle_request_to_open_tag_editor(event, player, fav, slot)
-  return SlotInteractionHandlers.handle_request_to_open_tag_editor(event, player, fav, slot)
-end
-
---- Handle toggle lock operation
----@param event table The GUI event
----@param player LuaPlayer The player
----@param fav table The favorite
----@param slot number The slot number
----@param favorites PlayerFavorites The favorites instance
----@return boolean handled
-local function handle_toggle_lock(event, player, fav, slot, favorites)
-  return SlotInteractionHandlers.handle_toggle_lock(event, player, fav, slot, favorites)
-end
-
---- Handle shift+left click to start drag
----@param event table The GUI event
----@param player LuaPlayer The player
----@param fav table The favorite
----@param slot number The slot number
----@param favorites PlayerFavorites The favorites instance
----@return boolean handled
-local function handle_shift_left_click(event, player, fav, slot, favorites)
-  return SlotInteractionHandlers.handle_shift_left_click(event, player, fav, slot, favorites)
-end
-
---- Handle drop on slot operation
----@param event table The GUI event
----@param player LuaPlayer The player
----@param slot number The target slot number
----@param favorites PlayerFavorites The favorites instance
----@return boolean handled
-local function handle_drop_on_slot(event, player, slot, favorites)
-  return SlotInteractionHandlers.handle_drop_on_slot(event, player, slot, favorites)
-end
 
 --- Handle individual favorite slot click events
 --- This is the main dispatcher for slot interactions, routing different types
@@ -127,11 +76,9 @@ local function handle_favorite_slot_click(event, player, favorites)
     })
     return
   end
-    -- Log more detailed information about the click event
   ErrorHandler.debug_log("[FAVE_BAR] Slot click detected", {
     player = player and player.name or "<nil>",
     slot = slot,
-    button_value = event and event.button or "<nil>",
     button_type = event and event.button and (
       event.button == 1 and "LEFT_CLICK" or
       event.button == 2 and "RIGHT_CLICK" or
@@ -145,84 +92,38 @@ local function handle_favorite_slot_click(event, player, favorites)
   -- PRIORITY CHECK: First check if we're in drag mode and this is a drop or cancel
   local is_dragging, source_slot = CursorUtils.is_dragging_favorite(player)
   
-  -- Enhanced drag detection logging
-  if is_dragging then
-    ErrorHandler.debug_log("[FAVE_BAR] In active drag mode", {
-      player = player.name,
-      source_slot = source_slot,
-      target_slot = slot
-    })
-  end
-  
-  if is_dragging then
+  if is_dragging and source_slot then
     ErrorHandler.debug_log("[FAVE_BAR] Click during drag operation", {
-      player = player.name,
-      source_slot = source_slot,
-      target_slot = slot,
-      button_value = event.button,
-      raw_button = event.button
+      player = player.name, source_slot = source_slot, target_slot = slot, button_value = event.button
     })
-      -- Check if this is a right-click to cancel the drag
+    -- Check if this is a right-click to cancel the drag
     if event.button == defines.mouse_button_type.right then
-      ErrorHandler.debug_log("[FAVE_BAR] Right-click detected during drag, canceling drag operation", 
-        { player = player.name, source_slot = source_slot })
       CursorUtils.end_drag_favorite(player)
       GameHelpers.player_print(player, {"tf-gui.fave_bar_drag_canceled"})
       return
     end
-      -- Check if this is a left-click to complete the drag
+    -- Check if this is a left-click to complete the drag
     if event.button == defines.mouse_button_type.left then
-      ErrorHandler.debug_log("[FAVE_BAR] Left-click detected during drag, attempting to drop", 
-        { player = player.name, source_slot = source_slot, target_slot = slot, raw_button = event.button })
-      
       -- Direct attempt to reorder favorites (skip handle_drop_on_slot)
       if source_slot ~= slot then
         local target_fav = favorites.favorites[slot]
-        
         -- Check if target slot is locked
         if target_fav and SmallHelpers.is_locked_favorite(target_fav) then
           GameHelpers.player_print(player, SharedUtils.lstr("tf-gui.fave_bar_locked_cant_target", slot))
           GameHelpers.safe_play_sound(player, { path = "utility/cannot_build" })
           CursorUtils.end_drag_favorite(player)
-          ErrorHandler.debug_log("[FAVE_BAR] Target slot is locked, canceling drag")
           return
         end
-        
         -- Target slot is not locked, proceed with reordering
-        ErrorHandler.debug_log("[FAVE_BAR] Directly reordering favorites", {
-          from_slot = source_slot,
-          to_slot = slot
-        })
-        
-        if source_slot and slot then
-          local success = reorder_favorites(player, favorites, source_slot, slot)
-          if success then
-            ErrorHandler.debug_log("[FAVE_BAR] Drop successful via direct reordering")
-            return
-          else
-            ErrorHandler.debug_log("[FAVE_BAR] Direct reordering failed")
-          end
-        end
+        if reorder_favorites(player, favorites, source_slot, slot) then return end
       else
         -- Dropping onto the same slot, just end the drag
-        ErrorHandler.debug_log("[FAVE_BAR] Dropping onto same slot, canceling drag", {
-          slot = slot
-        })
         CursorUtils.end_drag_favorite(player)
         return
       end
-      
       -- Fallback to regular drop handler
-      ErrorHandler.debug_log("[FAVE_BAR] Falling back to regular drop handler")
-      if handle_drop_on_slot(event, player, slot, favorites) then
-        ErrorHandler.debug_log("[FAVE_BAR] Drop successful via fallback handler")
-        return
-      end
-      
-      -- If we get here, all drop attempts failed
-      ErrorHandler.debug_log("[FAVE_BAR] Drop unsuccessful after all attempts, ending drag anyway")
+      if SlotInteractionHandlers.handle_drop_on_slot(event, player, slot, favorites) then return end
     end
-    
     -- If we get here, the drop didn't work or it was another button, but we need to exit drag mode anyway
     CursorUtils.end_drag_favorite(player)
     return
@@ -331,8 +232,9 @@ end
 local function on_fave_bar_gui_click(event)
   local element = event.element
   if not BasicHelpers.is_valid_element(element) then return end
-  local player = game.get_player(event.player_index)
+  local player = game.players[event.player_index]
   if not BasicHelpers.is_valid_player(player) then return end
+  ---@cast player LuaPlayer
 
   log_click_event(event, player)
 

@@ -5,62 +5,22 @@ event_registration_dispatcher.lua
 TeleportFavorites Factorio Mod
 -----------------------------
 Centralized event registration dispatcher for all mod events.
-
-Features:
----------
-- Single point of registration for ALL mod events
-- Consistent error handling and logging patterns
-- Safe handler wrappers with comprehensive validation
-- Unified registration API for different event types
-- Automatic cleanup and validation of event handlers
-- Performance optimized registration with batch operations
-
-Architecture:
--------------
-- Consolidates mixed registration patterns into single dispatcher
-- Provides safe wrapper functions for all event handlers
-- Implements standardized error handling across all events
-- Maintains separation of concerns while centralizing registration
-- Supports both GUI events and game events through unified interface
-
-Supported Event Categories:
----------------------------
-- Core Events: player lifecycle, mod lifecycle, surface changes
-- GUI Events: clicks, text changes, element changes, confirmations
-- Custom Input Events: keyboard shortcuts and key bindings
-- Chart Events: tag creation, modification, removal
-- Observer Events: player join/leave, cleanup operations
-
-Event Handler Requirements:
----------------------------
-All event handlers must follow these patterns:
-- Accept single event parameter
-- Perform player validation if applicable
-- Use ErrorHandler for logging
-- Return gracefully on invalid conditions
-- No global state modifications without proper validation
-
-Usage:
-------
--- Register all events for the mod
-EventRegistrationDispatcher.register_all_events(script)
-
--- Register specific event categories
-EventRegistrationDispatcher.register_core_events(script)
-EventRegistrationDispatcher.register_gui_events(script)
+Provides safe handler wrappers, unified registration API, and 
+standardized error handling across all event types.
 --]]
 
 local ErrorHandler = require("core.utils.error_handler")
 local GameHelpers = require("core.utils.game_helpers")
-local Settings = require("core.utils.settings_access")
+local SettingsCache = require("core.cache.settings_cache")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local Cache = require("core.cache.cache")
 local gui_event_dispatcher = require("core.events.gui_event_dispatcher")
 local custom_input_dispatcher = require("core.events.custom_input_dispatcher")
-local on_gui_closed_handler = require("core.events.on_gui_closed_handler")
+local misc_event_handlers = require("core.events.misc_event_handlers")
 local handlers = require("core.events.handlers")
-local fave_bar_gui_labels_manager = require("core.control.fave_bar_gui_labels_manager")
+local FaveBarGuiLabelsManager = require("core.control.fave_bar_gui_labels_manager")
 local EventHandlerHelpers = require("core.utils.event_handler_helpers")
+local CursorUtils = require("core.utils.cursor_utils")
 
 
 ---@class EventRegistrationDispatcher
@@ -92,7 +52,7 @@ function EventRegistrationDispatcher.register_core_events(script)
       handler = function(event)
         handlers.on_player_created(event)
         -- Also setup observers for new players
-        local player = game.get_player(event.player_index)
+        local player = game.players[event.player_index]
         if player and player.valid then
           -- Import gui_observer safely
           local success, gui_observer = pcall(require, "core.events.gui_observer")
@@ -107,7 +67,7 @@ function EventRegistrationDispatcher.register_core_events(script)
       handler = function(event)
         handlers.on_player_created(event)
         -- Also setup observers for joined players
-        local player = game.get_player(event.player_index)
+        local player = game.players[event.player_index]
         if player and player.valid then
           -- Reset transient states for rejoining players
           -- This handles cases where cleanup on leave may have failed
@@ -152,7 +112,7 @@ function EventRegistrationDispatcher.register_core_events(script)
     [defines.events.on_player_left_game] = {
       handler = function(event)
         -- Get the leaving player before handling chart tag ownership
-        local leaving_player = game.get_player(event.player_index)
+        local leaving_player = game.players[event.player_index]
         local ErrorHandler = require("core.utils.error_handler")
 
         -- Handle chart tag ownership reset
@@ -161,31 +121,20 @@ function EventRegistrationDispatcher.register_core_events(script)
 
         -- Reset drag mode and move mode states for leaving player
         if leaving_player and leaving_player.valid then
-          -- Reset drag mode state
-          local Cache = require("core.cache.cache")
           local player_data = Cache.get_player_data(leaving_player)
+          -- Reset drag mode state
           if player_data and player_data.drag_favorite and player_data.drag_favorite.active then
-            local CursorUtils = require("core.utils.cursor_utils")
             CursorUtils.end_drag_favorite(leaving_player)
           end
-
           -- Reset move mode state and clear cursor
-          pcall(function()
-            leaving_player.clear_cursor()
-          end)
-
+          pcall(function() leaving_player.clear_cursor() end)
           -- Reset any tag editor move mode states
           local tag_data = Cache.get_tag_editor_data(leaving_player)
-          -- Check if move_mode exists and is true (move_mode is dynamically set)
-          local move_mode_active = tag_data.move_mode
-          if move_mode_active then
+          if tag_data.move_mode then
             tag_data.move_mode = false
+            tag_data.error_message = ""
             Cache.set_tag_editor_data(leaving_player, tag_data)
           end
-
-          -- Clear any error messages to prevent persistence across sessions
-          tag_data.error_message = ""
-          Cache.set_tag_editor_data(leaving_player, tag_data)
         end
 
         -- Enhanced cleanup for leaving player using targeted methods
@@ -208,7 +157,7 @@ function EventRegistrationDispatcher.register_core_events(script)
     [defines.events.on_player_removed] = {
       handler = function(event)
         -- Get the removed player before handling chart tag ownership
-        local removed_player = game.get_player(event.player_index)
+        local removed_player = game.players[event.player_index]
         local ErrorHandler = require("core.utils.error_handler")
 
         -- Handle chart tag ownership reset
@@ -265,7 +214,7 @@ function EventRegistrationDispatcher.register_core_events(script)
       handler = function(event) -- Handle changes to the favorites on/off setting
         if event.setting == "favorites-on" then
           for _, player in pairs(game.connected_players) do
-            local player_settings = Settings:getPlayerSettings(player)
+            local player_settings = SettingsCache:getPlayerSettings(player)
             if player_settings.favorites_on then
               fave_bar.build(player, true) -- Force show when enabling setting
             else
@@ -280,15 +229,7 @@ function EventRegistrationDispatcher.register_core_events(script)
       name = "on_runtime_mod_setting_changed"
     },
     [defines.events.on_player_controller_changed] = {
-      handler = function(event)
-        if not event or not event.player_index then return end
-        local player = game.get_player(event.player_index)
-        if not player or not player.valid then return end
-        
-        -- Always try to rebuild the bar when controller changes
-        -- The build function will handle space platform and other restrictions
-        fave_bar.build(player)
-      end,
+      handler = misc_event_handlers.on_player_controller_changed,
       name = "on_player_controller_changed"
     },
     -- Chart tag events - Critical: These were missing!
@@ -375,7 +316,7 @@ function EventRegistrationDispatcher.register_gui_events(script)
 
   -- Register GUI closed handler for ESC key support
   local closed_handler = create_safe_event_handler(
-    on_gui_closed_handler.on_gui_closed,
+    misc_event_handlers.on_gui_closed,
     "on_gui_closed",
     "gui_event"
   )
@@ -509,7 +450,7 @@ function EventRegistrationDispatcher.register_all_events(script)
   
 
   -- Register all favorites bar GUI label updaters and controls
-  fave_bar_gui_labels_manager.register_all(script)
+  FaveBarGuiLabelsManager.register_all(script)
   results.fave_bar_gui_labels = true
 
   -- Check overall success

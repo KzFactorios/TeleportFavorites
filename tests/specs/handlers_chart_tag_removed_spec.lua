@@ -22,7 +22,7 @@ package.loaded["core.utils.error_handler"] = {debug_log = function() end}
 package.loaded["core.utils.cursor_utils"] = {}
 package.loaded["gui.tag_editor.tag_editor"] = {}
 package.loaded["core.events.tag_editor_event_helpers"] = {}
-package.loaded["core.utils.settings_access"] = {}
+package.loaded["core.cache.settings_cache"] = {}
 package.loaded["core.favorite.player_favorites"] = {
   new = function(player)
     return {
@@ -42,7 +42,7 @@ package.loaded["core.control.fave_bar_gui_labels_manager"] = {
   register_all = function() end,
   initialize_all_players = function() end,
 }
-package.loaded["core.events.chart_tag_modification_helpers"] = {}
+package.loaded["core.events.chart_tag_helpers"] = {}
 
 -- Mock game environment
 local mock_players = {}

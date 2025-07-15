@@ -8,6 +8,7 @@ Combines several small utility modules to reduce file overhead.
 
 local LocaleUtils = require("core.utils.locale_utils")
 local GPSUtils = require("core.utils.gps_utils")
+local TeleportStrategies = require("core.utils.teleport_strategy")
 
 local MiscUtils = {}
 
@@ -37,30 +38,6 @@ end
 
 MiscUtils.RichTextFormatter = RichTextFormatter
 
--- ====== SETTINGS ACCESS ======
-local SettingsAccess = {}
-
-function SettingsAccess:getPlayerSettings(player)
-  if not player or not player.valid then return nil end
-  return settings.get_player_settings(player)
-end
-
-function SettingsAccess:getGlobalSettings()
-  return settings.global
-end
-
-function SettingsAccess:getPlayerSetting(player, setting_name)
-  local player_settings = self:getPlayerSettings(player)
-  return player_settings and player_settings[setting_name] and player_settings[setting_name].value
-end
-
-function SettingsAccess:getGlobalSetting(setting_name)
-  local global_settings = self:getGlobalSettings()
-  return global_settings and global_settings[setting_name] and global_settings[setting_name].value
-end
-
-MiscUtils.SettingsAccess = SettingsAccess
-
 -- ====== GAME HELPERS ======
 local GameHelpers = {}
 
@@ -89,7 +66,7 @@ end
 
 function GameHelpers.safe_teleport_to_gps(player, gps, context)
   if not player or not player.valid or not gps then return false end
-  local TeleportUtils = require("core.utils.teleport_utils")
+  local TeleportUtils = TeleportStrategies.TeleportUtils
   return TeleportUtils.teleport_to_gps(player, gps, context)
 end
 

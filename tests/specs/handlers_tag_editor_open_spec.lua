@@ -48,7 +48,7 @@ package.loaded["core.utils.gps_utils"] = GPSUtils
 package.loaded["core.utils.cursor_utils"] = CursorUtils
 package.loaded["gui.tag_editor.tag_editor"] = tag_editor
 package.loaded["core.utils.error_handler"] = { debug_log = function() end }
-package.loaded["core.utils.settings_access"] = { get_chart_tag_click_radius = function() return 5 end }
+package.loaded["core.cache.settings_cache"] = { get_chart_tag_click_radius = function() return 5 end }
 package.loaded["core.favorite.player_favorites"] = { new = function() return { get_favorite_by_gps = function() return nil end } end }
 
 -- Mock game environment

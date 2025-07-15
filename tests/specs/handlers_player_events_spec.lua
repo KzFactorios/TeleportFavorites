@@ -53,7 +53,7 @@ package.loaded["core.events.tag_editor_event_helpers"] = {
   validate_tag_editor_opening = function() return true end,
   find_nearby_chart_tag = function() return nil end
 }
-package.loaded["core.utils.settings_access"] = { get_chart_tag_click_radius = function() return 5 end }
+package.loaded["core.cache.settings_cache"] = { get_chart_tag_click_radius = function() return 5 end }
 package.loaded["core.favorite.player_favorites"] = {
   new = function(player)
     return {
@@ -67,7 +67,7 @@ package.loaded["core.favorite.player_favorites"] = {
 }
 package.loaded["core.utils.gui_validation"] = { find_child_by_name = function() return nil end }
 package.loaded["core.utils.gui_helpers"] = {}
-package.loaded["core.events.chart_tag_modification_helpers"] = {
+package.loaded["core.events.chart_tag_helpers"] = {
   is_valid_tag_modification = function() return true end,
   extract_gps = function() return "gps:100,200,nauvis", "gps:50,150,nauvis" end,
   update_tag_and_cleanup = function() end,

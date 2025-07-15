@@ -28,6 +28,7 @@ EventHandlerHelpers.log_event_error("handler_name", error, event)
 
 local ErrorHandler = require("core.utils.error_handler")
 local BasicHelpers = require("core.utils.basic_helpers")
+local PlayerHelpers = require("core.utils.player_helpers")
 
 ---@class EventHandlerHelpers
 local EventHandlerHelpers = {}
@@ -77,7 +78,6 @@ function EventHandlerHelpers.log_event_error(handler_name, error, event, event_t
     if BasicHelpers.is_valid_player(player) then
       -- Only show generic error message for critical failures
       if event_type and (event_type:find("gui") or event_type:find("input")) then
-        local PlayerHelpers = require("core.utils.player_helpers")
         PlayerHelpers.error_message_to_player(player --[[@as LuaPlayer]], "Event handler error occurred", { event_type = event_type })
       end
     end

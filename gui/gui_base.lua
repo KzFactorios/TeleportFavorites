@@ -66,7 +66,17 @@ function GuiBase.create_element(element_type, parent, opts)
 
     local params = { type = element_type }
     for k, v in pairs(opts) do
-        params[k] = v
+        -- Check for nil boolean properties that could cause "bool expected, got nil" errors
+        if (k == "visible" or k == "enabled" or k == "modal" or k == "auto_center" or k == "force_auto_center") and v == nil then
+            ErrorHandler.warn_log("Nil boolean property detected in GUI element creation", {
+                element_type = element_type,
+                property = k,
+                parent_name = parent.name or "unknown"
+            })
+            -- Skip adding nil boolean properties to prevent Factorio API errors
+        else
+            params[k] = v
+        end
     end
 
     -- Defensive: ensure name is a string

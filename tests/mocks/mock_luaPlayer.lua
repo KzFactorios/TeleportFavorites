@@ -25,6 +25,9 @@ local function mock_luaPlayer(index, name, surface_index)
         render_mode = (defines and defines.render_mode and defines.render_mode.game) or "game",
         controller_type = "character",
         position = { x = 0, y = 0 },
+        driving = false,
+        vehicle = nil,
+        riding_state = (defines and defines.riding and defines.riding.acceleration and defines.riding.acceleration.nothing) or 0,
         character = {
             position = { x = 0, y = 0 },
             valid = true,

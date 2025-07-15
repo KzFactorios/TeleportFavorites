@@ -15,7 +15,8 @@ local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local Cache = require("core.cache.cache")
 local ErrorHandler = require("core.utils.error_handler")
 local LocaleUtils = require("core.utils.locale_utils")
-local TeleportUtils = require("core.utils.teleport_utils")
+local TeleportStrategies = require("core.utils.teleport_strategy")
+local TeleportUtils = TeleportStrategies.TeleportUtils
 local ChartTagUtils = require("core.utils.chart_tag_utils")
 local PositionUtils = require("core.utils.position_utils")
 

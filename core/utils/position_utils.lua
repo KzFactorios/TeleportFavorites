@@ -17,7 +17,6 @@ local basic_helpers = require("core.utils.basic_helpers")
 local Constants = require("constants")
 local ErrorHandler = require("core.utils.error_handler")
 local GPSUtils = require("core.utils.gps_utils")
-local LocaleUtils = require("core.utils.locale_utils")
 local ValidationUtils = require("core.utils.validation_utils")
 local Logger = require("core.utils.enhanced_error_handler")
 
@@ -58,7 +57,7 @@ end
 ---@param position MapPosition
 ---@return boolean
 function PositionUtils.is_valid_position(position)
-  return position and position.x and position.y and true or false
+  return not not (position and position.x and position.y)
 end
 
 --- Create old/new position pair for tracking position changes

@@ -34,10 +34,7 @@ local function get_deps(deps)
 end
 
 DebugCommands._deps = get_deps()
-
-function DebugCommands._inject(deps)
-  DebugCommands._deps = get_deps(deps)
-end
+function DebugCommands._inject(deps) DebugCommands._deps = get_deps(deps) end
 
 -- All handlers now take explicit deps as first argument for testability
 local function tf_debug_level_handler(deps, command)
@@ -52,10 +49,7 @@ local function tf_debug_level_handler(deps, command)
     PlayerHelpers.safe_player_print(player, "Current level: " .. DebugConfig.get_level() .. " (" .. DebugConfig.get_level_name() .. ")")
     return
   end
-  if level < 0 or level > 5 then
-    PlayerHelpers.safe_player_print(player, "Debug level must be between 0 and 5")
-    return
-  end
+  if level < 0 or level > 5 then PlayerHelpers.safe_player_print(player, "Debug level must be between 0 and 5") return end
   DebugConfig.set_level(level)
   PlayerHelpers.safe_player_print(player, "Debug level set to: " .. level .. " (" .. DebugConfig.get_level_name(level) .. ")")
 end
@@ -136,24 +130,12 @@ local function tf_force_build_bar_handler(deps, command)
 end
 
 -- Expose for test and registration
-DebugCommands.tf_debug_level_handler = function(cmd)
-  return tf_debug_level_handler(DebugCommands._deps, cmd)
-end
-DebugCommands.tf_debug_info_handler = function(cmd)
-  return tf_debug_info_handler(DebugCommands._deps, cmd)
-end
-DebugCommands.tf_debug_production_handler = function(cmd)
-  return tf_debug_production_handler(DebugCommands._deps, cmd)
-end
-DebugCommands.tf_debug_development_handler = function(cmd)
-  return tf_debug_development_handler(DebugCommands._deps, cmd)
-end
-DebugCommands.tf_test_controller_handler = function(cmd)
-  return tf_test_controller_handler(DebugCommands._deps, cmd)
-end
-DebugCommands.tf_force_build_bar_handler = function(cmd)
-  return tf_force_build_bar_handler(DebugCommands._deps, cmd)
-end
+DebugCommands.tf_debug_level_handler = function(cmd) return tf_debug_level_handler(DebugCommands._deps, cmd) end
+DebugCommands.tf_debug_info_handler = function(cmd) return tf_debug_info_handler(DebugCommands._deps, cmd) end
+DebugCommands.tf_debug_production_handler = function(cmd) return tf_debug_production_handler(DebugCommands._deps, cmd) end
+DebugCommands.tf_debug_development_handler = function(cmd) return tf_debug_development_handler(DebugCommands._deps, cmd) end
+DebugCommands.tf_test_controller_handler = function(cmd) return tf_test_controller_handler(DebugCommands._deps, cmd) end
+DebugCommands.tf_force_build_bar_handler = function(cmd) return tf_force_build_bar_handler(DebugCommands._deps, cmd) end
 
 function DebugCommands.register_commands()
   basic_helpers.register_module_commands(DebugCommands, {
@@ -174,23 +156,10 @@ end
 ---@return LuaGuiElement debug_flow Debug controls flow
 function DebugCommands.create_debug_level_controls(parent, player)
   local DebugConfig = DebugCommands._deps.DebugConfig
-  local debug_flow = parent.add{
-    type = "flow",
-    name = "tf_debug_level_controls",
-    direction = "horizontal"
-  }
-  -- Label
-  debug_flow.add{
-    type = "label",
-    caption = "Debug Level:"
-  }
-  -- Current level display
-  local current_level = DebugConfig.get_level()
-  local level_label = debug_flow.add{
-    type = "label",
-    name = "tf_debug_current_level",
-    caption = current_level .. " (" .. DebugConfig.get_level_name(current_level) .. ")"
-  }
+  local debug_flow = parent.add{type = "flow", name = "tf_debug_level_controls", direction = "horizontal"}
+  debug_flow.add{type = "label", caption = "Debug Level:"} -- Label
+  local current_level = DebugConfig.get_level() -- Current level display
+  local level_label = debug_flow.add{type = "label", name = "tf_debug_current_level", caption = current_level .. " (" .. DebugConfig.get_level_name(current_level) .. ")"}
   -- Level buttons
   local levels = {
     {level = DebugConfig.LEVELS.NONE, name = "NONE", color = {r = 0.5, g = 0.5, b = 0.5}},
@@ -201,15 +170,8 @@ function DebugCommands.create_debug_level_controls(parent, player)
     {level = DebugConfig.LEVELS.TRACE, name = "TRC", color = {r = 1.0, g = 0.6, b = 1.0}}
   }
   for _, level_info in ipairs(levels) do
-    local button = debug_flow.add{
-      type = "button",
-      name = "tf_debug_set_level_" .. level_info.level,
-      caption = level_info.name,
-      tooltip = "Set debug level to " .. level_info.level .. " (" .. level_info.name .. ")"
-    }
-    if level_info.level == current_level then
-      button.enabled = false
-    end
+    local button = debug_flow.add{type = "button", name = "tf_debug_set_level_" .. level_info.level, caption = level_info.name, tooltip = "Set debug level to " .. level_info.level .. " (" .. level_info.name .. ")"}
+    if level_info.level == current_level then button.enabled = false end
   end
   return debug_flow
 end
@@ -224,27 +186,19 @@ function DebugCommands.on_debug_level_button_click(event)
   if not SafeHelpers.is_valid_element(element) then return end
   local player = game.players[event.player_index]
   if not SafeHelpers.is_valid_player(player) then return end
-  -- Parse level from button name
-  local level_str = string.match(element.name, "tf_debug_set_level_(%d+)")
+  local level_str = string.match(element.name, "tf_debug_set_level_(%d+)") -- Parse level from button name
   if not level_str then return end
   local level = tonumber(level_str)
   if not level then return end
   DebugConfig.set_level(level)
-  -- Update the GUI to reflect new level
-  local parent = element.parent
+  local parent = element.parent -- Update the GUI to reflect new level
   if parent and parent.valid then
     local level_label = parent["tf_debug_current_level"]
-    if level_label and level_label.valid then
-      level_label.caption = level .. " (" .. DebugConfig.get_level_name(level) .. ")"
-    end
+    if level_label and level_label.valid then level_label.caption = level .. " (" .. DebugConfig.get_level_name(level) .. ")" end
     for _, child in pairs(parent.children) do
       if child.name and string.match(child.name, "tf_debug_set_level_") then
         local child_level = tonumber(string.match(child.name, "tf_debug_set_level_(%d+)") )
-        if child_level == level then
-          child.enabled = false
-        else
-          child.enabled = true
-        end
+        if child_level == level then child.enabled = false else child.enabled = true end
       end
     end
   end

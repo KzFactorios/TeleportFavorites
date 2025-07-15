@@ -24,7 +24,7 @@ Integration Pattern:
 --------------------
 Each GUI control module implements standardized event handler signatures:
 - control_fave_bar.on_fave_bar_gui_click(event)
-- control_tag_editor.on_tag_editor_gui_click(event, script)
+- control_tag_editor.on_tag_editor_gui_click(event)
 
 Error Handling:
 ---------------
@@ -185,13 +185,13 @@ function M.register_gui_handlers(script)
       end
       -- Dispatch based on parent_gui
       if parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR or parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM then
-        control_tag_editor.on_tag_editor_gui_click(event, script)
+        control_tag_editor.on_tag_editor_gui_click(event)
         return true
       else
         -- Special handling for tag editor elements that might have wrong parent detection
         local element_name = element.name or ""
         if element_name:find("tag_editor") then
-          control_tag_editor.on_tag_editor_gui_click(event, script)
+          control_tag_editor.on_tag_editor_gui_click(event)
           return true
         end
         ErrorHandler.debug_log("[DISPATCH] Unknown parent GUI", { parent_gui_name = tostring(parent_gui.name) })
@@ -286,7 +286,7 @@ function M.register_gui_handlers(script)
     local element = event.element
     local parent_gui = GuiValidation.get_gui_frame_by_element(element)
     if parent_gui and parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
-      control_tag_editor.on_tag_editor_gui_click(event, script)
+      control_tag_editor.on_tag_editor_gui_click(event)
     end
   end
   script.on_event(defines.events.on_gui_confirmed, shared_on_gui_confirmed)

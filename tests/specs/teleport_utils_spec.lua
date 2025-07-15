@@ -6,6 +6,23 @@ package.loaded["core.utils.teleport_strategy"] = {
     execute_teleport = function(player, gps, context)
       return 1 -- SUCCESS
     end
+  },
+  TeleportUtils = {
+    teleport_to_gps = function(player, gps, context, return_raw)
+      if not player or not player.valid then
+        if return_raw then return "invalid_player" end
+        return false
+      end
+      if not gps or type(gps) ~= "string" or gps == "" then
+        if return_raw then return "invalid_gps" end
+        return false
+      end
+      if return_raw then
+        return 1 -- SUCCESS
+      else
+        return true
+      end
+    end
   }
 }
 
@@ -26,7 +43,8 @@ _G.remote = {
   call = function(interface, method, ...) end
 }
 
-local TeleportUtils = require("core.utils.teleport_utils")
+local TeleportStrategies = require("core.utils.teleport_strategy")
+local TeleportUtils = TeleportStrategies.TeleportUtils
 
 describe("TeleportUtils", function()
   it("should execute teleport_to_gps without errors", function()

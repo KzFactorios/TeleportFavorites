@@ -18,6 +18,7 @@ local GuiBase = require("gui.gui_base")
 local GuiValidation = require("core.utils.gui_validation")
 local Enum = require("prototypes.enums.enum")
 local BasicHelpers = require("core.utils.basic_helpers")
+local GPSUtils = require("core.utils.gps_utils")
 
 local GuiElementBuilders = {}
 
@@ -32,12 +33,10 @@ local GuiElementBuilders = {}
 ---@param enabled boolean Whether the button should be enabled
 ---@return LuaGuiElement button The created button
 function GuiElementBuilders.create_favorite_button(parent, name, is_favorite, enabled)
-  local star_state = is_favorite and Enum.SpriteEnum.STAR or Enum.SpriteEnum.STAR_DISABLED
-  local fave_style = is_favorite and "slot_orange_favorite_on" or "slot_orange_favorite_off"
-  local tooltip = enabled and { "tf-gui.favorite_tooltip" } or { "tf-gui.max_favorites_warning" }
-  
-  local button = GuiBase.create_icon_button(parent, name, star_state, tooltip, fave_style, enabled)
-  return button
+  return GuiBase.create_icon_button(parent, name, 
+    is_favorite and Enum.SpriteEnum.STAR or Enum.SpriteEnum.STAR_DISABLED,
+    enabled and { "tf-gui.favorite_tooltip" } or { "tf-gui.max_favorites_warning" },
+    is_favorite and "slot_orange_favorite_on" or "slot_orange_favorite_off", enabled)
 end
 
 --- Create a teleport button with GPS coordinates in caption
@@ -47,10 +46,7 @@ end
 ---@param enabled boolean Whether the button should be enabled (default: true)
 ---@return LuaGuiElement button The created button
 function GuiElementBuilders.create_teleport_button(parent, name, gps, enabled)
-  local GPSUtils = require("core.utils.gps_utils")
-  local coords = GPSUtils.coords_string_from_gps(gps)
-  if not coords or coords == "" then coords = "" end
-  
+  local coords = GPSUtils.coords_string_from_gps(gps) or ""
   local button = GuiBase.create_icon_button(parent, name, "", { "tf-gui.teleport_tooltip" }, "tf_teleport_button", enabled ~= false)
   button.caption = {"tf-gui.teleport_to", tostring(coords)}
   return button
@@ -73,10 +69,9 @@ end
 ---@param tooltip LocalisedString|string Tooltip for the button
 ---@return LuaGuiElement button The created button
 function GuiElementBuilders.create_visibility_toggle_button(parent, name, slots_visible, tooltip)
-  local visibility_icon = slots_visible and Enum.SpriteEnum.EYELASH or Enum.SpriteEnum.EYE
-  local visibility_style = slots_visible and "tf_fave_bar_visibility_on" or "tf_fave_bar_visibility_off"
-  
-  return GuiBase.create_sprite_button(parent, name, visibility_icon, tooltip, visibility_style)
+  return GuiBase.create_sprite_button(parent, name, 
+    slots_visible and Enum.SpriteEnum.EYELASH or Enum.SpriteEnum.EYE,
+    tooltip, slots_visible and "tf_fave_bar_visibility_on" or "tf_fave_bar_visibility_off")
 end
 
 -- ===========================
@@ -229,7 +224,6 @@ end
 function GuiElementBuilders.update_teleport_button_coordinates(button, gps)
   if not BasicHelpers.is_valid_element(button) then return end
   
-  local GPSUtils = require("core.utils.gps_utils")
   local coords = GPSUtils.coords_string_from_gps(gps)
   if not coords or coords == "" then coords = "" end
   

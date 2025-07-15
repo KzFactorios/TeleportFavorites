@@ -15,8 +15,7 @@ local GuiValidation = require("core.utils.gui_validation")
 local GuiHelpers = require("core.utils.gui_helpers")
 local TeleportHistory = require("core.teleport.teleport_history")
 local PlayerHelpers = require("core.utils.player_helpers")
-local basic_helpers = require("core.utils.basic_helpers")
-local Settings = require("core.utils.settings_access")
+local SettingsCache = require("core.cache.settings_cache")
 local Constants = require("constants")
 
 local FaveBarGuiLabelsManager = {}
@@ -48,29 +47,18 @@ local _registration_state = {
 
 -- ====== PLAYER COORDS LABEL ======
 function FaveBarGuiLabelsManager.get_coords_caption(player)
-    local coords_string = GPSUtils.coords_string_from_map_position(player.position)
-    return coords_string
+    return GPSUtils.coords_string_from_map_position(player.position)
 end
 
 -- ====== TELEPORT HISTORY LABEL ======
 function FaveBarGuiLabelsManager.get_history_caption(player)
-    local surface_index = player.surface.index
-    local hist = Cache.get_player_teleport_history(player, surface_index)
-    local stack = hist.stack or {}
-    local pointer = hist.pointer or 0
-    --return "→ " .. pointer .. " | " .. #stack
-    --return #stack .. " → " .. pointer
-    return pointer .. " → " .. #stack
+    local hist = Cache.get_player_teleport_history(player, player.surface.index)
+    return (hist.pointer or 0) .. " → " .. #(hist.stack or {})
 end
 
 -- Keep the local versions for backwards compatibility
-local function get_coords_caption(player)
-    return FaveBarGuiLabelsManager.get_coords_caption(player)
-end
-
-local function get_history_caption(player)
-    return FaveBarGuiLabelsManager.get_history_caption(player)
-end
+local get_coords_caption = FaveBarGuiLabelsManager.get_coords_caption
+local get_history_caption = FaveBarGuiLabelsManager.get_history_caption
 
 -- ====== GENERIC LABEL UPDATER ======
 local _updater_state = {}
@@ -98,7 +86,7 @@ local function _should_register_handler(setting_name)
     local setting_key = (setting_name == "show-player-coords") and "show_player_coords" or "show_teleport_history"
     for _, player in pairs(game.players) do
         if player and player.valid then
-            local player_settings = Settings:getPlayerSettings(player)
+            local player_settings = SettingsCache:getPlayerSettings(player)
             if player_settings and player_settings[setting_key] then return true end
         end
     end
@@ -108,11 +96,9 @@ end
 local function _update_label(player, label_name, get_caption)
     if not player or not player.valid then return end
     local label = _get_label(player, label_name)
-    if not label or not label.valid then
-        return
+    if label and label.valid then
+        label.caption = get_caption(player)
     end
-    local new_caption = get_caption(player)
-    label.caption = new_caption
 end
 
 function FaveBarGuiLabelsManager.update_label_for_player(updater_name, player, script_obj, setting_name, label_name, get_caption)
@@ -170,7 +156,7 @@ function FaveBarGuiLabelsManager.update_handler_registration(updater_name, scrip
         state.is_handler_registered = false
     end
     for player_index, _ in pairs(state.enabled_players) do
-        local player = game.get_player(player_index)
+        local player = game.players[player_index]
         _update_label(player, label_name, get_caption)
     end
 end
@@ -189,7 +175,7 @@ function FaveBarGuiLabelsManager.on_tick_handler(updater_name, event, script_obj
     local setting_key = (updater_name == "player_coords") and "show_player_coords" or "show_teleport_history"
     
     for player_index, _ in pairs(state.enabled_players) do
-        local player = game.get_player(player_index)
+        local player = game.players[player_index]
         if not player or not player.valid then
             state.enabled_players[player_index] = nil
         else
@@ -236,7 +222,7 @@ function FaveBarGuiLabelsManager.register_label_events(updater_name, script_obj,
     -- Don't register the main setting change event here - it will be registered once in register_all
     
     script_obj.on_event(defines.events.on_player_created, function(event)
-        local player = game.get_player(event.player_index)
+        local player = game.players[event.player_index]
         if not player or not player.valid then return end
         -- Delay initialization slightly to ensure player settings are available
         script_obj.on_nth_tick(60, function()
@@ -246,7 +232,7 @@ function FaveBarGuiLabelsManager.register_label_events(updater_name, script_obj,
     end)
     
     script_obj.on_event(defines.events.on_player_joined_game, function(event)
-        local player = game.get_player(event.player_index)
+        local player = game.players[event.player_index]
         if not player or not player.valid then return end
         -- Initialize label system when player joins
         FaveBarGuiLabelsManager.update_label_for_player(updater_name, player, script_obj, setting_name, label_name, get_caption)
@@ -269,7 +255,7 @@ end
 
 local function _get_valid_player(event)
     if not event.player_index then return nil end
-    local player = game.get_player(event.player_index)
+    local player = game.players[event.player_index]
     if not player or not player.valid then return nil end
     return player
 end
@@ -305,12 +291,12 @@ function FaveBarGuiLabelsManager.register_history_controls(script)
     -- Only register commands once
     if not _registration_state.commands_registered then
         commands.add_command("tf-history", "Show teleport history debug info", function(command)
-            local player = game.get_player(command.player_index)
+            local player = game.players[command.player_index]
             if not player or not player.valid then return end
             TeleportHistory.print_history(player)
         end)
         commands.add_command("tf-add-position", "Add current position to teleport history", function(command)
-            local player = game.get_player(command.player_index)
+            local player = game.players[command.player_index]
             if not player or not player.valid then return end
             local gps = {
                 x = math.floor(player.position.x),
@@ -321,13 +307,13 @@ function FaveBarGuiLabelsManager.register_history_controls(script)
             TeleportHistory.print_history(player)
         end)
         commands.add_command("tf-update-coords", "Force update coordinate labels", function(command)
-            local player = game.get_player(command.player_index)
+            local player = game.players[command.player_index]
             if not player or not player.valid then return end
             FaveBarGuiLabelsManager.force_update_labels_for_player(player)
             PlayerHelpers.safe_player_print(player, "Forced coordinate label update")
         end)
         commands.add_command("tf-debug-labels", "Debug label system", function(command)
-            local player = game.get_player(command.player_index)
+            local player = game.players[command.player_index]
             if not player or not player.valid then return end
             
             PlayerHelpers.safe_player_print(player, "=== LABEL DEBUG INFO ===")
@@ -396,7 +382,7 @@ function FaveBarGuiLabelsManager.register_history_controls(script)
             end
         end)
         commands.add_command("tf-reinit-labels", "Re-initialize label system", function(command)
-            local player = game.get_player(command.player_index)
+            local player = game.players[command.player_index]
             if not player or not player.valid then return end
             
             GameHelpers.player_print(player, "=== RE-INITIALIZING LABELS ===")
@@ -408,7 +394,7 @@ function FaveBarGuiLabelsManager.register_history_controls(script)
             GameHelpers.player_print(player, "Re-initialization complete!")
         end)
         commands.add_command("tf-init-player", "Initialize label system for current player", function(command)
-            local player = game.get_player(command.player_index)
+            local player = game.players[command.player_index]
             if not player or not player.valid then return end
             
             GameHelpers.player_print(player, "=== INITIALIZING PLAYER LABELS ===")
@@ -420,7 +406,7 @@ function FaveBarGuiLabelsManager.register_history_controls(script)
             GameHelpers.player_print(player, "Player initialization complete!")
         end)
         commands.add_command("tf-force-coords-test", "Force coordinates to update every second visibly", function(command)
-            local player = game.get_player(command.player_index)
+            local player = game.players[command.player_index]
             if not player or not player.valid then return end
             
             GameHelpers.player_print(player, "=== FORCING VISIBLE COORDS TEST ===")
@@ -447,7 +433,7 @@ function FaveBarGuiLabelsManager.register_history_controls(script)
             GameHelpers.player_print(player, "Use /tf-stop-coords-test to stop")
         end)
         commands.add_command("tf-stop-coords-test", "Stop the forced coordinates test", function(command)
-            local player = game.get_player(command.player_index)
+            local player = game.players[command.player_index]
             if not player or not player.valid then return end
             
             script.on_nth_tick(60, nil)
@@ -467,7 +453,7 @@ function FaveBarGuiLabelsManager.register_history_controls(script)
     if not _registration_state.remote_registered and remote and not remote.interfaces["TeleportFavorites_History"] then
         remote.add_interface("TeleportFavorites_History", {
             add_to_history = function(player_index)
-                local player = game.get_player(player_index)
+                local player = game.players[player_index]
                 if not player or not player.valid then return end
                 if teleport_history_in_progress[player_index] then
                     clear_teleport_history(player_index)
@@ -527,7 +513,7 @@ function FaveBarGuiLabelsManager.register_all(script_obj)
         
         -- Handle player setting changes (show/hide labels)
         if event.player_index then
-            local player = game.get_player(event.player_index)
+            local player = game.players[event.player_index]
             if not player or not player.valid then return end
             
             if event.setting == "show-player-coords" then

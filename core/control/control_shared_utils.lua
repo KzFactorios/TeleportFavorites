@@ -3,7 +3,6 @@
 
 local GuiObserver = require("core.events.gui_observer")
 local GuiEventBus = GuiObserver.GuiEventBus
-local GameHelpers = require("core.utils.game_helpers")
 
 local SharedUtils = {}
 

@@ -10,7 +10,6 @@ Provides centralized error row creation, show/hide, and update functionality.
 local GuiBase = require("gui.gui_base")
 local GuiValidation = require("core.utils.gui_validation")
 local BasicHelpers = require("core.utils.basic_helpers")
-local BasicHelpers = require("core.utils.basic_helpers")
 
 local ErrorMessageHelpers = {}
 
@@ -35,6 +34,8 @@ function ErrorMessageHelpers.show_or_update_error_row(parent, error_frame_name, 
       error_label = GuiBase.create_label(error_frame, error_label_name, message or "", error_label_style or "tf_tag_editor_error_label")
     else
       if error_label then
+        -- At this point, message is guaranteed to be non-nil by should_show logic
+        ---@cast message LocalisedString
         error_label.caption = message
         error_label.visible = true
       end
@@ -47,11 +48,6 @@ function ErrorMessageHelpers.show_or_update_error_row(parent, error_frame_name, 
   return error_frame, error_label
 end
 
---- Hide an error row
-function ErrorMessageHelpers.hide_error_row(parent, error_frame_name)
-  ErrorMessageHelpers.show_or_update_error_row(parent, error_frame_name, "", nil)
-end
-
 --- Show/clear simple error label (compact version for basic use)
 function ErrorMessageHelpers.show_simple_error_label(parent, message, label_name, label_style)
   if not BasicHelpers.is_valid_element(parent) then return end
@@ -61,12 +57,9 @@ function ErrorMessageHelpers.show_simple_error_label(parent, message, label_name
     error_label = GuiBase.create_label(parent, label_name, "", label_style or "tf_error_label")
   end
   error_label.caption = type(message) == "string" and {message} or (message or "")
-  error_label.visible = message and message ~= ""
+  -- Ensure visible property is always a boolean (nil message means hide)
+  error_label.visible = (message ~= nil and message ~= "")
 end
 
---- Clear simple error label
-function ErrorMessageHelpers.clear_simple_error_label(parent, label_name)
-  ErrorMessageHelpers.show_simple_error_label(parent, nil, label_name)
-end
 
 return ErrorMessageHelpers

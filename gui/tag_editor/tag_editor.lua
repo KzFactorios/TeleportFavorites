@@ -39,7 +39,6 @@ local ValidationUtils = require("core.utils.validation_utils")
 local Cache = require("core.cache.cache")
 local AdminUtils = require("core.utils.admin_utils")
 local PlayerFavorites = require("core.favorite.player_favorites")
-local BasicHelpers = require("core.utils.basic_helpers")
 
 
 local tag_editor = {}
@@ -178,8 +177,8 @@ local function build_rich_text_row(parent, tag_data)
 end
 
 local function build_error_row(parent, tag_data)
-  -- Use the new centralized error message helper
-  local error_row_frame, error_label = ErrorMessageHelpers.create_conditional_error_row(
+  -- Use the centralized error message helper
+  local error_row_frame, error_label = ErrorMessageHelpers.show_or_update_error_row(
     parent, "tag_editor_error_row_frame", "error_row_error_message", tag_data and tag_data.error_message)
   return error_row_frame, error_label
 end
@@ -312,6 +311,7 @@ end
 ---@param player LuaPlayer
 ---@param message LocalisedString? Error message to display, nil/empty to hide
 function tag_editor.update_error_message(player, message)
+  if not player or not player.valid then return end
   local outer_frame = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
   if not outer_frame then return end
 
