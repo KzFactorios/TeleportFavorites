@@ -11,7 +11,6 @@ standardized error handling across all event types.
 
 local ErrorHandler = require("core.utils.error_handler")
 local GameHelpers = require("core.utils.game_helpers")
-local SettingsCache = require("core.cache.settings_cache")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local Cache = require("core.cache.cache")
 local gui_event_dispatcher = require("core.events.gui_event_dispatcher")
@@ -214,7 +213,7 @@ function EventRegistrationDispatcher.register_core_events(script)
       handler = function(event) -- Handle changes to the favorites on/off setting
         if event.setting == "favorites-on" then
           for _, player in pairs(game.connected_players) do
-            local player_settings = SettingsCache:getPlayerSettings(player)
+            local player_settings = Cache.Settings.get_player_settings(player)
             if player_settings.favorites_on then
               fave_bar.build(player, true) -- Force show when enabling setting
             else

@@ -1,5 +1,5 @@
 --[[
-settings_cache.lua
+settings.lua
 Centralized settings cache and access layer for TeleportFavorites mod.
 
 Responsibilities:
@@ -15,11 +15,11 @@ Architecture:
 - Handles both player-specific and global settings
 
 API:
-- SettingsCache.get_player_settings(player): Returns table of all cached player settings
-- SettingsCache.get_boolean_setting(player, setting_name, default): Individual boolean setting
-- SettingsCache.get_number_setting(player, setting_name, default, min, max): Individual number setting
-- SettingsCache.get_chart_tag_click_radius(player): Specialized chart tag radius setting
-- SettingsCache.invalidate_player_cache(player): Force refresh of cached settings
+- Settings.get_player_settings(player): Returns table of all cached player settings
+- Settings.get_boolean_setting(player, setting_name, default): Individual boolean setting
+- Settings.get_number_setting(player, setting_name, default, min, max): Individual number setting
+- Settings.get_chart_tag_click_radius(player): Specialized chart tag radius setting
+- Settings.invalidate_player_cache(player): Force refresh of cached settings
 
 Design Principles:
 - Cache-first approach for performance
@@ -31,8 +31,8 @@ Design Principles:
 local Constants = require("constants")
 local BasicHelpers = require("core.utils.basic_helpers")
 
---- @class SettingsCache
-local SettingsCache = {}
+--- @class Settings
+local Settings = {}
 
 -- Internal: Default settings configuration
 local DEFAULT_SETTINGS = {
@@ -108,7 +108,7 @@ end
 --- @param setting_name string
 --- @param default boolean
 --- @return boolean
-function SettingsCache.get_boolean_setting(player, setting_name, default)
+function Settings.get_boolean_setting(player, setting_name, default)
   local mod_settings = get_player_mod_settings(player)
   if not mod_settings then
     return default
@@ -129,7 +129,7 @@ end
 --- @param min_value number|nil
 --- @param max_value number|nil
 --- @return number
-function SettingsCache.get_number_setting(player, setting_name, default, min_value, max_value)
+function Settings.get_number_setting(player, setting_name, default, min_value, max_value)
   local global_settings = get_global_settings(player)
   if not global_settings then
     return default
@@ -156,7 +156,7 @@ end
 --- Returns a table of all per-player mod settings with caching
 --- @param player LuaPlayer|nil The player to get settings for
 --- @return table settings Complete settings table with all values
-function SettingsCache.get_player_settings(player)
+function Settings.get_player_settings(player)
   if not BasicHelpers.is_valid_player(player) then
     return build_fresh_settings(nil) -- Return defaults for invalid player
   end
@@ -182,17 +182,17 @@ end
 --- Specialized method that uses global settings instead of player mod settings
 --- @param player LuaPlayer|nil
 --- @return number click_radius
-function SettingsCache.get_chart_tag_click_radius(player)
+function Settings.get_chart_tag_click_radius(player)
   local default = 10 -- Safe fallback
   if Constants and Constants.settings and Constants.settings.CHART_TAG_CLICK_RADIUS then
     default = tonumber(Constants.settings.CHART_TAG_CLICK_RADIUS) or 10
   end
-  return SettingsCache.get_number_setting(player, "chart-tag-click-radius", default, 1, 50)
+  return Settings.get_number_setting(player, "chart-tag-click-radius", default, 1, 50)
 end
 
 --- Invalidate cached settings for a specific player
 --- @param player LuaPlayer|nil
-function SettingsCache.invalidate_player_cache(player)
+function Settings.invalidate_player_cache(player)
   if not BasicHelpers.is_valid_player(player) then
     return
   end
@@ -200,17 +200,37 @@ function SettingsCache.invalidate_player_cache(player)
   player_settings_cache[player.index] = nil
 end
 
+--- Get a global setting value with safe defaults
+--- @param setting_name string The name of the global setting
+--- @param default number Default value if setting is not found
+--- @return number
+function Settings.get_global_number_setting(setting_name, default)
+  if not settings or not settings.global then
+    return default
+  end
+  
+  local setting = settings.global[setting_name]
+  if setting and setting.value ~= nil then
+    local value = tonumber(setting.value)
+    if value then
+      return value
+    end
+  end
+  
+  return default
+end
+
 --- Clear all cached settings (useful for testing or major setting changes)
-function SettingsCache.clear_all_caches()
+function Settings.clear_all_caches()
   player_settings_cache = {}
 end
 
 --- Legacy compatibility layer for existing code
---- @deprecated Use SettingsCache.get_player_settings instead
+--- @deprecated Use Settings.get_player_settings instead
 --- @param player LuaPlayer|nil
 --- @return table
-function SettingsCache:getPlayerSettings(player)
-  return SettingsCache.get_player_settings(player)
+function Settings:getPlayerSettings(player)
+  return Settings.get_player_settings(player)
 end
 
-return SettingsCache
+return Settings

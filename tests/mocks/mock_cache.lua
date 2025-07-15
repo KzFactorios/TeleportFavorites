@@ -205,4 +205,36 @@ function MockCache.clear()
   tag_by_gps = nil
 end
 
+-- Add Settings mock
+MockCache.Settings = {
+  get_player_settings = function(player)
+    if not player or not player.valid then return nil end
+    return {
+      show_player_coords = true,
+      show_teleport_history = true,
+      favorites_enabled = true,
+      hide_favorites_bar = false
+    }
+  end,
+  
+  get_chart_tag_click_radius = function(player)
+    return 16.0  -- Default click radius for tests
+  end,
+  
+  get_global_number_setting = function(setting_name, default)
+    -- Mock global settings for tests
+    local global_settings = {
+      ["coords-update-interval"] = 15,
+      ["history-update-interval"] = 30
+    }
+    return global_settings[setting_name] or default
+  end,
+  
+  init = function() end,
+  
+  -- Additional settings methods if needed
+  refresh_settings = function() end,
+  invalidate_player_settings = function() end
+}
+
 return MockCache

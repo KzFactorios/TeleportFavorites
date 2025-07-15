@@ -10,6 +10,7 @@ Persistent and runtime cache management for mod data, including player, surface,
 - All persistent data is stored in the global table under  storage.cache,  storage.players, and  storage.surfaces.
 - Each player entry in storage.players[player_index] now includes a player_name field for the Factorio player name.
 - Runtime (non-persistent) lookup tables are managed via the Lookups module.
+- Settings access and caching is managed via the SettingsCache module.
 - Player and surface data are always initialized and normalized for safe multiplayer and multi-surface support.
 - All access to persistent cache should use the Cache API; do not access  storage directly.
 
@@ -54,17 +55,22 @@ local FavoriteUtils = require("core.favorite.favorite")
 local Constants = require("constants")
 local GPSUtils = require("core.utils.gps_utils")
 local Lookups = require("core.cache.lookups")
+local SettingsCache = require("core.cache.settings")
 local BasicHelpers = require("core.utils.basic_helpers")
 
 
 --- Persistent and runtime cache management for TeleportFavorites mod.
 ---@class Cache
 ---@field Lookups table<string, any> Lookup tables for chart tags and other runtime data.
+---@field Settings table<string, any> Settings cache and access layer for all mod settings.
 local Cache = {}
 Cache.__index = Cache
 --- Lookup tables for chart tags and other runtime data.
 ---@type Lookups
 Cache.Lookups = nil
+--- Settings cache and access layer for all mod settings.
+---@type Settings  
+Cache.Settings = nil
 
 
 -- Ensure storage is always available for persistence (Factorio 2.0+)
@@ -121,6 +127,9 @@ function Cache.init()
   -- Initialize lookups cache properly
   Lookups.init()
   Cache.Lookups = Lookups
+  
+  -- Initialize settings cache
+  Cache.Settings = SettingsCache
 
   return storage
 end

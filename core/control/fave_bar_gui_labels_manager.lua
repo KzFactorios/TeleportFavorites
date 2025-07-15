@@ -15,7 +15,6 @@ local GuiValidation = require("core.utils.gui_validation")
 local GuiHelpers = require("core.utils.gui_helpers")
 local TeleportHistory = require("core.teleport.teleport_history")
 local PlayerHelpers = require("core.utils.player_helpers")
-local SettingsCache = require("core.cache.settings_cache")
 local Constants = require("constants")
 
 local FaveBarGuiLabelsManager = {}
@@ -29,7 +28,7 @@ end
 local function get_update_interval(updater_name)
   local setting_name = (updater_name == "player_coords") and "coords-update-interval" or "history-update-interval"
   local default = (updater_name == "player_coords") and 15 or 30  -- Use direct values to avoid LSP issues
-  return settings and settings.global and settings.global[setting_name] and settings.global[setting_name].value or default
+  return Cache.Settings.get_global_number_setting(setting_name, default)
 end
 
 -- Compact table size helper
@@ -86,7 +85,7 @@ local function _should_register_handler(setting_name)
     local setting_key = (setting_name == "show-player-coords") and "show_player_coords" or "show_teleport_history"
     for _, player in pairs(game.players) do
         if player and player.valid then
-            local player_settings = SettingsCache:getPlayerSettings(player)
+            local player_settings = Cache.Settings.get_player_settings(player)
             if player_settings and player_settings[setting_key] then return true end
         end
     end
@@ -110,9 +109,9 @@ function FaveBarGuiLabelsManager.update_label_for_player(updater_name, player, s
         return
     end
     
-    -- Convert setting name to the correct format used by Settings module
+    -- Convert setting name to the correct format used by SettingsCache module
     local setting_key = (setting_name == "show-player-coords") and "show_player_coords" or "show_teleport_history"
-    local player_settings = Settings:getPlayerSettings(player)
+    local player_settings = Cache.Settings.get_player_settings(player)
     local show = player_settings and player_settings[setting_key]
     
     if show then
@@ -180,7 +179,7 @@ function FaveBarGuiLabelsManager.on_tick_handler(updater_name, event, script_obj
             state.enabled_players[player_index] = nil
         else
             -- Check if the setting is still enabled for this player
-            local player_settings = Settings:getPlayerSettings(player)
+            local player_settings = Cache.Settings.get_player_settings(player)
             if player_settings and player_settings[setting_key] then
                 _update_label(player, label_name, get_caption)
             else
@@ -319,7 +318,7 @@ function FaveBarGuiLabelsManager.register_history_controls(script)
             PlayerHelpers.safe_player_print(player, "=== LABEL DEBUG INFO ===")
             
             -- Check if settings are enabled
-            local player_settings = Settings:getPlayerSettings(player)
+            local player_settings = Cache.Settings.get_player_settings(player)
             local coords_enabled = player_settings and player_settings.show_player_coords
             local history_enabled = player_settings and player_settings.show_teleport_history
             PlayerHelpers.safe_player_print(player, "show-player-coords setting: " .. tostring(coords_enabled))
@@ -477,7 +476,7 @@ end
 function FaveBarGuiLabelsManager.force_update_labels_for_player(player)
     if not player or not player.valid then return end
     
-    local player_settings = Settings:getPlayerSettings(player)
+    local player_settings = Cache.Settings.get_player_settings(player)
     
     -- Update coordinates label only if setting is enabled
     local coords_label = _get_label(player, "fave_bar_coords_label")

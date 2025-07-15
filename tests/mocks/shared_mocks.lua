@@ -16,7 +16,12 @@ function SharedMocks.setup_settings_cache_mock(overrides)
   
   package.loaded["core.cache.settings_cache"] = SettingsCacheMock
   -- Also support legacy path for tests that haven't been updated yet
-  package.loaded["core.utils.settings_access"] = SettingsCacheMock
+  package.loaded["core.cache.settings"] = SettingsCacheMock
+  
+  -- Set up Cache mock with SettingsCache attached
+  local CacheMock = package.loaded["core.cache.cache"] or {}
+  CacheMock.SettingsCache = SettingsCacheMock
+  package.loaded["core.cache.cache"] = CacheMock
 end
 
 --- Sets up common utility mocks used across many tests

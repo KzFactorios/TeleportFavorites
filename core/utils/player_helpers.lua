@@ -15,7 +15,7 @@ Provides standardized methods for player messaging, settings access, and common 
 
 local BasicHelpers = require("core.utils.basic_helpers")
 local ErrorHandler = require("core.utils.error_handler")
-local SettingsCache = require("core.cache.settings_cache")
+local Cache = require("core.cache.cache")
 
 local PlayerHelpers = {}
 
@@ -120,7 +120,7 @@ end
 function PlayerHelpers.are_favorites_enabled(player)
     if not BasicHelpers.is_valid_player(player) then return true end
     
-    local player_settings = SettingsCache:getPlayerSettings(player)
+    local player_settings = Cache.Settings.get_player_settings(player)
     return player_settings and player_settings.favorites_on or true
 end
 
@@ -130,7 +130,7 @@ end
 function PlayerHelpers.should_show_coordinates(player)
     if not BasicHelpers.is_valid_player(player) then return true end
     
-    local player_settings = SettingsCache:getPlayerSettings(player)
+    local player_settings = Cache.Settings.get_player_settings(player)
     return player_settings and player_settings.show_player_coords or true
 end
 
@@ -140,7 +140,7 @@ end
 function PlayerHelpers.should_show_history(player)
     if not BasicHelpers.is_valid_player(player) then return true end
     
-    local player_settings = SettingsCache:getPlayerSettings(player)
+    local player_settings = Cache.Settings.get_player_settings(player)
     return player_settings and player_settings.show_teleport_history or true
 end
 

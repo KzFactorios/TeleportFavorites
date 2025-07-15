@@ -85,6 +85,10 @@ python .scripts\analyze_lua_lines.py
 - Use `-First N` instead of `head -N`
 - Use proper PowerShell pipe syntax and object handling
 
+## ⚠️ COST EFFICIENCY AND COMMAND ACCURACY
+
+**CRITICAL**: Misconfigured or erroneous commands cost money per request. The agent must stay vigilant and maintain accurate PowerShell command patterns. **If an antipattern is discovered that has not been documented, it MUST be documented in these instructions before using a corrected command.**
+
 ### PowerShell Anti-Patterns to Avoid
 
 **❌ COMMON COMMAND FAILURES:**
@@ -143,11 +147,26 @@ Get-Content file.txt -Wait -Tail 10
 # Then check specific output files or use simpler commands
 ```
 
-**🔧 DEBUGGING FAILED COMMANDS:**
-- When Select-String fails with "parameter binding" errors, the pipeline is passing objects instead of strings
-- Use `| Out-String` or wrap commands in parentheses to force string conversion
-- Test complex patterns with simpler inputs first
-- PowerShell treats output differently than bash - objects vs. text streams
+**❌ NEWLY DISCOVERED ANTIPATTERN:**
+```powershell
+# BROKEN: Incorrect path navigation in Get-ChildItem
+Get-ChildItem "tests\specs\*_spec.lua"  # When already in tests directory
+# ERROR: Looks for tests\tests\specs instead of specs
+
+# BROKEN: PowerShell path confusion with relative directories
+cd tests; Get-ChildItem "tests\specs\*_spec.lua" 
+# ERROR: Double-nests the path when already in subdirectory
+```
+
+**✅ CORRECT POWERSHELL PATTERNS:**
+```powershell
+# Use proper relative paths based on current directory
+Get-ChildItem "specs\*_spec.lua"  # When in tests directory  
+Set-Location ..; Get-ChildItem "tests\specs\*_spec.lua"  # From subdirectory to root
+Get-ChildItem -Path ".\specs\*_spec.lua"  # Explicit current directory
+
+# Check for empty files correctly
+Get-ChildItem "specs\*_spec.lua" | Where-Object { (Get-Content $_.FullName -Raw -ErrorAction SilentlyContinue).Trim() -eq "" }
 ```
 
 ### Key File Patterns

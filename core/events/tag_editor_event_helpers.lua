@@ -20,7 +20,6 @@ local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
 local GPSUtils = require("core.utils.gps_utils")
 local PositionUtils = require("core.utils.position_utils")
-local SettingsCache = require("core.cache.settings_cache")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local Enum = require("prototypes.enums.enum")
 local BasicHelpers = require("core.utils.basic_helpers")
@@ -113,7 +112,7 @@ function TagEditorEventHelpers.normalize_and_replace_chart_tag(chart_tag, player
   local position = chart_tag.position
   if not position then return nil, nil end
   
-  if not basic_helpers.is_whole_number(position.x) or not basic_helpers.is_whole_number(position.y) then
+  if not BasicHelpers.is_whole_number(position.x) or not BasicHelpers.is_whole_number(position.y) then
     local position_pair = PositionUtils.create_position_pair(position)
     local chart_tag_spec = ChartTagSpecBuilder.build(
       position_pair.new,

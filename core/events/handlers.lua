@@ -54,7 +54,6 @@ local ErrorHandler = require("core.utils.error_handler")
 local CursorUtils = require("core.utils.cursor_utils")
 local tag_editor = require("gui.tag_editor.tag_editor")
 local TagEditorEventHelpers = require("core.events.tag_editor_event_helpers")
-local SettingsCache = require("core.cache.settings_cache")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local GuiValidation = require("core.utils.gui_validation")
 local GuiHelpers = require("core.utils.gui_helpers")
@@ -156,7 +155,7 @@ function handlers.on_open_tag_editor_custom_input(event)
     local tag_data = Cache.get_player_data(player).tag_editor_data or Cache.create_tag_editor_data()
     local cursor_position = event.cursor_position
     local chart_tag = cursor_position and cursor_position.x and cursor_position.y and 
-      TagEditorEventHelpers.find_nearby_chart_tag(cursor_position, player.surface.index, SettingsCache.get_chart_tag_click_radius(player))
+      TagEditorEventHelpers.find_nearby_chart_tag(cursor_position, player.surface.index, Cache.Settings.get_chart_tag_click_radius(player))
 
     if chart_tag and chart_tag.valid then
       local gps = GPSUtils.gps_from_map_position(chart_tag.position,
