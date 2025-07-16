@@ -180,4 +180,23 @@ gui_style.tf_fave_bar_slot_lock_sprite = {
     left_padding = -5
 }
 
+gui_style.tf_fave_history_container = {
+    type = "frame_style",
+    parent = "quick_bar_inner_panel",
+    graphical_set = nil,
+    padding = 0,
+    margin = 0,
+    horizontally_stretchable = "off",
+    vertically_stretchable = "off",
+    vertical_align = "top",
+    width = 40,
+    height = 40,
+}
+
+gui_style.tf_fave_history_toggle_button = {
+    type = "button_style",
+    parent = "tf_slot_button",
+    padding = 8
+}
+
 return true

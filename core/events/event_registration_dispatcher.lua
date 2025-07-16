@@ -22,6 +22,7 @@ local EventHandlerHelpers = require("core.utils.event_handler_helpers")
 local CursorUtils = require("core.utils.cursor_utils")
 local GuiHelpers = require("core.utils.gui_helpers")
 local GuiValidation = require("core.utils.gui_validation")
+local ModalInputBlocker = require("core.events.modal_input_blocker")
 
 
 ---@class EventRegistrationDispatcher
@@ -547,6 +548,7 @@ function EventRegistrationDispatcher.register_all_events(script)
   results.gui = EventRegistrationDispatcher.register_gui_events(script)
   results.custom_input = EventRegistrationDispatcher.register_custom_input_events(script)
   results.observer = EventRegistrationDispatcher.register_observer_events(script)
+  results.modal_input_blocker = ModalInputBlocker.register_handlers(script)
   
 
   -- Register all favorites bar GUI label updaters and controls

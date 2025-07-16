@@ -19,18 +19,18 @@ function TeleportHistory.add_gps(player, gps)
     local hist = Cache.get_player_teleport_history(player, surface_index)
     local stack = hist.stack
     
+    -- Convert to GPS string format immediately for storage
+    local gps_string = GPSUtils.gps_from_map_position({ x = gps.x, y = gps.y }, gps.surface)
+    if not gps_string then return end
+    
     -- Only add if not duplicate at top
     local top = stack[#stack]
-    if not (top and top.x == gps.x and top.y == gps.y and top.surface == gps.surface) then
+    if not (top == gps_string) then
         if #stack >= HISTORY_STACK_SIZE then
             table.remove(stack, 1)
         end
-        -- Just store the basic position info - our GPS conversion will handle the rest
-        table.insert(stack, { 
-            x = gps.x, 
-            y = gps.y, 
-            surface = gps.surface
-        })
+        -- Store as GPS string directly
+        table.insert(stack, gps_string)
     end
     hist.pointer = #stack
 end
@@ -77,6 +77,27 @@ function TeleportHistory.clear(player)
     hist.pointer = 0
 end
 
+-- Set pointer to specific index (for teleport history modal navigation)
+function TeleportHistory.set_pointer(player, surface_index, index)
+    if not BasicHelpers.is_valid_player(player) then return end
+    local hist = Cache.get_player_teleport_history(player, surface_index)
+    local stack = hist.stack
+    
+    if #stack == 0 then
+        hist.pointer = 0
+        return
+    end
+    
+    -- Clamp index to valid range
+    if index < 1 then
+        hist.pointer = 1
+    elseif index > #stack then
+        hist.pointer = #stack
+    else
+        hist.pointer = index
+    end
+end
+
 -- Teleport to pointer location (with water/space checks)
 function TeleportHistory.teleport_to_pointer(player)
     if not BasicHelpers.is_valid_player(player) then return end
@@ -106,13 +127,18 @@ function TeleportHistory.teleport_to_pointer(player)
 end
 
 -- Convert our GPS object to proper Factorio GPS string format using the existing utility
-function TeleportHistory.get_gps_string(gps)
-    if not gps or not gps.x or not gps.y or not gps.surface then
-        return nil
+function TeleportHistory.get_gps_string(gps_or_string)
+    -- If it's already a GPS string, return it directly
+    if type(gps_or_string) == "string" then
+        return gps_or_string
     end
     
-    -- Use GPSUtils with map position format
-    return GPSUtils.gps_from_map_position({ x = gps.x, y = gps.y }, gps.surface)
+    -- Legacy support: if it's still in old {x, y, surface} format, convert it
+    if type(gps_or_string) == "table" and gps_or_string.x and gps_or_string.y and gps_or_string.surface then
+        return GPSUtils.gps_from_map_position({ x = gps_or_string.x, y = gps_or_string.y }, gps_or_string.surface)
+    end
+    
+    return nil
 end
 
 -- Debug function to print history stack
@@ -130,11 +156,11 @@ function TeleportHistory.print_history(player)
         return
     end
     
-    for i, gps in ipairs(stack) do
+    for i, gps_string in ipairs(stack) do
         local prefix = (i == hist.pointer) and "→ " or "  "
-        local gps_display = gps.x .. ", " .. gps.y .. ", surface " .. gps.surface
-        local gps_string = TeleportHistory.get_gps_string(gps) or "invalid"
-        PlayerHelpers.safe_player_print(player, prefix .. i .. ": [" .. gps_display .. "] (GPS: " .. gps_string .. ")")
+        -- Stack entries are now GPS strings, so display them directly
+        local gps_display = gps_string or "invalid"
+        PlayerHelpers.safe_player_print(player, prefix .. i .. ": " .. gps_display)
     end
     PlayerHelpers.safe_player_print(player, "================================")
 end

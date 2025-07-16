@@ -32,6 +32,7 @@ caption_label: Use this style for any other labels in the subheader
 
 require("prototypes.styles.fave_bar")
 require("prototypes.styles.tag_editor")
+require("prototypes.styles.teleport_history_modal")
 
 -- Load enums for color definitions
 local UIEnums = require("prototypes.enums.ui_enums")

@@ -28,6 +28,10 @@ local GuiHelpers = require("core.utils.gui_helpers")
 local GuiValidation = require("core.utils.gui_validation")
 local Cache = require("core.cache.cache")
 local BasicHelpers = require("core.utils.basic_helpers")
+local TeleportHistoryModal = require("gui.teleport_history_modal.teleport_history_modal")
+local TeleportHistory = require("core.teleport.teleport_history")
+local TeleportStrategies = require("core.utils.teleport_strategy")
+local Enum = require("prototypes.enums.enum")
 
 local M = {}
 
@@ -199,6 +203,68 @@ local function log_click_event(event, player)
   })
 end
 
+--- Handle history toggle button click (opens/closes teleport history modal)
+---@param event table The GUI click event
+---@param player LuaPlayer The player
+local function handle_history_toggle_button_click(event, player)
+  -- Toggle the teleport history modal
+  if TeleportHistoryModal.is_open(player) then
+    TeleportHistoryModal.destroy(player)
+  else
+    TeleportHistoryModal.build(player)
+  end
+end
+
+--- Handle teleport history modal GUI clicks
+---@param event table The GUI click event
+local function on_teleport_history_modal_gui_click(event)
+  local element = event.element
+  if not BasicHelpers.is_valid_element(element) then return end
+  local player = game.players[event.player_index]
+  if not BasicHelpers.is_valid_player(player) then return end
+
+  -- Handle close button
+  if element.name == "teleport_history_modal_close_button" then
+    TeleportHistoryModal.destroy(player)
+    return
+  end
+
+  -- Handle history item clicks
+  if element.name and element.name:find("^teleport_history_item_") then
+    local index = element.tags and element.tags.teleport_history_index
+    if index and type(index) == "number" then
+      -- Get the GPS location from the history stack
+      local surface_index = player.surface.index
+      local hist = Cache.get_player_teleport_history(player, surface_index)
+      if index >= 1 and index <= #hist.stack then
+        local gps = hist.stack[index]
+        if gps then
+          -- Convert to GPS string and teleport directly without adding to history
+          local gps_string = TeleportHistory.get_gps_string(gps)
+          if gps_string then
+            -- Use direct strategy execution to avoid adding new history entries
+            -- This is for navigating through existing history, not creating new entries
+            local result = TeleportStrategies.TeleportStrategyManager.execute_teleport(player, gps_string, {})
+            
+            if result == Enum.ReturnStateEnum.SUCCESS then
+              -- Update the pointer to the selected history item without adding new entry
+              TeleportHistory.set_pointer(player, player.surface.index, index)
+              -- Update the modal display to reflect the new pointer position
+              TeleportHistoryModal.update_history_list(player)
+              -- Play teleport sound
+              GameHelpers.safe_play_sound(player, "utility/build_medium")
+            else
+              -- Play error sound if teleportation failed
+              GameHelpers.safe_play_sound(player, "utility/cannot_build")
+            end
+          end
+        end
+      end
+    end
+    return
+  end
+end
+
 local function on_fave_bar_gui_click(event)
   local element = event.element
   if not BasicHelpers.is_valid_element(element) then return end
@@ -223,10 +289,13 @@ local function on_fave_bar_gui_click(event)
 
   if element.name == "fave_bar_visibility_toggle" then
     handle_toggle_button_click(event, player)
+  elseif element.name == "fave_bar_history_toggle" then
+    handle_history_toggle_button_click(event, player)
   end
 end
 
 M.on_fave_bar_gui_click = on_fave_bar_gui_click
 M.on_fave_bar_gui_click_impl = on_fave_bar_gui_click
+M.on_teleport_history_modal_gui_click = on_teleport_history_modal_gui_click
 
 return M

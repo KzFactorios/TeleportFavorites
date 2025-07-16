@@ -40,6 +40,12 @@ function TagEditorEventHelpers.validate_tag_editor_opening(player)
     return false, "Wrong render mode"
   end
 
+  -- Prevent tag editor from opening if any modal dialog is active
+  if Cache.is_modal_dialog_active and Cache.is_modal_dialog_active(player) then
+    local modal_type = Cache.get_modal_dialog_type and Cache.get_modal_dialog_type(player)
+    return false, "Modal dialog active: " .. (modal_type or "unknown")
+  end
+
   -- Prevent tag editor from opening if player is in drag mode
   local player_data = Cache.get_player_data(player)
   if player_data and player_data.drag_favorite and player_data.drag_favorite.active then

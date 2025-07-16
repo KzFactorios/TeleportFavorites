@@ -12,10 +12,6 @@ Element Hierarchy Diagram:
 fave_bar_frame (frame)
 └─ fave_bar_flow (flow, horizontal)
    ├─ fave_bar_history_container (frame, vertical)
-   │  |─ history_list (scroll-pane)
-   │  └─ history_actions_container (flow, vertical)
-   |      |─ history_up (button)
-   |      └─ history_down (button)
    ├─ fave_bar_toggle_container (frame, vertical)
    │  └─ fave_bar_visibility_toggle (sprite-button)
    └─ fave_bar_slots_flow (frame, horizontal, visible toggled at runtime)
@@ -71,26 +67,19 @@ function fave_bar.build_quickbar_style(player, parent)           -- Add a horizo
   -- Add history container to the left of toggle container
   local history_container = GuiBase.create_frame(bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_CONTAINER, "vertical",
     "tf_fave_history_container")
-  
-  -- Create history list scroll pane
-  local history_list = GuiBase.create_scroll_pane(history_container, Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_LIST, "vertical")
-  
-  -- Create history actions container
-  local history_actions_container = GuiBase.create_vflow(history_container, Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_ACTIONS_CONTAINER)
-  
-  -- Create history navigation buttons
-  local history_up = GuiBase.create_button(history_actions_container, Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_UP, "↑")
-  local history_down = GuiBase.create_button(history_actions_container, Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_DOWN, "↓")
-  
-  -- Set tooltips for history buttons
-  if history_up and history_up.valid then
-    ---@diagnostic disable-next-line: assign-type-mismatch
-    history_up.tooltip = { "tf-gui.history_up" }
-  end
-  if history_down and history_down.valid then
-    ---@diagnostic disable-next-line: assign-type-mismatch
-    history_down.tooltip = { "tf-gui.history_down" }
-  end
+
+  -- Add history toggle button inside the history container
+  local history_toggle_button = GuiBase.create_sprite_button(
+    history_container, 
+    Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_TOGGLE_BUTTON,
+    Enum.SpriteEnum.HISTORY,
+    {"tf-gui.teleport_history_tooltip"},
+    "tf_fave_history_toggle_button"
+  )
+
+
+
+
   
   -- Add a thin dark background frame for the toggle button
   local toggle_container = GuiBase.create_frame(bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER, "vertical",
@@ -116,7 +105,7 @@ function fave_bar.build_quickbar_style(player, parent)           -- Add a horizo
 
   -- Add slots frame to the same flow for proper layout
   local slots_frame = GuiBase.create_frame(bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW, "horizontal", "tf_fave_slots_row")
-  return bar_flow, slots_frame, toggle_visibility_button, history_container
+  return bar_flow, slots_frame, toggle_visibility_button, history_container, history_toggle_button
 end
 
 local function get_fave_bar_gui_refs(player)
@@ -175,7 +164,7 @@ function fave_bar.build(player, force_show)
     -- Outer frame for the bar (matches quickbar background)
     local fave_bar_frame = GuiBase.create_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR, "horizontal",
       "tf_fave_bar_frame")
-    local _bar_flow, slots_frame, _toggle_button, _history_container = fave_bar.build_quickbar_style(player, fave_bar_frame)
+    local _bar_flow, slots_frame, _toggle_button, _history_container, _history_toggle_button = fave_bar.build_quickbar_style(player, fave_bar_frame)
 
     -- Only one toggle button: the one created in build_quickbar_style
     local pfaves = Cache.get_player_favorites(player)
@@ -252,8 +241,25 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves)
         norm_icon.type = "virtual-signal"
       end
 
+      -- Debug logging to see what icon we're trying to process
+      ErrorHandler.debug_log("Favorites bar icon processing", {
+        slot = i,
+        fav_gps = fav.gps,
+        original_icon = icon,
+        normalized_icon = norm_icon,
+        icon_type = norm_icon and norm_icon.type,
+        icon_name = norm_icon and norm_icon.name
+      })
+
       local btn_icon = GuiValidation.get_validated_sprite_path(norm_icon,
         { fallback = Enum.SpriteEnum.PIN, log_context = { slot = i, fav_gps = fav.gps, fav_tag = fav.tag } })
+
+      -- Debug logging to see the result
+      ErrorHandler.debug_log("Favorites bar sprite path result", {
+        slot = i,
+        btn_icon = btn_icon,
+        used_fallback = btn_icon == Enum.SpriteEnum.PIN
+      })
 
       local style = fav.locked and "tf_slot_button_locked" or "tf_slot_button_smallfont"
       if btn_icon == "tf_tag_in_map_view_small" then style = "tf_slot_button_smallfont_map_pin" end

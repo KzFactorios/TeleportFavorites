@@ -54,9 +54,7 @@ UIEnums.Colors = {
 UIEnums.Sprites = {
   -- Navigation arrows
   -- note that the utility/hint_button_xxx is only available in space age
-  ARROW_UP = "tf_hint_arrow_up",
   ARROW_RIGHT = "tf_hint_arrow_right",
-  ARROW_DOWN = "tf_hint_arrow_down",
   ARROW_LEFT = "tf_hint_arrow_left",
 
   -- Action icons
@@ -90,6 +88,8 @@ UIEnums.Sprites = {
   SEARCH = "utility/search_icon",
   SETTINGS = "utility/settings",
   SIGNAL_A = "virtual-signal/signal_A",
+  HISTORY = "tf_history", 
+  TIME_MACHINE = "utility/time-machine", 
 
   -- Special symbols
   HEART = "virtual-signal/signal-heart",
@@ -112,7 +112,8 @@ UIEnums.GUI = {
 UIEnums.GUI.Frame = {
   FAVE_BAR = "fave_bar_frame",
   TAG_EDITOR = "tag_editor_frame",
-  TAG_EDITOR_DELETE_CONFIRM = "tf_confirm_dialog_frame"
+  TAG_EDITOR_DELETE_CONFIRM = "tf_confirm_dialog_frame",
+  TELEPORT_HISTORY_MODAL = "teleport_history_modal"
 }
 
 --- Favorites bar specific GUI elements
@@ -124,10 +125,7 @@ UIEnums.GUI.FaveBar = {
   SLOTS_FLOW = "fave_bar_slots_flow",
 
   -- History elements
-  HISTORY_LIST = "history_list",
-  HISTORY_ACTIONS_CONTAINER = "history_actions_container",
-  HISTORY_UP = "history_up",
-  HISTORY_DOWN = "history_down",
+  HISTORY_TOGGLE_BUTTON = "fave_bar_history_toggle",
 
   -- Buttons
   TOGGLE_BUTTON = "fave_bar_visibility_toggle",
@@ -191,6 +189,12 @@ UIEnums.GUI.Shared = {
 
   -- Generic flows and containers
   MAIN_GUI_FLOW = "tf_main_gui_flow",
+
+  -- Teleport History Modal elements
+  TELEPORT_HISTORY_MODAL_TITLEBAR = "teleport_history_modal_titlebar",
+  TELEPORT_HISTORY_MODAL_CLOSE_BUTTON = "teleport_history_modal_close_button",
+  TELEPORT_HISTORY_SCROLL_PANE = "teleport_history_scroll_pane",
+  TELEPORT_HISTORY_LIST = "teleport_history_list",
 }
 
 -- ========================================

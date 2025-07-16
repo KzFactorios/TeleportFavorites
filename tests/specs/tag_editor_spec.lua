@@ -57,10 +57,16 @@ local function create_chart_tag(position, surface)
   }
 end
 
-local TagEditorEventHelpers = require("core.events.tag_editor_event_helpers")
-
 describe("TagEditorEventHelpers", function()
   it("should be a table/module", function()
+    -- Mock Cache module before requiring TagEditorEventHelpers
+    package.loaded["core.cache.cache"] = {
+      get_player_data = function() return {} end,
+      is_modal_dialog_active = function() return false end,
+      get_modal_dialog_type = function() return nil end
+    }
+    
+    local TagEditorEventHelpers = require("core.events.tag_editor_event_helpers")
     assert.is_table(TagEditorEventHelpers)
   end)
   -- Add more robust event helper tests as needed, using mocks

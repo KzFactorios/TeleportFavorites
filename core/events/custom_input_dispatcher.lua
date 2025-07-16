@@ -40,6 +40,8 @@ local PlayerFavorites = require("core.favorite.player_favorites")
 local FavoriteUtils = require("core.favorite.favorite")
 local Enum = require("prototypes.enums.enum")
 local Tag = require("core.tag.tag")
+local Cache = require("core.cache.cache")
+local BasicHelpers = require("core.utils.basic_helpers")
 
 
 ---@class CustomInputDispatcher
@@ -58,6 +60,35 @@ local function create_safe_handler(handler, handler_name)
       player_index = event.player_index,
       input_name = event.input_name
     })
+    
+    -- Block custom inputs when modal dialogs are active (except ESC key equivalents)
+    if event.player_index then
+      local player = game.get_player(event.player_index)
+      if BasicHelpers.is_valid_player(player) and Cache.is_modal_dialog_active(player) then
+        -- Allow certain inputs that should work in modals (like ESC key)
+        local allowed_inputs = {
+          "tf-close-tag-editor",  -- Allow closing tag editor
+          "tf-close-modal"        -- Allow generic modal close
+        }
+        
+        local input_allowed = false
+        for _, allowed_input in ipairs(allowed_inputs) do
+          if event.input_name == allowed_input then
+            input_allowed = true
+            break
+          end
+        end
+        
+        if not input_allowed then
+          ErrorHandler.debug_log("[MODAL BLOCKER] Blocking custom input", {
+            input_name = event.input_name,
+            player_index = event.player_index,
+            modal_type = Cache.get_modal_dialog_type(player)
+          })
+          return -- Block the input
+        end
+      end
+    end
     
     local success, err = pcall(handler, event)
     if not success then

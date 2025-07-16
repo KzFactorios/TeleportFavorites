@@ -118,7 +118,8 @@ function GuiValidation.get_gui_frame_by_element(element)
       -- Use enum constants instead of hardcoded strings
       if name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR or
          name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM or
-         name == Enum.GuiEnum.GUI_FRAME.FAVE_BAR then
+         name == Enum.GuiEnum.GUI_FRAME.FAVE_BAR or
+         name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL then
         return current
       end
     end
@@ -175,11 +176,12 @@ function GuiValidation.validate_sprite(sprite_path)
     return false, "Sprite path contains invalid characters"
   end
   
-  -- Check for common patterns
+  -- Check for common patterns including Space Age content
   local valid_prefixes = {
     "item/", "entity/", "technology/", "recipe/", 
     "fluid/", "tile/", "signal/", "utility/",
-    "virtual-signal/", "equipment/", "achievement/"
+    "virtual-signal/", "equipment/", "achievement/",
+    "quality/", "space-location/"  -- Space Age prefixes
   }
   
   local has_valid_prefix = false

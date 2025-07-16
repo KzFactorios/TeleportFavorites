@@ -5,9 +5,14 @@ describe("TagEditorEventHelpers", function()
   local TagEditorEventHelpers
   
   before_each(function()
+    -- Clear module cache first
+    package.loaded["core.events.tag_editor_event_helpers"] = nil
+    
     -- Mock all dependencies
     package.loaded["core.cache.cache"] = {
-      get_player_data = function() return {} end
+      get_player_data = function() return {} end,
+      is_modal_dialog_active = function() return false end,
+      get_modal_dialog_type = function() return nil end
     }
     
     package.loaded["core.utils.chart_tag_spec_builder"] = {

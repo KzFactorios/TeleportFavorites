@@ -45,30 +45,6 @@ data:extend({
   },
   {
     type = "sprite",
-    name = "tf_hint_arrow_up",
-    filename = "__core__/graphics/gui-new.png",
-    priority = "extra-high-no-scale",
-    x = 433,
-    y = 473,
-    width = 32,
-    height = 24,
-    scale = 0.5,
-    flags = { "icon" }
-  },
-  {
-    type = "sprite",
-    name = "tf_hint_arrow_down",
-    filename = "__core__/graphics/gui-new.png",
-    priority = "extra-high-no-scale",
-    x = 465,
-    y = 473,
-    width = 32,
-    height = 24,
-    scale = 0.5,
-    flags = { "icon" }
-  },
-  {
-    type = "sprite",
     name = "tf_hint_arrow_right",
     filename = "__core__/graphics/gui-new.png",
     priority = "extra-high-no-scale",
@@ -296,6 +272,21 @@ data:extend({
     width = 75,
     height = 75,
     flags = {"gui-icon"}
-  }
+  },
+  {
+    type = "sprite",
+    name = "tf_history",
+    filename = "__TeleportFavorites__/graphics/icons8-activity-history-72.png", --64 available
+    width = 72,
+    height = 72,
+    flags = {"gui-icon"}
+  },{
+    type = "sprite",
+    name = "tf_time_machine",
+    filename = "__TeleportFavorites__/graphics/icons8-time-machine-50.png", 
+    width = 72,
+    height = 72,
+    flags = {"gui-icon"}
+  },
 })
 

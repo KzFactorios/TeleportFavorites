@@ -108,18 +108,32 @@ function M.register_gui_handlers(script)
         local element = event.element
         if not BasicHelpers.is_valid_element(element) then return end
         
-        -- Allow interactions only with the active modal dialog elements
+        -- Get the currently active modal dialog type
+        local active_modal_type = Cache.get_modal_dialog_type(player)
         local parent_gui = GuiValidation.get_gui_frame_by_element(element)
-        local is_confirmation_dialog = parent_gui and parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM
         
-        if not is_confirmation_dialog then
+        -- Only allow interactions with the currently active modal dialog
+        local is_allowed_interaction = false
+        
+        if active_modal_type == "tag_editor" then
+          -- Allow only tag editor and its confirmation dialog interactions
+          is_allowed_interaction = parent_gui and (
+            parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR or
+            parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM
+          )
+        elseif active_modal_type == "teleport_history" then
+          -- Allow only teleport history modal interactions
+          is_allowed_interaction = parent_gui and parent_gui.name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL
+        end
+        
+        if not is_allowed_interaction then
           ErrorHandler.debug_log("[DISPATCH] Blocking GUI interaction due to active modal dialog", {
             player = player.name,
             element_name = element.name,
-            modal_dialog_type = Cache.get_modal_dialog_type(player),
+            active_modal_type = active_modal_type,
             parent_gui = parent_gui and parent_gui.name or "none"
           })
-          return -- Block all interactions except with the confirmation dialog
+          return -- Block all interactions except with the currently active modal
         end
       end
       
@@ -170,7 +184,7 @@ function M.register_gui_handlers(script)
         return
       end
       
-      if element.name == "fave_bar_visibility_toggle" or is_fave_bar_slot_button(element) then
+      if element.name == "fave_bar_visibility_toggle" or element.name == "fave_bar_history_toggle" or is_fave_bar_slot_button(element) then
         control_fave_bar.on_fave_bar_gui_click(event)
         return true
       end
@@ -186,6 +200,9 @@ function M.register_gui_handlers(script)
       -- Dispatch based on parent_gui
       if parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR or parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM then
         control_tag_editor.on_tag_editor_gui_click(event)
+        return true
+      elseif parent_gui.name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL then
+        control_fave_bar.on_teleport_history_modal_gui_click(event)
         return true
       else
         -- Special handling for tag editor elements that might have wrong parent detection
