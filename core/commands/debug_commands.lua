@@ -29,7 +29,7 @@ local function get_deps(deps)
     FaveBar = deps.FaveBar or require("gui.favorites_bar.fave_bar"),
     GuiHelpers = deps.GuiHelpers or require("core.utils.gui_helpers"),
     GuiValidation = deps.GuiValidation or require("core.utils.gui_validation"),
-    SafeHelpers = deps.SafeHelpers or require("core.utils.basic_helpers")
+    BasicHelpers = deps.BasicHelpers or require("core.utils.basic_helpers")
   }
 end
 
@@ -181,11 +181,11 @@ end
 function DebugCommands.on_debug_level_button_click(event)
   local DebugConfig = DebugCommands._deps.DebugConfig
   local PlayerHelpers = DebugCommands._deps.PlayerHelpers
-  local SafeHelpers = DebugCommands._deps.SafeHelpers
+  local BasicHelpers = DebugCommands._deps.BasicHelpers
   local element = event.element
-  if not SafeHelpers.is_valid_element(element) then return end
+  if not BasicHelpers.is_valid_element(element) then return end
   local player = game.players[event.player_index]
-  if not SafeHelpers.is_valid_player(player) then return end
+  if not BasicHelpers.is_valid_player(player) then return end
   local level_str = string.match(element.name, "tf_debug_set_level_(%d+)") -- Parse level from button name
   if not level_str then return end
   local level = tonumber(level_str)

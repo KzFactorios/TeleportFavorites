@@ -49,8 +49,14 @@ storage = {
 }
 ]]
 
-local TinyUtils = require("core.utils.tiny_utils")
-local mod_version = TinyUtils.VERSION
+-- Function to get mod version from Factorio's mod system at runtime
+local function get_mod_version()
+  if script and script.active_mods and script.mod_name then
+    return script.active_mods[script.mod_name] or "unknown"
+  end
+  return "unknown"
+end
+
 local FavoriteUtils = require("core.favorite.favorite")
 local Constants = require("constants")
 local GPSUtils = require("core.utils.gps_utils")
@@ -121,9 +127,19 @@ function Cache.init()
   end
   storage.players = storage.players or {}
   storage.surfaces = storage.surfaces or {}
-  if not storage.mod_version or storage.mod_version ~= mod_version then
-    storage.mod_version = mod_version
-  end
+  
+  -- Version comparison for migration detection
+  local current_mod_version = get_mod_version()
+  local stored_version = storage.mod_version
+  local needs_migration = stored_version and stored_version ~= current_mod_version
+  
+  -- TODO: Run migrations here if needs_migration is true
+  -- if needs_migration then
+  --   run_migrations(stored_version, current_mod_version)
+  -- end
+  
+  -- Update stored version only after migrations would complete
+  storage.mod_version = current_mod_version
   -- Initialize lookups cache properly
   Lookups.init()
   Cache.Lookups = Lookups
@@ -559,6 +575,24 @@ function Cache.set_player_favorites(player, favorites)
   -- Set the favorites
   player_data.surfaces[player.surface.index].favorites = favorites or {}
   return true
+end
+
+--- Check if migration is needed by comparing stored vs current version
+---@return boolean needs_migration Whether migration is needed
+---@return string|nil stored_version The stored version (nil if fresh install)
+---@return string current_version The current mod version
+function Cache.check_migration_needed()
+  local current_mod_version = get_mod_version()
+  local stored_version = storage and storage.mod_version
+  local needs_migration = stored_version and stored_version ~= current_mod_version
+  return needs_migration or false, stored_version, current_mod_version
+end
+
+--- Mark migration as complete by updating stored version
+function Cache.complete_migration()
+  if storage then
+    storage.mod_version = get_mod_version()
+  end
 end
 
 return Cache

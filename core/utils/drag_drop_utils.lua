@@ -1,28 +1,24 @@
 -- core/utils/drag_drop_utils.lua
--- Utilities for drag and drop operations in the favorites bar
---
--- This module encapsulates the complex logic for reordering favorites through
--- drag and drop operations. It handles various scenarios including:
--- - Simple swaps with blank slots
--- - Adjacent slot swaps  
--- - Complex cascade reordering for non-adjacent slots
--- - Validation of drag/drop rules (locked slots, blank slots, etc.)
---
--- The drag and drop algorithm supports three main operation types:
--- 1. Swap with blank: Moving a favorite to an empty slot
--- 2. Adjacent swap: Swapping two neighboring favorites
--- 3. Cascade reorder: Moving a favorite across multiple slots, shifting others
---
--- All operations respect locking rules and blank slot constraints.
+-- Utilities for drag and drop operations in the slots bar
 
 local ErrorHandler = require("core.utils.error_handler")
 local Logger = require("core.utils.enhanced_error_handler")
+local Constants = require("constants")
+local BasicHelpers = require("core.utils.basic_helpers")
+local Enum = require("prototypes.enums.enum")
 
 ---@class DragDropUtils
 local DragDropUtils = {}
 
--- Constants for drag and drop operations
-local BLANK_GPS = "1000000.1000000.1"
+-- Use the official BLANK_GPS constant
+local BLANK_GPS = Constants.settings.BLANK_GPS
+
+local is_blank = function(slot_fave)
+  if slot_fave.gps == BLANK_GPS then
+    return true
+  end
+  return false
+end
 
 ---@class DragDropRule
 ---@field can_drag_source boolean Whether the source can be dragged
@@ -41,170 +37,116 @@ function DragDropUtils.validate_drag_drop(source_slot, target_slot, source_index
     can_drop_target = true,
     reason = nil
   }
-  
-  -- Rule: Blank or locked source cannot be dragged
-  if source_slot.gps == BLANK_GPS then
+
+  -- Rule: source slot cannot be blank
+  if BasicHelpers.is_blank_favorite(source_slot) then
     result.can_drag_source = false
     result.reason = "source_is_blank"
     return result
   end
   
-  if source_slot.locked then
+  -- Rule: Blank or locked source cannot be dragged
+  if BasicHelpers.is_locked_favorite(source_slot) then
     result.can_drag_source = false
     result.reason = "source_is_locked"
     return result
   end
-  
+
   -- Rule: Cannot drag onto locked destination
-  if target_slot.locked then
+  if BasicHelpers.is_locked_favorite(target_slot) then
     result.can_drop_target = false
     result.reason = "target_is_locked"
     return result
   end
-  
+
   -- Rule: Same slot is allowed (cancels drag)
   if source_index == target_index then
+    result.can_drop_target = false
     result.reason = "same_slot"
   end
-  
+
   return result
 end
 
---- Perform drag and drop reordering of favorites
----@param slots table Array of favorite slots
----@param src_idx number Source index (1-based)
----@param dest_idx number Destination index (1-based)
----@return table modified_slots The reordered slots array
-function DragDropUtils.reorder_slots(slots, src_idx, dest_idx)
-  -- Validate indices (Lua 1-based)
-  if src_idx < 1 or src_idx > #slots or dest_idx < 1 or dest_idx > #slots then
-    ErrorHandler.debug_log("[DRAG_DROP] Invalid indices", {
-      src_idx = src_idx,
-      dest_idx = dest_idx,
-      slots_count = #slots
-    })
-    return slots
-  end
-  
-  local src = slots[src_idx]
-  local dest = slots[dest_idx]
-
-  local validation = DragDropUtils.validate_drag_drop(src, dest, src_idx, dest_idx)
-  
-  if not validation.can_drag_source or not validation.can_drop_target then
-    Logger.debug_log("[DRAG_DROP] Drag operation rejected", {
-      reason = validation.reason,
-      can_drag_source = validation.can_drag_source,
-      can_drop_target = validation.can_drop_target
-    })
-    return slots
-  end
-  
-  -- If source and destination are the same, do nothing
-  if src_idx == dest_idx then
-    return slots
-  end
-  
-  -- If destination is blank, perform simple swap
-  if dest.gps == BLANK_GPS then
-    return DragDropUtils._swap_with_blank(slots, src_idx, dest_idx)
-  end
-  
-  -- If source and destination are adjacent, perform simple swap
-  if math.abs(src_idx - dest_idx) == 1 then
-    return DragDropUtils._swap_adjacent(slots, src_idx, dest_idx)
-  end
-  
-  -- Otherwise, perform cascade reordering
-  return DragDropUtils._cascade_reorder(slots, src_idx, dest_idx)
-end
-
---- Swap source with blank destination
----@param slots table Array of favorite slots
----@param src_idx number Source index
----@param dest_idx number Destination index (blank)
----@return table modified_slots
-function DragDropUtils._swap_with_blank(slots, src_idx, dest_idx)
-  Logger.debug_log("[DRAG_DROP] Swapping with blank destination", {
-    src_idx = src_idx,
-    dest_idx = dest_idx
-  })
-  
-  local src = slots[src_idx]
-  slots[dest_idx] = { gps = src.gps, locked = src.locked }
-  slots[src_idx] = { gps = BLANK_GPS, locked = false }
-  
-  return slots
-end
-
---- Swap adjacent slots
----@param slots table Array of favorite slots
----@param src_idx number Source index
----@param dest_idx number Destination index (adjacent)
----@return table modified_slots
-function DragDropUtils._swap_adjacent(slots, src_idx, dest_idx)
-  Logger.debug_log("[DRAG_DROP] Swapping adjacent slots", {
-    src_idx = src_idx,
-    dest_idx = dest_idx
-  })
-  
-  slots[src_idx], slots[dest_idx] = slots[dest_idx], slots[src_idx]
-  return slots
-end
-
---- Perform cascade reordering for non-adjacent slots
----@param slots table Array of favorite slots
----@param src_idx number Source index
+--- Simple HBI move: source replaces destination, destination shifts one step towards source
+---@param favorites table Array of favorite slots
+---@param source_idx number Source index
 ---@param dest_idx number Destination index
----@return table modified_slots
-function DragDropUtils._cascade_reorder(slots, src_idx, dest_idx)
-  Logger.debug_log("[DRAG_DROP] Performing cascade reorder", {
-    src_idx = src_idx,
+---@return table modified_slots, boolean success, string error_msg
+function DragDropUtils.reorder_slots(favorites, source_idx, dest_idx)
+  local validation = DragDropUtils.validate_drag_drop(favorites[source_idx], favorites[dest_idx], source_idx, dest_idx)
+
+  Logger.debug_log("[DRAG_DROP] Simple HBI move", {
+    source_idx = source_idx,
     dest_idx = dest_idx
   })
-  
-  local step = (src_idx < dest_idx) and -1 or 1  -- reversed direction
-  local start_idx, end_idx
-  
-  if src_idx < dest_idx then
-    start_idx, end_idx = dest_idx, src_idx + 1
+
+  if not validation.can_drag_source or not validation.can_drop_target then
+    Logger.debug_log("[DRAG_DROP] Simple HBI move failed: " .. (validation.reason or "Unknown reason"))
+    return favorites, false, validation.reason or "Unknown reason"
+  end
+
+  -- Create a copy to avoid modifying original
+  local slots = BasicHelpers.deep_copy(favorites)
+
+  -- If adjacent, or if dest is blank, swap and return
+  if is_blank(slots[dest_idx]) or math.abs(source_idx - dest_idx) == 1 then
+    slots[source_idx], slots[dest_idx] = slots[dest_idx], slots[source_idx]
+    return slots, true, ""
+  end
+
+  -- Save what's currently at source
+  local source_favorite = slots[source_idx]
+  slots[source_idx] = { gps = BLANK_GPS, locked = false }
+
+  local blank_idx = source_idx
+  if source_idx < dest_idx then
+    -- Cascading down
+    for i = dest_idx - 1, source_idx + 1, -1 do
+      local slot = slots[i]
+      if not (slot and slot.locked) then
+        if is_blank(slot) then
+          blank_idx = i
+          break
+        end
+      end
+    end
+
+    -- If we found a blank slot, cascade items down to blank
+    for i = blank_idx, dest_idx - 1 do
+      if slots[i + 1] and slots[i + 1].locked then
+        break -- Skip over locked slots
+      end
+      slots[i] = slots[i + 1]
+    end
+
+    -- Insert the original source item at dest_idx
+    slots[dest_idx] = source_favorite
   else
-    start_idx, end_idx = dest_idx, src_idx - 1
-  end
-  
-  -- Check for locked slots or blanks in the cascade path (excluding src and dest)
-  for i = start_idx, end_idx, step do
-    if slots[i].locked then
-      Logger.debug_log("[DRAG_DROP] Cascade blocked by locked slot", { 
-        blocked_at = i 
-      })
-      return slots  -- Abort if cascade would overwrite a locked slot
+    -- Cascading up
+    for i = dest_idx + 1, source_idx - 1 do
+      local slot = slots[i]
+      if not (slot and slot.locked) then
+        if is_blank(slot) then
+          blank_idx = i
+          break
+        end
+      end
     end
-    if slots[i].gps == BLANK_GPS then
-      Logger.debug_log("[DRAG_DROP] Cascade blocked by blank slot", { 
-        blocked_at = i 
-      })
-      return slots  -- Abort cascade if a blank favorite is encountered
+
+    for i = blank_idx, dest_idx + 1, -1 do
+      if slots[i - 1] and slots[i - 1].locked then
+        break
+      end
+      slots[i] = slots[i - 1]
     end
+
+    -- Insert original into destination
+    slots[dest_idx] = source_favorite
   end
-  
-  -- Shift all intervening slots toward the source
-  for i = start_idx, end_idx, step do
-    slots[i] = { gps = slots[i - step].gps, locked = slots[i - step].locked }
-  end
-  
-  -- Place dragged item at destination
-  local src = slots[src_idx]
-  slots[dest_idx] = { gps = src.gps, locked = src.locked }
-  -- Set source to blank
-  slots[src_idx] = { gps = BLANK_GPS, locked = false }
-  
-  Logger.debug_log("[DRAG_DROP] Cascade reorder completed", {
-    src_idx = src_idx,
-    dest_idx = dest_idx
-  })
-  
-  return slots
+
+  Logger.debug_log("[DRAG_DROP] Simple HBI move completed")
+  return slots, true, ""
 end
 
 return DragDropUtils

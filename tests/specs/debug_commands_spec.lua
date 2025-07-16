@@ -29,6 +29,13 @@ local function make_spy_debug_config()
     return config
 end
 
+local function make_basic_helpers_mock()
+    return {
+        is_valid_element = function(element) return element ~= nil and element.valid ~= false end,
+        is_valid_player = function(player) return player ~= nil and player.valid ~= false end
+    }
+end
+
 -- Helper to create standardized mock game with players using MockFactories
 local function create_mock_game_with_player(player_exists)
     if player_exists == false then
@@ -441,7 +448,11 @@ describe("DebugCommands", function()
             patch_commands_mock()
             clear_and_patch_all(called)
             local DebugCommands = require("core.commands.debug_commands")
-            DebugCommands._inject{PlayerHelpers=make_spy_player_helpers(called), DebugConfig=make_spy_debug_config()}
+            DebugCommands._inject{
+                PlayerHelpers=make_spy_player_helpers(called), 
+                DebugConfig=make_spy_debug_config(),
+                BasicHelpers=make_basic_helpers_mock()
+            }
             local success, err = pcall(function()
                 DebugCommands.on_debug_level_button_click({ element = nil, player_index = 1 })
             end)
@@ -453,7 +464,7 @@ describe("DebugCommands", function()
             patch_commands_mock()
             clear_and_patch_all(called)
             local DebugCommands = require("core.commands.debug_commands")
-            DebugCommands._inject{PlayerHelpers=make_spy_player_helpers(called), DebugConfig=make_spy_debug_config()}
+            DebugCommands._inject{PlayerHelpers=make_spy_player_helpers(called), DebugConfig=make_spy_debug_config(), BasicHelpers=make_basic_helpers_mock()}
             local success, err = pcall(function()
                 DebugCommands.on_debug_level_button_click({ element = { valid = false }, player_index = 1 })
             end)
@@ -465,7 +476,7 @@ describe("DebugCommands", function()
             patch_commands_mock()
             clear_and_patch_all(called)
             local DebugCommands = require("core.commands.debug_commands")
-            DebugCommands._inject{PlayerHelpers=make_spy_player_helpers(called), DebugConfig=make_spy_debug_config()}
+            DebugCommands._inject{PlayerHelpers=make_spy_player_helpers(called), DebugConfig=make_spy_debug_config(), BasicHelpers=make_basic_helpers_mock()}
             _G.game = create_mock_game_with_player(false)
             local success, err = pcall(function()
                 DebugCommands.on_debug_level_button_click({ element = { valid = true, name = "tf_debug_set_level_1" }, player_index = 1 })
@@ -478,7 +489,7 @@ describe("DebugCommands", function()
             patch_commands_mock()
             clear_and_patch_all(called)
             local DebugCommands = require("core.commands.debug_commands")
-            DebugCommands._inject{PlayerHelpers=make_spy_player_helpers(called), DebugConfig=make_spy_debug_config()}
+            DebugCommands._inject{PlayerHelpers=make_spy_player_helpers(called), DebugConfig=make_spy_debug_config(), BasicHelpers=make_basic_helpers_mock()}
             local success, err = pcall(function()
                 DebugCommands.on_debug_level_button_click({ element = { valid = true, name = "some_other_button" }, player_index = 1 })
             end)
@@ -490,7 +501,7 @@ describe("DebugCommands", function()
             patch_commands_mock()
             clear_and_patch_all(called)
             local DebugCommands = require("core.commands.debug_commands")
-            DebugCommands._inject{PlayerHelpers=make_spy_player_helpers(called), DebugConfig=make_spy_debug_config()}
+            DebugCommands._inject{PlayerHelpers=make_spy_player_helpers(called), DebugConfig=make_spy_debug_config(), BasicHelpers=make_basic_helpers_mock()}
             local success, err = pcall(function()
                 DebugCommands.on_debug_level_button_click({ element = { valid = true, name = "tf_debug_set_level_abc" }, player_index = 1 })
             end)
@@ -502,7 +513,7 @@ describe("DebugCommands", function()
             patch_commands_mock()
             clear_and_patch_all(called)
             local DebugCommands = require("core.commands.debug_commands")
-            DebugCommands._inject{PlayerHelpers=make_spy_player_helpers(called), DebugConfig=make_spy_debug_config()}
+            DebugCommands._inject{PlayerHelpers=make_spy_player_helpers(called), DebugConfig=make_spy_debug_config(), BasicHelpers=make_basic_helpers_mock()}
             local success, err = pcall(function()
                 local mock_parent = { 
                     valid = true, 
@@ -521,7 +532,7 @@ describe("DebugCommands", function()
             patch_commands_mock()
             clear_and_patch_all(called)
             local DebugCommands = require("core.commands.debug_commands")
-            DebugCommands._inject{PlayerHelpers=make_spy_player_helpers(called), DebugConfig=make_spy_debug_config()}
+            DebugCommands._inject{PlayerHelpers=make_spy_player_helpers(called), DebugConfig=make_spy_debug_config(), BasicHelpers=make_basic_helpers_mock()}
             local success, err = pcall(function()
                 local mock_parent = { 
                     valid = true, 
@@ -561,7 +572,7 @@ describe("DebugCommands", function()
             patch_commands_mock()
             clear_and_patch_all(called)
             local DebugCommands = require("core.commands.debug_commands")
-            DebugCommands._inject{PlayerHelpers=make_spy_player_helpers(called), DebugConfig=make_spy_debug_config()}
+            DebugCommands._inject{PlayerHelpers=make_spy_player_helpers(called), DebugConfig=make_spy_debug_config(), BasicHelpers=make_basic_helpers_mock()}
             local success, err = pcall(function()
                 DebugCommands.on_debug_level_button_click({ element = { valid = true, name = "tf_debug_set_level_1" }, player_index = 1 })
             end)
@@ -573,7 +584,7 @@ describe("DebugCommands", function()
             patch_commands_mock()
             clear_and_patch_all(called)
             local DebugCommands = require("core.commands.debug_commands")
-            DebugCommands._inject{PlayerHelpers=make_spy_player_helpers(called), DebugConfig=make_spy_debug_config()}
+            DebugCommands._inject{PlayerHelpers=make_spy_player_helpers(called), DebugConfig=make_spy_debug_config(), BasicHelpers=make_basic_helpers_mock()}
             local success, err = pcall(function()
                 DebugCommands.register_commands()
             end)

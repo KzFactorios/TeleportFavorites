@@ -198,39 +198,6 @@ function SlotInteractionHandlers.handle_request_to_open_tag_editor(event, player
   return false
 end
 
---- Handle drag drop operations using the new drag drop utilities
----@param event table The GUI event
----@param player LuaPlayer The player
----@param slot number The target slot
----@param favorites table The favorites instance
----@return boolean handled
-function SlotInteractionHandlers.handle_drop_on_slot(event, player, slot, favorites)
-  local is_dragging, source_slot = CursorUtils.is_dragging_favorite(player)
-  
-  ErrorHandler.debug_log("[SLOT_HANDLERS] handle_drop_on_slot processing", {
-    player = player and player.name or "<nil>",
-    is_dragging = is_dragging,
-    source_slot = source_slot,
-    target_slot = slot
-  })
-  
-  -- If we're not in a drag operation, exit early
-  if not is_dragging or not source_slot then
-    return false
-  end
-  
-  -- Use the new drag drop utilities for cleaner reordering
-  local reordered_favorites = DragDropUtils.reorder_slots(favorites.favorites, source_slot, slot)
-  
-  -- Update favorites with the reordered slots
-  favorites.favorites = reordered_favorites
-  
-  -- Update the favorites bar GUI to reflect the new order
-  fave_bar.build(player)
-  
-  return true
-end
-
 --- Handle reordering of favorites using favorites method
 ---@param player LuaPlayer The player
 ---@param favorites table The favorites instance
@@ -238,7 +205,7 @@ end
 ---@param slot number The target slot index
 ---@return boolean success
 function SlotInteractionHandlers.reorder_favorites(player, favorites, drag_index, slot)
-  local success, error_msg = favorites:move_favorite(drag_index, slot)
+  local success, error_msg = favorites:reorder_favorites(drag_index, slot)
   if not success then
     PlayerHelpers.error_message_to_player(player, 
       LocaleUtils.get_error_string(player, "failed_reorder_favorite", 

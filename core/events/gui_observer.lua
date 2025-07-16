@@ -457,7 +457,7 @@ function DataObserver:update(event_data)
   local player = self.player
   
   -- Use shared space platform detection logic
-  if SmallHelpers.should_hide_favorites_bar_for_space_platform(player) then
+  if BasicHelpers.should_hide_favorites_bar_for_space_platform(player) then
     return
   end
   

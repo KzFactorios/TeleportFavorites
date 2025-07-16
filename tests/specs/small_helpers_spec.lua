@@ -1,8 +1,8 @@
 ---@diagnostic disable: undefined-global
 require("test_framework")
 
-describe("SmallHelpers", function()
-  local SmallHelpers
+describe("BasicHelpers (formerly SmallHelpers)", function()
+  local BasicHelpers
   
   before_each(function()
     -- Mock all dependencies
@@ -10,32 +10,32 @@ describe("SmallHelpers", function()
       debug_log = function() end
     }
     
-    local success, result = pcall(require, "core.utils.small_helpers")
+    local success, result = pcall(require, "core.utils.basic_helpers")
     if success then
-      SmallHelpers = result
+      BasicHelpers = result
     else
-      SmallHelpers = {}
+      BasicHelpers = {}
     end
   end)
 
-  it("should load small_helpers without errors", function()
+  it("should load basic_helpers without errors", function()
     local success, err = pcall(function()
-      assert(type(SmallHelpers) == "table")
+      assert(type(BasicHelpers) == "table")
     end)
-    assert(success, "small_helpers should load without errors: " .. tostring(err))
+    assert(success, "basic_helpers should load without errors: " .. tostring(err))
   end)
 
-  it("should handle small helper functions", function()
+  it("should handle basic helper functions", function()
     local success, err = pcall(function()
-      if type(SmallHelpers) == "table" then
-        for name, func in pairs(SmallHelpers) do
+      if type(BasicHelpers) == "table" then
+        for name, func in pairs(BasicHelpers) do
           if type(func) == "function" then
             assert(type(func) == "function", "Function " .. name .. " should be a function")
           end
         end
       end
     end)
-    assert(success, "small helper functions should be accessible: " .. tostring(err))
+    assert(success, "basic helper functions should be accessible: " .. tostring(err))
   end)
 
 end)

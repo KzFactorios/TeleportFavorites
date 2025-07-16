@@ -36,9 +36,7 @@ This policy applies to all Lua modules in the codebase.
 - `core/tag/sync.lua` – tag synchronization and migration logic.
 - `core/types/` – for external type definitions
 - `core/utils/` – will hold a variety of helper files
-- `core/utils/version.lua` – a utility file to record the version information
-    from the info.json file to make the version number readily available
-    to the codebase. It is created and updated by update_version.py
+- Version information retrieved dynamically from Factorio API via `game.active_mods[script.mod_name]`
 - `core/favorite.lua` – Favorite object logic and helpers.
 - `core/tag.lua` – Map tag object logic and helpers.
 - `core/error_handling.lua` – Centralizes error handling and displying the information to the user and/or logging to the correct files

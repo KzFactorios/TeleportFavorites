@@ -5,9 +5,9 @@ require("test_bootstrap")
 -- Shared Factorio test environment (globals, settings, etc.)
 require("mocks.factorio_test_env")
 
--- Patch: Provide a global SmallHelpers mock to avoid nil errors in dependencies
-if not _G.SmallHelpers then
-  _G.SmallHelpers = setmetatable({}, { __index = function() return function() end end })
+-- Patch: Provide a global BasicHelpers mock to avoid nil errors in dependencies
+if not _G.BasicHelpers then
+  _G.BasicHelpers = setmetatable({}, { __index = function() return function() end end })
 end
 -- Patch: Provide a robust mock for player.gui.top and related GUI roots
 local function make_gui_root()

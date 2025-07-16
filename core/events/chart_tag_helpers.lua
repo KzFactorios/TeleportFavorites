@@ -22,12 +22,51 @@ local GPSUtils = require("core.utils.gps_utils")
 local ErrorHandler = require("core.utils.error_handler")
 local PlayerHelpers = require("core.utils.player_helpers")
 local PlayerFavorites = require("core.favorite.player_favorites")
-local TinyUtils = require("core.utils.tiny_utils")
+local LocaleUtils = require("core.utils.locale_utils")
 local AdminUtils = require("core.utils.admin_utils")
 local Tag = require("core.tag.tag")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
+
+-- ========================================
+-- LOCAL FORMATTING UTILITIES
+-- ========================================
+
+---Format a position change notification for the player
+---@param player LuaPlayer The player object
+---@param chart_tag table The chart tag that was moved
+---@param old_position MapPosition The old position
+---@param new_position MapPosition The new position  
+---@return string formatted notification string
+local function format_position_change_notification(player, chart_tag, old_position, new_position)
+  if not player or not chart_tag or not old_position or not new_position then
+    return ""
+  end
+
+  local surface_index = tonumber(player.surface.index) or 1
+  local old_gps = GPSUtils.gps_from_map_position(old_position, surface_index)
+  local new_gps = GPSUtils.gps_from_map_position(new_position, surface_index)
+  
+  return LocaleUtils.get_gui_string(player, "tag_moved", {
+    text = chart_tag.text or "",
+    old_gps = old_gps,
+    new_gps = new_gps
+  })
+end
+
+---Format a tag deletion prevention message
+---@param chart_tag table The chart tag that would have been deleted
+---@return string formatted message
+local function format_tag_deletion_prevention_message(chart_tag)
+  if not chart_tag then 
+    return ""
+  end
+
+  return string.format("[color=red]Tag '%s' could not be relocated and was preserved at its current location[/color]",
+    chart_tag.text or "Unknown Tag"
+  )
+end
 
 ---@class ChartTagHelpers
 local ChartTagHelpers = {}
@@ -254,7 +293,7 @@ function ChartTagHelpers.update_favorites_gps(old_gps, new_gps, acting_player)
     local chart_tag = Cache.Lookups.get_chart_tag_by_gps(new_gps)
     for _, affected_player in ipairs(notification_players) do
       if affected_player and affected_player.valid then
-        local position_msg = TinyUtils.format_position_change_notification(
+        local position_msg = format_position_change_notification(
           affected_player, chart_tag, old_position or { x = 0, y = 0 }, new_position or { x = 0, y = 0 }
         )
         PlayerHelpers.safe_player_print(affected_player, position_msg)
@@ -324,7 +363,7 @@ function ChartTagHelpers.recreate_protected_chart_tag(chart_tag, player, surface
     
     Cache.Lookups.invalidate_surface_chart_tags(surface_index)
     
-    local deletion_msg = TinyUtils.format_tag_deletion_prevention_message(new_chart_tag)
+    local deletion_msg = format_tag_deletion_prevention_message(new_chart_tag)
     PlayerHelpers.safe_player_print(player, deletion_msg)
     
     return true

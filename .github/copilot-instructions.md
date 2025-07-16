@@ -121,7 +121,27 @@ tail -f log.txt
 # BROKEN: Trying to pipe script objects directly to Select-String with context
 (.\.test.ps1) | Select-String "Total tests" | Select-Object -Last 3
 # ERROR: PowerShell treats script output as objects, not strings, causing binding failures
+
+# BROKEN: Using lua -c for syntax checking (incorrect parameter)
+lua -c tests\specs\drag_drop_utils_spec.lua
+# ERROR: "-c" is not a valid parameter for lua.exe - shows usage help instead
+
+# BROKEN: Mixing Unix dir command with PowerShell in complex pipelines  
+Set-Location tests; dir /b "specs\*_spec.lua" | Select-String "drag_drop"
+# ERROR: "dir /b" is cmd syntax, creates path confusion and pipeline errors in PowerShell
 ```
+
+### File Organization Rules
+
+**❌ NEVER place test-related files in root directory:**
+- test_output.txt, test_output_latest.txt, debug_test_runner.lua, debug_vehicle_test.lua
+- All test files belong in tests/ directory or subdirectories
+- Root directory should only contain production mod files and essential config files
+
+**✅ CORRECT file placement:**
+- Production code: core/, gui/, prototypes/, graphics/
+- Test files: tests/specs/, tests/output/, tests/mocks/
+- Config files: .vscode/, .github/, .project/
 
 **✅ CORRECT POWERSHELL PATTERNS:**
 ```powershell
@@ -156,6 +176,11 @@ Get-ChildItem "tests\specs\*_spec.lua"  # When already in tests directory
 # BROKEN: PowerShell path confusion with relative directories
 cd tests; Get-ChildItem "tests\specs\*_spec.lua" 
 # ERROR: Double-nests the path when already in subdirectory
+
+# BROKEN: Select-String with -A parameter on any script output (CONFIRMED ANTIPATTERN)
+(.\.test.ps1) | Select-String "Overall Test Summary" -A 5
+# ERROR: "The input object cannot be bound to any parameters for the command either because the command does not take pipeline input or the input and its properties do not match any of the parameters that take pipeline input"
+# This fails because PowerShell script output creates objects, not strings, and Select-String -A parameter cannot bind to these objects
 ```
 
 **✅ CORRECT POWERSHELL PATTERNS:**
@@ -167,6 +192,20 @@ Get-ChildItem -Path ".\specs\*_spec.lua"  # Explicit current directory
 
 # Check for empty files correctly
 Get-ChildItem "specs\*_spec.lua" | Where-Object { (Get-Content $_.FullName -Raw -ErrorAction SilentlyContinue).Trim() -eq "" }
+
+# CORRECT: Avoid Select-String -A entirely with script output - use direct execution instead
+.\.test.ps1                                    # Run script directly and read full output
+.\.test.ps1 > output.txt; Get-Content output.txt -Tail 10  # Save output then read specific lines
+.\.test.ps1 2>&1 | Tee-Object -FilePath "test_results.txt"  # Capture output to file while displaying
+
+# For Lua syntax checking, use proper lua execution
+lua -e "loadfile('tests\\specs\\drag_drop_utils_spec.lua')"  # Load and check syntax without execution
+lua tests\specs\drag_drop_utils_spec.lua                     # Execute the file directly (if it's standalone)
+Get-Content tests\specs\drag_drop_utils_spec.lua | lua       # Pipe file content to lua interpreter
+
+# For file searches, use PowerShell native commands
+Get-ChildItem "specs\*_spec.lua" | Where-Object { $_.Name -match "pattern" }
+Get-ChildItem -Path ".\specs\*_spec.lua" -Filter "*drag_drop*"
 ```
 
 ### Key File Patterns

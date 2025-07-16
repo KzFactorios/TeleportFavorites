@@ -124,7 +124,7 @@ _G["Lookups"] = {
 ## Settings
 - Per-player: at player level.
 - Mod-wide: at root (only `mod_version` is persisted).
-- Update version via `update_version.py` → `core/utils/version.lua`.
+- Version retrieved dynamically from Factorio API: `script.active_mods[script.mod_name]`.
 
 ---
 

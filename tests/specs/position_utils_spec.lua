@@ -1,7 +1,7 @@
 local test_framework = require("test_framework")
 
 -- Mock all dependencies first
-package.loaded["core.utils.small_helpers"] = {
+package.loaded["core.utils.basic_helpers"] = {
   normalize_position = function(pos) 
     return {x = math.floor(pos.x), y = math.floor(pos.y)}
   end,

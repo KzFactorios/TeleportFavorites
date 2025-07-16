@@ -102,15 +102,8 @@ function fave_bar.build(player, force_show)
   -- Hide favorites bar when editing space platforms
   -- Allow force_show to override all checks for initialization
   if not force_show then
-    -- Use shared space platform detection logic
-    if fave_bar.SmallHelpers == nil then
-      fave_bar.SmallHelpers = SmallHelpers or
-      (remote and remote.interfaces and remote.interfaces["SmallHelpers"] and remote.interfaces["SmallHelpers"]) or nil
-    end
-    local should_hide = false
-    if fave_bar.SmallHelpers and fave_bar.SmallHelpers.should_hide_favorites_bar_for_space_platform then
-      should_hide = fave_bar.SmallHelpers.should_hide_favorites_bar_for_space_platform(player)
-    end
+    -- Use BasicHelpers space platform detection logic
+    local should_hide = BasicHelpers.should_hide_favorites_bar_for_space_platform(player)
     if should_hide then
       return
     end
@@ -132,7 +125,7 @@ function fave_bar.build(player, force_show)
   last_build_tick[player.index] = tick
 
   local success, result = pcall(function()
-    local player_settings = Settings:getPlayerSettings(player)
+    local player_settings = Cache.Settings.get_player_settings(player)
     if not player_settings.favorites_on then
       return
     end
@@ -242,7 +235,6 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves)
 
   for i = 1, max_slots do
     local fav = pfaves[i]
-    fav = FavoriteRehydration.rehydrate_favorite_at_runtime(player, fav)
     local btn_icon, tooltip, style, locked = get_slot_btn_props(i, fav)
     local btn = GuiHelpers.create_slot_button(parent, "fave_bar_slot_" .. i, tostring(btn_icon), tooltip,
       { style = style })

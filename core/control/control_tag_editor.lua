@@ -567,6 +567,14 @@ local function on_tag_editor_gui_click(event)
     -- Update confirm button state based on new icon selection
     BasicHelpers.update_state(tag_editor.update_confirm_button_state, player, tag_data)
     return
+  elseif element.name == "tag_editor_rich_text_row" then
+    -- Handle clicks on the rich text row container - usually these are propagated clicks
+    -- from child elements, so we don't need to do anything special here
+    ErrorHandler.debug_log("Tag editor rich text row clicked", {
+      element_name = element.name,
+      player = player and player.name or "unknown"
+    })
+    return
   end
   -- Handle confirmation dialog buttons without checking button type
   if element.name == "tf_confirm_dialog_confirm_btn" then

@@ -42,9 +42,13 @@ function SharedMocks.setup_common_mocks()
     end
   }
   
-  -- Small helpers mock
-  package.loaded["core.utils.small_helpers"] = {
-    should_hide_favorites_bar_for_space_platform = function() return false end
+  -- Basic helpers mock (formerly small_helpers)
+  package.loaded["core.utils.basic_helpers"] = {
+    should_hide_favorites_bar_for_space_platform = function() return false end,
+    is_valid_player = function(player) return player and player.valid end,
+    is_valid_element = function(element) return element and element.valid end,
+    is_blank_favorite = function(fav) return not fav or fav.gps == "" end,
+    is_locked_favorite = function(fav) return fav and fav.locked == true end
   }
 end
 

@@ -13,7 +13,7 @@ package.loaded["core.control.control_tag_editor"] = nil
 
 describe("TagEditor Control Module", function()
     local TagEditor, mock_player, mock_event, mock_element
-    local Cache, GuiValidation, SmallHelpers, ErrorHandler
+    local Cache, GuiValidation, BasicHelpers, ErrorHandler
     local call_counts = {}
     
     -- Setup function for call tracking
@@ -31,7 +31,7 @@ describe("TagEditor Control Module", function()
         -- Load required modules for mocking
         Cache = require("core.cache.cache")
         GuiValidation = require("core.utils.gui_validation")
-        SmallHelpers = require("core.utils.basic_helpers")
+        BasicHelpers = require("core.utils.basic_helpers")
         ErrorHandler = require("core.utils.error_handler")
         
         -- Mock defines.events
@@ -49,8 +49,8 @@ describe("TagEditor Control Module", function()
         -- Mock functions with tracking
         GuiValidation.safe_destroy_frame = track_call("safe_destroy_frame")
         ErrorHandler.warn_log = track_call("warn_log")
-        SmallHelpers.update_error_message = track_call("update_error_message")
-        SmallHelpers.update_state = track_call("update_state")
+        BasicHelpers.update_error_message = track_call("update_error_message")
+        BasicHelpers.update_state = track_call("update_state")
         
         -- Create mock GUI element
         mock_element = {

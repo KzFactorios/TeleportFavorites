@@ -26,7 +26,8 @@ Methods:
 - get_favorite_by_gps(gps) - Find favorite by GPS string
 - add_favorite(gps) - Add new favorite
 - remove_favorite(gps) - Remove favorite by GPS
-- move_favorite(from_slot, to_slot) - Reorder favorites
+- move_favorite(from_slot, to_slot) - Move favorite to empty slot (simple swap)
+- reorder_favorites(from_slot, to_slot) - Reorder favorites with cascade/adjacent logic  
 - toggle_favorite_lock(slot_idx) - Lock/unlock favorite
 - update_gps_coordinates(old_gps, new_gps) - Update GPS for this player
 - update_gps_for_all_players(old_gps, new_gps, acting_player_index) - Static GPS update
@@ -43,6 +44,7 @@ local Constants = require("constants")
 local FavoriteUtils = require("core.favorite.favorite")
 local Cache = require("core.cache.cache")
 local ErrorHandler = require("core.utils.error_handler")
+local DragDropUtils = require("core.utils.drag_drop_utils")
 local GuiObserver = _G.GuiObserver or require("core.events.gui_observer")
 
 -- Observer Pattern Integration
@@ -116,6 +118,36 @@ function PlayerFavorites:move_favorite(from_slot, to_slot)
     to_slot = to_slot,
     favorite = from_fav
   })
+  return true, nil
+end
+
+--- Reorder favorites using the DragDropUtils system with proper validation and observer notifications
+---@param from_slot number Source slot index (1-based)
+---@param to_slot number Target slot index (1-based)
+---@return boolean success, string|nil error_message
+function PlayerFavorites:reorder_favorites(from_slot, to_slot)
+  -- Use DragDropUtils for all validation and reordering logic
+  local reordered_favorites, success, error_message = DragDropUtils.reorder_slots(self.favorites, from_slot, to_slot)
+  
+  if not success then
+    return false, error_message
+  end
+  
+  -- Store the favorite being moved for observer notification
+  local moved_favorite = self.favorites[from_slot]
+  
+  -- Update our favorites array with the reordered result
+  self.favorites = reordered_favorites
+  
+  -- Sync to storage and notify observers
+  sync_to_storage(self)
+  notify_observers_safe("favorites_reordered", {
+    player_index = self.player_index,
+    from_slot = from_slot,
+    to_slot = to_slot,
+    favorite = moved_favorite
+  })
+  
   return true, nil
 end
 

@@ -32,34 +32,6 @@ local BasicHelpers = require("core.utils.basic_helpers")
 local M = {}
 
 --- Reorder favorites using modular handlers
----@param player LuaPlayer The player
----@param favorites PlayerFavorites The favorites instance
----@param drag_index number The source slot index
----@param slot number The target slot index
----@return boolean success
-local function reorder_favorites(player, favorites, drag_index, slot)
-  -- Custom drag algorithm: if destination is blank, swap and do not cascade
-  local favs = favorites.favorites
-  if not favs or not favs[drag_index] or not favs[slot] then return false end
-  local src_fav = favs[drag_index]
-  local dst_fav = favs[slot]
-  if FavoriteUtils.is_blank_favorite(dst_fav) then
-    -- Swap source and destination
-    favs[slot] = src_fav
-    favs[drag_index] = FavoriteUtils.get_blank_favorite()
-    favorites.favorites = favs
-    -- Removed player print for blank slot swap per user request
-    -- Rebuild bar and end drag
-    fave_bar.build(player)
-    CursorUtils.end_drag_favorite(player)
-    return true
-  end
-  -- Fallback to default cascade logic
-  return SlotInteractionHandlers.reorder_favorites(player, favorites, drag_index, slot)
-end
-
-
-
 --- Handle individual favorite slot click events
 --- This is the main dispatcher for slot interactions, routing different types
 --- of clicks to appropriate handlers based on the current state and modifiers.
@@ -104,25 +76,23 @@ local function handle_favorite_slot_click(event, player, favorites)
     end
     -- Check if this is a left-click to complete the drag
     if event.button == defines.mouse_button_type.left then
-      -- Direct attempt to reorder favorites (skip handle_drop_on_slot)
-      if source_slot ~= slot then
-        local target_fav = favorites.favorites[slot]
-        -- Check if target slot is locked
-        if target_fav and SmallHelpers.is_locked_favorite(target_fav) then
-          GameHelpers.player_print(player, SharedUtils.lstr("tf-gui.fave_bar_locked_cant_target", slot))
-          GameHelpers.safe_play_sound(player, { path = "utility/cannot_build" })
-          CursorUtils.end_drag_favorite(player)
-          return
-        end
-        -- Target slot is not locked, proceed with reordering
-        if reorder_favorites(player, favorites, source_slot, slot) then return end
-      else
-        -- Dropping onto the same slot, just end the drag
+      -- If source and destination are the same, just end the drag
+      if source_slot == slot then
         CursorUtils.end_drag_favorite(player)
         return
       end
-      -- Fallback to regular drop handler
-      if SlotInteractionHandlers.handle_drop_on_slot(event, player, slot, favorites) then return end
+      
+      local target_fav = favorites.favorites[slot]
+      -- Check if target slot is locked
+      if target_fav and BasicHelpers.is_locked_favorite(target_fav) then
+        GameHelpers.player_print(player, SharedUtils.lstr("tf-gui.fave_bar_locked_cant_target", slot))
+        GameHelpers.safe_play_sound(player, { path = "utility/cannot_build" })
+        CursorUtils.end_drag_favorite(player)
+        return
+      end
+      
+      -- Target slot is not locked, proceed with reordering using unified system
+      if SlotInteractionHandlers.reorder_favorites(player, favorites, source_slot, slot) then return end
     end
     -- If we get here, the drop didn't work or it was another button, but we need to exit drag mode anyway
     CursorUtils.end_drag_favorite(player)
