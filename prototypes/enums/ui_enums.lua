@@ -119,8 +119,15 @@ UIEnums.GUI.Frame = {
 UIEnums.GUI.FaveBar = {
   -- Containers and flows
   FAVE_BAR_FLOW = "fave_bar_flow",
+  HISTORY_CONTAINER = "fave_bar_history_container",
   TOGGLE_CONTAINER = "fave_bar_toggle_container",
   SLOTS_FLOW = "fave_bar_slots_flow",
+
+  -- History elements
+  HISTORY_LIST = "history_list",
+  HISTORY_ACTIONS_CONTAINER = "history_actions_container",
+  HISTORY_UP = "history_up",
+  HISTORY_DOWN = "history_down",
 
   -- Buttons
   TOGGLE_BUTTON = "fave_bar_visibility_toggle",

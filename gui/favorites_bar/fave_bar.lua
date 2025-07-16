@@ -11,6 +11,11 @@ Element Hierarchy Diagram:
 
 fave_bar_frame (frame)
 └─ fave_bar_flow (flow, horizontal)
+   ├─ fave_bar_history_container (frame, vertical)
+   │  |─ history_list (scroll-pane)
+   │  └─ history_actions_container (flow, vertical)
+   |      |─ history_up (button)
+   |      └─ history_down (button)
    ├─ fave_bar_toggle_container (frame, vertical)
    │  └─ fave_bar_visibility_toggle (sprite-button)
    └─ fave_bar_slots_flow (frame, horizontal, visible toggled at runtime)
@@ -61,8 +66,34 @@ local last_build_tick = {}
 -- Build the favorites bar to visually match the quickbar top row
 ---@diagnostic disable: assign-type-mismatch, param-type-mismatch
 function fave_bar.build_quickbar_style(player, parent)           -- Add a horizontal flow to contain the toggle and slots row
-  local bar_flow = GuiBase.create_hflow(parent, "fave_bar_flow") -- Add a thin dark background frame for the toggle button
-  local toggle_container = GuiBase.create_frame(bar_flow, "fave_bar_toggle_container", "vertical",
+  local bar_flow = GuiBase.create_hflow(parent, Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW) 
+  
+  -- Add history container to the left of toggle container
+  local history_container = GuiBase.create_frame(bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_CONTAINER, "vertical",
+    "tf_fave_history_container")
+  
+  -- Create history list scroll pane
+  local history_list = GuiBase.create_scroll_pane(history_container, Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_LIST, "vertical")
+  
+  -- Create history actions container
+  local history_actions_container = GuiBase.create_vflow(history_container, Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_ACTIONS_CONTAINER)
+  
+  -- Create history navigation buttons
+  local history_up = GuiBase.create_button(history_actions_container, Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_UP, "↑")
+  local history_down = GuiBase.create_button(history_actions_container, Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_DOWN, "↓")
+  
+  -- Set tooltips for history buttons
+  if history_up and history_up.valid then
+    ---@diagnostic disable-next-line: assign-type-mismatch
+    history_up.tooltip = { "tf-gui.history_up" }
+  end
+  if history_down and history_down.valid then
+    ---@diagnostic disable-next-line: assign-type-mismatch
+    history_down.tooltip = { "tf-gui.history_down" }
+  end
+  
+  -- Add a thin dark background frame for the toggle button
+  local toggle_container = GuiBase.create_frame(bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER, "vertical",
     "tf_fave_toggle_container")
 
   -- Create a centering flow inside the toggle container
@@ -76,7 +107,7 @@ function fave_bar.build_quickbar_style(player, parent)           -- Add a horizo
   local slots_visible = player_data.fave_bar_slots_visible
   if slots_visible == nil then slots_visible = true end -- Additional safety default
   local toggle_visibility_button = GuiElementBuilders.create_visibility_toggle_button(
-    toggle_flow, "fave_bar_visibility_toggle", slots_visible, toggle_tooltip)
+    toggle_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_BUTTON, slots_visible, toggle_tooltip)
 
   -- history/position info
   local teleport_history = GuiBase.create_label(toggle_container, "fave_bar_teleport_history_label", "",
@@ -84,15 +115,15 @@ function fave_bar.build_quickbar_style(player, parent)           -- Add a horizo
   local player_coords = GuiBase.create_label(toggle_container, "fave_bar_coords_label", "", "fave_bar_coords_label_style")
 
   -- Add slots frame to the same flow for proper layout
-  local slots_frame = GuiBase.create_frame(bar_flow, "fave_bar_slots_flow", "horizontal", "tf_fave_slots_row")
-  return bar_flow, slots_frame, toggle_visibility_button
+  local slots_frame = GuiBase.create_frame(bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW, "horizontal", "tf_fave_slots_row")
+  return bar_flow, slots_frame, toggle_visibility_button, history_container
 end
 
 local function get_fave_bar_gui_refs(player)
   local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
-  local bar_frame = main_flow and GuiValidation.find_child_by_name(main_flow, "fave_bar_frame")
-  local bar_flow = bar_frame and GuiValidation.find_child_by_name(bar_frame, "fave_bar_flow")
-  local slots_frame = bar_flow and GuiValidation.find_child_by_name(bar_flow, "fave_bar_slots_flow")
+  local bar_frame = main_flow and GuiValidation.find_child_by_name(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
+  local bar_flow = bar_frame and GuiValidation.find_child_by_name(bar_frame, Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW)
+  local slots_frame = bar_flow and GuiValidation.find_child_by_name(bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW)
   return main_flow, bar_frame, bar_flow, slots_frame
 end
 
@@ -144,7 +175,7 @@ function fave_bar.build(player, force_show)
     -- Outer frame for the bar (matches quickbar background)
     local fave_bar_frame = GuiBase.create_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR, "horizontal",
       "tf_fave_bar_frame")
-    local _bar_flow, slots_frame, _toggle_button = fave_bar.build_quickbar_style(player, fave_bar_frame)
+    local _bar_flow, slots_frame, _toggle_button, _history_container = fave_bar.build_quickbar_style(player, fave_bar_frame)
 
     -- Only one toggle button: the one created in build_quickbar_style
     local pfaves = Cache.get_player_favorites(player)
@@ -264,7 +295,7 @@ function fave_bar.update_slot_row(player, parent_flow)
   if not BasicHelpers.is_valid_player(player) then return end
   if not parent_flow or not parent_flow.valid then return end
 
-  local slots_frame = GuiValidation.find_child_by_name(parent_flow, "fave_bar_slots_flow")
+  local slots_frame = GuiValidation.find_child_by_name(parent_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW)
   if not slots_frame or not slots_frame.valid then return end
 
   -- Remove all children
@@ -369,10 +400,10 @@ function fave_bar.update_toggle_state(player, slots_visible)
 
   -- First update the toggle button sprite
   if bar_flow then
-    local toggle_container = GuiValidation.find_child_by_name(bar_flow, "fave_bar_toggle_container")
+    local toggle_container = GuiValidation.find_child_by_name(bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER)
     if toggle_container then
       -- Update the visibility toggle button (fave_bar_visibility_toggle)
-      local toggle_visibility_button = GuiValidation.find_child_by_name(toggle_container, "fave_bar_visibility_toggle")
+      local toggle_visibility_button = GuiValidation.find_child_by_name(toggle_container, Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_BUTTON)
       if toggle_visibility_button and toggle_visibility_button.valid then
         -- Simple approach - just update the sprite property
         -- Swapped sprites: eyelash (closed eye) when visible, eye (open) when hidden
@@ -394,7 +425,7 @@ function fave_bar.exists(player)
   if not BasicHelpers.is_valid_player(player) then return false end
 
   local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
-  local bar_frame = main_flow and GuiValidation.find_child_by_name(main_flow, "fave_bar_frame")
+  local bar_frame = main_flow and GuiValidation.find_child_by_name(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
   return bar_frame and bar_frame.valid or false
 end
 
