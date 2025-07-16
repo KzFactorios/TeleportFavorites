@@ -39,8 +39,16 @@ local function run_tests()
     local tests_dir = find_project_root()
     print("Running tests from: " .. tests_dir)
     
-    -- Change to tests directory and run the infrastructure test runner
+    -- Build command with any specified test files
     local cmd = 'cd /d "' .. tests_dir .. '" && lua infrastructure\\run_all_tests.lua'
+    
+    -- Add any command line arguments (test files) to the command
+    if arg and #arg > 0 then
+        for i = 1, #arg do
+            cmd = cmd .. ' "' .. arg[i] .. '"'
+        end
+    end
+    
     local result = os.execute(cmd)
     
     if result ~= 0 then

@@ -1,81 +1,136 @@
-local BLANK_GPS = "1000000.1000000.1"
+# Drag and Drop Algorithm - Current Implementation
 
--- Main drag-and-drop function
-function handle_drag_drop(slots, src_idx, dest_idx)
-    -- Validate indices (Lua 1-based)
-    if src_idx < 1 or src_idx > #slots or dest_idx < 1 or dest_idx > #slots then
-        return slots
-    end
+## Overview
+The TeleportFavorites mod uses a **blank-seeking cascade algorithm** implemented in `DragDropUtils.reorder_slots()`. This algorithm provides intuitive slot reordering by finding and utilizing blank slots between source and destination.
 
-    local src = slots[src_idx]
-    local dest = slots[dest_idx]
+## Algorithm Description
 
-    -- Rule: Blank or locked source cannot be dragged
-    if src.gps == BLANK_GPS or src.locked then
-        return slots
-    end
+### Function Signature
+```lua
+function DragDropUtils.reorder_slots(favorites, source_idx, dest_idx)
+-- Returns: (modified_slots, success, error_message)
+```
 
-    -- Rule: Cannot drag onto locked destination
-    if dest.locked then
-        return slots
-    end
+### Core Logic Flow
 
-    -- If source and destination are the same, do nothing
-    if src_idx == dest_idx then
-        return slots
-    end
+#### 1. Validation Phase
+- Validates source is not blank or locked
+- Validates destination is not locked  
+- Validates indices are within bounds
+- Returns early with error if any validation fails
 
-    -- If destination is blank, swap source and destination
-    if dest.gps == BLANK_GPS then
-        slots[dest_idx] = {gps = src.gps, locked = src.locked}
-        slots[src_idx] = {gps = BLANK_GPS, locked = false}
-        return slots
-    end
-
-    -- If source and destination are adjacent, swap them
-    if math.abs(src_idx - dest_idx) == 1 then
-        slots[src_idx], slots[dest_idx] = slots[dest_idx], slots[src_idx]
-        return slots
-    end
-
-    -- Otherwise, perform reversed cascade
-    local step = (src_idx < dest_idx) and -1 or 1  -- reversed direction
-    local start_idx, end_idx
-
-    if src_idx < dest_idx then
-        start_idx, end_idx = dest_idx, src_idx + 1
-    else
-        start_idx, end_idx = dest_idx, src_idx - 1
-    end
-
-    -- Check for locked slots in the cascade path (excluding src and dest)
-    for i = start_idx, end_idx, step do
-        if slots[i].locked then
-            -- Abort if cascade would overwrite a locked slot
-            return slots
-        end
-    end
-
-    -- Shift all intervening slots toward the source
-    for i = start_idx, end_idx, step do
-        slots[i] = {gps = slots[i - step].gps, locked = slots[i - step].locked}
-    end
-
-    -- Place dragged item at destination
-    slots[dest_idx] = {gps = src.gps, locked = src.locked}
-    -- Set source to blank
-    slots[src_idx] = {gps = BLANK_GPS, locked = false}
-
-    return slots
+#### 2. Simple Cases (Fast Path)
+```lua
+-- Case A: Moving to blank destination
+if is_blank(dest) then
+    return simple_swap(source, dest)
 end
 
--- Helper: Count available (blank) slots
-function count_available_slots(slots)
-    local count = 0
-    for i = 1, #slots do
-        if slots[i].gps == BLANK_GPS then
-            count = count + 1
+-- Case B: Adjacent slots (distance = 1)
+if math.abs(source_idx - dest_idx) == 1 then
+    return simple_swap(source, dest)  
+end
+```
+
+#### 3. Complex Case: Blank-Seeking Cascade
+
+**Step 1: Source Evacuation**
+```lua
+-- Source immediately becomes blank, creating cascade target
+local source_favorite = slots[source_idx]
+slots[source_idx] = { gps = BLANK_GPS, locked = false }
+```
+
+**Step 2: Blank Detection Between Source and Destination**
+```lua
+local blank_idx = source_idx  -- Default: cascade to source position
+
+if source_idx < dest_idx then
+    -- Moving rightward: scan left from dest-1 to source+1
+    for i = dest_idx - 1, source_idx + 1, -1 do
+        if is_blank(slots[i]) and not slots[i].locked then
+            blank_idx = i
+            break
         end
     end
-    return count
+else
+    -- Moving leftward: scan right from dest+1 to source-1  
+    for i = dest_idx + 1, source_idx - 1 do
+        if is_blank(slots[i]) and not slots[i].locked then
+            blank_idx = i
+            break
+        end
+    end
 end
+```
+
+**Step 3: Cascade Items Toward Blank**
+```lua
+if source_idx < dest_idx then
+    -- Rightward move: cascade items leftward to fill blank
+    for i = blank_idx, dest_idx - 1 do
+        if slots[i + 1] and not slots[i + 1].locked then
+            slots[i] = slots[i + 1]  -- Shift left
+        end
+    end
+else
+    -- Leftward move: cascade items rightward to fill blank
+    for i = blank_idx, dest_idx + 1, -1 do
+        if slots[i - 1] and not slots[i - 1].locked then
+            slots[i] = slots[i - 1]  -- Shift right
+        end
+    end
+end
+```
+
+**Step 4: Place Source at Destination**
+```lua
+slots[dest_idx] = source_favorite
+```
+
+## Behavior Examples
+
+### Example 1: Rightward Move with No Intermediate Blanks
+**Initial**: `[A][B][C][D][E][F][G][H][I][J]`  
+**Action**: Drag slot 1 (A) → slot 4 (D)
+
+1. Source evacuation: `[_][B][C][D][E][F][G][H][I][J]`
+2. No blanks found between positions 2-3, cascade target = position 1  
+3. Cascade leftward: `[B][C][D][_][E][F][G][H][I][J]`
+4. Place A at destination: `[B][C][A][D][E][F][G][H][I][J]`
+
+**Result**: A inserted at position 3, displaced items shift left toward blank
+
+### Example 2: Leftward Move with Intermediate Blank
+**Initial**: `[A][B][_][D][E][F][G][H][I][J]`  
+**Action**: Drag slot 6 (F) → slot 2 (B)
+
+1. Source evacuation: `[A][B][_][D][E][_][G][H][I][J]`  
+2. Blank found at position 3 between source(6) and dest(2)
+3. Cascade rightward toward blank: `[A][B][D][E][_][_][G][H][I][J]`
+4. Place F at destination: `[A][F][D][E][_][_][G][H][I][J]`
+
+**Result**: F inserted at position 2, B displaced into available blank space
+
+## Key Characteristics
+
+### Intuitive Behavior
+- **Natural flow**: Items shift in the direction that makes space for the moved item
+- **Blank utilization**: Algorithm finds and uses available blank slots efficiently
+- **Minimal disruption**: Only items between source and destination are affected
+
+### Edge Case Handling
+- **Locked slots**: Completely skipped during cascade operations
+- **Boundary respect**: All operations stay within slot array bounds
+- **State preservation**: Deep copy prevents original data mutation
+- **Error reporting**: Comprehensive validation with descriptive error messages
+
+### Performance Characteristics  
+- **O(n) time complexity**: Single pass for blank detection, single pass for cascade
+- **Memory efficient**: In-place operations on copied data structure
+- **Early termination**: Simple cases bypass complex cascade logic
+
+## Implementation Location
+- **File**: `core/utils/drag_drop_utils.lua`
+- **Function**: `DragDropUtils.reorder_slots(favorites, source_idx, dest_idx)`
+- **Dependencies**: `BasicHelpers.deep_copy()`, `BasicHelpers.is_blank_favorite()`, `Constants.settings.BLANK_GPS`

@@ -1,11 +1,9 @@
 -- core/utils/drag_drop_utils.lua
 -- Utilities for drag and drop operations in the slots bar
 
-local ErrorHandler = require("core.utils.error_handler")
 local Logger = require("core.utils.enhanced_error_handler")
 local Constants = require("constants")
 local BasicHelpers = require("core.utils.basic_helpers")
-local Enum = require("prototypes.enums.enum")
 
 ---@class DragDropUtils
 local DragDropUtils = {}
@@ -14,6 +12,9 @@ local DragDropUtils = {}
 local BLANK_GPS = Constants.settings.BLANK_GPS
 
 local is_blank = function(slot_fave)
+  if not slot_fave or not slot_fave.gps then
+    return true  -- Treat nil or missing gps as blank
+  end
   if slot_fave.gps == BLANK_GPS then
     return true
   end
@@ -68,12 +69,45 @@ function DragDropUtils.validate_drag_drop(source_slot, target_slot, source_index
   return result
 end
 
---- Simple HBI move: source replaces destination, destination shifts one step towards source
+--- Reorders favorite slots using blank-seeking cascade algorithm
+--- 
+--- This algorithm provides intuitive slot reordering by:
+--- 1. Finding blank slots between source and destination
+--- 2. Cascading items toward available blanks 
+--- 3. Placing source item at destination with minimal disruption
+---
+--- Special Cases:
+--- - Move to blank: Direct swap, no cascade
+--- - Adjacent slots: Simple swap operation
+--- - Locked slots: Completely skipped during operations
+---
+--- Complex Case (Non-Adjacent, Non-Blank):
+--- 1. Source evacuation: Source becomes blank immediately
+--- 2. Blank detection: Search for blanks between source and destination
+--- 3. Cascade direction: Items shift toward newly-created blank
+--- 4. Natural compaction: Items flow into available blanks
+---
+--- Example: Drag slot 10 → slot 8
+--- - Slot 10 content → slot 8 (destination)
+--- - Slot 8 content shifts toward blank at slot 10 position
+--- - Items cascade naturally to fill available space
+---
 ---@param favorites table Array of favorite slots
----@param source_idx number Source index
----@param dest_idx number Destination index
----@return table modified_slots, boolean success, string error_msg
+---@param source_idx number Source index (1-based)
+---@param dest_idx number Destination index (1-based)
+---@return table modified_slots Deep copy with reordering applied
+---@return boolean success Whether operation succeeded
+---@return string error_msg Error description if success is false
 function DragDropUtils.reorder_slots(favorites, source_idx, dest_idx)
+  -- Validate indices first before accessing array elements
+  if not source_idx or not dest_idx or type(source_idx) ~= "number" or type(dest_idx) ~= "number" then
+    return favorites, false, "Invalid slot index types"
+  end
+  
+  if source_idx < 1 or source_idx > #favorites or dest_idx < 1 or dest_idx > #favorites then
+    return favorites, false, "Invalid slot index"
+  end
+  
   local validation = DragDropUtils.validate_drag_drop(favorites[source_idx], favorites[dest_idx], source_idx, dest_idx)
 
   Logger.debug_log("[DRAG_DROP] Simple HBI move", {

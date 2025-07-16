@@ -221,6 +221,33 @@ Get-ChildItem -Path ".\specs\*_spec.lua" -Filter "*drag_drop*"
 - Tag editor state stored in `cache.players[index].tag_editor_data`
 - Favorites bar state in `cache.players[index].surfaces[surface].favorites`
 
+### Drag-Drop Algorithm (`DragDropUtils.reorder_slots`)
+The favorites bar uses a custom **blank-seeking cascade algorithm** with these behaviors:
+
+**Special Cases (Simple Operations):**
+- **Move to blank**: Direct swap with no cascade
+- **Adjacent slots**: Simple swap operation  
+- **Locked slots**: Cannot be source, destination, or cascade targets
+
+**Cascade Algorithm (Non-Adjacent, Non-Blank):**
+1. **Source evacuation**: Source slot becomes blank immediately
+2. **Blank detection**: Search between source and destination for existing blank slots
+3. **Cascade direction**: Items shift toward the newly-created blank at source position
+4. **Destination placement**: Source item gets placed at destination, displacing what was there
+5. **Natural compaction**: Displaced items flow into available blanks, creating intuitive reordering
+
+**Example**: Drag slot 10 → slot 8
+- Slot 10 content → slot 8 (destination)
+- Slot 8 content → slot 9 (cascades toward blank at slot 10)
+- Slot 9 content → slot 10 (fills the blank)
+- Result: Natural rightward shift of affected items
+
+**Implementation Notes:**
+- Returns `(modified_slots, success, error_message)` tuple
+- Creates deep copy to avoid mutating input data
+- Respects locked slot boundaries throughout cascade
+- Provides detailed error messages for validation failures
+
 ## 🎮 FACTORIO-SPECIFIC PATTERNS
 
 ### Chart Tag Ownership System

@@ -76,8 +76,27 @@ local function run_test_file(file_path)
   return test_success, tests_passed or 0, tests_failed or 0
 end
 
--- Get all test files from specs directory
-local function get_test_files()
+-- Get all test files from specs directory or specific files from args
+local function get_test_files(specified_files)
+  if specified_files and #specified_files > 0 then
+    -- Use specified files, ensure they have the correct path prefix
+    local files = {}
+    for _, file in ipairs(specified_files) do
+      local normalized_file = file
+      -- Add specs/ prefix if not already present
+      if not normalized_file:match("^specs/") and not normalized_file:match("^specs\\") then
+        normalized_file = "specs/" .. normalized_file
+      end
+      -- Ensure .lua extension
+      if not normalized_file:match("%.lua$") then
+        normalized_file = normalized_file .. ".lua"
+      end
+      table.insert(files, normalized_file)
+    end
+    return files
+  end
+  
+  -- Default behavior: get all test files
   local files = {}
   -- Try multiple path approaches
   local possible_commands = {
@@ -106,9 +125,21 @@ local function get_test_files()
   return files
 end
 
--- Run all tests
-print("==== Running All Tests ====")
-local test_files = get_test_files()
+-- Parse command line arguments
+local specified_files = {}
+for i = 1, #arg do
+  table.insert(specified_files, arg[i])
+end
+
+-- Run all tests (or specified tests)
+if #specified_files > 0 then
+  print("==== Running Specified Tests ====")
+  print("Files to run: " .. table.concat(specified_files, ", "))
+else
+  print("==== Running All Tests ====")
+end
+
+local test_files = get_test_files(specified_files)
 local total_files = 0
 local successful_files = 0
 local total_tests_passed = 0

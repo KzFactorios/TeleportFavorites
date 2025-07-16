@@ -31,7 +31,12 @@ Factorio v2 provides no native drag and drop functionality in its GUI API. Our m
 ### Drop Operation
 - Triggered by `Left-Click` on a target slot
 - Implementation in `control_fave_bar.lua` -> `handle_drop_on_slot()`
-- Reorders favorites using `favorites:move_favorite(source_slot, target_slot)`
+- Reorders favorites using `DragDropUtils.reorder_slots(favorites, source_idx, dest_idx)`
+- Uses **blank-seeking cascade algorithm** for intuitive reordering:
+  - Finds blank slots between source and destination
+  - Cascades items toward available blanks for natural compaction
+  - Handles special cases (adjacent slots, blank destinations) efficiently
+  - Respects locked slot boundaries throughout operations
 - Refreshes UI to display new order
 - Cleans up cursor stack and drag state
 
