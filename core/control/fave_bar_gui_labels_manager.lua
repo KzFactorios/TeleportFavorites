@@ -16,6 +16,7 @@ local GuiHelpers = require("core.utils.gui_helpers")
 local TeleportHistory = require("core.teleport.teleport_history")
 local PlayerHelpers = require("core.utils.player_helpers")
 local Constants = require("constants")
+local TeleportHistoryModal = require("gui.teleport_history_modal.teleport_history_modal")
 
 local FaveBarGuiLabelsManager = {}
 
@@ -265,6 +266,12 @@ local function _handle_history_navigation(event, direction, is_endpoint)
     local player_index = event.player_index
     mark_teleport_history(player_index)
     TeleportHistory.move_pointer(player, direction, is_endpoint)
+    
+    -- Update teleport history modal if it's open
+    if TeleportHistoryModal.is_open(player) then
+        TeleportHistoryModal.update_history_list(player)
+    end
+    
     -- clear_teleport_history will be called after script_raised_teleported
 end
 
@@ -285,6 +292,11 @@ function FaveBarGuiLabelsManager.register_history_controls(script)
         local player = _get_valid_player(event)
         if not player then return end
         TeleportHistory.clear(player)
+        
+        -- Update teleport history modal if it's open
+        if TeleportHistoryModal.is_open(player) then
+            TeleportHistoryModal.update_history_list(player)
+        end
     end)
     
     -- Only register commands once

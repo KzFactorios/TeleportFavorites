@@ -12,24 +12,26 @@ gui_style.tf_teleport_history_item = {
     type = "button_style",
     parent = "list_box_item",
     horizontally_stretchable = "on",
-    padding = 2,
+    padding = 0,
     margin = 0,
     font = "default-small",
-    font_color = {r = 1, g = 1, b = 1},
+    default_font_color = {r = 0.5, g = 0.81, b = 0.94}, -- Blue color for current item
+    hovered_font_color = {r = 0.5, g = 0.81, b = 0.94},
+    clicked_font_color = {r = 0.5, g = 0.81, b = 0.94},
     minimal_width = 0,
-    minimal_height = 16,
+    minimal_height = 12,
     horizontal_align = "right",
     rich_text_setting = "enabled",
-    right_margin = 12,
 }
 
 -- Teleport history item button (current/selected state)
 gui_style.tf_teleport_history_item_current = {
     type = "button_style",
     parent = "tf_teleport_history_item",
-    default_font_color = {r = 0.5, g = 0.81, b = 0.94}, -- Blue color for current item
-    hovered_font_color = {r = 0.5, g = 0.81, b = 0.94},
-    clicked_font_color = {r = 0.5, g = 0.81, b = 0.94},
+    font = "default-bold",
+    default_font_color = { r = 0.98, g = 0.66, b = 0.22, a = 1 },
+    hovered_font_color = { r = 0.98, g = 0.66, b = 0.22, a = 1 },
+    clicked_font_color = { r = 0.98, g = 0.66, b = 0.22, a = 1 },
 }
 
 -- Flow container for teleport history items (icon + text)
@@ -55,11 +57,12 @@ gui_style.tf_teleport_history_modal_frame = {
     type = "frame_style",
     parent = "slot_window_frame",
     padding = 4,
-    horizontally_stretchable = "on",
+    horizontally_stretchable = "off",
     vertically_stretchable = "on",
-    minimal_width = 300,
-    minimal_height = 400,
-    maximal_height = 800,
+    minimal_width = 200,
+    maximal_width = 300,
+    minimal_height = 200,
+    maximal_height = 500,
 }
 
 -- Modal content frame style (reusing tag editor pattern)

@@ -72,7 +72,7 @@ function teleport_history_modal.build(player)
     name = "teleport_history_scroll_pane",
     direction = "vertical"
   })
-  scroll_pane.style.width = 380
+  scroll_pane.style.width = 250
   scroll_pane.style.height = 420
 
   -- Create list container inside scroll pane
@@ -223,7 +223,7 @@ function teleport_history_modal.update_history_list(player)
         })
         
         -- Use rich text formatting to embed the icon directly in the button text
-        display_text = rich_text_icon .. " " .. display_text
+        display_text = rich_text_icon .. "  " .. display_text
       end
       
       local button_style = is_current and "tf_teleport_history_item_current" or "tf_teleport_history_item"
