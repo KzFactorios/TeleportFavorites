@@ -50,6 +50,13 @@ function teleport_history_modal.build(player)
   -- Set modal dialog state in cache
   Cache.set_modal_dialog_state(player, "teleport_history")
 
+  -- Destroy any existing modal first to prevent naming conflicts
+  local existing_modal = player.gui.screen["teleport_history_modal"]
+  if existing_modal and existing_modal.valid then
+    existing_modal.destroy()
+    ErrorHandler.debug_log("Destroyed existing teleport history modal")
+  end
+
   -- Create the main modal frame (following tag editor pattern)
   local modal_frame = player.gui.screen.add {
     type = "frame",
@@ -58,7 +65,24 @@ function teleport_history_modal.build(player)
     style = "tf_teleport_history_modal_frame",
     modal = true
   }
-  modal_frame.auto_center = true
+  
+  -- Critical error check: Ensure modal was created successfully
+  if not modal_frame or not modal_frame.valid then
+    ErrorHandler.debug_log("CRITICAL: Modal frame creation failed", {
+      modal_frame_nil = modal_frame == nil,
+      modal_frame_valid = modal_frame and modal_frame.valid or false,
+      player_valid = player and player.valid,
+      screen_valid = player.gui and player.gui.screen and player.gui.screen.valid
+    })
+    return  -- Abort modal creation
+  end
+  
+  -- Position modal dynamically relative to the history toggle button
+  -- This is done after content creation to ensure GUI elements have valid locations
+  ErrorHandler.debug_log("Teleport history modal positioning debug", {
+    player_name = player.name,
+    player_index = player.index
+  })
 
   -- Create titlebar (following tag editor pattern)
   local titlebar, title_label = GuiBase.create_titlebar(modal_frame, "teleport_history_modal_titlebar", "teleport_history_modal_close_button")
@@ -72,8 +96,9 @@ function teleport_history_modal.build(player)
     name = "teleport_history_scroll_pane",
     direction = "vertical"
   })
-  scroll_pane.style.width = 250
-  scroll_pane.style.height = 420
+  scroll_pane.style.width = 270
+  scroll_pane.style.maximal_height = 300
+  scroll_pane.style.vertically_stretchable = false
 
   -- Create list container inside scroll pane
   local history_list = GuiBase.create_frame(
@@ -88,6 +113,27 @@ function teleport_history_modal.build(player)
 
   -- Set player.opened for ESC key support
   player.opened = modal_frame
+
+  -- Position modal with single calculation: center screen, then offset halfway toward top-left
+  local screen_width = player.display_resolution.width / player.display_scale
+  local screen_height = player.display_resolution.height / player.display_scale
+  
+  -- Modal dimensions (updated to match new style definitions)
+  local modal_width = 350  -- Match maximal_width from style
+  local modal_height = 200 -- Estimated height for typical content
+  
+  -- Calculate center position
+  local center_x = (screen_width - modal_width) / 2
+  local center_y = (screen_height - modal_height) / 2
+  
+  -- Offset halfway toward top-left (25% of the distance from center to top-left corner)
+  local final_x = center_x - (center_x * 0.25)
+  local final_y = center_y - (center_y * 0.25)
+  
+  -- Move modal 10% higher on screen (split the difference)
+  final_y = final_y - (screen_height * 0.10)
+  
+  modal_frame.location = { x = final_x, y = final_y }
 
   return modal_frame
 end
@@ -145,7 +191,7 @@ function teleport_history_modal.update_history_list(player)
 
   if #stack == 0 then
     -- Show empty message
-    GuiBase.create_label(history_list, "empty_history_label", {"tf-gui.teleport_history_empty"}, "label")
+    GuiBase.create_label(history_list, "empty_history_label", {"tf-gui.teleport_history_empty"}, "tf_teleport_history_empty_label")
     return
   end
 

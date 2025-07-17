@@ -30,7 +30,6 @@ describe("PlayerHelpers", function()
             -- Test basic functions
             PlayerHelpers.safe_player_print(mock_player, "test")
             PlayerHelpers.are_favorites_enabled(mock_player)
-            PlayerHelpers.should_show_coordinates(mock_player)
             PlayerHelpers.should_show_history(mock_player)
             PlayerHelpers.should_hide_favorites_bar(mock_player)
         end)

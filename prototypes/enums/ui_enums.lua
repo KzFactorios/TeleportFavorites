@@ -89,7 +89,8 @@ UIEnums.Sprites = {
   SETTINGS = "utility/settings",
   SIGNAL_A = "virtual-signal/signal_A",
   HISTORY = "tf_history", 
-  TIME_MACHINE = "utility/time-machine", 
+  TIME_MACHINE = "utility/time-machine",
+  SCROLL_HISTORY = "tf_scroll_history",
 
   -- Special symbols
   HEART = "virtual-signal/signal-heart",

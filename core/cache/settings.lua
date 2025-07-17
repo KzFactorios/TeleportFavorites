@@ -37,8 +37,7 @@ local Settings = {}
 -- Internal: Default settings configuration
 local DEFAULT_SETTINGS = {
   favorites_on = true,
-  show_player_coords = true,
-  show_teleport_history = true,
+  enable_teleport_history = true,
 }
 
 -- Internal: Player settings cache
@@ -83,12 +82,9 @@ local function build_fresh_settings(player)
   -- Build settings using direct access to avoid circular dependency
   for setting_name, default_value in pairs(DEFAULT_SETTINGS) do
     if type(default_value) == "boolean" then
-      -- Map setting names to their actual mod setting identifiers
-      local mod_setting_name = setting_name:gsub("_", "-")
-      
       -- Direct boolean setting access
       if mod_settings then
-        local setting = mod_settings[mod_setting_name]
+        local setting = mod_settings[setting_name]
         if setting and setting.value ~= nil and type(setting.value) == "boolean" then
           settings_table[setting_name] = setting.value
         else

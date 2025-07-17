@@ -67,14 +67,14 @@ local function setup_mocks()
             if not player or not player.valid then return nil end
             return {
                 show_player_coords = player._test_coords_enabled or false,
-                show_teleport_history = player._test_history_enabled or false
+                ["enable-teleport-history"] = player._test_history_enabled or false
             }
         end,
         get_player_settings = function(player)
             if not player or not player.valid then return nil end
             return {
                 show_player_coords = player._test_coords_enabled or false,
-                show_teleport_history = player._test_history_enabled or false
+                ["enable-teleport-history"] = player._test_history_enabled or false
             }
         end
     }
@@ -249,52 +249,12 @@ describe("FaveBarGuiLabelsManager", function()
     end)
     
     it("should export all required functions", function()
-        is_true(type(FaveBarGuiLabelsManager.get_coords_caption) == "function")
         is_true(type(FaveBarGuiLabelsManager.get_history_caption) == "function")
         is_true(type(FaveBarGuiLabelsManager.update_label_for_player) == "function")
         is_true(type(FaveBarGuiLabelsManager.force_update_labels_for_player) == "function")
         is_true(type(FaveBarGuiLabelsManager.register_all) == "function")
         is_true(type(FaveBarGuiLabelsManager.initialize_all_players) == "function")
         is_true(type(FaveBarGuiLabelsManager.register_history_controls) == "function")
-    end)
-    
-    describe("get_coords_caption", function()
-        it("should return formatted coordinates for valid player", function()
-            -- Test that the function exists and can be called
-            is_true(type(FaveBarGuiLabelsManager.get_coords_caption) == "function")
-            
-            -- Since mocking GPS utils is complex, just verify the function doesn't crash
-            -- when given valid input structure
-            local test_player = { 
-                position = { x = 100.5, y = 200.7 },
-                valid = true
-            }
-            
-            -- Just verify it's callable - the exact output doesn't matter for coverage
-            local success = pcall(FaveBarGuiLabelsManager.get_coords_caption, test_player)
-            -- Don't require success due to complex dependencies, just that it's callable
-            is_true(type(success) == "boolean")
-        end)
-        
-        it("should handle nil player gracefully", function()
-            has_error(function()
-                FaveBarGuiLabelsManager.get_coords_caption(nil)
-            end)
-        end)
-        
-        it("should handle player with nil position", function()
-            -- Test that the function exists and can be called
-            is_true(type(FaveBarGuiLabelsManager.get_coords_caption) == "function")
-            
-            -- Since mocking GPS utils is complex, just verify the function doesn't crash
-            -- when given different input structures
-            local invalid_player = { position = nil }
-            
-            -- Just verify it's callable - the exact output doesn't matter for coverage
-            local success = pcall(FaveBarGuiLabelsManager.get_coords_caption, invalid_player)
-            -- Don't require success due to complex dependencies, just that it's callable
-            is_true(type(success) == "boolean")
-        end)
     end)
     
     describe("get_history_caption", function()
@@ -770,7 +730,7 @@ describe("FaveBarGuiLabelsManager", function()
                     "teleport_history", 
                     mock_player, 
                     mock_script, 
-                    "show-teleport-history", 
+                    "enable-teleport-history", 
                     "fave_bar_teleport_history_label", 
                     function(player) return FaveBarGuiLabelsManager.get_history_caption(player) end
                 )
@@ -830,7 +790,7 @@ describe("FaveBarGuiLabelsManager", function()
                 FaveBarGuiLabelsManager.update_handler_registration(
                     "teleport_history", 
                     mock_script, 
-                    "show-teleport-history", 
+                    "enable-teleport-history", 
                     "fave_bar_history_label", 
                     function(player) return "test" end
                 )
@@ -995,7 +955,7 @@ describe("FaveBarGuiLabelsManager", function()
                     "teleport_history", 
                     mock_player, 
                     mock_script, 
-                    "show-teleport-history", 
+                    "enable-teleport-history", 
                     "fave_bar_history_label", 
                     FaveBarGuiLabelsManager.get_history_caption
                 )
@@ -1281,45 +1241,6 @@ describe("FaveBarGuiLabelsManager", function()
             _G.settings = old_settings
         end)
         
-        it("should hit get_coords_caption return statement line 42", function()
-            local test_player = { 
-                position = { x = 42, y = 24 },
-                valid = true
-            }
-            
-            -- Mock the GPS utils more directly by patching the global
-            local old_require = require
-            _G.require = function(module_name)
-                if module_name == "core.utils.gps_utils" then
-                    return gps_utils_mock
-                end
-                return old_require(module_name)
-            end
-            
-            -- Clear the package cache for the target module and its dependencies
-            package.loaded["core.utils.gps_utils"] = nil
-            package.loaded["core.control.fave_bar_gui_labels_manager"] = nil
-            
-            -- Load fresh module
-            local fresh_manager = require("core.control.fave_bar_gui_labels_manager")
-            
-            -- Call the function 
-            local success, result = pcall(function()
-                return fresh_manager.get_coords_caption(test_player)
-            end)
-            
-            -- Restore original require function
-            _G.require = old_require
-            package.loaded["core.utils.gps_utils"] = nil
-            package.loaded["core.control.fave_bar_gui_labels_manager"] = nil
-            
-            -- The test should succeed and return a string result
-            is_true(success)
-            if success then
-                is_true(type(result) == "string" and #result > 0)
-            end
-        end)
-        
         it("should hit local wrapper function lines 50-55", function()
             -- The local wrapper functions can only be called by accessing the internal scope
             -- Since they are local functions, we need to trigger them indirectly through 
@@ -1337,7 +1258,7 @@ describe("FaveBarGuiLabelsManager", function()
             -- Mock settings to enable the feature
             _G.settings = {
                 global = {
-                    ["coords-update-interval"] = { value = 60 }
+                    ["history-update-interval"] = { value = 60 }
                 }
             }
             
@@ -1354,7 +1275,7 @@ describe("FaveBarGuiLabelsManager", function()
                         valid = true,
                         children = {},
                         children_names = {},
-                        ["fave_bar_coords_label"] = {
+                        ["fave_bar_teleport_history_label"] = {
                             valid = true,
                             caption = "",
                             visible = true
@@ -1365,7 +1286,7 @@ describe("FaveBarGuiLabelsManager", function()
             
             package.loaded["core.utils.gui_validation"] = {
                 find_child_by_name = function(parent, name)
-                    if name == "fave_bar_coords_label" then
+                    if name == "fave_bar_teleport_history_label" then
                         return {
                             valid = true,
                             caption = "",
@@ -1379,7 +1300,7 @@ describe("FaveBarGuiLabelsManager", function()
             -- Mock settings access 
             package.loaded["core.cache.settings_cache"] = {
                 get_player_settings = function(player)
-                    return { show_player_coords = true }
+                    return { show_teleport_history = true }
                 end
             }
             
@@ -1387,12 +1308,12 @@ describe("FaveBarGuiLabelsManager", function()
             -- which internally uses _update_label which calls the get_caption function
             local success = pcall(function()
                 FaveBarGuiLabelsManager.update_label_for_player(
-                    "player_coords", 
+                    "teleport_history", 
                     test_player, 
                     mock_script, 
-                    "show-player-coords", 
-                    "fave_bar_coords_label", 
-                    FaveBarGuiLabelsManager.get_coords_caption
+                    "enable-teleport-history", 
+                    "fave_bar_teleport_history_label", 
+                    FaveBarGuiLabelsManager.get_history_caption
                 )
             end)
             

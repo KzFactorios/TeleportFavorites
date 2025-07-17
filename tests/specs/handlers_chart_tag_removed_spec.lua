@@ -41,6 +41,11 @@ package.loaded["prototypes.enums.enum"] = {}
 package.loaded["core.control.fave_bar_gui_labels_manager"] = {
   register_all = function() end,
   initialize_all_players = function() end,
+  update_label_for_player = function() end,
+  force_update_labels_for_player = function() end,
+  register_history_controls = function() end,
+  get_coords_caption = function() return "" end,
+  get_history_caption = function() return "" end,
 }
 package.loaded["core.events.chart_tag_helpers"] = {}
 

@@ -8,7 +8,7 @@ local SettingsCacheMock = {}
 local default_settings = {
   favorites_on = true,
   show_player_coords = true,
-  show_teleport_history = true,
+  enable_teleport_history = true,
   chart_tag_click_radius = 5,
   favorites_bar_placement = "top",
   enable_debug_logging = false
@@ -83,7 +83,7 @@ function SettingsCacheMock.reset_mock_settings()
   default_settings = {
     favorites_on = true,
     show_player_coords = true,
-    show_teleport_history = true,
+    enable_teleport_history = true,
     chart_tag_click_radius = 5,
     favorites_bar_placement = "top",
     enable_debug_logging = false

@@ -121,6 +121,12 @@ local function handle_teleport_to_favorite_slot(event, slot_number)
     return 
   end
 
+  -- Early exit if favorites are disabled
+  local player_settings = Cache.Settings.get_player_settings(player)
+  if not player_settings.favorites_on then
+    return
+  end
+
   local player_favorites = PlayerFavorites.new(player)
   if not player_favorites or not player_favorites.favorites then
     PlayerHelpers.safe_player_print(player, {"tf-gui.no_favorites_available"})

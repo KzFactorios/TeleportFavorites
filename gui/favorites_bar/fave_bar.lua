@@ -11,8 +11,8 @@ Element Hierarchy Diagram:
 
 fave_bar_frame (frame)
 └─ fave_bar_flow (flow, horizontal)
-   ├─ fave_bar_history_container (frame, vertical)
    ├─ fave_bar_toggle_container (frame, vertical)
+   │  ├─ fave_bar_history_toggle (sprite-button)
    │  └─ fave_bar_visibility_toggle (sprite-button)
    └─ fave_bar_slots_flow (frame, horizontal, visible toggled at runtime)
       ├─ fave_bar_slot_1 (sprite-button)
@@ -50,7 +50,6 @@ local GuiValidation = require("core.utils.gui_validation")
 local GuiHelpers = require("core.utils.gui_helpers")
 local Cache = require("core.cache.cache")
 local Enum = require("prototypes.enums.enum")
-local FaveBarGuiLabelsManager = require("core.control.fave_bar_gui_labels_manager")
 local BasicHelpers = require("core.utils.basic_helpers")
 
 local fave_bar = {}
@@ -63,49 +62,32 @@ local last_build_tick = {}
 ---@diagnostic disable: assign-type-mismatch, param-type-mismatch
 function fave_bar.build_quickbar_style(player, parent)           -- Add a horizontal flow to contain the toggle and slots row
   local bar_flow = GuiBase.create_hflow(parent, Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW) 
-  
-  -- Add history container to the left of toggle container
-  local history_container = GuiBase.create_frame(bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_CONTAINER, "vertical",
-    "tf_fave_history_container")
 
+  local toggle_container = GuiBase.create_frame(bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER, "horizontal",
+    "tf_fave_toggle_container")
+  
   -- Add history toggle button inside the history container
   local history_toggle_button = GuiBase.create_sprite_button(
-    history_container, 
+    toggle_container, 
     Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_TOGGLE_BUTTON,
-    Enum.SpriteEnum.HISTORY,
+    Enum.SpriteEnum.SCROLL_HISTORY,
     {"tf-gui.teleport_history_tooltip"},
     "tf_fave_history_toggle_button"
   )
-
-
-
-
   
-  -- Add a thin dark background frame for the toggle button
-  local toggle_container = GuiBase.create_frame(bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER, "vertical",
-    "tf_fave_toggle_container")
-
-  -- Create a centering flow inside the toggle container
-  local toggle_flow = GuiBase.create_hflow(toggle_container, "fave_bar_toggle_flow", "tf_fave_toggle_flow")
-
   ---@type LocalisedString
   ---@diagnostic disable-next-line: assign-type-mismatch
   local toggle_tooltip = { "tf-gui.toggle_fave_bar" }
-  -- Determine which visibility icon to use based on slots visibility state
   local player_data = Cache.get_player_data(player)
   local slots_visible = player_data.fave_bar_slots_visible
   if slots_visible == nil then slots_visible = true end -- Additional safety default
+  
   local toggle_visibility_button = GuiElementBuilders.create_visibility_toggle_button(
-    toggle_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_BUTTON, slots_visible, toggle_tooltip)
-
-  -- history/position info
-  local teleport_history = GuiBase.create_label(toggle_container, "fave_bar_teleport_history_label", "",
-    "fave_bar_teleport_history_label_style")
-  local player_coords = GuiBase.create_label(toggle_container, "fave_bar_coords_label", "", "fave_bar_coords_label_style")
+    toggle_container, Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_BUTTON, slots_visible, toggle_tooltip)
 
   -- Add slots frame to the same flow for proper layout
   local slots_frame = GuiBase.create_frame(bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW, "horizontal", "tf_fave_slots_row")
-  return bar_flow, slots_frame, toggle_visibility_button, history_container, history_toggle_button
+  return bar_flow, slots_frame, toggle_visibility_button, toggle_container, history_toggle_button
 end
 
 local function get_fave_bar_gui_refs(player)
@@ -135,18 +117,24 @@ function fave_bar.build(player, force_show)
     end
   end
 
-
   local tick = game and game.tick or 0
   local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   local bar_frame = main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
-  if last_build_tick[player.index] == tick and bar_frame and bar_frame.valid then
+  if not force_show and last_build_tick[player.index] == tick and bar_frame and bar_frame.valid then
     return
   end
   last_build_tick[player.index] = tick
 
   local success, result = pcall(function()
     local player_settings = Cache.Settings.get_player_settings(player)
-    if not player_settings.favorites_on then
+    
+    -- Handle case where both favorites and teleport history are disabled
+    if not player_settings.favorites_on and not player_settings.enable_teleport_history then
+      -- Destroy the entire bar since nothing should be shown
+      local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
+      if main_flow and main_flow.valid then
+        GuiValidation.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
+      end
       return
     end
 
@@ -164,31 +152,62 @@ function fave_bar.build(player, force_show)
     -- Outer frame for the bar (matches quickbar background)
     local fave_bar_frame = GuiBase.create_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR, "horizontal",
       "tf_fave_bar_frame")
-    local _bar_flow, slots_frame, _toggle_button, _history_container, _history_toggle_button = fave_bar.build_quickbar_style(player, fave_bar_frame)
+    local _bar_flow, slots_frame, _toggle_button, _toggle_container, _history_toggle_button = fave_bar.build_quickbar_style(player, fave_bar_frame)
 
-    -- Only one toggle button: the one created in build_quickbar_style
-    local pfaves = Cache.get_player_favorites(player)
-
-    -- Set slots visibility based on player's saved preference
-    if slots_frame and slots_frame.valid then
-      local player_data = Cache.get_player_data(player)
-      local slots_visible = player_data.fave_bar_slots_visible
-      if slots_visible == nil then slots_visible = true end   -- Default for new players
-      slots_frame.visible = slots_visible
+    -- Handle visibility based on settings
+    local favorites_enabled = player_settings.favorites_on
+    local history_enabled = player_settings.enable_teleport_history
+    
+    -- Hide/show history toggle button based on settings
+    if _history_toggle_button and _history_toggle_button.valid then
+      _history_toggle_button.visible = history_enabled
     end
+    
+    -- Hide/show toggle container and slots based on favorites setting
+    if not favorites_enabled then
+      -- Find and hide only the visibility toggle button, not the entire container
+      local toggle_container = GuiValidation.find_child_by_name(_bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER)
+      if toggle_container and toggle_container.valid then
+        local visibility_toggle_button = GuiValidation.find_child_by_name(toggle_container, Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_BUTTON)
+        if visibility_toggle_button and visibility_toggle_button.valid then
+          visibility_toggle_button.visible = false
+        end
+      end
+      
+      -- Hide slots frame
+      if slots_frame and slots_frame.valid then
+        slots_frame.visible = false
+      end
+    else
+      -- Only build slots and set visibility if favorites are enabled
+      local pfaves = Cache.get_player_favorites(player)
+      
+      -- Show the visibility toggle button
+      local toggle_container = GuiValidation.find_child_by_name(_bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER)
+      if toggle_container and toggle_container.valid then
+        local visibility_toggle_button = GuiValidation.find_child_by_name(toggle_container, Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_BUTTON)
+        if visibility_toggle_button and visibility_toggle_button.valid then
+          visibility_toggle_button.visible = true
+        end
+      end
 
-    -- Build slot buttons
-    fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves)
+      -- Set slots visibility based on player's saved preference
+      if slots_frame and slots_frame.valid then
+        local player_data = Cache.get_player_data(player)
+        local slots_visible = player_data.fave_bar_slots_visible
+        if slots_visible == nil then slots_visible = true end   -- Default for new players
+        slots_frame.visible = slots_visible
+      end
 
-    -- Do NOT update toggle state in pdata here! Only the event handler should do that.
+      -- Build slot buttons
+      fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves)
 
-    -- Do NOT set toggle_container.visible here; toggle button always visible unless a future setting overrides it
-    if pfaves and #pfaves > Constants.settings.MAX_FAVORITE_SLOTS then
-      ErrorMessageHelpers.show_simple_error_label(fave_bar_frame, "tf-gui.fave_bar_overflow_error")
+      -- Do NOT update toggle state in pdata here! Only the event handler should do that.
+
+      if pfaves and #pfaves > Constants.settings.MAX_FAVORITE_SLOTS then
+        ErrorMessageHelpers.show_simple_error_label(fave_bar_frame, "tf-gui.fave_bar_overflow_error")
+      end
     end
-
-    -- Force update labels after favorites bar is built
-    FaveBarGuiLabelsManager.force_update_labels_for_player(player)
 
     return fave_bar_frame
   end)

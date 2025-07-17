@@ -37,13 +37,13 @@ script.on_event(defines.events.on_player_controller_changed, misc_event_handlers
 ]]
 
 local control_tag_editor = require("core.control.control_tag_editor")
+local teleport_history_modal = require("gui.teleport_history_modal.teleport_history_modal")
 local GuiValidation = require("core.utils.gui_validation")
 local GuiHelpers = require("core.utils.gui_helpers")
 local BasicHelpers = require("core.utils.basic_helpers")
 local Enum = require("prototypes.enums.enum")
 local Cache = require("core.cache.cache")
 local fave_bar = require("gui.favorites_bar.fave_bar")
-local FaveBarGuiLabelsManager = require("core.control.fave_bar_gui_labels_manager")
 
 ---@class MiscEventHandlers
 local MiscEventHandlers = {}
@@ -59,6 +59,14 @@ function MiscEventHandlers.on_gui_closed(event)
   
   -- Validate event structure
   if not event.element or not event.element.valid then return end
+  
+  -- Check if this is a teleport history modal being closed
+  if (gui_frame and gui_frame.name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL) or
+     event.element.name == "teleport_history_modal" then
+    -- Route to teleport history modal control for proper cleanup
+    teleport_history_modal.destroy(player)
+    return
+  end
   
   -- Check if this is a tag editor GUI being closed
   local gui_frame = GuiValidation.get_gui_frame_by_element(event.element)
@@ -134,13 +142,7 @@ function MiscEventHandlers.on_player_controller_changed(event)
   -- If switching to character or cutscene mode, rebuild the bar and initialize labels
   if player.controller_type == defines.controllers.character or player.controller_type == defines.controllers.cutscene then
     fave_bar.build(player)
-    
-    -- Initialize labels after a short delay to ensure GUI is ready
-    script.on_nth_tick(10, function()
-      FaveBarGuiLabelsManager.update_label_for_player("player_coords", player, script, "show-player-coords", "fave_bar_coords_label", FaveBarGuiLabelsManager.get_coords_caption)
-      FaveBarGuiLabelsManager.update_label_for_player("teleport_history", player, script, "show-teleport-history", "fave_bar_teleport_history_label", FaveBarGuiLabelsManager.get_history_caption)
-      script.on_nth_tick(10, nil) -- Unregister this one-time handler
-    end)
+    -- Note: Label management no longer needed - static slot labels handled in fave_bar.lua
   end
 end
 

@@ -1,6 +1,26 @@
 # TeleportFavorites Favorites Bar (Fave Bar)
 
-The favorites bar (fave_bar) is a persistent, player-specific GUI element that provides quick access to teleportation favorites. It is designed to be idiomatic for Factorio 2.0, robust in multiplayer, and visually consistent with vanilla UI paradigms. The bar is managed automatically by the GUI and mod settings; there is no dedicated hotkey or custom event for opening it. The bar should be built using the builder pattern for GUI construction and the command pattern for user/event handling.
+The favorites bar (fave_bar) is a persistent, player-specific GUI eleme# Favorites Bar GUI Hierarchy
+
+```
+fave_bar_frame (frame)
+└─ fave_bar_flow (flow, horizontal)
+    ├─ fave_bar_toggle_container (frame, vertical)
+    │   ├─ fave_bar_history_toggle (sprite-button, teleport history icon)
+    │   └─ fave_bar_visibility_toggle (sprite-button, eye/eyelash icon)
+    └─ fave_bar_slots_flow (frame, horizontal, visible toggled at runtime)
+        ├─ fave_bar_slot_1 (sprite-button)
+        ├─ fave_bar_slot_2 (sprite-button)
+        ├─ ...
+        └─ fave_bar_slot_10 (sprite-button, shows as '0')
+```
+- All element names use the `{gui_context}_{purpose}_{type}` convention.
+- The number of slot buttons depends on the user's settings (`MAX_FAVORITE_SLOTS`).
+- The bar is always parented to the player's top GUI and strives to be the rightmost item.
+- The history toggle button opens the teleport history modal (visibility controlled by `enable_teleport_history` setting).
+- The visibility toggle button controls the visibility of the slot buttons container.
+- All GUI state and slot order is persisted per player.
+- Drag-and-drop, lock, and click actions are handled as described in the rest of this document.ick access to teleportation favorites. It is designed to be idiomatic for Factorio 2.0, robust in multiplayer, and visually consistent with vanilla UI paradigms. The bar is managed automatically by the GUI and mod settings; there is no dedicated hotkey or custom event for opening it. The bar should be built using the builder pattern for GUI construction and the command pattern for user/event handling.
 
 ## Core Features and Interactions
 - The fave_bar exists in the player's top GUI, ideally as the rightmost item.

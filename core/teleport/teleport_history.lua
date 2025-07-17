@@ -165,4 +165,23 @@ function TeleportHistory.print_history(player)
     PlayerHelpers.safe_player_print(player, "================================")
 end
 
+-- Register the remote interface for teleport history tracking
+function TeleportHistory.register_remote_interface()
+    if not remote.interfaces["TeleportFavorites_History"] then
+        remote.add_interface("TeleportFavorites_History", {
+            add_to_history = function(player_index)
+                local player = game.players[player_index]
+                if not player or not player.valid then return end
+                
+                local gps = {
+                    x = math.floor(player.position.x),
+                    y = math.floor(player.position.y),
+                    surface = player.surface.index
+                }
+                TeleportHistory.add_gps(player, gps)
+            end
+        })
+    end
+end
+
 return TeleportHistory

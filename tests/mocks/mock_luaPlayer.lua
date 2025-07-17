@@ -15,9 +15,9 @@ local function mock_luaPlayer(index, name, surface_index)
             get_tile = function() return { name = "grass-1" } end
         },
         mod_settings = {
-            ["favorites-on"] = { value = true },
+            ["favorites_on"] = { value = true },
             ["show-player-coords"] = { value = true },
-            ["show-teleport-history"] = { value = true },
+            ["enable_teleport_history"] = { value = true },
             ["chart-tag-click-radius"] = { value = 10 }
         },
         settings = {},

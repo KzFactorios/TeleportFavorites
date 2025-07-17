@@ -31,9 +31,9 @@ function GameSetupFactory.create_mock_player(player_index, name, surface_index, 
     valid = true,
     surface = surface,
     mod_settings = {
-      ["favorites-on"] = { value = true },
+      ["favorites_on"] = { value = true },
       ["show-player-coords"] = { value = true },
-      ["show-teleport-history"] = { value = true },
+      ["enable_teleport_history"] = { value = true },
       ["chart-tag-click-radius"] = { value = 10 }
     },
     admin = false,

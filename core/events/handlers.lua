@@ -59,7 +59,6 @@ local GuiValidation = require("core.utils.gui_validation")
 local GuiHelpers = require("core.utils.gui_helpers")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local Enum = require("prototypes.enums.enum")
-local FaveBarGuiLabelsManager = require("core.control.fave_bar_gui_labels_manager")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local EventHandlerHelpers = require("core.utils.event_handler_helpers")
 local ChartTagHelpers = require("core.events.chart_tag_helpers")
@@ -91,28 +90,19 @@ function handlers.on_init()
       Cache.reset_transient_player_states(player)
     end
 
+    -- TODO use this area to reset old cache keys
+    Cache["players"][player.index].data_viewer_settings = nil
+
     register_gui_observers(player)
     fave_bar.build(player, true) -- Force show during initialization
   end
 
-  -- Register the label managers AFTER GUI is built
-  FaveBarGuiLabelsManager.register_all(script)
-
-  -- Initialize labels for all existing players AFTER registration and GUI building
-  -- Use a delay to ensure GUI is fully built
-  script.on_nth_tick(30, function() -- Short delay to ensure GUIs are ready
-    FaveBarGuiLabelsManager.initialize_all_players(script)
-    script.on_nth_tick(30, nil)     -- Unregister this one-time handler
-  end)
+  -- Note: Label management no longer needed - static slot labels handled in fave_bar.lua
 end
 
 function handlers.on_load()
   -- Re-initialize runtime-only structures if needed
-  -- Re-register label managers for existing game AFTER ensuring GUIs exist
-  FaveBarGuiLabelsManager.register_all(script)
-
-  -- Initialize labels for all connected players in loaded games
-  FaveBarGuiLabelsManager.initialize_all_players(script)
+  -- Note: Label management no longer needed - static slot labels handled in fave_bar.lua
 end
 
 function handlers.on_player_created(event)
@@ -120,22 +110,14 @@ function handlers.on_player_created(event)
     Cache.reset_transient_player_states(player)
     fave_bar.build(player, true) -- Force show for new players
     register_gui_observers(player)
-    -- Register the player for automatic label updates AND force immediate update
-    FaveBarGuiLabelsManager.update_label_for_player("player_coords", player, script, "show-player-coords",
-      "fave_bar_coords_label", FaveBarGuiLabelsManager.get_coords_caption)
-    FaveBarGuiLabelsManager.update_label_for_player("teleport_history", player, script, "show-teleport-history",
-      "fave_bar_teleport_history_label", FaveBarGuiLabelsManager.get_history_caption)
+    -- Note: Label management no longer needed - static slot labels handled in fave_bar.lua
   end)
 end
 
 function handlers.on_player_joined_game(event)
   with_valid_player(event.player_index, function(player)
     fave_bar.build(player, true) -- Force show for joining players
-    -- Register the player for automatic label updates AND force immediate update
-    FaveBarGuiLabelsManager.update_label_for_player("player_coords", player, script, "show-player-coords",
-      "fave_bar_coords_label", FaveBarGuiLabelsManager.get_coords_caption)
-    FaveBarGuiLabelsManager.update_label_for_player("teleport_history", player, script, "show-teleport-history",
-      "fave_bar_teleport_history_label", FaveBarGuiLabelsManager.get_history_caption)
+    -- Note: Label management no longer needed - static slot labels handled in fave_bar.lua
   end)
 end
 

@@ -211,7 +211,7 @@ MockCache.Settings = {
     if not player or not player.valid then return nil end
     return {
       show_player_coords = true,
-      show_teleport_history = true,
+      enable_teleport_history = true,
       favorites_enabled = true,
       hide_favorites_bar = false
     }

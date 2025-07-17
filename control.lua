@@ -25,6 +25,7 @@ local handlers = require("core.events.handlers")
 local Logger = require("core.utils.enhanced_error_handler")
 local DebugCommands = require("core.commands.debug_commands")
 local DeleteFavoriteCommand = require("core.commands.delete_favorite_command")
+local TeleportHistory = require("core.teleport.teleport_history")
 
 
 local gui_observer = nil
@@ -52,6 +53,9 @@ local function custom_on_init()
 
   -- Register all commands
   register_commands()
+  
+  -- Register teleport history remote interface
+  TeleportHistory.register_remote_interface()
 
   -- Set debug mode based on development indicators
   if storage and storage._tf_debug_mode then
@@ -67,6 +71,9 @@ end
 local function custom_on_load()
   -- Register all commands
   register_commands()
+  
+  -- Register teleport history remote interface
+  TeleportHistory.register_remote_interface()
   
   -- Call the original handlers.on_load
   handlers.on_load()

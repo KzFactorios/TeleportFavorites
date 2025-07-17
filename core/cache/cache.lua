@@ -24,7 +24,6 @@ storage = {
       render_mode = string,         -- Player's render mode
       tag_editor_data = table,      -- Tag editor UI state (see Cache.create_tag_editor_data)
       fave_bar_slots_visible = bool,-- Whether the favorites bar is visible
-      show_player_coords = bool,    -- Show player coordinates in UI
       drag_favorite = table,        -- Drag state for favorites bar
       modal_dialog = table,         -- Modal dialog state
       surfaces = {
@@ -185,14 +184,6 @@ local function init_player_data(player)
   player_data.fave_bar_slots_visible = player_data.fave_bar_slots_visible
   if player_data.fave_bar_slots_visible == nil then
     player_data.fave_bar_slots_visible = true -- Default: slots are visible, show EYELASH icon
-  end
-  
-  player_data.show_player_coords = player_data.show_player_coords
-  if player_data.show_player_coords == nil then
-    -- Default to the player's setting or true if setting doesn't exist
-    ---@diagnostic disable-next-line: redundant-parameter
-    local player_settings = settings.get_player_settings(player)
-    player_data.show_player_coords = player_settings and player_settings["show-player-coords"] and player_settings["show-player-coords"].value or true
   end
 
   player_data.drag_favorite = player_data.drag_favorite or {

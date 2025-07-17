@@ -20,7 +20,6 @@ local Constants = {
     FAVE_BAR_SLOT_PREFIX = "fave_bar_slot_", -- Prefix for favorite bar slot element names
     
     -- Label update intervals (in ticks)
-    DEFAULT_COORDS_UPDATE_INTERVAL = 15,  -- Default tick interval for player coordinates (0.25 seconds)
     DEFAULT_HISTORY_UPDATE_INTERVAL = 30, -- Default tick interval for teleport history (0.5 seconds)
     MIN_UPDATE_INTERVAL = 5,             -- Minimum allowed update interval (0.083 seconds)
     MAX_UPDATE_INTERVAL = 59,            -- Maximum allowed update interval (0.983 seconds)
@@ -31,6 +30,7 @@ local Constants = {
   
     -- Feature toggles
     FAVORITES_ON = "favorites_on",   -- Setting name for enabling/disabling favorites feature
+    SHOW_TELEPORT_HISTORY = "enable_teleport_history", -- Setting name for enabling/disabling teleport history
       -- Physics
     BOUNDING_BOX_TOLERANCE = 4,      -- Tolerance in tiles for bounding box calculations    
 

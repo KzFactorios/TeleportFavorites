@@ -124,16 +124,6 @@ function PlayerHelpers.are_favorites_enabled(player)
     return player_settings and player_settings.favorites_on or true
 end
 
---- Check if player coordinates should be shown for a player
----@param player LuaPlayer|nil The player to check
----@return boolean enabled Whether coordinates should be shown
-function PlayerHelpers.should_show_coordinates(player)
-    if not BasicHelpers.is_valid_player(player) then return true end
-    
-    local player_settings = Cache.Settings.get_player_settings(player)
-    return player_settings and player_settings.show_player_coords or true
-end
-
 --- Check if teleport history should be shown for a player
 ---@param player LuaPlayer|nil The player to check
 ---@return boolean enabled Whether history should be shown
@@ -141,7 +131,7 @@ function PlayerHelpers.should_show_history(player)
     if not BasicHelpers.is_valid_player(player) then return true end
     
     local player_settings = Cache.Settings.get_player_settings(player)
-    return player_settings and player_settings.show_teleport_history or true
+    return player_settings and player_settings.enable_teleport_history or true
 end
 
 -- ===========================

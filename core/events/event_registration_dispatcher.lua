@@ -17,12 +17,12 @@ local gui_event_dispatcher = require("core.events.gui_event_dispatcher")
 local custom_input_dispatcher = require("core.events.custom_input_dispatcher")
 local misc_event_handlers = require("core.events.misc_event_handlers")
 local handlers = require("core.events.handlers")
-local FaveBarGuiLabelsManager = require("core.control.fave_bar_gui_labels_manager")
 local EventHandlerHelpers = require("core.utils.event_handler_helpers")
 local CursorUtils = require("core.utils.cursor_utils")
 local GuiHelpers = require("core.utils.gui_helpers")
 local GuiValidation = require("core.utils.gui_validation")
 local ModalInputBlocker = require("core.events.modal_input_blocker")
+local TeleportHistoryModal = require("gui.teleport_history_modal.teleport_history_modal")
 
 
 ---@class EventRegistrationDispatcher
@@ -214,19 +214,51 @@ function EventRegistrationDispatcher.register_core_events(script)
     },
     [defines.events.on_runtime_mod_setting_changed] = {
       handler = function(event) -- Handle changes to the favorites on/off setting
-        if event.setting == "favorites-on" then
+        ErrorHandler.debug_log("[SETTINGS] on_runtime_mod_setting_changed fired for setting: " .. tostring(event.setting))
+        ErrorHandler.debug_log("[SETTINGS] Event player_index: " .. tostring(event.player_index))
+        ErrorHandler.debug_log("[SETTINGS] Event setting_type: " .. tostring(event.setting_type))
+        
+        if event.setting == "favorites_on" then
+          ErrorHandler.debug_log("[SETTINGS] Processing favorites_on change")
           for _, player in pairs(game.connected_players) do
+            -- Invalidate cache first to ensure we get fresh settings
+            Cache.Settings.invalidate_player_cache(player)
             local player_settings = Cache.Settings.get_player_settings(player)
-            if player_settings.favorites_on then
-              fave_bar.build(player, true) -- Force show when enabling setting
-            else
-              fave_bar.destroy(player)
-            end
+            ErrorHandler.debug_log("[SETTINGS] Player " .. player.name .. " favorites_on: " .. tostring(player_settings.favorites_on))
+            
+            -- Always rebuild the bar to update visibility - don't destroy it completely
+            -- The build function handles showing/hiding specific elements based on settings
+            fave_bar.build(player, true) -- Force rebuild to update element visibility
+            ErrorHandler.debug_log("[SETTINGS] Rebuilt favorites bar for player " .. player.name .. " (favorites_on: " .. tostring(player_settings.favorites_on) .. ")")
           end
+          ErrorHandler.debug_log("[SETTINGS] favorites_on processing complete")
+          return
+        end
+        
+        if event.setting == "enable_teleport_history" then
+          ErrorHandler.debug_log("[SETTINGS] Processing enable_teleport_history change")
+          for _, player in pairs(game.connected_players) do
+            -- Invalidate cache first to ensure we get fresh settings
+            Cache.Settings.invalidate_player_cache(player)
+            local player_settings = Cache.Settings.get_player_settings(player)
+            ErrorHandler.debug_log("[SETTINGS] Player " .. player.name .. " enable_teleport_history: " .. tostring(player_settings.enable_teleport_history))
+            
+            -- If teleport history is being disabled, close any open modal
+            if not player_settings.enable_teleport_history then
+              TeleportHistoryModal.destroy(player)
+              ErrorHandler.debug_log("[SETTINGS] Closed teleport history modal for player " .. player.name)
+            end
+            
+            -- Rebuild the favorites bar to reflect the new teleport history setting
+            fave_bar.build(player, true)
+            ErrorHandler.debug_log("[SETTINGS] Rebuilt favorites bar for teleport history change for player " .. player.name)
+          end
+          ErrorHandler.debug_log("[SETTINGS] enable_teleport_history processing complete")
           return
         end
 
         -- Destination message setting has been removed - messages always shown
+        ErrorHandler.debug_log("[SETTINGS] Unknown setting changed: " .. tostring(event.setting))
       end,
       name = "on_runtime_mod_setting_changed"
     },
@@ -551,9 +583,7 @@ function EventRegistrationDispatcher.register_all_events(script)
   results.modal_input_blocker = ModalInputBlocker.register_handlers(script)
   
 
-  -- Register all favorites bar GUI label updaters and controls
-  FaveBarGuiLabelsManager.register_all(script)
-  results.fave_bar_gui_labels = true
+  -- No longer using favorites bar GUI label manager - static labels handled directly in fave_bar.lua
 
   -- Check overall success
   for category, success in pairs(results) do

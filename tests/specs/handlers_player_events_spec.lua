@@ -23,12 +23,15 @@ local Cache = {
   }
 }
 
+-- Mock the removed FaveBarGuiLabelsManager with no-op functions
 local FaveBarGuiLabelsManager = {
   register_all = function() end,
   initialize_all_players = function() end,
   update_label_for_player = function() end,
-  get_coords_caption = function() return {"", "100, 200"} end,
-  get_history_caption = function() return {"", "History"} end
+  force_update_labels_for_player = function() end,
+  register_history_controls = function() end,
+  get_coords_caption = function() return "" end,
+  get_history_caption = function() return "" end,
 }
 
 local fave_bar = {

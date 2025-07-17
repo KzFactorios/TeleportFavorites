@@ -181,6 +181,13 @@ cd tests; Get-ChildItem "tests\specs\*_spec.lua"
 (.\.test.ps1) | Select-String "Overall Test Summary" -A 5
 # ERROR: "The input object cannot be bound to any parameters for the command either because the command does not take pipeline input or the input and its properties do not match any of the parameters that take pipeline input"
 # This fails because PowerShell script output creates objects, not strings, and Select-String -A parameter cannot bind to these objects
+
+# BROKEN: Any Select-String with context parameters (-A, -B, -C) on script output
+.\.test.ps1 | Select-String -Pattern "Total tests.*:" -A 2
+.\.test.ps1 | Select-String -Pattern "Failed|Failures" -A 10  
+.\.test.ps1 | Select-String -Pattern "Failed|Total tests passed|Total tests failed" -Context 1
+# ERROR: "The input object cannot be bound to any parameters for the command either because the command does not take pipeline input or the input and its properties do not match any of the parameters that take pipeline input"
+# All of these fail because PowerShell script output produces objects, not strings, causing parameter binding failures
 ```
 
 **✅ CORRECT POWERSHELL PATTERNS:**
@@ -197,6 +204,13 @@ Get-ChildItem "specs\*_spec.lua" | Where-Object { (Get-Content $_.FullName -Raw 
 .\.test.ps1                                    # Run script directly and read full output
 .\.test.ps1 > output.txt; Get-Content output.txt -Tail 10  # Save output then read specific lines
 .\.test.ps1 2>&1 | Tee-Object -FilePath "test_results.txt"  # Capture output to file while displaying
+
+# CORRECT: For test result analysis, run tests then check specific files
+.\.test.ps1; Get-Content "tests\test_output.txt" | Select-String "Overall Test Summary" 
+.\.test.ps1; Get-Content "tests\results.txt" | Where-Object { $_ -match "Failed|Total tests" }
+
+# CORRECT: Use Out-String to convert objects to strings before Select-String (but avoid -A)
+.\.test.ps1 | Out-String | Select-String -Pattern "Failed"  # Without context parameters
 
 # For Lua syntax checking, use proper lua execution
 lua -e "loadfile('tests\\specs\\drag_drop_utils_spec.lua')"  # Load and check syntax without execution
