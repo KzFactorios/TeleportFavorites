@@ -2,7 +2,8 @@
 Player Interaction Helpers for TeleportFavorites
 ===============================================
 Module:function PlayerHelpers.favorites_enabled_for_player(player)
-    if not BasicHelpers.is_valid_player(player) then return false end
+    local valid = require("core.utils.validation_utils").validate_player(player)
+    if not valid then return false end
     ---@cast player LuaPlayer
     
     local player_settings = Settings:getPlayerSettings(player)
@@ -29,7 +30,8 @@ local PlayerHelpers = {}
 function PlayerHelpers.get_event_player(event)
     if not event or not event.player_index then return nil end
     local player = game.players[event.player_index]
-    return BasicHelpers.is_valid_player(player) and player or nil
+    local valid = require("core.utils.validation_utils").validate_player(player)
+    return valid and player or nil
 end
 
 --- Safely get a player from a command
@@ -38,7 +40,8 @@ end
 function PlayerHelpers.get_command_player(command)
     if not command or not command.player_index then return nil end
     local player = game.players[command.player_index]
-    return BasicHelpers.is_valid_player(player) and player or nil
+    local valid = require("core.utils.validation_utils").validate_player(player)
+    return valid and player or nil
 end
 
 -- ===========================
@@ -52,7 +55,8 @@ end
 function PlayerHelpers.safe_player_print(player, message, log_fallback)
     if log_fallback == nil then log_fallback = true end
     
-    if BasicHelpers.is_valid_player(player) then
+    local valid = require("core.utils.validation_utils").validate_player(player)
+    if valid then
         ---@cast player LuaPlayer
         local success = pcall(function() player.print(message) end)
         if not success and log_fallback then
@@ -78,7 +82,8 @@ end
 ---@param message string The debug message
 ---@param context table? Optional context data
 function PlayerHelpers.debug_print_to_player(player, message, context)
-    if not BasicHelpers.is_valid_player(player) then return end
+    local valid = require("core.utils.validation_utils").validate_player(player)
+    if not valid then return end
     
     -- Log debug information
     ErrorHandler.debug_log("[PLAYER DEBUG] " .. message, context)
@@ -96,7 +101,8 @@ end
 ---@param error_key string Error localization key or raw message
 ---@param context table? Optional context for logging
 function PlayerHelpers.error_message_to_player(player, error_key, context)
-    if not BasicHelpers.is_valid_player(player) then return end
+    local valid = require("core.utils.validation_utils").validate_player(player)
+    if not valid then return end
     
     -- Log the error
     ErrorHandler.debug_log("Sending error message to player", {
@@ -118,7 +124,8 @@ end
 ---@param player LuaPlayer|nil The player to check
 ---@return boolean enabled Whether favorites are enabled
 function PlayerHelpers.are_favorites_enabled(player)
-    if not BasicHelpers.is_valid_player(player) then return true end
+    local valid = require("core.utils.validation_utils").validate_player(player)
+    if not valid then return true end
     
     local player_settings = Cache.Settings.get_player_settings(player)
     return player_settings and player_settings.favorites_on or true
@@ -128,7 +135,8 @@ end
 ---@param player LuaPlayer|nil The player to check
 ---@return boolean enabled Whether history should be shown
 function PlayerHelpers.should_show_history(player)
-    if not BasicHelpers.is_valid_player(player) then return true end
+    local valid = require("core.utils.validation_utils").validate_player(player)
+    if not valid then return true end
     
     local player_settings = Cache.Settings.get_player_settings(player)
     return player_settings and player_settings.enable_teleport_history or true
@@ -142,7 +150,8 @@ end
 ---@param player LuaPlayer|nil The player to check
 ---@return boolean should_hide True if favorites bar should be hidden
 function PlayerHelpers.should_hide_favorites_bar(player)
-    if not BasicHelpers.is_valid_player(player) then return true end
+    local valid = require("core.utils.validation_utils").validate_player(player)
+    if not valid then return true end
     ---@cast player LuaPlayer
     
     -- Check space platform (use existing logic)
@@ -164,7 +173,8 @@ end
 ---@return boolean valid True if player can interact with mod features
 ---@return string? reason Reason why player is not valid (if applicable)
 function PlayerHelpers.is_player_interaction_ready(player)
-    if not BasicHelpers.is_valid_player(player) then
+    local valid = require("core.utils.validation_utils").validate_player(player)
+    if not valid then
         return false, "Invalid player"
     end
     ---@cast player LuaPlayer
@@ -195,7 +205,8 @@ function PlayerHelpers.for_all_players(func, include_restricted)
     if not game or not game.connected_players then return end
     
     for _, player in pairs(game.connected_players) do
-        if BasicHelpers.is_valid_player(player) then
+    local valid = require("core.utils.validation_utils").validate_player(player)
+    if valid then
             if include_restricted or not PlayerHelpers.should_hide_favorites_bar(player) then
                 pcall(func, player)
             end

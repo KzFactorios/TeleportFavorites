@@ -51,6 +51,7 @@ local GuiHelpers = require("core.utils.gui_helpers")
 local Cache = require("core.cache.cache")
 local Enum = require("prototypes.enums.enum")
 local BasicHelpers = require("core.utils.basic_helpers")
+local ValidationUtils = require("core.utils.validation_utils")
 
 local fave_bar = {}
 
@@ -99,7 +100,7 @@ local function get_fave_bar_gui_refs(player)
 end
 
 function fave_bar.build(player, force_show)
-  if not BasicHelpers.is_valid_player(player) then return end
+  if not ValidationUtils.validate_player(player) then return end
 
   -- Hide favorites bar when editing space platforms
   -- Allow force_show to override all checks for initialization
@@ -317,7 +318,7 @@ end
 -- Update only the slots row without rebuilding the entire bar
 -- parent: the bar_flow container (parent of fave_bar_slots_flow)
 function fave_bar.update_slot_row(player, parent_flow)
-  if not BasicHelpers.is_valid_player(player) then return end
+  if not ValidationUtils.validate_player(player) then return end
   if not parent_flow or not parent_flow.valid then return end
 
   local slots_frame = GuiValidation.find_child_by_name(parent_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW)
@@ -341,7 +342,7 @@ end
 --- Destroy/hide the favorites bar for a player
 ---@param player LuaPlayer
 function fave_bar.destroy(player)
-  if not BasicHelpers.is_valid_player(player) then return end
+  if not ValidationUtils.validate_player(player) then return end
 
   local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   if not main_flow or not main_flow.valid then return end
@@ -353,7 +354,7 @@ end
 ---@param player LuaPlayer
 ---@param slot_index number Slot index (1-based)
 function fave_bar.update_single_slot(player, slot_index)
-  if not BasicHelpers.is_valid_player(player) then return end
+  if not ValidationUtils.validate_player(player) then return end
   local _, _, _, slots_frame = get_fave_bar_gui_refs(player)
   if not slots_frame then return end
   local slot_button = GuiValidation.find_child_by_name(slots_frame, "fave_bar_slot_" .. slot_index)
@@ -416,7 +417,7 @@ end
 ---@param player LuaPlayer
 ---@param slots_visible boolean Whether slots should be visible
 function fave_bar.update_toggle_state(player, slots_visible)
-  if not BasicHelpers.is_valid_player(player) then return end
+  if not ValidationUtils.validate_player(player) then return end
 
   -- Ensure slots_visible is a proper boolean
   if slots_visible == nil then slots_visible = true end
@@ -447,7 +448,7 @@ end
 ---@param player LuaPlayer
 ---@return boolean exists
 function fave_bar.exists(player)
-  if not BasicHelpers.is_valid_player(player) then return false end
+  if not ValidationUtils.validate_player(player) then return false end
 
   local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   local bar_frame = main_flow and GuiValidation.find_child_by_name(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)

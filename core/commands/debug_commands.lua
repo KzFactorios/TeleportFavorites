@@ -15,6 +15,7 @@ Commands:
 - /tf_debug_development - Enable development mode (verbose logging)
 ]]
 local basic_helpers = require("core.utils.basic_helpers")
+local ValidationUtils = require("core.utils.validation_utils")
 local Cache = require("core.cache.cache")
 
 local DebugCommands = {}
@@ -347,9 +348,10 @@ function DebugCommands.on_debug_level_button_click(event)
   local PlayerHelpers = DebugCommands._deps.PlayerHelpers
   local BasicHelpers = DebugCommands._deps.BasicHelpers
   local element = event.element
-  if not BasicHelpers.is_valid_element(element) then return end
+  local valid = require("core.utils.validation_utils").validate_gui_element(element)
+  if not valid then return end
   local player = game.players[event.player_index]
-  if not BasicHelpers.is_valid_player(player) then return end
+  if not ValidationUtils.validate_player(player) then return end
   local level_str = string.match(element.name, "tf_debug_set_level_(%d+)") -- Parse level from button name
   if not level_str then return end
   local level = tonumber(level_str)

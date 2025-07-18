@@ -1,6 +1,9 @@
 -- tests/handlers_chart_tag_removed_spec.lua
 -- Tests for the on_chart_tag_removed handler function
 
+-- Mock game environment
+local mock_players = {}
+
 -- Shared Factorio test environment (globals, settings, etc.)
 require("mocks.factorio_test_env")
 
@@ -25,10 +28,11 @@ package.loaded["core.events.tag_editor_event_helpers"] = {}
 package.loaded["core.cache.settings_cache"] = {}
 package.loaded["core.favorite.player_favorites"] = {
   new = function(player)
+    local p = player or mock_players[1]
     return {
-      player = player or mock_players[1],
-      player_index = (player and player.index) or 1,
-      surface_index = (player and player.surface and player.surface.index) or 1,
+      player = p,
+      player_index = (p and p.index) or 1,
+      surface_index = (p and p.surface and p.surface.index) or 1,
       favorites = {},
       get_favorite_by_gps = function() return nil end
     }
@@ -38,15 +42,6 @@ package.loaded["core.utils.gui_validation"] = {}
 package.loaded["core.utils.gui_helpers"] = {}
 package.loaded["gui.favorites_bar.fave_bar"] = {}
 package.loaded["prototypes.enums.enum"] = {}
-package.loaded["core.control.fave_bar_gui_labels_manager"] = {
-  register_all = function() end,
-  initialize_all_players = function() end,
-  update_label_for_player = function() end,
-  force_update_labels_for_player = function() end,
-  register_history_controls = function() end,
-  get_coords_caption = function() return "" end,
-  get_history_caption = function() return "" end,
-}
 package.loaded["core.events.chart_tag_helpers"] = {}
 
 -- Mock game environment

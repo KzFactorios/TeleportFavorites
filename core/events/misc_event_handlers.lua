@@ -41,6 +41,7 @@ local teleport_history_modal = require("gui.teleport_history_modal.teleport_hist
 local GuiValidation = require("core.utils.gui_validation")
 local GuiHelpers = require("core.utils.gui_helpers")
 local BasicHelpers = require("core.utils.basic_helpers")
+local ValidationUtils = require("core.utils.validation_utils")
 local Enum = require("prototypes.enums.enum")
 local Cache = require("core.cache.cache")
 local fave_bar = require("gui.favorites_bar.fave_bar")
@@ -98,7 +99,7 @@ end
 ---@param player LuaPlayer Player to get favorites bar frame for
 ---@return LuaGuiElement? fave_bar_frame The favorites bar frame or nil if not found
 local function _get_fave_bar_frame(player)
-  if not BasicHelpers.is_valid_player(player) then return nil end
+  if not ValidationUtils.validate_player(player) then return nil end
   local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   if not main_flow or not main_flow.valid then return nil end
   return GuiValidation.find_child_by_name(main_flow, "fave_bar_frame")
@@ -107,7 +108,7 @@ end
 --- Function to show/hide the entire favorites bar based on controller type
 ---@param player LuaPlayer Player whose favorites bar visibility should be updated
 function MiscEventHandlers.update_fave_bar_visibility(player)
-  if not BasicHelpers.is_valid_player(player) then return end
+  if not ValidationUtils.validate_player(player) then return end
   
   local fave_bar_frame = _get_fave_bar_frame(player)
   if not fave_bar_frame or not fave_bar_frame.valid then return end
