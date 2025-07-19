@@ -1,18 +1,18 @@
 ---@diagnostic disable: undefined-global
----@
+
 -- core/events/chart_tag_helpers.lua
 -- TeleportFavorites Factorio Mod
 -- Consolidated helper functions for chart tag event handling.
 -- Specialized functions: modification validation, removal protection, GPS extraction, tag/favorites updating, position notifications, permission checking.
 -- Consolidated from chart_tag_modification_helpers.lua and chart_tag_removal_helpers.lua for better organization and reduced file count.
 
-local Cache = require("core.cache.cache")
-local GPSUtils = require("core.utils.gps_utils")
-local ErrorHandler = require("core.utils.error_handler")
-local PlayerHelpers = require("core.utils.player_helpers")
-local PlayerFavorites = require("core.favorite.player_favorites")
-local LocaleUtils = require("core.utils.locale_utils")
 local AdminUtils = require("core.utils.admin_utils")
+local Cache = require("core.cache.cache")
+local ErrorHandler = require("core.utils.error_handler")
+local GPSUtils = require("core.utils.gps_utils")
+local LocaleUtils = require("core.utils.locale_utils")
+local PlayerFavorites = require("core.favorite.player_favorites")
+local PlayerHelpers = require("core.utils.player_helpers")
 local Tag = require("core.tag.tag")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 
@@ -20,29 +20,7 @@ local fave_bar = require("gui.favorites_bar.fave_bar")
 -- LOCAL FORMATTING UTILITIES
 -- ========================================
 
----Format a position change notification for the player
----@param player LuaPlayer The player object
----@param chart_tag table The chart tag that was moved
----@param old_position MapPosition The old position
----@param new_position MapPosition The new position  
----@return string formatted notification string
-local function format_position_change_notification(player, chart_tag, old_position, new_position)
-  if not player or not chart_tag or not old_position or not new_position then
-    return ""
-  end
-
-  local surface_index = tonumber(player.surface.index) or 1
-  local old_gps = GPSUtils.gps_from_map_position(old_position, surface_index)
-  local new_gps = GPSUtils.gps_from_map_position(new_position, surface_index)
-
-  return LocaleUtils.get_gui_string(player, "tag_moved", {
-    text = chart_tag.text or "",
-    old_gps = old_gps,
-    new_gps = new_gps
-  })
-end
--- ...existing code...
-
+-- Notification formatting moved to LocaleUtils.format_tag_position_change_notification
 
 ---@class ChartTagHelpers
 local ChartTagHelpers = {}
@@ -131,106 +109,37 @@ end
 function ChartTagHelpers.update_tag_and_cleanup(old_gps, new_gps, event, player)
   if not old_gps or not new_gps then return end
 
-  -- Validate player for Cache.get_tag_by_gps call
   if not player or not player.valid then
     ErrorHandler.debug_log("Cannot update tag: invalid player", { old_gps = old_gps, new_gps = new_gps })
     return
   end
 
-  -- For chart tag modifications, the event.tag IS the chart tag that was modified
-  -- We don't need to look up different chart tags - the same tag just moved to a new position
   local modified_chart_tag = event.tag
 
-  -- Update cache by invalidating the surface to refresh chart tag lookups
   if modified_chart_tag and modified_chart_tag.valid then
     local surface_index = modified_chart_tag.surface and modified_chart_tag.surface.index or player.surface.index
     Cache.Lookups.invalidate_surface_chart_tags(surface_index)
   end
 
-  -- Get or create tag object
-  ---@type table|nil
-  local old_tag = nil
-  if player and old_gps then
-    old_tag = Cache.get_tag_by_gps(player, old_gps)
-  end
-  if old_tag == nil and new_gps then
-    old_tag = Tag.new(new_gps, {})
-  end
-
-  -- Only update if old_tag is a table
-  if type(old_tag) == "table" then
-    old_tag.gps = new_gps or ""
-    old_tag.chart_tag = modified_chart_tag or nil
-  end
-
-  ErrorHandler.debug_log("Updated tag object GPS", {
-    old_gps = old_gps or "",
-    new_gps = new_gps or "",
-    tag_gps_after_update = (type(old_tag) == "table" and old_tag.gps) or "",
-    chart_tag_position = modified_chart_tag and modified_chart_tag.position or "nil"
-  })
-
-  -- CRITICAL: Update the surface mapping table from old GPS to new GPS
-  local surface_index = old_gps and GPSUtils.get_surface_index_from_gps(old_gps) or nil
-  if surface_index and old_gps and new_gps and old_gps ~= new_gps then
-    local uint_surface_index = tonumber(surface_index) --[[@as uint]]
-    local surface_tags = Cache.get_surface_tags(uint_surface_index)
-    if type(surface_tags) == "table" and surface_tags[old_gps] then
-      -- Move the tag data from old GPS key to new GPS key
-      surface_tags[new_gps] = surface_tags[old_gps]
-      surface_tags[old_gps] = nil
-      ErrorHandler.debug_log("Moved tag data in surface mapping", {
-        surface_index = surface_index,
-        old_gps = old_gps,
-        new_gps = new_gps
-      })
-    end
-    -- CRITICAL: Ensure the updated tag is also stored at the new GPS location
-    if type(surface_tags) == "table" and new_gps and type(old_tag) == "table" then
-      surface_tags[new_gps] = old_tag
-    end
-    ErrorHandler.debug_log("Ensured updated tag is stored at new GPS location", {
-      surface_index = surface_index,
-      new_gps = new_gps,
-      tag_gps = (type(old_tag) == "table" and old_tag.gps) or "",
-      tag_has_chart_tag = (type(old_tag) == "table" and old_tag.chart_tag ~= nil) or false
-    })
-    -- CRITICAL: Update the lookup table chart_tags_mapped_by_gps
-    -- Access the runtime lookup cache directly
-    local CACHE_KEY = "Lookups"
-    local runtime_cache = _G[CACHE_KEY]
-    if runtime_cache and runtime_cache.surfaces and runtime_cache.surfaces[uint_surface_index] then
-      local surface_cache = runtime_cache.surfaces[uint_surface_index]
-      if surface_cache.chart_tags_mapped_by_gps then
-        -- Remove old GPS mapping
-        surface_cache.chart_tags_mapped_by_gps[old_gps] = nil
-        -- Add new GPS mapping
-        surface_cache.chart_tags_mapped_by_gps[new_gps] = modified_chart_tag
-      end
-    else
-      -- Force rebuild of lookup cache if it doesn't exist
-      Cache.Lookups.invalidate_surface_chart_tags(uint_surface_index)
-    end
-  end
+  -- Use new shared helper for tag mutation and surface mapping
+  Tag.update_gps_and_surface_mapping(old_gps, new_gps, modified_chart_tag, player)
 end
 
---- Update all player favorites that reference the old GPS to use new GPS and notify affected players (moved from handlers.lua)
+--- Update all player favorites that reference the old GPS to use new GPS and notify affected players
 ---@param old_gps string Original GPS coordinates
----@param new_gps string New GPS coordinates  
+---@param new_gps string New GPS coordinates
 ---@param acting_player LuaPlayer Player who made the change
 function ChartTagHelpers.update_favorites_gps(old_gps, new_gps, acting_player)
   if not old_gps or not new_gps then return end
   local acting_player_index = acting_player and acting_player.valid and acting_player.index or nil
 
   -- Update ALL players including the acting player
-  local all_affected_players = PlayerFavorites.update_gps_for_all_players(old_gps, new_gps, nil) -- Pass nil to include all players
+  local all_affected_players = PlayerFavorites.update_gps_for_all_players(old_gps, new_gps, nil)
 
   -- Also update the acting player's favorites explicitly if not already included
   if acting_player and acting_player.valid then
     local acting_player_favorites = PlayerFavorites.new(acting_player)
     local acting_player_updated = acting_player_favorites:update_gps_coordinates(old_gps, new_gps)
-
-    -- Add acting player to affected list if they were updated and not already included
     local acting_player_already_included = false
     for _, player in ipairs(all_affected_players) do
       if player.index == acting_player_index then
@@ -240,19 +149,12 @@ function ChartTagHelpers.update_favorites_gps(old_gps, new_gps, acting_player)
     if acting_player_updated and not acting_player_already_included then
       table.insert(all_affected_players, acting_player)
     end
-      Cache.Lookups.invalidate_surface_chart_tags(tonumber(surface_index))
-      
-      -- Verify the tag can be found at the new GPS location
-      local updated_tag = Cache.get_tag_by_gps(affected_player, new_gps)
-        -- core/events/chart_tag_helpers.lua
-        -- TeleportFavorites Factorio Mod
-        -- Consolidated helper functions for chart tag event handling.
-        -- Specialized functions for modification validation, removal protection, GPS extraction, tag/favorites updating, position notifications, and permission checking.
-        -- Consolidated from chart_tag_modification_helpers.lua and chart_tag_removal_helpers.lua for better organization and reduced file count.
-      
-      fave_bar.build(affected_player)
-    end
-  
+    -- Invalidate chart tag lookups for the surface
+    local surface_index = GPSUtils.get_surface_index_from_gps(new_gps)
+    Cache.Lookups.invalidate_surface_chart_tags(tonumber(surface_index))
+    -- Rebuild favorites bar for affected player
+    fave_bar.build(acting_player)
+  end
 
   -- Notify all affected players (excluding the acting player from notifications)
   local notification_players = {}
@@ -265,12 +167,10 @@ function ChartTagHelpers.update_favorites_gps(old_gps, new_gps, acting_player)
   if #notification_players > 0 then
     local old_position = GPSUtils.map_position_from_gps(old_gps)
     local new_position = GPSUtils.map_position_from_gps(new_gps)
-    local parts = {}
-    for part in string.gmatch(old_gps, "[^.]+") do table.insert(parts, part) end
     local chart_tag = Cache.Lookups.get_chart_tag_by_gps(new_gps)
     for _, affected_player in ipairs(notification_players) do
       if affected_player and affected_player.valid then
-        local position_msg = format_position_change_notification(
+        local position_msg = LocaleUtils.format_tag_position_change_notification(
           affected_player, chart_tag, old_position or { x = 0, y = 0 }, new_position or { x = 0, y = 0 }
         )
         PlayerHelpers.safe_player_print(affected_player, position_msg)
@@ -279,8 +179,6 @@ function ChartTagHelpers.update_favorites_gps(old_gps, new_gps, acting_player)
   end
 end
 
--- Export as both old names for backward compatibility
-ChartTagHelpers.ChartTagModificationHelpers = ChartTagHelpers
 ChartTagHelpers.ChartTagRemovalHelpers = ChartTagHelpers
 
 return ChartTagHelpers

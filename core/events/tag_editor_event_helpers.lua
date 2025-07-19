@@ -1,4 +1,5 @@
 ---@diagnostic disable: undefined-global
+
 -- core/events/tag_editor_event_helpers.lua
 -- TeleportFavorites Factorio Mod
 -- Helper functions for tag editor event handling, extracted from handlers.lua.

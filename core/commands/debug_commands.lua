@@ -1,4 +1,4 @@
---[[]]
+--[[
 -- core/commands/debug_commands.lua
 -- TeleportFavorites Factorio Mod
 -- -----------------------------

@@ -45,6 +45,8 @@ This policy applies to all Lua modules in the codebase.
 ---
 
 ## Module Breakdown
+### Shared Tag Mutation & Surface Mapping Helper (2025-07-19)
+The helper `Tag.update_gps_and_surface_mapping(old_gps, new_gps, chart_tag, player)` centralizes all logic for moving tag data between GPS keys, updating tag objects, and synchronizing runtime lookup caches. This replaces inline logic in event handlers and ensures multiplayer and surface consistency. Always use this helper for chart tag position changes.
 - All modules should use a class paradigm. Use emmylua definitions to achieve this goal. Store external type in the core/types folder
 - `core/cache/` – Persistent data cache, schema, init methods and helpers.
 - `core/control/` – Lifecycle, event, and utility modules. Top-level event handlers are now split into extension modules (see `control_fave_bar.lua`, `control_tag_editor.lua`).

@@ -17,7 +17,6 @@ local GuiValidation = require("core.utils.gui_validation")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local Enum = require("prototypes.enums.enum")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
-local EventHandlerHelpers = require("core.utils.event_handler_helpers")
 local ChartTagHelpers = require("core.events.chart_tag_helpers")
 
 --- Validate player and run handler logic with early return pattern
@@ -25,10 +24,11 @@ local ChartTagHelpers = require("core.events.chart_tag_helpers")
 ---@param handler_fn function Function to call with validated player
 ---@param ... any Additional arguments to pass to handler
 ---@return any Result from handler function, or nil if player invalid
+-- Shared player validation using centralized helpers
 local function with_valid_player(player_index, handler_fn, ...)
   if not player_index then return nil end
   local player = game.players[player_index]
-  if not player or not player.valid then return nil end
+  if not BasicHelpers.is_valid_player(player) then return nil end
   return handler_fn(player, ...)
 end
 

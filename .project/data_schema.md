@@ -23,7 +23,7 @@ Defines the persistent and runtime data structures for the mod, including player
 │ │     │  data      │   │  └───────────────────────┘        │
 │ │     └─surfaces   │   │                                   │
 │ │        └─[index] │   │                                   │
-│ │           └─favo│   │                                   │
+│ │           └─favo │   │                                   │
 │ │             rites│   │                                   │
 │ └──────────────────┘   │                                   │
 │ ┌──────────────────┐   │                                   │

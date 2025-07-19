@@ -47,9 +47,9 @@ function M.on_gui_closed(event)
   end
 end
 
+-- Shared error message update using centralized helper
 local function show_tag_editor_error(player, tag_data, message)
   tag_data.error_message = message
-  -- Use partial update instead of full rebuild for error messages
   BasicHelpers.update_error_message(tag_editor.update_error_message, player, message)
   Cache.set_tag_editor_data(player, tag_data)
 end
@@ -175,12 +175,12 @@ local function update_chart_tag_fields(tag, tag_data, text, icon, player)
   })
 end
 
+-- Shared tag editor close using centralized helpers
 local function close_tag_editor(player)
-  -- Only destroy the tag editor frame, not the confirmation dialog
   local tag_data = Cache.get_tag_editor_data(player)
   local was_move_mode = tag_data and tag_data.move_mode == true
   if was_move_mode then
-    if player and player.valid then
+    if BasicHelpers.is_valid_player(player) then
       player.clear_cursor()
     end
     if script and script.on_event then
@@ -346,34 +346,25 @@ local function handle_confirm_btn(player, element, tag_data)
   close_tag_editor(player)
 end
 
+-- Shared favorite button handler using centralized helpers
 local function handle_favorite_btn(player, tag_data)
-  if not player or not player.valid then
+  if not BasicHelpers.is_valid_player(player) then
     ErrorHandler.debug_log("Handle favorite button - invalid player", {
       player_exists = player ~= nil,
       player_valid = player and player.valid
     })
     return
   end
-
-  if not tag_data then
-    tag_data = {}
-  end
-
-  -- Simply toggle the is_favorite state in tag_editor_data
-  -- Actual favorite creation/removal happens on confirm
+  tag_data = tag_data or {}
   if type(tag_data.is_favorite) ~= "boolean" then
     tag_data.is_favorite = false
   end
-
   tag_data.is_favorite = not tag_data.is_favorite
   ErrorHandler.debug_log("[TAG_EDITOR] handle_favorite_btn: toggled", {
     gps = tag_data and tag_data.gps,
     is_favorite = tag_data and tag_data.is_favorite
   })
-
-  -- Update the tag_data and refresh the UI to show new state
   Cache.set_tag_editor_data(player, tag_data)
-  -- Use partial update instead of full rebuild for favorite toggle
   BasicHelpers.update_state(tag_editor.update_favorite_state, player, tag_data.is_favorite)
 end
 
@@ -457,30 +448,18 @@ local function handle_delete_cancel(player)
   Cache.reset_tag_editor_delete_mode(player)
 end
 
+-- Shared delete button handler using centralized helpers
 local function handle_delete_btn(player, tag_data)
   ErrorHandler.debug_log("Tag editor handle_delete_btn called", {
     player_name = player and player.name or "<unknown>"
   })
-
-  -- Standard player validation
-  if not player or not player.valid then return end
-
-  -- Always destroy any existing confirmation dialog before creating a new one
+  if not BasicHelpers.is_valid_player(player) then return end
   GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
-
-  -- Set delete mode in tag_editor_data
   Cache.set_tag_editor_delete_mode(player, true)
-
-  -- Create the real confirmation dialog
   local frame, confirm_btn, cancel_btn = tag_editor.build_confirmation_dialog(player, {
     message = { "tf-gui.confirm_delete_message" }
   })
-
-  -- Set modal dialog state to block other GUI interactions
   Cache.set_modal_dialog_state(player, "delete_confirmation")
-
-  -- DO NOT set player.opened to the confirm dialog!
-  -- Keep player.opened as the tag editor frame so it remains modal and open
   player.opened = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
   ErrorHandler.debug_log("Confirmation dialog opened successfully", {
     player_name = player.name,

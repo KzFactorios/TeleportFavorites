@@ -12,9 +12,6 @@
 - [ ] Review and finalize all custom button styles for the tag editor GUI, ensuring vanilla-like appearance and consistent sizing/alignment. 
 - [ ] Add more unit tests for helpers and GUI logic as the project matures.
 - [ ] Add localization for any new user-facing strings.
-
-
-
 - [ ] Check for map editor functionality and ensure compatibility.
 - [ ] When a chart_tag is destroyed, ensure it destroys any linked tags (and vice versa). Refactor tag<->chart_tag destruction logic to a shared helper if possible.
 - [ ] Multiplayer: test and document tag ownership edge cases.

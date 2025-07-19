@@ -71,10 +71,3 @@
 ## Workaround/Advice
 - If you need to interoperate with other mods or vanilla Factorio features that expect `[gps=...]`, always convert using the provided helpers.
 - If you see code or documentation referring to `gps_tag`, `gps rich text`, or `[gps=...]`, remember this is **not** the same as the `gps` string in this mod.
-
----
-<!--
-Original user note for reference:
-why am i seeing gps=[gps=bad,20,1]? a gps value, and we have been overr this before, so please update the docs with this note:
-gps should only ever be a string, not a table, etc. The string should always be of the format "xxx.yyy.s" where the x and y values are padded to a constant value. If the values are more than 3 digits, then show all of the digits. Also, when a number is negative, a minus sign should prepend the number. surfaces are always positive so no need for the check there. so it is reasonable to see things such as "-xxx.yyy.s" or "xxx.-yyy.s" or "-xxx.-yyy.s" or "xxx.yyy.s", these are all valid. There are various formatting methods to return certain parts of the string and some of them may parse the string into tables, but those tables should never be the format of a gps string
--->

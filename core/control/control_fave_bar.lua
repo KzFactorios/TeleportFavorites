@@ -29,13 +29,14 @@ local M = {}
 ---@param event table The GUI click event
 ---@param player LuaPlayer The player
 ---@param favorites PlayerFavorites The favorites instance
+-- Shared favorite slot click handler using centralized helpers
 local function handle_favorite_slot_click(event, player, favorites)
-  local element = event.element
-  local slot = tonumber(element.name:match("fave_bar_slot_(%d+)"))
+  if not BasicHelpers.is_valid_element(event.element) or not BasicHelpers.is_valid_player(player) then return end
+  local slot = tonumber(event.element.name:match("fave_bar_slot_(%d+)"))
   if not slot then
     ErrorHandler.debug_log("[FAVE_BAR] Could not parse slot number from element name", {
-      element_name = element and element.name or "<nil>",
-      element_caption = element and element.caption or "<nil>"
+      element_name = event.element and event.element.name or "<nil>",
+      element_caption = event.element and event.element.caption or "<nil>"
     })
     return
   end
@@ -52,69 +53,43 @@ local function handle_favorite_slot_click(event, player, favorites)
     control = event and event.control or false
   })
 
-  -- PRIORITY CHECK: First check if we're in drag mode and this is a drop or cancel
+  -- Use shared drag logic
   local is_dragging, source_slot = CursorUtils.is_dragging_favorite(player)
-
   if is_dragging and source_slot then
     ErrorHandler.debug_log("[FAVE_BAR] Click during drag operation", {
       player = player.name, source_slot = source_slot, target_slot = slot, button_value = event.button
     })
-    -- Check if this is a right-click to cancel the drag
     if event.button == defines.mouse_button_type.right then
       CursorUtils.end_drag_favorite(player)
       GameHelpers.player_print(player, { "tf-gui.fave_bar_drag_canceled" })
       return
     end
-    -- Check if this is a left-click to complete the drag
     if event.button == defines.mouse_button_type.left then
-      -- If source and destination are the same, just end the drag
       if source_slot == slot then
         CursorUtils.end_drag_favorite(player)
         return
       end
-
       local target_fav = favorites.favorites[slot]
-      -- Check if target slot is locked
       if target_fav and BasicHelpers.is_locked_favorite(target_fav) then
         GameHelpers.player_print(player, SharedUtils.lstr("tf-gui.fave_bar_locked_cant_target", slot))
         GameHelpers.safe_play_sound(player, { path = "utility/cannot_build" })
         CursorUtils.end_drag_favorite(player)
         return
       end
-
-      -- Target slot is not locked, proceed with reordering using unified system
       if SlotInteractionHandlers.reorder_favorites(player, favorites, source_slot, slot) then return end
     end
-    -- If we get here, the drop didn't work or it was another button, but we need to exit drag mode anyway
     CursorUtils.end_drag_favorite(player)
     return
   end
 
-  -- Not in drag mode, proceed with normal handling
   local fav = favorites.favorites[slot]
-  if fav == nil then return end
+  if not fav or FavoriteUtils.is_blank_favorite(fav) then return end
 
-  -- Check for blank favorite (different handling)
-  if FavoriteUtils.is_blank_favorite(fav) then
-    -- For blank favorites, only allow drag targets (no teleport/etc)
-    return
-  end
-
-  -- Handle Shift+Left-Click to start drag
+  -- Use shared slot interaction handlers
   if SlotInteractionHandlers.handle_shift_left_click(event, player, fav, slot, favorites) then return end
-
-  -- Handle Ctrl+click to toggle lock state
   if SlotInteractionHandlers.handle_toggle_lock(event, player, fav, slot, favorites) then return end
-
-  -- Normal left-click to teleport
   if SlotInteractionHandlers.handle_teleport(event, player, fav, slot, false) then return end
-
-  -- Right-click to open tag editor
   SlotInteractionHandlers.handle_request_to_open_tag_editor(event, player, fav, slot)
-
-  -- Use partial update for single slot changes where possible
-  -- Only rebuild entire slot row if the slot structure has fundamentally changed
-  -- Most slot interactions just need individual slot updates
   fave_bar.update_single_slot(player, slot)
 end
 

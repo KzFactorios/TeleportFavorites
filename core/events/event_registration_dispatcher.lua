@@ -3,7 +3,6 @@
 -- Centralized event registration dispatcher for all mod events, with safe wrappers and unified API.
 
 local ErrorHandler = require("core.utils.error_handler")
-local fave_bar = require("gui.favorites_bar.fave_bar")
 local Cache = require("core.cache.cache")
 local gui_event_dispatcher = require("core.events.gui_event_dispatcher")
 local custom_input_dispatcher = require("core.events.custom_input_dispatcher")
@@ -12,7 +11,6 @@ local control_tag_editor = require("core.control.control_tag_editor")
 local teleport_history_modal = require("gui.teleport_history_modal.teleport_history_modal")
 local handlers = require("core.events.handlers")
 local EventHandlerHelpers = require("core.utils.event_handler_helpers")
-local CursorUtils = require("core.utils.cursor_utils")
 local GuiHelpers = require("core.utils.gui_helpers")
 local GuiValidation = require("core.utils.gui_validation")
 local ModalInputBlocker = require("core.events.modal_input_blocker")

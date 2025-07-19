@@ -23,16 +23,14 @@ local M = {}
 local _tf_gui_click_guard = false
 
 --- Returns true if the element is a favorite bar slot button
+-- Shared favorite bar slot button check using centralized helpers
 local function is_fave_bar_slot_button(element)
-  if not element or not element.name then return false end
-  local name = tostring(element.name)
-  local prefix = tostring(Constants.settings.FAVE_BAR_SLOT_PREFIX)
-  return name:find(prefix, 1, true) ~= nil
+  return BasicHelpers.is_valid_element(element) and tostring(element.name or ""):find(tostring(Constants.settings.FAVE_BAR_SLOT_PREFIX), 1, true) ~= nil
 end
 
+-- Shared blank favorite bar slot button check using centralized helpers
 local function is_blank_fave_bar_slot_button(element, player)
-  if not is_fave_bar_slot_button(element) then return false end
-  if not player or not player.valid then return false end
+  if not is_fave_bar_slot_button(element) or not BasicHelpers.is_valid_player(player) then return false end
   local slot = tonumber(element.name:match("fave_bar_slot_(%d+)"))
   if not slot then return false end
   local favorites = Cache.get_player_favorites(player)
