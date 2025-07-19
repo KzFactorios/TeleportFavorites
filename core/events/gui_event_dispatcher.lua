@@ -1,47 +1,8 @@
 ---@diagnostic disable: undefined-global
 
---[[
-gui_event_dispatcher.lua
-TeleportFavorites Factorio Mod
------------------------------
-Centralized GUI event dispatcher for all mod GUI interactions.
-
-Architecture:
--------------
-- Single point of registration for GUI events across all mod GUIs
-- Routes events to appropriate control modules based on element names and parent GUI detection
-- Implements comprehensive error handling with detailed logging and recovery
-- Uses global click guard to prevent event recursion issues
-
-Supported Events:
------------------
-- on_gui_click: Dispatches to control_fave_bar, control_tag_editor
-- on_gui_text_changed: Handles immediate text input storage (tag editor)
-- on_gui_elem_changed: Handles icon picker changes (tag editor)
-- on_gui_confirmed: Handles modal dialog confirmations
-
-Integration Pattern:
---------------------
-Each GUI control module implements standardized event handler signatures:
-- control_fave_bar.on_fave_bar_gui_click(event)
-- control_tag_editor.on_tag_editor_gui_click(event)
-
-Error Handling:
----------------
-- Comprehensive xpcall usage with detailed error logging
-- Safe element access with validity checks and pcall wrappers
-- Automatic click guard reset on error to prevent deadlocks
-- Multi-channel logging (log + print) for different debug scenarios
-
-Usage:
-------
--- Register all GUI event handlers (called from control.lua)
-gui_event_dispatcher.register_gui_handlers(script)
---]]
-
--- gui_event_dispatcher.lua
--- Centralized GUI event dispatcher for TeleportFavorites
--- Wires up all shared GUI event handlers for favorites bar, tag editor, etc.
+-- core/events/gui_event_dispatcher.lua
+-- TeleportFavorites Factorio Mod
+-- Centralized GUI event dispatcher for all mod GUI interactions.
 
 local control_fave_bar = require("core.control.control_fave_bar")
 local control_tag_editor = require("core.control.control_tag_editor")
@@ -87,7 +48,8 @@ function M.register_gui_handlers(script)
     error("[TeleportFavorites] Invalid script object provided to register_gui_handlers")
   end
 
-  local function shared_on_gui_click(event)    Cache.init()    -- Ignore shift+right-click everywhere (Factorio native move-tag behavior)
+  local function shared_on_gui_click(event)    
+    Cache.init()
     if event.button == defines.mouse_button_type.right and event.shift then return end
     -- Ignore shift+left-click everywhere EXCEPT on a fave bar slot button
     if event.button == defines.mouse_button_type.left and event.shift and not is_fave_bar_slot_button(event.element) then return end

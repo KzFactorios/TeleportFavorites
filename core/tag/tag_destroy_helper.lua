@@ -1,49 +1,14 @@
---[[
-core/tag/tag_destroy_helper.lua
-TeleportFavorites Factorio Mod
------------------------------
-Centralized, recursion-safe destruction for tags and chart_tags.
-
-- Ensures tag <-> chart_tag destruction cannot recurse or overflow.
-- Handles all edge cases for multiplayer, favorites, and persistent storage.
-- Use this helper from all tag/chart_tag destruction logic and event handlers.
-
-REFACTORED (Phase 1 & 2 Improvements):
-- Added comprehensive ErrorHandler integration for debugging
-- Extracted complex nested logic into focused helper functions
-- Added transaction safety with pcall error recovery
-- Performance optimized with early exits for empty favorites
-- Added input validation for better error handling
-- Improved code organization and maintainability
-
-API:
------
-- destroy_tag_and_chart_tag(tag, chart_tag) -> boolean   -- Safely destroy a tag and its associated chart_tag, returns success status
-- is_tag_being_destroyed(tag) -> boolean                -- Check if a tag is being destroyed (recursion guard)
-- is_chart_tag_being_destroyed(chart_tag) -> boolean    -- Check if a chart_tag is being destroyed (recursion guard)  
-- should_destroy(tag) -> boolean                        -- Returns false for blank favorites
-
-HELPER FUNCTIONS:
-- has_any_favorites(tag) -> boolean                     -- Check if tag has favorites that need cleanup
-- cleanup_player_favorites(tag) -> number               -- Clean up player favorites, return count cleaned
-- cleanup_faved_by_players(tag)                         -- Clean up tag's faved_by_players array
-- validate_destruction_inputs(tag, chart_tag) -> boolean, issues  -- Validate inputs before destruction
-- safe_destroy_with_cleanup(tag, chart_tag) -> boolean  -- Perform destruction with transaction safety
-
-Notes:
-------
-- Always use this helper for tag/chart_tag destruction to avoid recursion and multiplayer edge cases.
-- All persistent data is updated and cleaned up, including player favorites and tag storage.
-- Now includes comprehensive error logging and transaction safety for multiplayer stability.
-- Performance optimized to avoid unnecessary iterations when no favorites exist.
---]]
+-- core/tag/tag_destroy_helper.lua
+-- TeleportFavorites Factorio Mod
+-- Centralized, recursion-safe destruction for tags and chart_tags, with multiplayer and transaction safety.
 
 -- Weak tables to track objects being destroyed
-local destroying_tags = setmetatable({}, { __mode = "k" })
-local destroying_chart_tags = setmetatable({}, { __mode = "k" })
 local Cache = require("core.cache.cache")
 local FavoriteUtils = require("core.favorite.favorite")
 local ErrorHandler = require("core.utils.error_handler")
+
+local destroying_tags = setmetatable({}, { __mode = "k" })
+local destroying_chart_tags = setmetatable({}, { __mode = "k" })
 
 --- Check if a tag is being destroyed
 ---@param tag table|nil

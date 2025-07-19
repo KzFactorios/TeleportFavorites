@@ -1,6 +1,5 @@
+---@diagnostic disable: undefined-global
 -- prototypes/item/selection_tool.lua
--- Custom selection tool for tag move mode
-
 data:extend({
   {
     type = "selection-tool",

@@ -1,51 +1,9 @@
--- filepath: v:\Fac2orios\2_Gemini\mods\TeleportFavorites\core\events\handlers.lua
---[[
-core/events/handlers.lua
-TeleportFavorites Factorio Mod
------------------------------
-Centralized event handler implementations for TeleportFavorites.
-
-Features:
-- Handles Factorio events for tag creation, modification, removal, and player actions
-- Ensures robust multiplayer and surface-aware updates to tags, chart tags, and player favorites
-- Uses helpers for tag destruction, GPS conversion, and cache management
-- All event logic is routed through this module for maintainability and separation of concerns
-- Comprehensive error handling and validation for all event types
-- Type-safe player retrieval and validation
-
-Architecture:
-- Event handlers are pure functions that receive event objects
-- All handlers validate inputs and handle edge cases gracefully
-- Player objects are properly null-checked to prevent runtime errors
-- GPS position normalization is handled through centralized helpers
-- Surface and multi-player compatibility is maintained throughout
-
-API:
------
--- Mod initialization logic
-- handlers.on_init()
--- Runtime-only structure re-initialization
-- handlers.on_load()
--- New player initialization
-- handlers.on_player_created(event)
--- Ensures surface cache for player after surface change
-- handlers.on_player_changed_surface(event)
--- Handles right-click chart tag editor opening
-- handlers.on_open_tag_editor_custom_input(event)
--- Teleports player to favorite location
--- Handles chart tag creation (stub)
-- handlers.on_chart_tag_added(event)
--- Handles chart tag modification, GPS and favorite updates
-- handlers.on_chart_tag_modified(event)
--- Handles chart tag removal and cleanup
-- handlers.on_chart_tag_removed(event)
-
---]]
-
 ---@diagnostic disable: undefined-global
 
 -- core/events/handlers.lua
--- Centralized event handler implementations for TeleportFavorites
+-- TeleportFavorites Factorio Mod
+-- Centralized event handler implementations for TeleportFavorites.
+-- Handles Factorio events, multiplayer/surface-aware updates, helpers, error handling, validation, and API for all event types.
 
 local Cache = require("core.cache.cache")
 local PositionUtils = require("core.utils.position_utils")
@@ -56,22 +14,29 @@ local tag_editor = require("gui.tag_editor.tag_editor")
 local TagEditorEventHelpers = require("core.events.tag_editor_event_helpers")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local GuiValidation = require("core.utils.gui_validation")
-local GuiHelpers = require("core.utils.gui_helpers")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local Enum = require("prototypes.enums.enum")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local EventHandlerHelpers = require("core.utils.event_handler_helpers")
 local ChartTagHelpers = require("core.events.chart_tag_helpers")
 
--- Helper: Validate player and run handler logic (using centralized helper)
-local with_valid_player = EventHandlerHelpers.with_valid_player
+--- Validate player and run handler logic with early return pattern
+---@param player_index number Player index from event
+---@param handler_fn function Function to call with validated player
+---@param ... any Additional arguments to pass to handler
+---@return any Result from handler function, or nil if player invalid
+local function with_valid_player(player_index, handler_fn, ...)
+  if not player_index then return nil end
+  local player = game.players[player_index]
+  if not player or not player.valid then return nil end
+  return handler_fn(player, ...)
+end
+
+local handlers = {}
 
 local function register_gui_observers(player)
   local ok, gui_observer = pcall(require, "core.pattern.gui_observer")
 end
-
-
-local handlers = {}
 
 function handlers.on_player_changed_surface(event)
   with_valid_player(event.player_index, function(player)
@@ -136,8 +101,9 @@ function handlers.on_open_tag_editor_custom_input(event)
 
     local tag_data = Cache.get_player_data(player).tag_editor_data or Cache.create_tag_editor_data()
     local cursor_position = event.cursor_position
-    local chart_tag = cursor_position and cursor_position.x and cursor_position.y and 
-      TagEditorEventHelpers.find_nearby_chart_tag(cursor_position, player.surface.index, Cache.Settings.get_chart_tag_click_radius(player))
+    local chart_tag = cursor_position and cursor_position.x and cursor_position.y and
+        TagEditorEventHelpers.find_nearby_chart_tag(cursor_position, player.surface.index,
+          Cache.Settings.get_chart_tag_click_radius(player))
 
     if chart_tag and chart_tag.valid then
       local gps = GPSUtils.gps_from_map_position(chart_tag.position,
@@ -145,7 +111,7 @@ function handlers.on_open_tag_editor_custom_input(event)
       local player_favorites = PlayerFavorites.new(player)
       local favorite_entry = player_favorites:get_favorite_by_gps(gps)
       local icon = chart_tag.icon
-      
+
       tag_data.chart_tag = chart_tag
       tag_data.tag = {
         chart_tag = chart_tag,
@@ -168,6 +134,7 @@ function handlers.on_open_tag_editor_custom_input(event)
     tag_editor.build(player)
   end)
 end
+
 function handlers.on_chart_tag_added(event)
   -- Get the player object from the event.player_index
   local player = game.players[event.player_index]
@@ -177,21 +144,15 @@ function handlers.on_chart_tag_added(event)
   local chart_tag = event.tag
   if chart_tag and chart_tag.valid and chart_tag.position then
     if PositionUtils.needs_normalization(chart_tag.position) then
-      print("[HANDLER] Calling ErrorHandler.debug_log for chart tag added")
       ErrorHandler.debug_log("Chart tag added with fractional coordinates, normalizing", {
         player_name = player.name,
         position = chart_tag.position
       })
-      print("[HANDLER] Calling TagEditorEventHelpers.normalize_and_replace_chart_tag for chart tag added")
       local new_chart_tag, position_pair = TagEditorEventHelpers.normalize_and_replace_chart_tag(chart_tag, player)
-      -- Optionally, you may want to update lookups here as well
     end
   end
 
-  -- Invalidate/refresh the lookups for chart tags for this surface
-  if Cache and Cache.Lookups and Cache.Lookups.invalidate_surface_chart_tags then
-    Cache.Lookups.invalidate_surface_chart_tags(player.surface.index)
-  end
+  Cache.Lookups.invalidate_surface_chart_tags(player.surface.index)
 end
 
 function handlers.on_chart_tag_modified(event)
@@ -199,12 +160,12 @@ function handlers.on_chart_tag_modified(event)
   local player = game.players[event.player_index]
   if not player or not player.valid then return end
   if not ChartTagHelpers.is_valid_tag_modification(event, player) then
-    print("[HANDLER] Calling ErrorHandler.debug_log for chart tag modification validation failed")
     ErrorHandler.debug_log("Chart tag modification validation failed", {
       player_name = player.name
     })
     return
   end
+  
   local new_gps, old_gps = ChartTagHelpers.extract_gps(event, player)
   -- Check if this tag is currently open in the tag editor and update it
   local tag_editor_data = Cache.get_tag_editor_data(player)
@@ -230,17 +191,14 @@ function handlers.on_chart_tag_modified(event)
   end
   local chart_tag = event.tag
   if chart_tag and chart_tag.valid and chart_tag.position then
-    -- Only normalize if the tag position has fractional coordinates
-    local needs_normalization = PositionUtils.needs_normalization(chart_tag.position)
-    if needs_normalization then
-      print("[HANDLER] Calling ErrorHandler.debug_log for chart tag modification normalization")
+    if PositionUtils.needs_normalization(chart_tag.position) then
       ErrorHandler.debug_log("Chart tag has fractional coordinates, normalizing", {
         player_name = player.name,
         position = chart_tag.position,
         old_gps = old_gps,
         new_gps = new_gps
       })
-      print("[HANDLER] Calling TagEditorEventHelpers.normalize_and_replace_chart_tag for chart tag modification")
+
       local new_chart_tag, position_pair = TagEditorEventHelpers.normalize_and_replace_chart_tag(chart_tag, player)
       if new_chart_tag then
         -- After normalization, recalculate GPS coordinates for the new chart tag
@@ -248,7 +206,6 @@ function handlers.on_chart_tag_modified(event)
         local normalized_gps = GPSUtils.gps_from_map_position(new_chart_tag.position, tonumber(surface_index) or 1)
         -- Update using the normalized GPS as the final new GPS
         if old_gps and normalized_gps and old_gps ~= normalized_gps then
-          print("[HANDLER] Calling ChartTagHelpers.update_tag_and_cleanup for normalized_gps")
           -- Create a modified event with the new chart tag for cleanup
           local normalized_event = {
             tag = new_chart_tag,
@@ -256,23 +213,17 @@ function handlers.on_chart_tag_modified(event)
             player_index = event.player_index
           }
           ChartTagHelpers.update_tag_and_cleanup(old_gps, normalized_gps, normalized_event, player)
-          print("[HANDLER] Calling ChartTagHelpers.update_favorites_gps for normalized_gps")
           ChartTagHelpers.update_favorites_gps(old_gps, normalized_gps, player)
         end
       end
       if old_gps and new_gps and old_gps ~= new_gps then
-        print("[HANDLER] Calling ChartTagHelpers.update_tag_and_cleanup for new_gps")
         -- Update tag data and cache using the original chart tag
         ChartTagHelpers.update_tag_and_cleanup(old_gps, new_gps, event, player)
-        print("[HANDLER] Calling ChartTagHelpers.update_favorites_gps for new_gps")
-        -- Update all player favorites that reference this GPS
         ChartTagHelpers.update_favorites_gps(old_gps, new_gps, player)
       end
     elseif old_gps and new_gps and old_gps ~= new_gps then
-      print("[HANDLER] Calling ChartTagHelpers.update_tag_and_cleanup for non-normalized case")
       -- If position changed but no normalization needed, still update tag and favorites
       ChartTagHelpers.update_tag_and_cleanup(old_gps, new_gps, event, player)
-      print("[HANDLER] Calling ChartTagHelpers.update_favorites_gps for non-normalized case")
       ChartTagHelpers.update_favorites_gps(old_gps, new_gps, player)
     end
   end
@@ -312,10 +263,7 @@ function handlers.on_chart_tag_removed(event)
       tag_destroy_helper.destroy_tag_and_chart_tag(tag, chart_tag)
     end
 
-    -- Reset the lookups cache for chart_tags and update the map
-    if Cache and Cache.Lookups and Cache.Lookups.invalidate_surface_chart_tags then
-      Cache.Lookups.invalidate_surface_chart_tags(player.surface.index)
-    end
+    Cache.Lookups.invalidate_surface_chart_tags(player.surface.index)
 
     -- TODO does the above actions notify observers? Were they triggered elsewhere in factorioland?
   end)

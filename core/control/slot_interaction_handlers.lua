@@ -1,22 +1,6 @@
 -- core/control/slot_interaction_handlers.lua
--- Handlers for different types of slot interactions in the favorites bar
---
--- This module provides specialized handlers for various user interactions
--- with favorites bar slots. Each handler focuses on a specific type of
--- interaction to maintain single responsibility and improve testability.
---
--- Handler Types:
--- - Teleportation: Left-click to teleport to favorite location
--- - Lock Toggle: Ctrl+Left-click to toggle favorite lock state
--- - Drag Operations: Shift+Left-click to initiate drag, drag completion
--- - Tag Editor: Right-click to open tag editor for editing favorite
--- - Drop Operations: Handle drop targets during drag and drop
---
--- All handlers follow a consistent pattern:
--- - Take event, player, and relevant context as parameters
--- - Return boolean indicating if the interaction was handled
--- - Use centralized utilities for common operations
--- - Maintain proper error handling and logging
+-- TeleportFavorites Factorio Mod
+-- Specialized handlers for slot interactions in the favorites bar: teleportation, lock toggling, drag-and-drop, and tag editing.
 
 local FavoriteRehydration = require("core.favorite.favorite_rehydration")
 local FavoriteUtils = require("core.favorite.favorite")
@@ -30,8 +14,7 @@ local ErrorHandler = require("core.utils.error_handler")
 local LocaleUtils = require("core.utils.locale_utils")
 local PlayerHelpers = require("core.utils.player_helpers")
 local CursorUtils = require("core.utils.cursor_utils")
-local DragDropUtils = require("core.utils.drag_drop_utils")
-local GameHelpers = require("core.utils.game_helpers")
+local TeleportStrategy = require("core.utils.teleport_strategy")
 local SharedUtils = require("core.control.control_shared_utils")
 
 ---@class SlotInteractionHandlers
@@ -53,7 +36,7 @@ end
 function SlotInteractionHandlers.handle_teleport(event, player, fav, slot, did_drag)
   if event.button == defines.mouse_button_type.left and not event.control and not did_drag then
     if fav and not FavoriteUtils.is_blank_favorite(fav) then
-      GameHelpers.safe_teleport_to_gps(player, fav.gps)
+      TeleportStrategy.teleport_to_gps(player, fav.gps)
       return true
     end
   end
@@ -133,7 +116,6 @@ function SlotInteractionHandlers.open_tag_editor_from_favorite(player, favorite)
   favorite = FavoriteRehydration.rehydrate_favorite_at_runtime(player, favorite)
   
   -- Create initial tag data from favorite
-  -- Safely extract icon and text from chart_tag if valid
   local icon = ""
   local text = ""
   if favorite.tag and favorite.tag.chart_tag then

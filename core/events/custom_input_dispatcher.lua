@@ -1,37 +1,10 @@
 ---@diagnostic disable: undefined-global, undefined-field, missing-fields, need-check-nil, param-type-mismatch
---[[
-custom_input_dispatcher.lua
-TeleportFavorites Factorio Mod
------------------------------
-Centralized dispatcher for custom input (keyboard shortcut) events.
 
-Features:
----------
-- Safe handler registration with comprehensive validation
-- Error handling and recovery for individual handlers
-- Proper logging for debugging and monitoring
-- Extensible pattern for adding new custom inputs
-- No global namespace pollution
-
-Usage:
-------
--- Register default handlers
-CustomInputDispatcher.register_default_inputs(script)
-
--- Register custom handlers
-CustomInputDispatcher.register_custom_inputs(script, {
-  ["my-custom-input"] = function(event) ... end
-})
-
-Handler Signature:
-------------------
-All handlers receive a Factorio event object:
-function handler(event)
-  -- event.player_index: uint - Player who triggered the input
-  -- event.input_name: string - Name of the custom input
-  -- event.cursor_position: MapPosition - Cursor position when triggered
-end
---]]
+-- core/events/custom_input_dispatcher.lua
+-- TeleportFavorites Factorio Mod
+-- Centralized dispatcher for custom input (keyboard shortcut) events.
+-- Features: safe handler registration, error handling, logging, extensible pattern, no global namespace pollution.
+-- Usage: register default/custom handlers, all handlers receive Factorio event object.
 
 -- Dependencies
 local PlayerHelpers = require("core.utils.player_helpers")

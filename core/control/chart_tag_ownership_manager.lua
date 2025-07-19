@@ -1,25 +1,8 @@
--- filepath: v:\Fac2orios\2_Gemini\mods\TeleportFavorites\core\control\chart_tag_ownership_manager.lua
 ---@diagnostic disable: undefined-global
---[[
-chart_tag_ownership_manager.lua
-TeleportFavorites Factorio Mod
------------------------------
-Manages chart tag ownership lifecycle and cleanup operations.
 
-Features:
----------
-- Handles chart tag ownership when players leave/are removed
-- Resets chart tag ownership to "" when owner leaves
-- Updates lookup collections when ownership changes
-- Provides utilities for ownership validation and transfer
-
-Core Principle:
----------------
-- Only the player who CREATES a tag becomes the owner
-- Ownership does NOT change when other players edit the tag
-- Ownership only resets when the owner leaves/is removed from the game
-- When ownership is reset, all related lookup collections are updated
---]]
+-- core/control/chart_tag_ownership_manager.lua
+-- TeleportFavorites Factorio Mod
+-- Manages chart tag ownership lifecycle, cleanup, and transfer utilities.
 
 local Cache = require("core.cache.cache")
 local ErrorHandler = require("core.utils.error_handler")

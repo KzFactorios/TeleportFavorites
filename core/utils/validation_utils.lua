@@ -1,17 +1,8 @@
 ---@diagnostic disable: undefined-global
---[[
-core/utils/validation_utils.lua
-TeleportFavorites Factorio Mod
------------------------------
-Consolidated validation utilities combining all validation functionality.
-
-This module consolidates:
-- validation_helpers.lua - Common validation patterns and helpers
-- icon_validator.lua - Icon and signal validation
-- Validation functions from other modules
-
-Provides a unified API for all validation operations throughout the mod.
-]]
+-- core/utils/validation_utils.lua
+-- TeleportFavorites Factorio Mod
+-- Consolidated validation utilities combining all validation functionality.
+-- Provides a unified API for all validation operations throughout the mod.
 
 local constants = require("constants")
 local basic_helpers = require("core.utils.basic_helpers")
@@ -30,91 +21,6 @@ local ValidationUtils = {}
 ---@return string? error_message
 function ValidationUtils.validate_player(player)
   return ValidationUtils.validate_factorio_object(player, "Player")
-end
-
---- Higher-level helper to reduce repeated player validation + early return patterns
---- Executes callback only if player is valid, otherwise returns default_return value
----@param player LuaPlayer|nil
----@param callback fun(player: LuaPlayer): any
----@param default_return any? Value to return if player is invalid (default: nil)
----@return any result Result from callback or default_return
-function ValidationUtils.with_valid_player(player, callback, default_return)
-  if not player or not player.valid then 
-    return default_return 
-  end
-  return callback(player)
-end
-
---- Extended player validation for position operations
----@param player LuaPlayer|nil
----@return boolean is_valid
----@return string? error_message
-function ValidationUtils.validate_player_for_position_ops(player)
-  local basic_valid, basic_error = ValidationUtils.validate_player(player)
-  if not basic_valid then
-    return false, basic_error
-  end
-  
-  -- player is guaranteed to be valid at this point
-  assert(player, "Player should not be nil after validation")
-  
-  if not player.force or not player.surface then
-    return false, "Player missing force or surface"
-  end
-  
-  if not player.surface.valid then
-    return false, "Player surface is not valid"
-  end
-  
-  return true, nil
-end
-
---- Validate GPS string format and content
----@param gps string|nil
----@return boolean is_valid
----@return string? error_message
-function ValidationUtils.validate_gps_string(gps)
-  if not gps or type(gps) ~= "string" then
-    return false, "GPS must be a string"
-  end
-  
-  if basic_helpers.trim(gps) == "" then
-    return false, "GPS string cannot be empty"
-  end
-    -- Use GPSUtils for actual parsing validation
-  local parsed = GPSUtils.parse_gps_string(gps)
-  if not parsed then
-    return false, "Invalid GPS format"
-  end
-  
-  return true, nil
-end
-
---- Validate GPS and extract position information
----@param gps string|nil
----@return boolean is_valid
----@return MapPosition? position
----@return string? error_message
-function ValidationUtils.validate_and_parse_gps(gps)
-  local valid, error_msg = ValidationUtils.validate_gps_string(gps)
-  if not valid then
-    return false, nil, error_msg
-  end
-    -- gps is guaranteed to be a string at this point due to validation above
-  local position = GPSUtils.map_position_from_gps(gps --[[@as string]])
-  if not position then
-    return false, nil, "Failed to extract position from GPS"
-  end
-  
-  return true, position, nil
-end
-
---- Validate tag object structure
----@param tag table|nil
----@return boolean is_valid
----@return string? error_message
-function ValidationUtils.validate_tag_structure(tag)
-  return ValidationUtils.validate_table_fields(tag, {"gps", "faved_by_players"}, "Tag")
 end
 
 --- Validate if an icon is valid for chart tag creation
@@ -185,23 +91,6 @@ end
 function ValidationUtils.validate_factorio_object(obj, type_name)
   if not obj then return false, type_name .. " is nil" end
   if not obj.valid then return false, type_name .. " is not valid" end
-  return true, nil
-end
-
---- Validate required fields on a table
----@param tbl table|nil
----@param required_fields string[]
----@param type_name string
----@return boolean is_valid, string? error_message
-function ValidationUtils.validate_table_fields(tbl, required_fields, type_name)
-  if not tbl or type(tbl) ~= "table" then
-    return false, type_name .. " must be a table"
-  end
-  for _, field in ipairs(required_fields) do
-    if tbl[field] == nil then
-      return false, type_name .. " missing required field: " .. field
-    end
-  end
   return true, nil
 end
 

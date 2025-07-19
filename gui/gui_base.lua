@@ -1,18 +1,31 @@
----@diagnostic disable: undefined-global
---[[
-Shared GUI builder and utility functions for TeleportFavorites
-============================================================
-Module: gui/GuiBaselua
 
-Provides reusable helpers for constructing all major GUIs in the mod
-
-Features:
-- Consistent creation of frames, buttons, labels, textfields, flows, and draggable titlebars.
-- Ensures all GUIs use the same style and structure for maintainability and a unified look.
-- Simplifies GUI code in feature modules by abstracting common patterns.
-
-Each function is annotated with argument and return value details.
---]]
+-- TeleportFavorites GUI Base Module
+-- Provides reusable builder functions for all major GUI elements in the mod.
+-- Ensures consistent style, structure, and maintainability across GUIs.
+--
+-- Main Features:
+--   - Frame, button, label, text-box, flow (horizontal/vertical), draggable space, titlebar
+--   - Defensive argument handling and style defaults
+--   - All functions are top-level and annotated
+--
+-- Element Builder Hierarchy:
+--
+--   GuiBase
+--   ├── create_frame(parent, name, direction, style)
+--   ├── create_button(parent, name, caption, style)
+--   ├── create_label(parent, name, caption, style)
+--   ├── create_sprite_button(parent, name, sprite, tooltip, style, enabled)
+--   ├── create_element(element_type, parent, opts)
+--   ├── create_hflow(parent, name, style)
+--   ├── create_vflow(parent, name, style)
+--   ├── create_flow(parent, name, direction, style)
+--   ├── create_draggable(parent, name)
+--   ├── create_titlebar(parent, name, close_button_name)
+--   └── create_textbox(parent, name, text, style, icon_selector)
+--
+-- All builder functions use defensive checks and default styles for robust GUI creation.
+--
+-- Each function is annotated with argument and return value details.
 
 local ErrorHandler = require("core.utils.error_handler")
 local Enum = require("prototypes.enums.enum")
@@ -95,38 +108,15 @@ function GuiBase.create_element(element_type, parent, opts)
     return elem
 end
 
---- Create a styled frame.
---- @param parent LuaGuiElement: Parent element
---- @param name string: Name of the frame
---- @param direction string: 'horizontal' or 'vertical' (default: 'horizontal')
---- @param style? string|nil: Optional style name (default: 'inside_shallow_frame_with_padding')
 --- @return LuaGuiElement: The created frame
 function GuiBase.create_frame(parent, name, direction, style)
-    return GuiBase.create_element('frame', parent,
-        { name = name, direction = direction or 'horizontal', style = style or 'inside_shallow_frame_with_padding' })
+    return GuiBase.create_element('frame', parent, {
+        name = name,
+        direction = direction or 'horizontal',
+        style = style or 'inside_shallow_frame_with_padding'
+    })
 end
 
---- Create a sprite button with icon, tooltip, and style.
---- @param parent LuaGuiElement: Parent element
---- @param name string: Name of the button
---- @param sprite string: Icon sprite path
---- @param tooltip LocalisedString|string|nil: Tooltip for the button
---- @param style string: Optional style name (default: 'tf_slot_button')
---- @param enabled? boolean|nil: Optional, default true
---- @return LuaGuiElement: The created button
-function GuiBase.create_icon_button(parent, name, sprite, tooltip, style, enabled)
-    local opts = { name = name, sprite = sprite, style = style or 'tf_slot_button' }
-    if tooltip ~= nil and tooltip ~= "" then
-        opts.tooltip = tooltip
-    end
-    local btn = GuiBase.create_element('sprite-button', parent, opts)
-    btn.enabled = enabled ~= false
-    return btn
-end
-
---- Create a label with optional style.
---- @param parent LuaGuiElement: Parent element
---- @param name string: Name of the label
 --- @param caption LocalisedString|string: Label text
 --- @param style? string|nil: Optional style name
 --- @return LuaGuiElement: The created label
@@ -250,35 +240,5 @@ function GuiBase.create_textbox(parent, name, text, style, icon_selector)
     end
     return GuiBase.create_element('text-box', parent, opts)
 end
-
---- Create a GUI element with common options (name, style, caption, sprite, tooltip)
-function GuiBase.create_named_element(type, parent, opts)
-  if not parent or not parent.valid then
-    ErrorHandler.debug_log("create_named_element: invalid parent", { type = type, opts = opts })
-    return nil
-  end
-  if not opts or not opts.name then
-    ErrorHandler.debug_log("create_named_element: missing opts or name", { type = type, parent = parent and parent.name or "nil", opts = opts })
-    return nil
-  end
-  local elem, err = nil, nil
-  local ok, result = pcall(function()
-    return parent.add{type=type, name=opts.name, style=opts.style}
-  end)
-  if ok then
-    elem = result
-  else
-    ErrorHandler.debug_log("create_named_element: parent.add failed", { type = type, parent = parent.name, opts = opts, error = result })
-    return nil
-  end
-  if elem then
-    if opts.caption then elem.caption = opts.caption end
-    if opts.sprite then elem.sprite = opts.sprite end
-    if opts.tooltip then elem.tooltip = opts.tooltip end
-  end
-  return elem
-end
-
-
 
 return GuiBase

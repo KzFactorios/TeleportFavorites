@@ -1,27 +1,14 @@
---[[
-game_helpers.lua
-TeleportFavorites Factorio Mod
------------------------------
-Game-specific utilities: teleport, sound, space/water detection, tag collision, etc.
-Extracted from helpers_suite.lua for better organization and maintainability.
-]]
+-- core/utils/game_helpers.lua
+-- TeleportFavorites Factorio Mod
+-- Game-specific utilities for teleportation, sound playback, space/water detection, tag collision, and player messaging.
+-- Integrates with ErrorHandler and TeleportStrategies for robust multiplayer-safe operations.
 
 local ErrorHandler = require("core.utils.error_handler")
 local TeleportStrategies = require("core.utils.teleport_strategy")
 local TeleportUtils = TeleportStrategies.TeleportUtils
-local PositionUtils = require("core.utils.position_utils")
 
 ---@class GameHelpers
 local GameHelpers = {}
-
---- Simple local check if a position appears walkable (not water/space)
---- This is a simplified version to avoid circular dependencies
----@param surface LuaSurface
----@param position MapPosition
----@return boolean appears_walkable
-local function appears_walkable(surface, position)
-  return PositionUtils.appears_walkable(surface, position)
-end
 
 function GameHelpers.safe_play_sound(player, sound)
   if player and player.valid and type(player.play_sound) == "function" and type(sound) == "table" then
@@ -40,24 +27,6 @@ end
 function GameHelpers.player_print(player, message)
   if player and player.valid and type(player.print) == "function" then
     pcall(function() player.print(message) end)
-  end
-end
-
---- Safe teleport with water tile detection and landing position finding
----@param player LuaPlayer Player to teleport
----@param gps string GPS coordinates in 'xxx.yyy.s' format
----@param custom_radius number? Custom safety radius for finding safe positions
----@return boolean success Whether teleportation was successful
-function GameHelpers.safe_teleport_to_gps(player, gps, custom_radius)
-  local context = {
-    force_safe = true,
-    custom_radius = custom_radius
-  }
-  local result = TeleportUtils.teleport_to_gps(player, gps, context, false)
-  if type(result) == "boolean" then
-    return result
-  else
-    return false
   end
 end
 

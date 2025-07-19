@@ -1,23 +1,9 @@
 ---@diagnostic disable: undefined-global
 
---[[
-modal_input_blocker.lua
-TeleportFavorites Factorio Mod
------------------------------
-Blocks all player input when modal dialogs are active to ensure proper modal behavior.
-Intercepts key input events and prevents them from executing when a modal dialog is open.
-
-Events Blocked:
-- Mouse clicks on game world (building, selecting, etc.)
-- Keyboard shortcuts and hotkeys
-- Built entity events (placing, building)
-- Mining and demolition events
-- Player movement and selection events
-- Custom input events (except modal-related ones)
-
-This ensures that when the teleport history modal (or other modals) are open,
-the player cannot interact with the game world until the modal is closed.
---]]
+-- core/events/modal_input_blocker.lua
+-- TeleportFavorites Factorio Mod
+-- Blocks all player input when modal dialogs are active to ensure proper modal behavior.
+-- Intercepts key input events and prevents them from executing when a modal dialog is open.
 
 local Cache = require("core.cache.cache")
 local BasicHelpers = require("core.utils.basic_helpers")

@@ -1,21 +1,6 @@
---[[
-core/favorite/favorite.lua
-TeleportFavorites Factorio Mod
------------------------------
-Favorite class for representing a player's favorite teleport location.
-
-- Each Favorite is identified by a GPS string (always in 'xxx.yyy.s' format).
-- Supports locked state (prevents removal or editing in the UI).
-- Optionally holds a tag table for tooltip formatting and richer UI.
-- Provides helpers for construction, copying, equality, blank/unused slot detection, and tooltip formatting.
-- Used throughout the mod for favorites bar, tag editor, and persistent player data.
-
-
-Notes:
-------
-- GPS string must always be a string in the format 'xxx.yyy.s'. Never store or pass GPS as a table except for temporary parsing/conversion.
-- See README and gps_helpers.lua for details and valid examples.
-]]
+-- core/favorite/favorite.lua
+-- TeleportFavorites Factorio Mod
+-- Favorite class for representing a player's favorite teleport location, with GPS, locked state, and tag helpers.
 
 local Constants = require("constants")
 local basic_helpers = require("core.utils.basic_helpers")
@@ -28,14 +13,6 @@ local basic_helpers = require("core.utils.basic_helpers")
 
 local FavoriteUtils = {}
 
----@param fav Favorite?
----@return Favorite?
-function FavoriteUtils.normalize_blank_favorite(fav)
-  if fav and (fav.gps == nil or fav.gps == "") then
-    fav.gps = Constants.settings.BLANK_GPS
-  end
-  return fav
-end
 
 ---@param gps string?
 ---@param locked boolean?
@@ -89,12 +66,6 @@ end
 ---@return Favorite
 function FavoriteUtils.get_blank_favorite()
   return FavoriteUtils.new((Constants.settings.BLANK_GPS --[[@as string]]), false, nil)
-end
-
----@param fav Favorite?
----@return boolean
-function FavoriteUtils.valid(fav)
-  return FavoriteUtils.check_state(fav, "valid")
 end
 
 ---@param fav Favorite

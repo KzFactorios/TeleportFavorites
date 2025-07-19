@@ -1,24 +1,6 @@
--- filepath: v:\Fac2orios\2_Gemini\mods\TeleportFavorites\core\utils\locale_utils.lua
-
---[[
-LocaleUtils - Centralized localization helper for TeleportFavorites mod
-
-This module provides utilities for consistent localized string access throughout the mod.
-It ensures all hardcoded strings are replaced with proper locale keys.
-
-Usage Examples:
-  LocaleUtils.get_gui_string(player, "favorite_slot_empty")
-  LocaleUtils.get_error_string(player, "driving_teleport_blocked")
-  LocaleUtils.get_command_string(player, "action_undone")
-  LocaleUtils.format_string(player, "teleported_to", {player.name, destination})
-
-Features:
-- Centralized string access with fallback to English
-- Parameter substitution support
-- Category-based organization (gui, error, command, handler)
-- Debug mode for missing translations
-- Consistent API across all mod components
-]]
+-- core/utils/locale_utils.lua
+-- TeleportFavorites Factorio Mod
+-- Centralized localization helper for consistent localized string access and parameter substitution.
 
 local BasicHelpers = require("core.utils.basic_helpers")
 
@@ -57,17 +39,6 @@ Get a localized string from the error category
 ]]
 function LocaleUtils.get_error_string(player, key, params)
     return LocaleUtils.get_string(player, "error", key, params)
-end
-
---[[
-Get a localized string from the handler category
-@param player - The player object for localization context
-@param key - The locale key (without prefix)
-@param params - Optional table of parameters for string substitution
-@return localized string
-]]
-function LocaleUtils.get_handler_string(player, key, params)
-    return LocaleUtils.get_string(player, "handler", key, params)
 end
 
 --[[

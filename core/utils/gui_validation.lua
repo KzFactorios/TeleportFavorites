@@ -1,16 +1,9 @@
 ---@diagnostic disable: undefined-global
---[[
-GUI Validation Utilities for TeleportFavorites
-=============================================
-Module: core/utils/gui_validation.lua
+-- core/utils/gui_validation.lua
+-- TeleportFavorites Factorio Mod
+-- Provides validation and safety utilities for GUI elements and operations.
 
-Provides validation and safety utilities for GUI elements and operations.
-]]
-
-local Logger = require("core.utils.enhanced_error_handler")
-local GameHelpers = require("core.utils.game_helpers")
-local LocaleUtils = require("core.utils.locale_utils")
-local GuiBase = require("gui.gui_base")
+local Logger = require("core.utils.error_handler")
 local Enum = require("prototypes.enums.ui_enums")
 local BasicHelpers = require("core.utils.basic_helpers")
 
@@ -44,13 +37,13 @@ function GuiValidation.apply_style_properties(element, style_props)
     return false
   end
   ---@cast element -nil
-  
+
   local success, error_msg = pcall(function()
     for prop, value in pairs(style_props) do
       element.style[prop] = value
     end
   end)
-  
+
   if not success then
     Logger.debug_log("Failed to apply style properties", {
       element_name = element.name or "<no name>",
@@ -58,7 +51,7 @@ function GuiValidation.apply_style_properties(element, style_props)
       error = error_msg
     })
   end
-  
+
   return success
 end
 
@@ -67,7 +60,7 @@ end
 ---@param frame_name string Name of the frame to destroy
 function GuiValidation.safe_destroy_frame(parent, frame_name)
   if not parent or not frame_name then return end
-  
+
   if parent[frame_name] and parent[frame_name].valid and type(parent[frame_name].destroy) == "function" then
     parent[frame_name].destroy()
   end
@@ -82,21 +75,21 @@ function GuiValidation.set_button_state(element, enabled, style_overrides)
     Logger.debug_log("set_button_state: element is nil or invalid")
     return
   end
-  
-  if not (element.type == "button" or element.type == "sprite-button" or 
-          element.type == "textfield" or element.type == "text-box" or 
-          element.type == "choose-elem-button") then
+
+  if not (element.type == "button" or element.type == "sprite-button" or
+        element.type == "textfield" or element.type == "text-box" or
+        element.type == "choose-elem-button") then
     Logger.debug_log("set_button_state: Unexpected element type", {
       type = element.type,
       name = element.name
     })
     return
   end
-  
+
   element.enabled = enabled ~= false
-  
-  if (element.type == "button" or element.type == "sprite-button" or element.type == "choose-elem-button") and 
-     style_overrides and type(style_overrides) == "table" then
+
+  if (element.type == "button" or element.type == "sprite-button" or element.type == "choose-elem-button") and
+      style_overrides and type(style_overrides) == "table" then
     for k, v in pairs(style_overrides) do
       element.style[k] = v
     end
@@ -117,9 +110,9 @@ function GuiValidation.get_gui_frame_by_element(element)
       local name = current.name or ""
       -- Use enum constants instead of hardcoded strings
       if name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR or
-         name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM or
-         name == Enum.GuiEnum.GUI_FRAME.FAVE_BAR or
-         name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL then
+          name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM or
+          name == Enum.GuiEnum.GUI_FRAME.FAVE_BAR or
+          name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL then
         return current
       end
     end
@@ -135,30 +128,30 @@ end
 ---@return LuaGuiElement|nil Found child element or nil
 function GuiValidation.find_child_by_name(parent, child_name)
   if not parent or not parent.valid or not child_name then return nil end
-  
+
   -- Direct child check
   local direct_child = parent[child_name]
   if direct_child and direct_child.valid then
     return direct_child
   end
-  
+
   -- Recursive search with depth limit
   local function recursive_search(element, name, depth)
     if depth > 10 then return nil end
-    
+
     for _, child in pairs(element.children) do
       if child.valid then
         if child.name == name then
           return child
         end
-        
+
         local found = recursive_search(child, name, depth + 1)
         if found then return found end
       end
     end
     return nil
   end
-  
+
   return recursive_search(parent, child_name, 0)
 end
 
@@ -170,20 +163,20 @@ function GuiValidation.validate_sprite(sprite_path)
   if not sprite_path or type(sprite_path) ~= "string" or sprite_path == "" then
     return false, "Sprite path is nil or empty"
   end
-  
+
   -- Basic format validation
   if not sprite_path:match("^[%w_%-/%.]+$") then
     return false, "Sprite path contains invalid characters"
   end
-  
+
   -- Check for common patterns including Space Age content
   local valid_prefixes = {
-    "item/", "entity/", "technology/", "recipe/", 
+    "item/", "entity/", "technology/", "recipe/",
     "fluid/", "tile/", "signal/", "utility/",
     "virtual-signal/", "equipment/", "achievement/",
-    "quality/", "space-location/"  -- Space Age prefixes
+    "quality/", "space-location/" -- Space Age prefixes
   }
-  
+
   local has_valid_prefix = false
   for _, prefix in ipairs(valid_prefixes) do
     if sprite_path:sub(1, #prefix) == prefix then
@@ -191,11 +184,11 @@ function GuiValidation.validate_sprite(sprite_path)
       break
     end
   end
-  
+
   if not has_valid_prefix then
     return false, "Sprite path does not have a recognized prefix"
   end
-  
+
   return true, nil
 end
 
@@ -244,7 +237,13 @@ function GuiValidation.get_validated_sprite_path(icon, opts)
       sprite_path = fallback
       used_fallback = true
       debug_info.reason = "icon table missing type or name"
-      debug_info.icon_table_details = { has_type = normalized_icon.type ~= nil, has_name = normalized_icon.name ~= nil, type_value = normalized_icon.type, name_value = normalized_icon.name }
+      debug_info.icon_table_details = {
+        has_type = normalized_icon.type ~= nil,
+        has_name = normalized_icon.name ~= nil,
+        type_value =
+            normalized_icon.type,
+        name_value = normalized_icon.name
+      }
     end
   else
     sprite_path = fallback
@@ -253,26 +252,23 @@ function GuiValidation.get_validated_sprite_path(icon, opts)
   end
 
   -- Extra debug: log the normalized sprite path and fallback usage
-  if Logger and Logger.debug_log then
-    Logger.debug_log("[GUI_VALIDATION] Sprite path normalization", {
-      original_icon = icon,
-      normalized_sprite_path = sprite_path,
-      debug_info = debug_info
-    })
-  end
+  Logger.debug_log("[GUI_VALIDATION] Sprite path normalization", {
+    original_icon = icon,
+    normalized_sprite_path = sprite_path,
+    debug_info = debug_info
+  })
 
   local is_valid, error_msg = GuiValidation.validate_sprite(sprite_path)
   if not is_valid then
     debug_info.reason = (debug_info.reason or "") .. (error_msg and (": " .. error_msg) or "")
     sprite_path = fallback
     used_fallback = true
-    if Logger and Logger.debug_log then
-      Logger.debug_log("[GUI_VALIDATION] Sprite validation failed, using fallback", {
-        attempted_sprite_path = sprite_path,
-        error_msg = error_msg,
-        fallback = fallback
-      })
-    end
+
+    Logger.debug_log("[GUI_VALIDATION] Sprite validation failed, using fallback", {
+      attempted_sprite_path = sprite_path,
+      error_msg = error_msg,
+      fallback = fallback
+    })
   end
 
   debug_info.log_context = log_context

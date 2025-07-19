@@ -10,7 +10,6 @@
 -->
 
 - [ ] Review and finalize all custom button styles for the tag editor GUI, ensuring vanilla-like appearance and consistent sizing/alignment. 
-- [x] **COMPLETED 2025-06-25**: Implement debug level controls for production vs development environments. Created `DebugConfig` and `EnhancedErrorHandler` modules with runtime debug level management.
 - [ ] Add more unit tests for helpers and GUI logic as the project matures.
 - [ ] Add localization for any new user-facing strings.
 

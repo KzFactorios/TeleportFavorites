@@ -22,7 +22,7 @@ local control_tag_editor = require("core.control.control_tag_editor")
 
 local event_registration_dispatcher = require("core.events.event_registration_dispatcher")
 local handlers = require("core.events.handlers")
-local Logger = require("core.utils.enhanced_error_handler")
+local Logger = require("core.utils.error_handler")
 local DebugCommands = require("core.commands.debug_commands")
 local DeleteFavoriteCommand = require("core.commands.delete_favorite_command")
 local TeleportHistory = require("core.teleport.teleport_history")

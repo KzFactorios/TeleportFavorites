@@ -157,6 +157,7 @@
 ---@field unit_number? uint
 ---@field direction? defines.direction
 ---@field health? float
+---@field speed? double
 ---@field ghost_name? string
 ---@field ghost_type? string
 ---@field ghost_localised_name? LocalisedString
@@ -356,6 +357,7 @@ settings = settings or {} ---@type LuaSettings
 ---@field tag string
 ---@field ticks_to_respawn? uint
 ---@field vehicle? LuaEntity
+---@field physical_vehicle? LuaEntity
 ---@field valid boolean
 ---@field gui LuaGui
 ---@field walking_state {walking: boolean, direction: defines.direction}
@@ -397,6 +399,7 @@ settings = settings or {} ---@type LuaSettings
 ---@field enable_recipe_notifications fun()
 ---@field enable_research_notifications fun()
 ---@field enable_tutorial fun(tutorial: string)
+---@field exit_remote_view fun()
 ---@field find_entity_ghost fun(position: MapPosition): LuaEntity?
 ---@field find_non_colliding_position fun(name: string, center: MapPosition, radius: double, precision: double, force_to_tile_center?: boolean): MapPosition?
 ---@field get_active_quick_bar fun(): LuaInventory

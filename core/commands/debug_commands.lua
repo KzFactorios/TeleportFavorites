@@ -1,3 +1,10 @@
+--[[]]
+-- core/commands/debug_commands.lua
+-- TeleportFavorites Factorio Mod
+-- -----------------------------
+-- This module provides debug commands for runtime debug level control. It allows changing debug levels during gameplay, showing debug info, and toggling between production and development modes.
+--]]
+
 ---@diagnostic disable: undefined-global
 --[[
 core/commands/debug_commands.lua
@@ -17,6 +24,7 @@ Commands:
 local basic_helpers = require("core.utils.basic_helpers")
 local ValidationUtils = require("core.utils.validation_utils")
 local Cache = require("core.cache.cache")
+local fave_bar = require("gui.favorites_bar.fave_bar")
 
 local DebugCommands = {}
 
@@ -25,7 +33,7 @@ local function get_deps(deps)
   deps = deps or {}
   return {
     DebugConfig = deps.DebugConfig or require("core.utils.debug_config"),
-    Logger = deps.Logger or require("core.utils.enhanced_error_handler"),
+    Logger = deps.Logger or require("core.utils.error_handler"),
     PlayerHelpers = deps.PlayerHelpers or require("core.utils.player_helpers"),
     FaveBar = deps.FaveBar or require("gui.favorites_bar.fave_bar"),
     GuiHelpers = deps.GuiHelpers or require("core.utils.gui_helpers"),
@@ -37,7 +45,7 @@ local function get_deps(deps)
 end
 
 DebugCommands._deps = get_deps()
-function DebugCommands._inject(deps) DebugCommands._deps = get_deps(deps) end
+
 
 -- All handlers now take explicit deps as first argument for testability
 local function tf_debug_level_handler(deps, command)
@@ -223,10 +231,7 @@ local function tf_trigger_settings_event_handler(deps, command)
   }
 
   -- Try to get the registered event handler directly
-  local success, result = pcall(function()
-    -- Get the event registration dispatcher
-    local EventRegistrationDispatcher = require("core.events.event_registration_dispatcher") 
-    
+  local success, result = pcall(function()    
     -- Try to trigger the actual registered handler by firing the event
     local event_id = defines.events.on_runtime_mod_setting_changed
     script.raise_event(event_id, fake_event)
@@ -241,10 +246,7 @@ local function tf_trigger_settings_event_handler(deps, command)
     
     -- Fallback: call the handler function directly
     PlayerHelpers.safe_player_print(player, "Trying direct handler call...")
-    local fallback_success, fallback_result = pcall(function()
-      local EventRegistrationDispatcher = require("core.events.event_registration_dispatcher")
-      -- This won't work directly, but we can call the fave bar rebuild manually
-      local fave_bar = require("gui.favorites_bar.fave_bar")
+    local fallback_success, fallback_result = pcall(function()      
       fave_bar.build(player, true)
       return true
     end)
@@ -284,63 +286,6 @@ local function tf_check_events_handler(deps, command)
   PlayerHelpers.safe_player_print(player, "=== Event Check Complete ===")
 end
 
--- Expose for test and registration
-DebugCommands.tf_debug_level_handler = function(cmd) return tf_debug_level_handler(DebugCommands._deps, cmd) end
-DebugCommands.tf_debug_info_handler = function(cmd) return tf_debug_info_handler(DebugCommands._deps, cmd) end
-DebugCommands.tf_debug_production_handler = function(cmd) return tf_debug_production_handler(DebugCommands._deps, cmd) end
-DebugCommands.tf_debug_development_handler = function(cmd) return tf_debug_development_handler(DebugCommands._deps, cmd) end
-DebugCommands.tf_test_controller_handler = function(cmd) return tf_test_controller_handler(DebugCommands._deps, cmd) end
-DebugCommands.tf_force_build_bar_handler = function(cmd) return tf_force_build_bar_handler(DebugCommands._deps, cmd) end
-DebugCommands.tf_test_settings_handler = function(cmd) return tf_test_settings_handler(DebugCommands._deps, cmd) end
-DebugCommands.tf_trigger_settings_event_handler = function(cmd) return tf_trigger_settings_event_handler(DebugCommands._deps, cmd) end
-DebugCommands.tf_check_events_handler = function(cmd) return tf_check_events_handler(DebugCommands._deps, cmd) end
-DebugCommands.tf_settings_diagnostics_handler = function(cmd) return tf_settings_diagnostics_handler(cmd) end
-DebugCommands.tf_rebuild_fave_bar_handler = function(cmd) return tf_rebuild_fave_bar_handler(cmd) end
-
-function DebugCommands.register_commands()
-  basic_helpers.register_module_commands(DebugCommands, {
-    { "tf_debug_level",       "Set debug level (0-5)",                     "tf_debug_level_handler" },
-    { "tf_debug_info",        "Show current debug configuration",          "tf_debug_info_handler" },
-    { "tf_debug_production",  "Enable production mode (minimal logging)",  "tf_debug_production_handler" },
-    { "tf_debug_development", "Enable development mode (verbose logging)", "tf_debug_development_handler" },
-    { "tf_test_controller",   "Print controller test info",                "tf_test_controller_handler" },
-    { "tf_force_build_bar",   "Force build favorites bar",                 "tf_force_build_bar_handler" },
-    { "tf_test_settings",     "Test settings system functionality",        "tf_test_settings_handler" },
-    { "tf_trigger_settings_event", "Manually trigger settings change event", "tf_trigger_settings_event_handler" },
-    { "tf_check_events",      "Check event registration status",           "tf_check_events_handler" },
-    { "tf_settings_diag",     "Run comprehensive settings diagnostics",    "tf_settings_diagnostics_handler" },
-    { "tf_rebuild_fave_bar",  "Manually rebuild favorites bar",            "tf_rebuild_fave_bar_handler" }
-  })
-  local Logger = DebugCommands._deps.Logger
-  Logger.info("Debug commands registered")
-end
-
---- Create debug level GUI controls (for integration into existing GUIs)
----@param parent LuaGuiElement Parent element to add controls to
----@param player LuaPlayer Player who owns the GUI
----@return LuaGuiElement debug_flow Debug controls flow
-function DebugCommands.create_debug_level_controls(parent, player)
-  local DebugConfig = DebugCommands._deps.DebugConfig
-  local debug_flow = parent.add { type = "flow", name = "tf_debug_level_controls", direction = "horizontal" }
-  debug_flow.add { type = "label", caption = "Debug Level:" } -- Label
-  local current_level = DebugConfig.get_level()            -- Current level display
-  local level_label = debug_flow.add { type = "label", name = "tf_debug_current_level", caption = current_level .. " (" .. DebugConfig.get_level_name(current_level) .. ")" }
-  -- Level buttons
-  local levels = {
-    { level = DebugConfig.LEVELS.NONE,  name = "NONE", color = { r = 0.5, g = 0.5, b = 0.5 } },
-    { level = DebugConfig.LEVELS.ERROR, name = "ERR",  color = { r = 1.0, g = 0.3, b = 0.3 } },
-    { level = DebugConfig.LEVELS.WARN,  name = "WARN", color = { r = 1.0, g = 0.8, b = 0.3 } },
-    { level = DebugConfig.LEVELS.INFO,  name = "INFO", color = { r = 0.3, g = 0.8, b = 1.0 } },
-    { level = DebugConfig.LEVELS.DEBUG, name = "DBG",  color = { r = 0.6, g = 1.0, b = 0.6 } },
-    { level = DebugConfig.LEVELS.TRACE, name = "TRC",  color = { r = 1.0, g = 0.6, b = 1.0 } }
-  }
-  for _, level_info in ipairs(levels) do
-    local button = debug_flow.add { type = "button", name = "tf_debug_set_level_" .. level_info.level, caption = level_info.name, tooltip = "Set debug level to " .. level_info.level .. " (" .. level_info.name .. ")" }
-    if level_info.level == current_level then button.enabled = false end
-  end
-  return debug_flow
-end
-
 --- Handle debug level button clicks
 ---@param event table GUI click event
 function DebugCommands.on_debug_level_button_click(event)
@@ -348,7 +293,7 @@ function DebugCommands.on_debug_level_button_click(event)
   local PlayerHelpers = DebugCommands._deps.PlayerHelpers
   local BasicHelpers = DebugCommands._deps.BasicHelpers
   local element = event.element
-  local valid = require("core.utils.validation_utils").validate_gui_element(element)
+  local valid = ValidationUtils.validate_gui_element(element)
   if not valid then return end
   local player = game.players[event.player_index]
   if not ValidationUtils.validate_player(player) then return end
@@ -373,104 +318,31 @@ function DebugCommands.on_debug_level_button_click(event)
     "Debug level changed to: " .. level .. " (" .. DebugConfig.get_level_name(level) .. ")")
 end
 
---- Comprehensive settings diagnostics handler
----@param command table Command data
-function tf_settings_diagnostics_handler(command)
-  local Cache = DebugCommands._deps.Cache
-  local PlayerHelpers = DebugCommands._deps.PlayerHelpers
+-- Expose for test and registration
+DebugCommands.tf_debug_level_handler = function(cmd) return tf_debug_level_handler(DebugCommands._deps, cmd) end
+DebugCommands.tf_debug_info_handler = function(cmd) return tf_debug_info_handler(DebugCommands._deps, cmd) end
+DebugCommands.tf_debug_production_handler = function(cmd) return tf_debug_production_handler(DebugCommands._deps, cmd) end
+DebugCommands.tf_debug_development_handler = function(cmd) return tf_debug_development_handler(DebugCommands._deps, cmd) end
+DebugCommands.tf_test_controller_handler = function(cmd) return tf_test_controller_handler(DebugCommands._deps, cmd) end
+DebugCommands.tf_force_build_bar_handler = function(cmd) return tf_force_build_bar_handler(DebugCommands._deps, cmd) end
+DebugCommands.tf_test_settings_handler = function(cmd) return tf_test_settings_handler(DebugCommands._deps, cmd) end
+DebugCommands.tf_trigger_settings_event_handler = function(cmd) return tf_trigger_settings_event_handler(DebugCommands._deps, cmd) end
+DebugCommands.tf_check_events_handler = function(cmd) return tf_check_events_handler(DebugCommands._deps, cmd) end
 
-  local player = game.players[command.player_index]
-  if not player or not player.valid then return end
-
-  PlayerHelpers.safe_player_print(player, "=== TeleportFavorites Settings Diagnostics ===")
-
-  -- Test 1: Check if our mod settings exist in Factorio's settings system
-  PlayerHelpers.safe_player_print(player, "1. Checking Factorio settings registration:")
-  local mod_settings = {"favorites_on", "enable_teleport_history", "history-update-interval", "chart-tag-click-radius"}
-  for _, setting_name in ipairs(mod_settings) do
-    local player_setting = player.mod_settings[setting_name]
-    local has_setting = player_setting ~= nil
-    PlayerHelpers.safe_player_print(player, "  " .. setting_name .. ": " .. (has_setting and "✓ Found" or "✗ Missing"))
-    if has_setting then
-      PlayerHelpers.safe_player_print(player, "    Type: " .. tostring(player_setting.setting_type or "unknown"))
-      PlayerHelpers.safe_player_print(player, "    Value: " .. tostring(player_setting.value))
-    end
-  end
-
-  -- Test 2: Check current values through multiple access methods
-  PlayerHelpers.safe_player_print(player, "2. Current setting values (multiple access methods):")
-  
-  -- Method A: Direct Factorio API via player.mod_settings
-  local factorio_favorites_on = player.mod_settings["favorites_on"]
-  local factorio_teleport_history = player.mod_settings["enable_teleport_history"]
-  PlayerHelpers.safe_player_print(player, "  Direct API - favorites_on: " .. tostring(factorio_favorites_on and factorio_favorites_on.value or "nil"))
-  PlayerHelpers.safe_player_print(player, "  Direct API - enable_teleport_history: " .. tostring(factorio_teleport_history and factorio_teleport_history.value or "nil"))
-
-  -- Method B: Through our cache system
-  local cached_settings = Cache.Settings.get_player_settings(player)
-  PlayerHelpers.safe_player_print(player, "  Cache API - favorites_on: " .. tostring(cached_settings.favorites_on))
-  PlayerHelpers.safe_player_print(player, "  Cache API - enable_teleport_history: " .. tostring(cached_settings.enable_teleport_history))
-
-  -- Test 3: Check if values match
-  local values_match = (factorio_favorites_on and factorio_favorites_on.value == cached_settings.favorites_on) and
-                      (factorio_teleport_history and factorio_teleport_history.value == cached_settings.enable_teleport_history)
-  PlayerHelpers.safe_player_print(player, "  Values match: " .. (values_match and "✓ Yes" or "✗ No"))
-
-  -- Test 4: Event system test - manually register a simple test handler
-  PlayerHelpers.safe_player_print(player, "3. Event system test:")
-  
-  -- Store original handler if any
-  local success, result = pcall(function()
-    -- Create a test event handler
-    local test_fired = false
-    local test_handler = function(event)
-      test_fired = true
-      PlayerHelpers.safe_player_print(player, "*** TEST EVENT FIRED *** Setting: " .. tostring(event.setting))
-    end
-    
-    -- Try to register the test handler temporarily
-    script.on_event(defines.events.on_runtime_mod_setting_changed, test_handler)
-    
-    PlayerHelpers.safe_player_print(player, "  Test handler registered successfully")
-    return true
-  end)
-  
-  if success then
-    PlayerHelpers.safe_player_print(player, "  ✓ Event handler registration works")
-  else
-    PlayerHelpers.safe_player_print(player, "  ✗ Event handler registration failed: " .. tostring(result))
-  end
-
-  -- Test 5: Check mod loading state
-  PlayerHelpers.safe_player_print(player, "4. Mod state check:")
-  PlayerHelpers.safe_player_print(player, "  Game state: " .. tostring(game and "Available" or "Not Available"))
-  PlayerHelpers.safe_player_print(player, "  Script state: " .. tostring(script and "Available" or "Not Available"))
-  PlayerHelpers.safe_player_print(player, "  Connected players: " .. tostring(#game.connected_players))
-  PlayerHelpers.safe_player_print(player, "  Player index: " .. tostring(player.index))
-
-  PlayerHelpers.safe_player_print(player, "=== Diagnostics Complete ===")
-  PlayerHelpers.safe_player_print(player, "Next steps:")
-  PlayerHelpers.safe_player_print(player, "1. Change a setting through the mod settings menu")
-  PlayerHelpers.safe_player_print(player, "2. Watch for debug messages or use /tf_test_settings to verify")
-  PlayerHelpers.safe_player_print(player, "3. If no event fires, this is a Factorio engine or timing issue")
-end
-
---- Manual favorites bar rebuild handler
----@param command table Command data
-function tf_rebuild_fave_bar_handler(command)
-  local PlayerHelpers = DebugCommands._deps.PlayerHelpers
-  local fave_bar = DebugCommands._deps.fave_bar
-
-  local player = game.players[command.player_index]
-  if not player or not player.valid then return end
-
-  PlayerHelpers.safe_player_print(player, "=== Manual Favorites Bar Rebuild ===")
-  
-  -- Force rebuild the favorites bar
-  fave_bar.build(player, true)
-  
-  PlayerHelpers.safe_player_print(player, "✓ Favorites bar rebuilt manually")
-  PlayerHelpers.safe_player_print(player, "This simulates what should happen when settings change")
+function DebugCommands.register_commands()
+  basic_helpers.register_module_commands(DebugCommands, {
+    { "tf_debug_level",       "Set debug level (0-5)",                     "tf_debug_level_handler" },
+    { "tf_debug_info",        "Show current debug configuration",          "tf_debug_info_handler" },
+    { "tf_debug_production",  "Enable production mode (minimal logging)",  "tf_debug_production_handler" },
+    { "tf_debug_development", "Enable development mode (verbose logging)", "tf_debug_development_handler" },
+    { "tf_test_controller",   "Print controller test info",                "tf_test_controller_handler" },
+    { "tf_force_build_bar",   "Force build favorites bar",                 "tf_force_build_bar_handler" },
+    { "tf_test_settings",     "Test settings system functionality",        "tf_test_settings_handler" },
+    { "tf_trigger_settings_event", "Manually trigger settings change event", "tf_trigger_settings_event_handler" },
+    { "tf_check_events",      "Check event registration status",           "tf_check_events_handler" },
+  })
+  local Logger = DebugCommands._deps.Logger
+  Logger.info("Debug commands registered")
 end
 
 return DebugCommands

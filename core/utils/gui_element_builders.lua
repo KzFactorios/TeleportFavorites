@@ -1,18 +1,7 @@
---[[
-GUI Element Builders for TeleportFavorites
-==========================================
-Module: core/utils/gui_element_builders.lua
-
-Consolidates common GUI element creation patterns to reduce code duplication
-across the mod's GUI components. Provides specialized builders for frequently
-used element combinations and patterns.
-
-Features:
-- Stateful button builders (favorite, teleport, delete)
-- Confirmation dialog builders
-- Row and flow builders with common patterns
-- Centralized button state and styling logic
-]]
+-- core/utils/gui_element_builders.lua
+-- TeleportFavorites Factorio Mod
+-- Consolidates common GUI element creation patterns for mod GUIs.
+-- Provides specialized builders for buttons, dialogs, rows, and flows.
 
 local GuiBase = require("gui.gui_base")
 local GuiValidation = require("core.utils.gui_validation")
@@ -198,36 +187,6 @@ function GuiElementBuilders.set_button_state_and_tooltip(button, enabled, toolti
   if tooltip then
     button.tooltip = tooltip
   end
-end
-
---- Update favorite button state based on data
----@param button LuaGuiElement Favorite button element
----@param is_favorite boolean Current favorite state
----@param enabled boolean Whether button should be enabled
-function GuiElementBuilders.update_favorite_button_state(button, is_favorite, enabled)
-  if not BasicHelpers.is_valid_element(button) then return end
-  
-  local star_state = is_favorite and Enum.SpriteEnum.STAR or Enum.SpriteEnum.STAR_DISABLED
-  local fave_style = is_favorite and "slot_orange_favorite_on" or "slot_orange_favorite_off"
-  local tooltip = enabled and { "tf-gui.favorite_tooltip" } or { "tf-gui.max_favorites_warning" }
-  
-  button.sprite = star_state
-  -- Apply style using GuiValidation helper to avoid style assignment issues
-  GuiValidation.apply_style_properties(button, { style = fave_style })
-  button.enabled = enabled
-  if tooltip then button.tooltip = tooltip end
-end
-
---- Update teleport button caption with new coordinates
----@param button LuaGuiElement Teleport button element
----@param gps string GPS string for new coordinates
-function GuiElementBuilders.update_teleport_button_coordinates(button, gps)
-  if not BasicHelpers.is_valid_element(button) then return end
-  
-  local coords = GPSUtils.coords_string_from_gps(gps)
-  if not coords or coords == "" then coords = "" end
-  
-  button.caption = {"tf-gui.teleport_to", tostring(coords)}
 end
 
 return GuiElementBuilders

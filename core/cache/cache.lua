@@ -1,52 +1,47 @@
 ---@diagnostic disable: undefined-global
 
+-- core/cache/cache.lua
+-- TeleportFavorites Factorio Mod
+-- Manages persistent and runtime cache for mod data, including player, surface, and tag storage. All access via Cache API.
 --[[
-Cache.lua
-TeleportFavorites Factorio Mod
------------------------------
-Persistent and runtime cache management for mod data, including player, surface, and tag storage.
-
-- Provides helpers for safe cache access, mutation, and removal, with strict EmmyLua annotations.
-- All persistent data is stored in the global table under  storage.cache,  storage.players, and  storage.surfaces.
-- Each player entry in storage.players[player_index] now includes a player_name field for the Factorio player name.
-- Runtime (non-persistent) lookup tables are managed via the Lookups module.
-- Settings access and caching is managed via the SettingsCache module.
-- Player and surface data are always initialized and normalized for safe multiplayer and multi-surface support.
-- All access to persistent cache should use the Cache API; do not access  storage directly.
-
-Data Structure (as of v2.0+):
----------------
+Data Structure (v2.0+):
 storage = {
-  mod_version = string, -- Current mod version
+  mod_version = string,
   players = {
     [player_index] = {
-      player_name = string,         -- Factorio player name
-      render_mode = string,         -- Player's render mode
-      tag_editor_data = table,      -- Tag editor UI state (see Cache.create_tag_editor_data)
-      fave_bar_slots_visible = bool,-- Whether the favorites bar is visible
-      drag_favorite = table,        -- Drag state for favorites bar
-      modal_dialog = table,         -- Modal dialog state
+      player_name = string,
+      render_mode = string,
+      tag_editor_data = table,
+      fave_bar_slots_visible = bool,
+      drag_favorite = table,
+      modal_dialog = table,
       surfaces = {
         [surface_index] = {
-          favorites = { Favorite, ... },      -- Array of Favorite objects for this surface
-          teleport_history = {                -- Teleport history for this surface
+          favorites = { Favorite, ... },
+          teleport_history = {
             stack = { gps_string, ... },
             pointer = number
           }
-        },
-        ...
+        }, ...
       }
-    },
-    ...
+    }, ...
   },
   surfaces = {
     [surface_index] = {
-      tags = { [gps_string] = Tag }, -- Persistent tags for this surface, indexed by GPS string
-    },
-    ...
+      tags = { [gps_string] = Tag },
+    }, ...
   }
 }
 ]]
+
+
+
+local FavoriteUtils = require("core.favorite.favorite")
+local Constants = require("constants")
+local GPSUtils = require("core.utils.gps_utils")
+local Lookups = require("core.cache.lookups")
+local SettingsCache = require("core.cache.settings")
+local BasicHelpers = require("core.utils.basic_helpers")
 
 -- Function to get mod version from Factorio's mod system at runtime
 local function get_mod_version()
@@ -56,35 +51,25 @@ local function get_mod_version()
   return "unknown"
 end
 
-local FavoriteUtils = require("core.favorite.favorite")
-local Constants = require("constants")
-local GPSUtils = require("core.utils.gps_utils")
-local Lookups = require("core.cache.lookups")
-local SettingsCache = require("core.cache.settings")
-local BasicHelpers = require("core.utils.basic_helpers")
-
-
 --- Persistent and runtime cache management for TeleportFavorites mod.
 ---@class Cache
 ---@field Lookups table<string, any> Lookup tables for chart tags and other runtime data.
 ---@field Settings table<string, any> Settings cache and access layer for all mod settings.
 local Cache = {}
 Cache.__index = Cache
+
 --- Lookup tables for chart tags and other runtime data.
 ---@type Lookups
 Cache.Lookups = nil
+
 --- Settings cache and access layer for all mod settings.
 ---@type Settings  
 Cache.Settings = nil
-
 
 -- Ensure storage is always available for persistence (Factorio 2.0+)
 if not storage then
   error("Storage table not available - this mod requires Factorio 2.0+")
 end
-
--- Lazy-loaded Lookups module to avoid circular dependency
--- Observer Pattern Integration
 
 --- Safe notification that handles module load order
 function Cache.notify_observers_safe(event_type, data)
@@ -93,7 +78,6 @@ function Cache.notify_observers_safe(event_type, data)
     gui_observer.GuiEventBus.notify(event_type, data)
   end
 end
-
 
 --- Resets transient state for a player
 ---@param player LuaPlayer
@@ -139,7 +123,7 @@ function Cache.init()
   
   -- Update stored version only after migrations would complete
   storage.mod_version = current_mod_version
-  -- Initialize lookups cache properly
+
   Lookups.init()
   Cache.Lookups = Lookups
   
@@ -178,6 +162,7 @@ local function init_player_data(player)
   player_data.surfaces[player.surface.index] = player_data.surfaces[player.surface.index] or {}
   player_data.surfaces[player.surface.index].favorites = init_player_favorites(player)
   player_data.surfaces[player.surface.index].teleport_history = player_data.surfaces[player.surface.index].teleport_history or { stack = {}, pointer = 0 }
+  
   player_data.player_name = player.name or "Unknown"
   player_data.render_mode = player_data.render_mode or player.render_mode
   player_data.tag_editor_data = player_data.tag_editor_data or Cache.create_tag_editor_data()
@@ -225,8 +210,8 @@ function Cache.get_player_data(player)
   return result
 end
 
----@param player LuaPlayer
 --- Returns the player's favorites array, or nil if not found/invalid.
+---@param player LuaPlayer
 ---@return table[]|nil
 function Cache.get_player_favorites(player)
   if not player or not player.valid or not player.surface or not player.surface.index then
@@ -240,21 +225,6 @@ function Cache.get_player_favorites(player)
   return favorites
 end
 
----@param player LuaPlayer
----@param gps string
----@return table|nil
-function Cache.is_player_favorite(player, gps)
-  if not player or not player.valid or not gps or gps == "" then return nil end
-  local player_faves = Cache.get_player_favorites(player)
-  if not player_faves then return nil end
-  for _, v in pairs(player_faves) do
-    if v.gps == gps then
-      return v
-    end
-  end
-  return nil
-end
-
 --- Initialize and retrieve persistent surface data for a given surface index.
 ---@param surface_index integer
 ---@return table Surface data table (persistent)
@@ -265,16 +235,6 @@ local function init_surface_data(surface_index)
   local surface_data = storage.surfaces[surface_index]
   surface_data.tags = surface_data.tags or {}
   return surface_data
-end
-
-
---- Get persistent surface data for a given surface index.
----@return table|nil Surface data table (persistent) or nil if invalid
-function Cache.get_surface_data(surface_index)
-  if not surface_index or type(surface_index) ~= "number" then
-    return nil
-  end
-  return init_surface_data(surface_index)
 end
 
 --- Get the persistent tag table for a given surface index.

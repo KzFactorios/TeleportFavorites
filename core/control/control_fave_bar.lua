@@ -1,23 +1,10 @@
 ---@diagnostic disable: undefined-global, assign-type-mismatch, param-type-mismatch
 
--- control_fave_bar.lua
--- Handles favorites bar GUI events for TeleportFavorites
--- 
--- This module serves as the main coordinator for favorites bar interactions,
--- dispatching different types of user interactions to specialized handlers.
--- Key functionality includes:
--- - Drag and drop reordering of favorites
--- - Teleportation to favorite locations  
--- - Lock/unlock toggle for favorites
--- - Tag editor integration
--- - Visibility controls
---
--- Architecture: Uses modular handlers in SlotInteractionHandlers and DragDropUtils
--- for better maintainability and separation of concerns.
+-- core/control/control_fave_bar.lua
+-- TeleportFavorites Factorio Mod
+-- Manages the favorites bar GUI and slot interactions, including drag-and-drop and multiplayer-safe favorites management.
 
-local PlayerFavorites = require("core.favorite.player_favorites")
 local FavoriteUtils = require("core.favorite.favorite")
-local BasicHelpers = require("core.utils.basic_helpers")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local ErrorHandler = require("core.utils.error_handler")
 local SlotInteractionHandlers = require("core.control.slot_interaction_handlers")
@@ -64,10 +51,10 @@ local function handle_favorite_slot_click(event, player, favorites)
     shift = event and event.shift or false,
     control = event and event.control or false
   })
-  
+
   -- PRIORITY CHECK: First check if we're in drag mode and this is a drop or cancel
   local is_dragging, source_slot = CursorUtils.is_dragging_favorite(player)
-  
+
   if is_dragging and source_slot then
     ErrorHandler.debug_log("[FAVE_BAR] Click during drag operation", {
       player = player.name, source_slot = source_slot, target_slot = slot, button_value = event.button
@@ -75,7 +62,7 @@ local function handle_favorite_slot_click(event, player, favorites)
     -- Check if this is a right-click to cancel the drag
     if event.button == defines.mouse_button_type.right then
       CursorUtils.end_drag_favorite(player)
-      GameHelpers.player_print(player, {"tf-gui.fave_bar_drag_canceled"})
+      GameHelpers.player_print(player, { "tf-gui.fave_bar_drag_canceled" })
       return
     end
     -- Check if this is a left-click to complete the drag
@@ -85,7 +72,7 @@ local function handle_favorite_slot_click(event, player, favorites)
         CursorUtils.end_drag_favorite(player)
         return
       end
-      
+
       local target_fav = favorites.favorites[slot]
       -- Check if target slot is locked
       if target_fav and BasicHelpers.is_locked_favorite(target_fav) then
@@ -94,7 +81,7 @@ local function handle_favorite_slot_click(event, player, favorites)
         CursorUtils.end_drag_favorite(player)
         return
       end
-      
+
       -- Target slot is not locked, proceed with reordering using unified system
       if SlotInteractionHandlers.reorder_favorites(player, favorites, source_slot, slot) then return end
     end
@@ -102,11 +89,11 @@ local function handle_favorite_slot_click(event, player, favorites)
     CursorUtils.end_drag_favorite(player)
     return
   end
-  
+
   -- Not in drag mode, proceed with normal handling
   local fav = favorites.favorites[slot]
   if fav == nil then return end
-  
+
   -- Check for blank favorite (different handling)
   if FavoriteUtils.is_blank_favorite(fav) then
     -- For blank favorites, only allow drag targets (no teleport/etc)
@@ -139,28 +126,22 @@ local function handle_toggle_button_click(event, player)
   if event.button ~= defines.mouse_button_type.left then
     return
   end
-  
+
   -- Use the shared function from fave_bar to get GUI components
   local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   if not main_flow or not main_flow.valid then return end
-  
-  local bar_frame = GuiValidation.find_child_by_name(main_flow, "fave_bar_frame")
-  if not bar_frame or not bar_frame.valid then return end
-  
-  local bar_flow = GuiValidation.find_child_by_name(bar_frame, "fave_bar_flow")
-  if not bar_flow or not bar_flow.valid then return end
-  
-  local slots_flow = GuiValidation.find_child_by_name(bar_flow, "fave_bar_slots_flow")
+
+  local slots_flow = GuiValidation.find_child_by_name(main_flow, "fave_bar_slots_flow")
   if not slots_flow or not slots_flow.valid then return end
 
   -- Toggle visibility
   local currently_visible = slots_flow.visible
   local new_visibility = not currently_visible
-  
+
   -- Update the player data to persist the visibility state
   local player_data = Cache.get_player_data(player)
   player_data.fave_bar_slots_visible = new_visibility
-  
+
   -- Update the GUI state
   fave_bar.update_toggle_state(player, new_visibility)
 end
@@ -173,9 +154,10 @@ local function handle_map_right_click(event, player)
   if event.button == defines.mouse_button_type.right then
     local is_dragging = CursorUtils.is_dragging_favorite(player)
     if is_dragging then
-      ErrorHandler.debug_log("[FAVE_BAR] Right-click detected on map during drag, canceling drag operation", { player = player.name })
+      ErrorHandler.debug_log("[FAVE_BAR] Right-click detected on map during drag, canceling drag operation",
+        { player = player.name })
       CursorUtils.end_drag_favorite(player)
-      GameHelpers.player_print(player, {"tf-gui.fave_bar_drag_canceled"})
+      GameHelpers.player_print(player, { "tf-gui.fave_bar_drag_canceled" })
       return true
     end
   end
@@ -189,9 +171,9 @@ local function log_click_event(event, player)
     element_name = event.element.name,
     player = player.name,
     raw_button_value = event.button,
-    button_type = event.button == 1 and "LEFT_CLICK" or 
-                  event.button == 2 and "RIGHT_CLICK" or 
-                  event.button == 3 and "MIDDLE_CLICK" or "UNKNOWN_" .. tostring(event.button),
+    button_type = event.button == 1 and "LEFT_CLICK" or
+        event.button == 2 and "RIGHT_CLICK" or
+        event.button == 3 and "MIDDLE_CLICK" or "UNKNOWN_" .. tostring(event.button),
     defines_values = {
       left = defines.mouse_button_type.left,
       right = defines.mouse_button_type.right,
@@ -237,26 +219,20 @@ local function on_teleport_history_modal_gui_click(event)
       local surface_index = player.surface.index
       local hist = Cache.get_player_teleport_history(player, surface_index)
       if index >= 1 and index <= #hist.stack then
-        local gps = hist.stack[index]
+        local gps = hist.stack[index].gps
         if gps then
-          -- Convert to GPS string and teleport directly without adding to history
-          local gps_string = TeleportHistory.get_gps_string(gps)
-          if gps_string then
-            -- Use direct strategy execution to avoid adding new history entries
-            -- This is for navigating through existing history, not creating new entries
-            local result = TeleportStrategies.TeleportStrategyManager.execute_teleport(player, gps_string, {})
-            
-            if result == Enum.ReturnStateEnum.SUCCESS then
-              -- Update the pointer to the selected history item without adding new entry
-              TeleportHistory.set_pointer(player, player.surface.index, index)
-              -- Update the modal display to reflect the new pointer position
-              TeleportHistoryModal.update_history_list(player)
-              -- Play teleport sound
-              GameHelpers.safe_play_sound(player, "utility/build_medium")
-            else
-              -- Play error sound if teleportation failed
-              GameHelpers.safe_play_sound(player, "utility/cannot_build")
-            end
+          local result = TeleportStrategies.TeleportStrategyManager.execute_teleport(player, gps, {})
+
+          if result == Enum.ReturnStateEnum.SUCCESS then
+            -- Update the pointer to the selected history item without adding new entry
+            TeleportHistory.set_pointer(player, player.surface.index, index)
+            -- Update the modal display to reflect the new pointer position
+            TeleportHistoryModal.update_history_list(player)
+            -- Play teleport sound
+            GameHelpers.safe_play_sound(player, "utility/build_medium")
+          else
+            -- Play error sound if teleportation failed
+            GameHelpers.safe_play_sound(player, "utility/cannot_build")
           end
         end
       end

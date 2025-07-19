@@ -1,32 +1,6 @@
---[[
-settings.lua
-Centralized settings cache and access layer for TeleportFavorites mod.
-
-Responsibilities:
-- Unified access to all Factorio settings (player mod settings and global runtime settings)
-- Caching layer for performance optimization
-- Type-safe validation with fallback defaults
-- Single source of truth for all settings-related operations
-
-Architecture:
-- Part of the core/cache module family (alongside cache.lua, lookups.lua)
-- Follows storage-as-source-of-truth pattern
-- Provides consistent API for all settings access
-- Handles both player-specific and global settings
-
-API:
-- Settings.get_player_settings(player): Returns table of all cached player settings
-- Settings.get_boolean_setting(player, setting_name, default): Individual boolean setting
-- Settings.get_number_setting(player, setting_name, default, min, max): Individual number setting
-- Settings.get_chart_tag_click_radius(player): Specialized chart tag radius setting
-- Settings.invalidate_player_cache(player): Force refresh of cached settings
-
-Design Principles:
-- Cache-first approach for performance
-- Consistent error handling with safe defaults
-- Single path through Factorio's settings API
-- Clear separation between different setting types
---]]
+-- core/cache/settings.lua
+-- TeleportFavorites Factorio Mod
+-- Centralized settings cache and access layer for unified, type-safe Factorio settings management.
 
 local Constants = require("constants")
 local BasicHelpers = require("core.utils.basic_helpers")
@@ -99,25 +73,6 @@ local function build_fresh_settings(player)
   return settings_table
 end
 
---- Get a boolean setting for a player with safe defaults
---- @param player LuaPlayer|nil
---- @param setting_name string
---- @param default boolean
---- @return boolean
-function Settings.get_boolean_setting(player, setting_name, default)
-  local mod_settings = get_player_mod_settings(player)
-  if not mod_settings then
-    return default
-  end
-  
-  local setting = mod_settings[setting_name]
-  if setting and setting.value ~= nil and type(setting.value) == "boolean" then
-    return setting.value
-  end
-  
-  return default
-end
-
 --- Get a number setting for a player with safe defaults and range validation
 --- @param player LuaPlayer|nil
 --- @param setting_name string
@@ -157,19 +112,21 @@ function Settings.get_player_settings(player)
     return build_fresh_settings(nil) -- Return defaults for invalid player
   end
   
-  local player_index = player.index
+  local player_index = (player and player.index) or nil
   
   -- Check cache first
-  if is_cache_valid(player_index) then
+  if player_index and is_cache_valid(player_index) then
     return player_settings_cache[player_index].settings
   end
   
   -- Build fresh settings and cache them
   local fresh_settings = build_fresh_settings(player)
-  player_settings_cache[player_index] = {
-    settings = fresh_settings,
-    last_updated = game and game.tick or 0
-  }
+  if player_index then
+    player_settings_cache[player_index] = {
+      settings = fresh_settings,
+      last_updated = game and game.tick or 0
+    }
+  end
   
   return fresh_settings
 end
@@ -181,7 +138,7 @@ end
 function Settings.get_chart_tag_click_radius(player)
   local default = 10 -- Safe fallback
   if Constants and Constants.settings and Constants.settings.CHART_TAG_CLICK_RADIUS then
-    default = tonumber(Constants.settings.CHART_TAG_CLICK_RADIUS) or 10
+    default = math.floor(tonumber(Constants.settings.CHART_TAG_CLICK_RADIUS) or 10)
   end
   return Settings.get_number_setting(player, "chart-tag-click-radius", default, 1, 50)
 end
@@ -193,27 +150,9 @@ function Settings.invalidate_player_cache(player)
     return
   end
   
-  player_settings_cache[player.index] = nil
-end
-
---- Get a global setting value with safe defaults
---- @param setting_name string The name of the global setting
---- @param default number Default value if setting is not found
---- @return number
-function Settings.get_global_number_setting(setting_name, default)
-  if not settings or not settings.global then
-    return default
+  if player and player.index then
+    player_settings_cache[player.index] = nil
   end
-  
-  local setting = settings.global[setting_name]
-  if setting and setting.value ~= nil then
-    local value = tonumber(setting.value)
-    if value then
-      return value
-    end
-  end
-  
-  return default
 end
 
 --- Clear all cached settings (useful for testing or major setting changes)

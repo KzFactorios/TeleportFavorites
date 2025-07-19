@@ -1,3 +1,10 @@
+--[[
+core/commands/delete_favorite_command.lua
+TeleportFavorites Factorio Mod
+-----------------------------
+This module provides commands for deleting favorites by slot number. It uses the same deletion logic as tag_destroy_helper and exposes a console command for slot-based deletion.
+]]
+
 ---@diagnostic disable: undefined-global
 --[[
 core/commands/delete_favorite_command.lua
@@ -18,8 +25,6 @@ local Cache = require("core.cache.cache")
 local PlayerHelpers = require("core.utils.player_helpers")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local ErrorHandler = require("core.utils.error_handler")
-local FavoriteUtils = require("core.favorite.favorite")
-local GPSUtils = require("core.utils.gps_utils")
 local PlayerFavorites = require("core.favorite.player_favorites")
 
 ---@class DeleteFavoriteCommand

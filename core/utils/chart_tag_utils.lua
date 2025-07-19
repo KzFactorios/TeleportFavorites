@@ -1,15 +1,17 @@
----@diagnostic disable: undefined-global
 --[[
 core/utils/chart_tag_utils.lua
 TeleportFavorites Factorio Mod
 -----------------------------
-Consolidated chart tag utilities combining all chart tag operations.
+Unified chart tag utilities for all chart tag operations.
+Consolidates chart tag specification creation and click detection/handling.
 
-This module consolidates:
-- chart_tag_spec_builder.lua - Chart tag specification creation
-- chart_tag_click_detector.lua - Chart tag click detection and handling
+Features:
+Provides functions to find chart tags at specific positions, manage chart tag cache, and handle click detection logic. Integrates with GPSUtils, ErrorHandler, and Cache for robust multiplayer-safe operations.
 
-Provides a unified API for all chart tag operations throughout the mod.
+API:
+ChartTagUtils.find_closest_chart_tag_to_position(player, cursor_position): Finds chart tag at a position.
+ChartTagUtils.get_last_clicked_chart_tag(player): Returns last clicked chart tag for a player.
+ChartTagUtils.invalidate_chart_tag_cache(surface_index): Invalidates chart tag cache for a surface.
 ]]
 
 local ErrorHandler = require("core.utils.error_handler")
@@ -32,10 +34,12 @@ function ChartTagUtils.find_closest_chart_tag_to_position(player, cursor_positio
 
   -- Only detect clicks while in map mode
   if player.render_mode ~= defines.render_mode.chart then
-    return nil
   end
+  -- Get surface index from player's current surface
+  local surface_index = player.surface and player.surface.index or nil
+  if not surface_index then return nil end
+
   -- First check the cache to see if we have chart tags loaded
-  local surface_index = player.surface.index
   local force_tags = Cache.Lookups.get_chart_tag_cache(surface_index)
 
   -- If cache appears empty, try invalidating it once to trigger refresh
@@ -53,10 +57,6 @@ function ChartTagUtils.find_closest_chart_tag_to_position(player, cursor_positio
   local click_radius = Cache.Settings.get_chart_tag_click_radius(player)
 
   -- Find the closest chart tag within detection radius
-  local closest_tag = nil
-  local min_distance = click_radius
-  local distance = 500.0
-
   for _, tag in pairs(force_tags) do
     if tag and tag.valid then
       local dx = math.abs(tag.position.x - cursor_position.x)

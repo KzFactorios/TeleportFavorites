@@ -1,21 +1,10 @@
 ---@diagnostic disable: undefined-global
---[[
-core/events/chart_tag_helpers.lua
-TeleportFavorites Factorio Mod
------------------------------
-Consolidated helper functions for chart tag event handling.
-
-This module contains specialized functions for:
-- Chart tag modification validation and handling
-- Chart tag removal validation and protection
-- GPS extraction and comparison
-- Tag and favorites updating
-- Position change notifications
-- Ownership and permission checking
-
-Consolidated from chart_tag_modification_helpers.lua and chart_tag_removal_helpers.lua
-for better organization and reduced file count.
-]]
+---@
+-- core/events/chart_tag_helpers.lua
+-- TeleportFavorites Factorio Mod
+-- Consolidated helper functions for chart tag event handling.
+-- Specialized functions: modification validation, removal protection, GPS extraction, tag/favorites updating, position notifications, permission checking.
+-- Consolidated from chart_tag_modification_helpers.lua and chart_tag_removal_helpers.lua for better organization and reduced file count.
 
 local Cache = require("core.cache.cache")
 local GPSUtils = require("core.utils.gps_utils")
@@ -26,8 +15,6 @@ local LocaleUtils = require("core.utils.locale_utils")
 local AdminUtils = require("core.utils.admin_utils")
 local Tag = require("core.tag.tag")
 local fave_bar = require("gui.favorites_bar.fave_bar")
-local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
-local ChartTagUtils = require("core.utils.chart_tag_utils")
 
 -- ========================================
 -- LOCAL FORMATTING UTILITIES
@@ -47,26 +34,15 @@ local function format_position_change_notification(player, chart_tag, old_positi
   local surface_index = tonumber(player.surface.index) or 1
   local old_gps = GPSUtils.gps_from_map_position(old_position, surface_index)
   local new_gps = GPSUtils.gps_from_map_position(new_position, surface_index)
-  
+
   return LocaleUtils.get_gui_string(player, "tag_moved", {
     text = chart_tag.text or "",
     old_gps = old_gps,
     new_gps = new_gps
   })
 end
+-- ...existing code...
 
----Format a tag deletion prevention message
----@param chart_tag table The chart tag that would have been deleted
----@return string formatted message
-local function format_tag_deletion_prevention_message(chart_tag)
-  if not chart_tag then 
-    return ""
-  end
-
-  return string.format("[color=red]Tag '%s' could not be relocated and was preserved at its current location[/color]",
-    chart_tag.text or "Unknown Tag"
-  )
-end
 
 ---@class ChartTagHelpers
 local ChartTagHelpers = {}
@@ -100,7 +76,7 @@ function ChartTagHelpers.is_valid_tag_modification(event, player)
 
   if not can_edit then
     ErrorHandler.debug_log("Chart tag modification rejected: insufficient permissions", {
-      player_name = player.name,
+  player_name = player and player.name or nil,
       chart_tag_last_user = event.tag.last_user and event.tag.last_user.name or "",
       is_admin = AdminUtils.is_admin(player)
     })
@@ -172,28 +148,34 @@ function ChartTagHelpers.update_tag_and_cleanup(old_gps, new_gps, event, player)
   end
 
   -- Get or create tag object
-  local old_tag = Cache.get_tag_by_gps(player, old_gps)
-  if not old_tag then
+  ---@type table|nil
+  local old_tag = nil
+  if player and old_gps then
+    old_tag = Cache.get_tag_by_gps(player, old_gps)
+  end
+  if old_tag == nil and new_gps then
     old_tag = Tag.new(new_gps, {})
   end
 
-  -- Update tag with new coordinates and chart tag reference
-  old_tag.gps = new_gps
-  old_tag.chart_tag = modified_chart_tag
+  -- Only update if old_tag is a table
+  if type(old_tag) == "table" then
+    old_tag.gps = new_gps or ""
+    old_tag.chart_tag = modified_chart_tag or nil
+  end
 
   ErrorHandler.debug_log("Updated tag object GPS", {
-    old_gps = old_gps,
-    new_gps = new_gps,
-    tag_gps_after_update = old_tag.gps,
+    old_gps = old_gps or "",
+    new_gps = new_gps or "",
+    tag_gps_after_update = (type(old_tag) == "table" and old_tag.gps) or "",
     chart_tag_position = modified_chart_tag and modified_chart_tag.position or "nil"
   })
 
   -- CRITICAL: Update the surface mapping table from old GPS to new GPS
-  local surface_index = GPSUtils.get_surface_index_from_gps(old_gps)
-  if surface_index and old_gps ~= new_gps then
+  local surface_index = old_gps and GPSUtils.get_surface_index_from_gps(old_gps) or nil
+  if surface_index and old_gps and new_gps and old_gps ~= new_gps then
     local uint_surface_index = tonumber(surface_index) --[[@as uint]]
     local surface_tags = Cache.get_surface_tags(uint_surface_index)
-    if surface_tags and surface_tags[old_gps] then
+    if type(surface_tags) == "table" and surface_tags[old_gps] then
       -- Move the tag data from old GPS key to new GPS key
       surface_tags[new_gps] = surface_tags[old_gps]
       surface_tags[old_gps] = nil
@@ -203,18 +185,16 @@ function ChartTagHelpers.update_tag_and_cleanup(old_gps, new_gps, event, player)
         new_gps = new_gps
       })
     end
-    
     -- CRITICAL: Ensure the updated tag is also stored at the new GPS location
-    if surface_tags then
+    if type(surface_tags) == "table" and new_gps and type(old_tag) == "table" then
       surface_tags[new_gps] = old_tag
     end
     ErrorHandler.debug_log("Ensured updated tag is stored at new GPS location", {
       surface_index = surface_index,
       new_gps = new_gps,
-      tag_gps = old_tag.gps,
-      tag_has_chart_tag = old_tag.chart_tag ~= nil
+      tag_gps = (type(old_tag) == "table" and old_tag.gps) or "",
+      tag_has_chart_tag = (type(old_tag) == "table" and old_tag.chart_tag ~= nil) or false
     })
-    
     -- CRITICAL: Update the lookup table chart_tags_mapped_by_gps
     -- Access the runtime lookup cache directly
     local CACHE_KEY = "Lookups"
@@ -255,32 +235,29 @@ function ChartTagHelpers.update_favorites_gps(old_gps, new_gps, acting_player)
     for _, player in ipairs(all_affected_players) do
       if player.index == acting_player_index then
         acting_player_already_included = true
-        break
       end
     end
-
     if acting_player_updated and not acting_player_already_included then
       table.insert(all_affected_players, acting_player)
     end
-  end
-  
-  for _, affected_player in ipairs(all_affected_players) do
-    if affected_player and affected_player.valid then      
-      -- CRITICAL: Force cache refresh before rebuilding favorites bar
-      local surface_index = GPSUtils.get_surface_index_from_gps(new_gps) or 1
       Cache.Lookups.invalidate_surface_chart_tags(tonumber(surface_index))
       
       -- Verify the tag can be found at the new GPS location
       local updated_tag = Cache.get_tag_by_gps(affected_player, new_gps)
+        -- core/events/chart_tag_helpers.lua
+        -- TeleportFavorites Factorio Mod
+        -- Consolidated helper functions for chart tag event handling.
+        -- Specialized functions for modification validation, removal protection, GPS extraction, tag/favorites updating, position notifications, and permission checking.
+        -- Consolidated from chart_tag_modification_helpers.lua and chart_tag_removal_helpers.lua for better organization and reduced file count.
       
       fave_bar.build(affected_player)
     end
-  end
+  
 
   -- Notify all affected players (excluding the acting player from notifications)
   local notification_players = {}
   for _, player in ipairs(all_affected_players) do
-    if player.index ~= acting_player_index then
+    if player and player.index and player.index ~= acting_player_index then
       table.insert(notification_players, player)
     end
   end
@@ -300,107 +277,6 @@ function ChartTagHelpers.update_favorites_gps(old_gps, new_gps, acting_player)
       end
     end
   end
-end
-
--- ====== CHART TAG REMOVAL HELPERS ======
-
---- Validate if chart tag removal should be processed
----@param event table Chart tag removal event
----@return boolean should_process Whether to process the removal
----@return LuaCustomChartTag? chart_tag The chart tag being removed
-function ChartTagHelpers.validate_removal_event(event)
-  if not event or not event.tag or not event.tag.valid then 
-    return false, nil 
-  end
-  
-  local chart_tag = event.tag
-  
-  -- Short circuit if there is no text or icon - it is not a valid MOD tag
-  if chart_tag and not chart_tag.icon and (not chart_tag.text or chart_tag.text == "") then 
-    return false, nil 
-  end
-  
-  return true, chart_tag
-end
-
---- Check if other players have favorites for this tag
----@param tag table Tag object from cache
----@param removing_player LuaPlayer Player attempting to remove the tag
----@return boolean has_other_favorites Whether other players have this favorited
-function ChartTagHelpers.has_other_players_favorites(tag, removing_player)
-  if not tag or not tag.faved_by_players or #tag.faved_by_players == 0 then
-    return false
-  end
-  
-  for _, fav_player_index in ipairs(tag.faved_by_players) do
-    local fav_player = game.players[fav_player_index]
-    if fav_player and fav_player.valid and fav_player.name ~= removing_player.name then
-      return true
-    end
-  end
-  
-  return false
-end
-
---- Recreate chart tag that was protected from deletion
----@param chart_tag LuaCustomChartTag Original chart tag that was removed
----@param player LuaPlayer Player who attempted the removal
----@param surface_index number Surface index for cache invalidation
----@return boolean success Whether recreation was successful
-function ChartTagHelpers.recreate_protected_chart_tag(chart_tag, player, surface_index)
-  -- Create chart tag spec using centralized builder
-  local chart_tag_spec = ChartTagSpecBuilder.build(chart_tag.position, chart_tag, player, nil, true)
-  
-  local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, chart_tag.surface, chart_tag_spec, player)
-  
-  if new_chart_tag and new_chart_tag.valid then
-    -- Update the tag with the new chart tag reference
-    local gps = GPSUtils.gps_from_map_position(chart_tag.position, surface_index)
-    local tag = Cache.get_tag_by_gps(player, gps)
-    if tag then
-      tag.chart_tag = new_chart_tag
-    end
-    
-    Cache.Lookups.invalidate_surface_chart_tags(surface_index)
-    
-    local deletion_msg = format_tag_deletion_prevention_message(new_chart_tag)
-    PlayerHelpers.safe_player_print(player, deletion_msg)
-    
-    return true
-  end
-  
-  return false
-end
-
---- Handle chart tag removal with permission and favorite checking
----@param chart_tag LuaCustomChartTag Chart tag being removed
----@param player LuaPlayer Player attempting removal
----@param tag table? Tag object from cache
----@param surface_index number Surface index
----@return boolean should_destroy Whether the tag should be destroyed
-function ChartTagHelpers.handle_protected_removal(chart_tag, player, tag, surface_index)
-  if not tag or not tag.faved_by_players or #tag.faved_by_players == 0 then
-    return true -- No protection needed, allow destruction
-  end
-  
-  local has_other_favorites = ChartTagHelpers.has_other_players_favorites(tag, player)
-  
-  -- Use AdminUtils to check if deletion should be prevented
-  local can_delete, _is_owner, is_admin_override = AdminUtils.can_delete_chart_tag(player, chart_tag, tag)
-  
-  -- If deletion is not allowed (non-admin and other players have favorites), prevent it
-  if has_other_favorites and not can_delete then
-    local success = ChartTagHelpers.recreate_protected_chart_tag(chart_tag, player, surface_index)
-    return not success -- If recreation failed, allow destruction as fallback
-  elseif is_admin_override then
-    -- Log admin action for forced deletion
-    AdminUtils.log_admin_action(player, "force_delete_chart_tag", chart_tag, {
-      had_other_favorites = has_other_favorites,
-      override_reason = "admin_privileges"
-    })
-  end
-  
-  return true -- Allow destruction
 end
 
 -- Export as both old names for backward compatibility

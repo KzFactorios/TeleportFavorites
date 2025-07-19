@@ -1,43 +1,20 @@
 ---@diagnostic disable: undefined-global
+-- gui/favorites_bar/fave_bar.lua
+-- TeleportFavorites Factorio Mod
+-- Builds the favorites bar UI for quick-access teleport slots.
 --[[
-Favorites Bar GUI for TeleportFavorites
-======================================
-Module: gui/favorites_bar/fave_bar.lua
-
-Builds the favorites bar UI for the TeleportFavorites mod, providing quick-access favorite teleport slots.
-
-
-Element Hierarchy Diagram:
-
+Element Hierarchy:
 fave_bar_frame (frame)
 └─ fave_bar_flow (flow, horizontal)
    ├─ fave_bar_toggle_container (frame, vertical)
    │  ├─ fave_bar_history_toggle (sprite-button)
    │  └─ fave_bar_visibility_toggle (sprite-button)
-   └─ fave_bar_slots_flow (frame, horizontal, visible toggled at runtime)
+   └─ fave_bar_slots_flow (frame, horizontal)
       ├─ fave_bar_slot_1 (sprite-button)
       ├─ fave_bar_slot_2 (sprite-button)
       ├─ ...
       └─ fave_bar_slot_N (sprite-button)
-
-- All element names use the {gui_context}_{purpose}_{type} convention.
-- The number of slot buttons depends on the user’s settings (MAX_FAVORITE_SLOTS).
-- The bar is parented to tf_main_gui_flow in the player's top GUI.
-
-Features:
-- Renders a horizontal bar of favorite slots, each as an icon button with tooltip and slot number.
-- Handles locked, blank, and overflow slot states with distinct visuals and tooltips.
-- Supports drag-and-drop visuals for slot reordering (Factorio 2.0+).
-- Integrates with Favorite modules for data, and uses shared gui helpers.
-- Displays error feedback if the number of favorites exceeds the allowed maximum.
-
-Main Function:
-- fave_bar.build(player, parent):
-    Constructs and returns the favorites bar frame for the given player and parent GUI element.
-    Handles all slot rendering, tooltips, drag/locked visuals, and overflow error display.
-
-Event handling for slot clicks and drag is managed externally (see control.lua).
---]]
+]]
 
 local GuiBase = require("gui.gui_base")
 local GuiElementBuilders = require("core.utils.gui_element_builders")
@@ -57,7 +34,57 @@ local fave_bar = {}
 
 local last_build_tick = {}
 
+--- Function to get the favorites bar frame for a player
+---@param player LuaPlayer Player to get favorites bar frame for
+---@return LuaGuiElement? fave_bar_frame The favorites bar frame or nil if not found
+local function _get_fave_bar_frame(player)
+  if not ValidationUtils.validate_player(player) then return nil end
+  local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
+  if not main_flow or not main_flow.valid then return nil end
+  return GuiValidation.find_child_by_name(main_flow, "fave_bar_frame")
+end
 
+--- Function to show/hide the entire favorites bar based on controller type
+---@param player LuaPlayer Player whose favorites bar visibility should be updated
+function fave_bar.update_fave_bar_visibility(player)
+  if not ValidationUtils.validate_player(player) then return end
+
+  local fave_bar_frame = _get_fave_bar_frame(player)
+  if not fave_bar_frame or not fave_bar_frame.valid then return end
+
+  -- Use the same logic as fave_bar.build for consistency
+  local should_hide = false
+
+  -- Use shared space platform detection logic
+  if BasicHelpers.should_hide_favorites_bar_for_space_platform(player) then
+    should_hide = true
+  end
+
+  -- Also hide for god mode and spectator mode
+  if player.controller_type == defines.controllers.god or 
+     player.controller_type == defines.controllers.spectator then
+    should_hide = true
+  end
+
+  fave_bar_frame.visible = not should_hide
+end
+
+--- Event handler for controller changes
+---@param event table Player controller change event
+function fave_bar.on_player_controller_changed(event)
+  if not event or not event.player_index then return end
+  local player = game.players[event.player_index]
+  if not player or not player.valid then return end
+
+  -- Update favorites bar visibility based on new controller type
+  fave_bar.update_fave_bar_visibility(player)
+
+  -- If switching to character or cutscene mode, rebuild the bar and initialize labels
+  if player.controller_type == defines.controllers.character or player.controller_type == defines.controllers.cutscene then
+    fave_bar.build(player)
+    -- Note: Label management no longer needed - static slot labels handled in fave_bar.lua
+  end
+end
 
 -- Build the favorites bar to visually match the quickbar top row
 ---@diagnostic disable: assign-type-mismatch, param-type-mismatch
@@ -339,17 +366,6 @@ function fave_bar.update_slot_row(player, parent_flow)
   return slots_frame
 end
 
---- Destroy/hide the favorites bar for a player
----@param player LuaPlayer
-function fave_bar.destroy(player)
-  if not ValidationUtils.validate_player(player) then return end
-
-  local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
-  if not main_flow or not main_flow.valid then return end
-
-  GuiValidation.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
-end
-
 --- Update a single slot button without rebuilding the entire row
 ---@param player LuaPlayer
 ---@param slot_index number Slot index (1-based)
@@ -442,17 +458,6 @@ function fave_bar.update_toggle_state(player, slots_visible)
   if slots_frame then
     slots_frame.visible = slots_visible
   end
-end
-
---- Check if favorites bar exists and is valid for a player
----@param player LuaPlayer
----@return boolean exists
-function fave_bar.exists(player)
-  if not ValidationUtils.validate_player(player) then return false end
-
-  local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
-  local bar_frame = main_flow and GuiValidation.find_child_by_name(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
-  return bar_frame and bar_frame.valid or false
 end
 
 return fave_bar

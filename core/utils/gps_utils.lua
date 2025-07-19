@@ -1,23 +1,10 @@
----@diagnostic disable: undefined-global
---[[
-core/utils/gps_utils.lua
-TeleportFavorites Factorio Mod
------------------------------
-Consolidated GPS utilities combining all GPS-related functionality.
-
-This module consolidates:
-- gps_parser.lua - Basic GPS string parsing and validation
-- gps_core.lua - Core GPS utilities and validation patterns  
-- gps_helpers.lua - GPS facade and helper functions
-- gps_chart_helpers.lua - Chart tag creation and validation
-- gps_position_normalizer.lua - Position normalization with GPS integration
-
-Provides a unified API for all GPS-related operations throughout the mod.
-]]
+-- core/utils/gps_utils.lua
+-- TeleportFavorites Factorio Mod
+-- Consolidated GPS utilities for all GPS-related functionality.
+-- Provides GPS string parsing, validation, conversion, position normalization, and multiplayer-safe operations.
 
 local BasicHelpers = require("core.utils.basic_helpers")
 local Constants = require("constants")
-local ErrorHandler = require("core.utils.error_handler")
 
 local padlen, BLANK_GPS = Constants.settings.GPS_PAD_NUMBER, Constants.settings.BLANK_GPS
 
@@ -81,22 +68,6 @@ function GPSUtils.coords_string_from_gps(gps)
   return BasicHelpers.pad(parsed.x, padlen) .. "." .. BasicHelpers.pad(parsed.y, padlen)
 end
 
---- Get coordinate string from map position (x.y format without surface)
----@param map_position MapPosition
----@return string coords_string Coordinate string in format 'x.y'
-function GPSUtils.coords_string_from_map_position(map_position)
-  if not map_position or type(map_position.x) ~= "number" or type(map_position.y) ~= "number" then
-    return "0.0"
-  end
-  
-  -- Round coordinates and ensure proper padding
-  local x = math.floor(map_position.x + 0.5)
-  local y = math.floor(map_position.y + 0.5)
-  
-  -- Use the padding function to ensure at least 3 digits
-  return BasicHelpers.pad(x, 3) .. "." .. BasicHelpers.pad(y, 3)
-end
-
 --- Validate map position for GPS conversion
 ---@param map_position MapPosition
 ---@return boolean is_valid
@@ -150,52 +121,5 @@ function GPSUtils.position_can_be_tagged(player, map_position)
   
   return true
 end
-
---- Create a chart tag specification for Factorio's API
----@param player LuaPlayer
----@param map_position MapPosition
----@param text string Tag text
----@param icon SignalID? Optional icon
----@param set_ownership boolean? Whether to set last_user (only for final tags, not temporary)
----@return table? chart_tag_spec Chart tag specification or nil if invalid
-function GPSUtils.create_chart_tag_spec(player, map_position, text, icon, set_ownership)
-  local can_tag, error_msg = GPSUtils.position_can_be_tagged(player, map_position)
-  if not can_tag then
-    ErrorHandler.warn_log("Cannot create chart tag: " .. (error_msg or "Unknown error"))
-    return nil
-  end
-    local spec = {
-    position = map_position,
-    text = text or ""
-  }
-  
-  -- Only set last_user if this is a final chart tag (not temporary)
-  if set_ownership then
-    spec.last_user = player.name
-  end
-    if icon and icon.name then
-    spec.icon = icon
-  end
-  
-  return spec
-end
-
---- Normalize a position and update associated GPS data
----@param map_position MapPosition
----@param surface_index number
----@return MapPosition normalized_position
----@return string normalized_gps
-function GPSUtils.normalize_position_with_gps(map_position, surface_index)
-  local normalized_pos = {
-    x = tonumber(basic_helpers.normalize_index(map_position.x)) or 0,
-    y = tonumber(basic_helpers.normalize_index(map_position.y)) or 0
-  }
-  
-  local normalized_gps = GPSUtils.gps_from_map_position(normalized_pos, surface_index)
-  
-  return normalized_pos, normalized_gps
-end
-
-GPSUtils.BLANK_GPS = BLANK_GPS
 
 return GPSUtils

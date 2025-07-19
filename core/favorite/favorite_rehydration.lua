@@ -1,12 +1,6 @@
---[[
-core/favorite/favorite_rehydration.lua
-TeleportFavorites Factorio Mod
------------------------------
-Handles favorite rehydration logic separately to avoid circular dependencies.
-
-This module provides the runtime rehydration of favorites by restoring chart_tag
-references from the cache system using proper lazy loading.
-]]
+-- core/favorite/favorite_rehydration.lua
+-- TeleportFavorites Factorio Mod
+-- Handles runtime rehydration of favorites by restoring chart_tag references from cache, avoiding circular dependencies.
 
 local Cache = require("core.cache.cache")
 local FavoriteUtils = require("core.favorite.favorite")

@@ -1,38 +1,25 @@
----@diagnostic disable: undefined-global
-
+-- core/cache/lookups.lua
+-- TeleportFavorites Factorio Mod
+-- Manages runtime cache for chart tag lookups, rebuilt from game state for performance and multiplayer safety.
 --[[
-TeleportFavorites – Lookups Cache Module
-========================================
-Handles the non-persistent, runtime in-game data cache for fast lookups of chart tags and related objects.
-
-- All cache data is stored in the global table under the key 'Lookups'.
-- Provides O(1) lookup for chart tags by GPS string and surface index.
-- Used for efficient access to chart tags, tag caches, and related runtime data.
-- Not persistent: rebuilt as needed from game state.
----------------
-Data Structure (runtime, non-persistent):
----------------
-global["Lookups"] = {
+Runtime Lookups Structure:
+Lookups = {
   surfaces = {
     [surface_index] = {
-      chart_tags = { LuaCustomChartTag, ... },           -- Array of chart tag objects for this surface
-      chart_tags_mapped_by_gps = {                       -- Map: gps string -> LuaCustomChartTag
-        [gps_string] = LuaCustomChartTag,
-        ...
-      }
-    },
-    ...
+      chart_tags = { LuaCustomChartTag, ... },
+      chart_tags_mapped_by_gps = { [gps_string] = LuaCustomChartTag }
+    }, ...
   }
 }
-}
---]]
+]]
+
+---@diagnostic disable: undefined-global
 
 local basic_helpers = require("core.utils.basic_helpers")
 local PositionUtils = require("core.utils.position_utils")
 local GPSUtils = require("core.utils.gps_utils")
 local ErrorHandler = require("core.utils.error_handler")
 local BasicHelpers = require("core.utils.basic_helpers")
-
 
 -- Handles the non-persistent in-game data cache for runtime lookups.
 local Lookups = {}

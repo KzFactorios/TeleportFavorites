@@ -1,7 +1,8 @@
 ---@diagnostic disable: undefined-global, assign-type-mismatch, param-type-mismatch
 
--- control_tag_editor.lua
--- Handles tag editor GUI events for TeleportFavorites
+-- core/control/control_tag_editor.lua
+-- TeleportFavorites Factorio Mod
+-- Handles tag editor GUI events, modal dialogs, tag creation/editing/deletion, and multiplayer-safe tag management.
 
 local tag_editor = require("gui.tag_editor.tag_editor")
 local Cache = require("core.cache.cache")
@@ -20,9 +21,31 @@ local AdminUtils = require("core.utils.admin_utils")
 local BasicHelpers = require("core.utils.basic_helpers")
 local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 local SharedUtils = require("core.control.control_shared_utils")
-local GameHelpers = require("core.utils.game_helpers")
+local TeleportStrategy = require("core.utils.teleport_strategy")
 
 local M = {}
+
+--- Handles GUI close events for tag editor and related modals
+---@param event table GUI close event from Factorio
+function M.on_gui_closed(event)
+  local player = game.players[event.player_index]
+  if not player or not player.valid then return end
+  if not event.element or not event.element.valid then return end
+
+  local gui_frame = require("core.utils.gui_validation").get_gui_frame_by_element(event.element)
+  local Enum = require("prototypes.enums.enum")
+  if gui_frame and (gui_frame.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR or 
+                    gui_frame.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM) then
+    M.close_tag_editor(player)
+    return
+  end
+
+  local tag_editor_frame = require("core.cache.cache").get_player_data(player).tag_editor_frame
+  if tag_editor_frame and tag_editor_frame.valid and event.element == tag_editor_frame then
+    M.close_tag_editor(player)
+    return
+  end
+end
 
 local function show_tag_editor_error(player, tag_data, message)
   tag_data.error_message = message
@@ -81,6 +104,7 @@ local function update_chart_tag_fields(tag, tag_data, text, icon, player)
     -- CRITICAL: Invalidate cache after modifying chart tag
     local surface_index = chart_tag.surface and chart_tag.surface.index or player.surface.index
     Cache.Lookups.invalidate_surface_chart_tags(surface_index)
+
     -- Force immediate cache rebuild to ensure the modified chart tag is updated
     local refreshed_cache = Cache.Lookups.get_chart_tag_cache(surface_index)
     ErrorHandler.debug_log("Cache refreshed after chart tag modification", {
@@ -88,6 +112,7 @@ local function update_chart_tag_fields(tag, tag_data, text, icon, player)
       chart_tags_in_cache = #refreshed_cache,
       modified_chart_tag_gps = GPSUtils.gps_from_map_position(chart_tag.position, surface_index)
     })
+
     -- Refresh chart_tag reference from cache to ensure latest last_user is used
     local gps = GPSUtils.gps_from_map_position(chart_tag.position, surface_index)
     local refreshed_chart_tag = Cache.Lookups.get_chart_tag_by_gps(gps)
@@ -480,13 +505,6 @@ local function handle_teleport_btn(player, map_position)
     return
   end
   
-  if not player.surface or not player.surface.valid then
-    ErrorHandler.warn_log("Player surface invalid during teleport", {
-      player_name = player.name
-    })
-    return
-  end
-  
   local gps = GPSUtils.gps_from_map_position(map_position, player.surface.index)
   if not gps or gps == "" then
     ErrorHandler.warn_log("Failed to create GPS from map position", {
@@ -498,7 +516,7 @@ local function handle_teleport_btn(player, map_position)
     return
   end
   
-  GameHelpers.safe_teleport_to_gps(player, gps)
+  TeleportStrategy.teleport_to_gps(player, gps)
   close_tag_editor(player)
 end
 

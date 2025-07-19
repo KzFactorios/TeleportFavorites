@@ -1,19 +1,8 @@
 ---@diagnostic disable: undefined-global
---[[
-core/events/tag_editor_event_helpers.lua
-TeleportFavorites Factorio Mod
------------------------------
-Helper functions for tag editor event handling, extracted from handlers.lua.
-
-This module contains specialized functions for:
-- Tag data creation and lookup logic
-- Chart tag normalization and replacement
-- Position and GPS validation
-- Tag editor opening validation
-
-These functions were extracted from large event handlers to improve
-maintainability and testability.
-]]
+-- core/events/tag_editor_event_helpers.lua
+-- TeleportFavorites Factorio Mod
+-- Helper functions for tag editor event handling, extracted from handlers.lua.
+-- Specialized functions: tag data creation/lookup, chart tag normalization/replacement, position/GPS validation, tag editor opening validation.
 
 local Cache = require("core.cache.cache")
 local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")

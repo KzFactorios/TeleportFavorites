@@ -1,17 +1,7 @@
---[[
-Consolidated GUI Utilities for TeleportFavorites
-===============================================
-Module: core/utils/gui_helpers.lua
-
-Consolidated GUI utilities for accessibility, formatting, and styling.
-Combines functionality from gui_accessibility.lua, gui_formatting.lua, 
-and gui_styling.lua to reduce file fragmentation.
-
-Functions:
-- get_or_create_gui_flow_from_gui_top() - Get or create main GUI flow
-- build_favorite_tooltip() - Build tooltip for favorites  
-- create_slot_button() - Create styled slot button with icon and tooltip
-]]
+-- core/utils/gui_helpers.lua
+-- TeleportFavorites Factorio Mod
+-- Consolidated GUI utilities for accessibility, formatting, and styling.
+-- Combines gui_accessibility, gui_formatting, and gui_styling for maintainability.
 
 local GuiValidation = require("core.utils.gui_validation")
 local GuiBase = require("gui.gui_base")
@@ -19,10 +9,6 @@ local GPSUtils = require("core.utils.gps_utils")
 local BasicHelpers = require("core.utils.basic_helpers")
 
 local GuiHelpers = {}
-
--- ===========================
--- ACCESSIBILITY FUNCTIONS
--- ===========================
 
 function GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   local top = player.gui.top
@@ -37,10 +23,6 @@ function GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   end
   return flow
 end
-
--- ===========================
--- FORMATTING FUNCTIONS
--- ===========================
 
 function GuiHelpers.build_favorite_tooltip(fav, opts)
   opts = opts or {}
@@ -58,15 +40,6 @@ function GuiHelpers.build_favorite_tooltip(fav, opts)
     return { "tf-gui.fave_slot_tooltip_both", tag_text or "", gps_str }
   end
 end
-
-function GuiHelpers.format_gps_display(gps)
-  if not BasicHelpers.is_valid_gps(gps) then return "N/A" end
-  return GPSUtils.coords_string_from_gps(gps)
-end
-
--- ===========================
--- STYLING FUNCTIONS
--- ===========================
 
 function GuiHelpers.create_slot_button(parent, name, icon, tooltip, opts)
   opts = opts or {}

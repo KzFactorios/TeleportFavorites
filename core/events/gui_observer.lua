@@ -1,51 +1,10 @@
 ---@diagnostic disable: undefined-global, undefined-field
 
---[[
-gui_observer.lua
-TeleportFavorites Factorio Mod
------------------------------
-Observer pattern implementation for GUI state management and updates.
+-- core/events/gui_observer.lua
+-- TeleportFavorites Factorio Mod
+-- Observer pattern implementation for GUI state management and updates.
+-- Decoupled GUI updates, event-driven architecture, multiple observer types, notification batching, and type-safe event handling.
 
-Features:
----------
-- Decoupled GUI updates from business logic changes
-- Event-driven architecture for state synchronization
-- Multiple observer types for different GUI concerns
-- Automatic cleanup of invalid observers
-- Performance-optimized notification batching
-- Type-safe event handling with validation
-
-Observer Types:
----------------
-- FavoriteObserver: Responds to favorite add/remove/update events
-- TagObserver: Handles tag creation/modification/deletion
-- TeleportObserver: Manages teleportation-related GUI updates
-- DataObserver: Updates when cache changes
-- ValidationObserver: Handles real-time validation feedback
-
-Event Types:
-------------
-- favorite_added, favorite_removed, favorite_updated
-- tag_created, tag_modified, tag_deleted
-- player_teleported, teleport_failed
-- cache_updated, data_refreshed
-- validation_error, validation_success
-
-Usage:
-------
--- Register observer for favorite changes
-local observer = FavoriteObserver:new(player)
-GuiEventBus:subscribe("favorite_added", observer)
-
--- Notify all observers of favorite addition
-GuiEventBus:notify("favorite_added", {
-  player = player,
-  gps = gps,
-  favorite = favorite_obj
-})
---]]
-
-local Cache = require("core.cache.cache")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local ErrorHandler = require("core.utils.error_handler")
 local GuiHelpers = require("core.utils.gui_helpers")
@@ -201,7 +160,7 @@ function GuiEventBus.cleanup_player_observers(player)
     local cleaned_count = 0
     for i = #observers, 1, -1 do
       local observer = observers[i]
-      -- Enhanced cleanup: match by player index OR if observer's player is invalid
+      -- cleanup: match by player index OR if observer's player is invalid
       if observer and (
         (observer.player and observer.player.index == player_index) or
         (observer.player and not observer.player.valid) or

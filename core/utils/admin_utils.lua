@@ -1,4 +1,3 @@
----@diagnostic disable: undefined-global
 --[[
 core/utils/admin_utils.lua
 TeleportFavorites Factorio Mod
@@ -11,69 +10,28 @@ This module provides:
 - Automatic ownership transfer to admin when last_user is unspecified
 - Consistent admin privilege validation across the mod
 
-Features:
----------
 - Uses Factorio's native LuaPlayer.admin property for permission checks
 - Provides clear distinction between owner permissions and admin overrides
-- Handles ownership transfer when admins edit tags with no specified owner
 - Comprehensive logging for admin actions for audit purposes
---]]
-
-local ErrorHandler = require("core.utils.error_handler")
-local ValidationUtils = require("core.utils.validation_utils")
-
----@class AdminUtils
+]]
+---@diagnostic disable: undefined-global
 local AdminUtils = {}
 
--- ========================================
--- INTERNAL HELPERS
--- ========================================
-
-local function get_last_user_name(chart_tag)
-  return chart_tag and chart_tag.last_user and chart_tag.last_user.name or ""
-end
-
-local function log_permission_result(context, data)
-  ErrorHandler.debug_log(context, data)
-end
-
--- ========================================
--- ADMIN PERMISSION CHECKS
--- ========================================
-
 function AdminUtils.is_admin(player)
-  local player_valid, player_error = ValidationUtils.validate_player(player)
-  if not player_valid then
-    ErrorHandler.debug_log("Admin check failed: invalid player", { error = player_error })
-    return false
+  if player_valid then
+    return player.admin == true
   end
-  return player.admin == true
-end
-
-function AdminUtils.can_edit_chart_tag(player, chart_tag)
-  local player_valid, player_error = ValidationUtils.validate_player(player)
   if not player_valid then
-    log_permission_result("Chart tag edit permission check failed: invalid player", { error = player_error })
+    ErrorHandler.debug_log("Chart tag edit permission check failed: invalid player", { error = player_error })
     return false, false, false
   end
   if not chart_tag or not chart_tag.valid then
-    log_permission_result("Chart tag edit permission check: invalid chart tag", {})
+    ErrorHandler.debug_log("Chart tag edit permission check: invalid chart tag", {})
     return false, false, false
   end
   local is_admin = AdminUtils.is_admin(player)
-  local last_user = get_last_user_name(chart_tag)
-  local is_owner = (last_user == "" or last_user == player.name)
-  local can_edit = is_owner or is_admin
-  local is_admin_override = is_admin and not is_owner
-  log_permission_result("Chart tag edit permission result", {
-    player_name = player.name,
-    last_user = last_user,
-    is_owner = is_owner,
-    is_admin = is_admin,
-    can_edit = can_edit,
-    is_admin_override = is_admin_override
-  })
-  return can_edit, is_owner, is_admin_override
+  local is_owner = (get_last_user_name(chart_tag) == "" or get_last_user_name(chart_tag) == player.name)
+  return is_owner or is_admin, is_owner, is_admin and not is_owner
 end
 
 function AdminUtils.can_delete_chart_tag(player, chart_tag, tag)
@@ -87,19 +45,9 @@ function AdminUtils.can_delete_chart_tag(player, chart_tag, tag)
   local is_admin = AdminUtils.is_admin(player)
   local last_user = get_last_user_name(chart_tag)
   local is_owner = (last_user == "" or last_user == player.name)
-  local has_other_favorites = false
-  if tag and tag.faved_by_players then
-    for _, fav_player_index in ipairs(tag.faved_by_players) do
-      if fav_player_index ~= player.index then
-        has_other_favorites = true
-        break
-      end
-    end
-  end
-  local can_delete_as_owner = is_owner and not has_other_favorites
-  local can_delete_as_admin = is_admin
-  local can_delete = can_delete_as_owner or can_delete_as_admin
-  local is_admin_override = is_admin and not can_delete_as_owner
+  local has_other_favorites = tag and tag.faved_by_players and #tag.faved_by_players > 1
+  local can_delete = (is_owner and not has_other_favorites) or is_admin
+  local is_admin_override = is_admin and not (is_owner and not has_other_favorites)
   local reason = nil
   if not can_delete then
     if not is_owner and not is_admin then
@@ -110,10 +58,6 @@ function AdminUtils.can_delete_chart_tag(player, chart_tag, tag)
   end
   return can_delete, is_owner, is_admin_override, reason
 end
-
--- ========================================
--- ADMIN OWNERSHIP MANAGEMENT
--- ========================================
 
 function AdminUtils.transfer_ownership_to_admin(chart_tag, admin_player)
   local player_valid, player_error = ValidationUtils.validate_player(admin_player)
@@ -144,10 +88,6 @@ function AdminUtils.transfer_ownership_to_admin(chart_tag, admin_player)
   })
   return false
 end
-
--- ========================================
--- LOGGING / AUDIT
--- ========================================
 
 function AdminUtils.log_admin_action(admin_player, action, chart_tag, additional_data)
   local player_valid, _ = ValidationUtils.validate_player(admin_player)

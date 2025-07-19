@@ -1,0 +1,7 @@
+# Refactor event handlers from misc_event_handlers.lua
+# - on_gui_closed moved to control_tag_editor.lua and teleport_history_modal.lua
+# - update_fave_bar_visibility and on_player_controller_changed moved to favorites_bar/fave_bar.lua
+# - event_registration_dispatcher.lua updated to reference new handler locations
+# - misc_event_handlers.lua deleted
+# - All references updated
+# - Next: Run tests to verify correct event handling and integration

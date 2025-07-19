@@ -1,21 +1,15 @@
----@diagnostic disable: undefined-global
-
---[[
-event_registration_dispatcher.lua
-TeleportFavorites Factorio Mod
------------------------------
-Centralized event registration dispatcher for all mod events.
-Provides safe handler wrappers, unified registration API, and 
-standardized error handling across all event types.
---]]
+-- core/events/event_registration_dispatcher.lua
+-- TeleportFavorites Factorio Mod
+-- Centralized event registration dispatcher for all mod events, with safe wrappers and unified API.
 
 local ErrorHandler = require("core.utils.error_handler")
-local GameHelpers = require("core.utils.game_helpers")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local Cache = require("core.cache.cache")
 local gui_event_dispatcher = require("core.events.gui_event_dispatcher")
 local custom_input_dispatcher = require("core.events.custom_input_dispatcher")
-local misc_event_handlers = require("core.events.misc_event_handlers")
+local fave_bar = require("gui.favorites_bar.fave_bar")
+local control_tag_editor = require("core.control.control_tag_editor")
+local teleport_history_modal = require("gui.teleport_history_modal.teleport_history_modal")
 local handlers = require("core.events.handlers")
 local EventHandlerHelpers = require("core.utils.event_handler_helpers")
 local CursorUtils = require("core.utils.cursor_utils")
@@ -27,6 +21,7 @@ local TeleportHistoryModal = require("gui.teleport_history_modal.teleport_histor
 
 ---@class EventRegistrationDispatcher
 local EventRegistrationDispatcher = {}
+
 
 -- Track registration state (use rawget to avoid static analysis issues)
 local _registration_state = {}
@@ -55,13 +50,6 @@ function EventRegistrationDispatcher.register_core_events(script)
         handlers.on_player_created(event)
         -- Also setup observers for new players
         local player = game.players[event.player_index]
-        if player and player.valid then
-          -- Import gui_observer safely
-          local success, gui_observer = pcall(require, "core.events.gui_observer")
-          if success and gui_observer.GuiEventBus and gui_observer.GuiEventBus.register_player_observers then
-            gui_observer.GuiEventBus.register_player_observers(player)
-          end
-        end
       end,
       name = "on_player_created"
     },
@@ -121,38 +109,6 @@ function EventRegistrationDispatcher.register_core_events(script)
         local ChartTagOwnershipManager = require("core.control.chart_tag_ownership_manager")
         ChartTagOwnershipManager.on_player_left_game(event)
 
-        -- Reset drag mode and move mode states for leaving player
-        if leaving_player and leaving_player.valid then
-          local player_data = Cache.get_player_data(leaving_player)
-          -- Reset drag mode state
-          if player_data and player_data.drag_favorite and player_data.drag_favorite.active then
-            CursorUtils.end_drag_favorite(leaving_player)
-          end
-          -- Reset move mode state and clear cursor
-          pcall(function() leaving_player.clear_cursor() end)
-          -- Reset any tag editor move mode states
-          local tag_data = Cache.get_tag_editor_data(leaving_player)
-          if tag_data.move_mode then
-            tag_data.move_mode = false
-            tag_data.error_message = ""
-            Cache.set_tag_editor_data(leaving_player, tag_data)
-          end
-        end
-
-        -- Enhanced cleanup for leaving player using targeted methods
-        local success, gui_observer = pcall(require, "core.events.gui_observer")
-        if success and gui_observer.GuiEventBus then
-          if leaving_player and leaving_player.valid and gui_observer.GuiEventBus.cleanup_player_observers then
-            -- Use targeted player cleanup
-            gui_observer.GuiEventBus.cleanup_player_observers(leaving_player)
-          elseif gui_observer.GuiEventBus.cleanup_disconnected_player_observers then
-            -- Use disconnected player cleanup if player is no longer valid
-            gui_observer.GuiEventBus.cleanup_disconnected_player_observers(event.player_index)
-          elseif gui_observer.GuiEventBus.cleanup_all then
-            -- Final fallback to global cleanup
-            gui_observer.GuiEventBus.cleanup_all()
-          end
-        end
       end,
       name = "on_player_left_game"
     },
@@ -166,49 +122,6 @@ function EventRegistrationDispatcher.register_core_events(script)
         local ChartTagOwnershipManager = require("core.control.chart_tag_ownership_manager")
         ChartTagOwnershipManager.on_player_removed(event)
 
-        -- Reset drag mode and move mode states for removed player
-        if removed_player and removed_player.valid then
-          -- Reset drag mode state
-          local Cache = require("core.cache.cache")
-          local player_data = Cache.get_player_data(removed_player)
-          if player_data and player_data.drag_favorite and player_data.drag_favorite.active then
-            local CursorUtils = require("core.utils.cursor_utils")
-            CursorUtils.end_drag_favorite(removed_player)
-          end
-
-          -- Reset move mode state and clear cursor
-          pcall(function()
-            removed_player.clear_cursor()
-          end)
-
-          -- Reset any tag editor move mode states
-          local tag_data = Cache.get_tag_editor_data(removed_player)
-          -- Check if move_mode exists and is true (move_mode is dynamically set)
-          local move_mode_active = tag_data.move_mode
-          if move_mode_active then
-            tag_data.move_mode = false
-            Cache.set_tag_editor_data(removed_player, tag_data)
-          end
-
-          -- Clear any error messages to prevent persistence across sessions
-          tag_data.error_message = ""
-          Cache.set_tag_editor_data(removed_player, tag_data)
-        end
-
-        -- Enhanced cleanup for removed player using targeted methods
-        local success, gui_observer = pcall(require, "core.events.gui_observer")
-        if success and gui_observer.GuiEventBus then
-          if removed_player and removed_player.valid and gui_observer.GuiEventBus.cleanup_player_observers then
-            -- Use targeted player cleanup
-            gui_observer.GuiEventBus.cleanup_player_observers(removed_player)
-          elseif gui_observer.GuiEventBus.cleanup_disconnected_player_observers then
-            -- Use disconnected player cleanup if player is no longer valid
-            gui_observer.GuiEventBus.cleanup_disconnected_player_observers(event.player_index)
-          elseif gui_observer.GuiEventBus.cleanup_all then
-            -- Final fallback to global cleanup
-            gui_observer.GuiEventBus.cleanup_all()
-          end
-        end
       end,
       name = "on_player_removed"
     },
@@ -263,7 +176,7 @@ function EventRegistrationDispatcher.register_core_events(script)
       name = "on_runtime_mod_setting_changed"
     },
     [defines.events.on_player_controller_changed] = {
-      handler = misc_event_handlers.on_player_controller_changed,
+      handler = fave_bar.on_player_controller_changed,
       name = "on_player_controller_changed"
     },
     -- Chart tag events - Critical: These were missing!
@@ -350,7 +263,12 @@ function EventRegistrationDispatcher.register_gui_events(script)
 
   -- Register GUI closed handler for ESC key support
   local closed_handler = create_safe_event_handler(
-    misc_event_handlers.on_gui_closed,
+    function(event)
+      -- Try tag editor close first
+      control_tag_editor.on_gui_closed(event)
+      -- Try teleport history modal close
+      teleport_history_modal.on_gui_closed(event)
+    end,
     "on_gui_closed",
     "gui_event"
   )
@@ -555,7 +473,6 @@ function EventRegistrationDispatcher.register_observer_events(script)
   ErrorHandler.debug_log("[OBSERVER] Registering favorites_bar_updated observer")
   GuiEventBus.subscribe("favorites_bar_updated", favorites_bar_observer)
   ErrorHandler.debug_log("[OBSERVER] favorites_bar_updated observer registered successfully")
-
   ErrorHandler.debug_log("Observer events registration complete")
 
   return true
@@ -581,9 +498,6 @@ function EventRegistrationDispatcher.register_all_events(script)
   results.custom_input = EventRegistrationDispatcher.register_custom_input_events(script)
   results.observer = EventRegistrationDispatcher.register_observer_events(script)
   results.modal_input_blocker = ModalInputBlocker.register_handlers(script)
-  
-
-  -- No longer using favorites bar GUI label manager - static labels handled directly in fave_bar.lua
 
   -- Check overall success
   for category, success in pairs(results) do

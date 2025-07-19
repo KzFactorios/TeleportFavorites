@@ -1,27 +1,7 @@
----@diagnostic disable: undefined-global
---[[
-core/utils/debug_config.lua
-TeleportFavorites Factorio Mod
------------------------------
-Debug level controls for production vs development environments.
-
-This module provides centralized debug level management to control logging
-verbosity and debug features based on the deployment environment.
-
-Debug Levels:
-- NONE (0): No debug output (production)
-- ERROR (1): Only critical errors
-- WARN (2): Warnings and errors
-- INFO (3): General information logging
-- DEBUG (4): Detailed debugging information
-- TRACE (5): Maximum verbosity (development only)
-
-Features:
-- Environment detection (development vs production)
-- Runtime debug level adjustment
-- Performance-conscious logging (early returns)
-- Integration with existing ErrorHandler
-]]
+-- core/utils/debug_config.lua
+-- TeleportFavorites Factorio Mod
+-- Centralized debug level management for logging verbosity and debug features.
+-- Detects environment, allows runtime adjustment, integrates with ErrorHandler.
 
 ---@class DebugConfig
 local DebugConfig = {}

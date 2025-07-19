@@ -1,5 +1,7 @@
 -- core/utils/basic_helpers.lua
--- Minimal, dependency-free helpers for use by other helpers
+-- TeleportFavorites Factorio Mod
+-- Minimal, dependency-free helpers for use by other helpers and modules.
+-- Provides number padding/normalization, whole number/index validation, string trimming/manipulation, and safe type conversions.
 
 local basic_helpers = {}
 
@@ -34,26 +36,6 @@ function basic_helpers.trim(s)
   return s:match("^%s*(.-)%s*$") or ""
 end
 
---- Splits a string into a table of substrings based on a delimiter
---- @param str string | any
---- @param delimiter string | any
---- @return table
-function basic_helpers.split_string(str, delimiter)
-  if type(str) ~= "string" or type(delimiter) ~= "string" then return {} end
-  local result = {}
-  for match in str:gmatch("[^" .. delimiter .. "]+") do
-    table.insert(result, match)
-  end
-  return result
-end
-
---- Checks if a string is non-empty
---- @param s any
---- @return boolean
-function basic_helpers.is_nonempty_string(s)
-  return type(s) == "string" and s ~= "" and s:match("^%s*(.-)%s*$") ~= ""
-end
-
 --- Ensures that an index is a valid integer (can be negative for coordinates)
 --- Rounds floating point numbers to the nearest integer
 --- @param index any
@@ -78,10 +60,6 @@ function basic_helpers.is_locked_favorite(fav)
   return fav and fav.locked == true
 end
 
-function basic_helpers.is_empty_favorite(fav)
-  return not fav or not fav.gps or fav.gps == ""
-end
-
 function basic_helpers.is_blank_favorite(fav)
   return not fav or (not fav.gps and not fav.text)
 end
@@ -94,16 +72,8 @@ function basic_helpers.update_error_message(update_fn, player, message)
   if update_fn and player then update_fn(player, message) end
 end
 
-function basic_helpers.update_state_toggle(toggle_fn, player, state)
-  if toggle_fn and player then toggle_fn(player, state) end
-end
-
 function basic_helpers.update_state(update_fn, player, state)
   if update_fn then update_fn(player, state) end
-end
-
-function basic_helpers.update_success_message(update_fn, player, message)
-  if update_fn and player then update_fn(player, message) end
 end
 
 -- ===========================
@@ -154,19 +124,6 @@ function basic_helpers.is_valid_gps(gps)
   return gps ~= nil and gps ~= ""
 end
 
---- Safe early return pattern - executes callback only if condition is true
---- No dependencies, can be used anywhere
----@param condition boolean
----@param callback function
----@param ... any Parameters to pass to callback
----@return any result Result from callback or nil
-function basic_helpers.when_true(condition, callback, ...)
-  if condition then
-    return callback(...)
-  end
-  return nil
-end
-
 -- Command helpers
 
 --- Register multiple commands with a cleaner syntax
@@ -205,8 +162,6 @@ function basic_helpers.register_module_commands(module, command_definitions)
   basic_helpers.register_commands(command_list)
 end
 
--- Collection/table helpers
-
 --- Deep comparison of two tables
 ---@param a table
 ---@param b table
@@ -235,30 +190,6 @@ function basic_helpers.deep_copy(orig)
     copy[k] = (type(v) == 'table') and basic_helpers.deep_copy(v) or v
   end
   return copy
-end
-
---- Create a shallow copy of a table
----@param orig table
----@return table copied_table
-function basic_helpers.shallow_copy(orig)
-  if type(orig) ~= 'table' then return orig end
-  local copy = {}
-  for k, v in pairs(orig) do
-    copy[k] = v
-  end
-  return copy
-end
-
---- Count elements in a table
----@param tbl table
----@return number count
-function basic_helpers.table_count(tbl)
-  if type(tbl) ~= "table" then return 0 end
-  local count = 0
-  for _ in pairs(tbl) do
-    count = count + 1
-  end
-  return count
 end
 
 return basic_helpers

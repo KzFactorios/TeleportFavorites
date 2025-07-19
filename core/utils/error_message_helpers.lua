@@ -1,10 +1,13 @@
 --[[
-Error Message Helpers for TeleportFavorites
-==========================================
-Module: core/utils/error_message_helpers.lua
+core/utils/error_message_helpers.lua
+TeleportFavorites Factorio Mod
+-----------------------------
+Centralized error message display helpers for GUIs.
 
-Consolidates error message display patterns used across GUIs.
-Provides centralized error row creation, show/hide, and update functionality.
+Provides functions to create, show, hide, and update error rows in GUI frames. Integrates with GuiBase, GuiValidation, and BasicHelpers for robust multiplayer-safe error display.
+
+ErrorMessageHelpers.show_or_update_error_row creates or updates an error row in a GUI frame.
+ErrorMessageHelpers.hide_error_row hides an error row in a GUI frame.
 ]]
 
 local GuiBase = require("gui.gui_base")
@@ -16,25 +19,17 @@ local ErrorMessageHelpers = {}
 --- Create or update an error row in a GUI frame (unified function)
 ---@param parent LuaGuiElement Parent GUI element
 ---@param error_frame_name string Name for the error frame
----@param error_label_name string Name for the error label
----@param message LocalisedString? Error message to display (nil/empty to hide)
----@param error_frame_style string? Style for error frame
----@param error_label_style string? Style for error label
----@return LuaGuiElement? error_frame, LuaGuiElement? error_label
 function ErrorMessageHelpers.show_or_update_error_row(parent, error_frame_name, error_label_name, message, error_frame_style, error_label_style)
   if not BasicHelpers.is_valid_element(parent) then return nil, nil end
-  
   local error_frame = GuiValidation.find_child_by_name(parent, error_frame_name)
   local error_label = error_frame and GuiValidation.find_child_by_name(error_frame, error_label_name)
   local should_show = message and BasicHelpers.trim(tostring(message)) ~= ""
-  
   if should_show then
     if not error_frame then
       error_frame = GuiBase.create_frame(parent, error_frame_name, "vertical", error_frame_style or "tf_tag_editor_error_row_frame")
       error_label = GuiBase.create_label(error_frame, error_label_name, message or "", error_label_style or "tf_tag_editor_error_label")
     else
       if error_label then
-        -- At this point, message is guaranteed to be non-nil by should_show logic
         ---@cast message LocalisedString
         error_label.caption = message
         error_label.visible = true
@@ -44,7 +39,6 @@ function ErrorMessageHelpers.show_or_update_error_row(parent, error_frame_name, 
   else
     if error_frame then error_frame.visible = false end
   end
-  
   return error_frame, error_label
 end
 

@@ -1,13 +1,6 @@
--- core/utils/chart_tag_spec_builder.lua
--- Shared, recursion-free chart tag spec builder for TeleportFavorites
--- This module is safe for use by both chart_tag_utils and any pattern/strategy modules.
 
 local ChartTagSpecBuilder = {}
 
---- Build a chart tag specification for Factorio's API (recursion-free, no chart_tag_utils dependency)
----@param position MapPosition
----@param source_chart_tag LuaCustomChartTag? Source chart tag to copy properties from
----@param player LuaPlayer? Player context
 ---@param text string? Custom text override
 ---@param set_ownership boolean? Whether to set last_user (only for final tags, not temporary)
 ---@return table chart_tag_spec Chart tag specification ready for Factorio API

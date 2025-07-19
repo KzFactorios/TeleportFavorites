@@ -1,31 +1,25 @@
 ---@diagnostic disable: undefined-global
+
+-- gui/tag_editor/tag_editor.lua
+-- TeleportFavorites Factorio Mod
+-- Modal Tag Editor for creating/editing map tags.
 --[[
-Tag Editor GUI for TeleportFavorites
-====================================
-Module: gui/tag_editor/tag_editor.lua
-
-Provides the modal Tag Editor interface for creating and editing map tags in the TeleportFavorites mod.
-
-Features:
-- Modal dialog for editing tag icon, text, and actions (move, delete, teleport, favorite, confirm, cancel).
-- Ownership and favorite state logic for enabling/disabling controls.
-- Error message display and move mode visual feedback.
-- Modularized UI construction for maintainability and clarity.
-- Vanilla dialog structure: uses a 'inside_shallow_frame' for the outer frame, a 'frame_titlebar' for the title bar (with draggable grip), and a close button handled by event logic.
-- Sets player.opened for modal/ESC support; titlebar is draggable and visually matches vanilla Factorio dialogs.
-
-Main Functions:
-- tag_editor.build
-    Constructs and returns the tag editor modal frame for the given player and tag data.
-    Handles all UI element creation, state logic, tooltips, error display, and move mode visuals.
-    The tag_editor is always presented in the player.gui.screen.
-
-- tag_editor.build_confirmation_dialog
-    Shows a modal confirmation dialog for destructive actions (e.g., tag deletion).
-
-- setup_tag_editor_ui(refs, tag_data, player):
-    Sets state, tooltips, and styles for all controls after construction.
---]]
+Element Hierarchy:
+tag_editor_modal (frame, modal)
+├─ frame_titlebar (flow, horizontal)
+│  ├─ draggable_grip (sprite)
+│  └─ close_button (sprite-button)
+├─ tag_icon_picker (sprite-button)
+├─ tag_text_field (textfield)
+├─ action_buttons_flow (flow, horizontal)
+│  ├─ move_button (sprite-button)
+│  ├─ delete_button (sprite-button)
+│  ├─ teleport_button (sprite-button)
+│  ├─ favorite_button (sprite-button)
+│  ├─ confirm_button (button)
+│  └─ cancel_button (button)
+└─ error_row (label, visible on error)
+]]
 
 
 local Enum = require("prototypes.enums.enum")
@@ -33,7 +27,6 @@ local GuiBase = require("gui.gui_base")
 local GuiValidation = require("core.utils.gui_validation")
 local GuiElementBuilders = require("core.utils.gui_element_builders")
 local ErrorMessageHelpers = require("core.utils.error_message_helpers")
-local GPSUtils = require("core.utils.gps_utils")
 local BasicHelpers = require("core.utils.basic_helpers")
 local ValidationUtils = require("core.utils.validation_utils")
 local Cache = require("core.cache.cache")

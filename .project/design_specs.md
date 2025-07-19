@@ -133,11 +133,29 @@ All data operations are surface-aware through the `Cache` module:
 
 ## GUI Documentation and Best Practices (2025-06-10)
 
-- All GUI hierarchy diagrams and descriptions are up-to-date and match the current codebase.
-- The `{gui_context}_{purpose}_{type}` naming convention is enforced and documented for all GUIs.
-- Event filtering and builder/command pattern usage are described in each GUI's notes file.
-- Best practices for accessibility, error handling, and multiplayer safety are documented and implemented.
-- See `tag_editor.md`, `fave_bar.md` for details.
+All GUI modules use shared builder functions from `gui_base.lua` for consistent style and maintainability.
+
+**GuiBase Builder Functions:**
+```
+GuiBase
+├── create_frame(parent, name, direction, style)
+├── create_button(parent, name, caption, style)
+├── create_label(parent, name, caption, style)
+├── create_sprite_button(parent, name, sprite, tooltip, style, enabled)
+├── create_element(element_type, parent, opts)
+├── create_hflow(parent, name, style)
+├── create_vflow(parent, name, style)
+├── create_flow(parent, name, direction, style)
+├── create_draggable(parent, name)
+├── create_titlebar(parent, name, close_button_name)
+└── create_textbox(parent, name, text, style, icon_selector)
+```
+All builder functions use defensive checks and default styles for robust GUI creation. See `gui_base.lua` for details.
+
+The `{gui_context}_{purpose}_{type}` naming convention is enforced and documented for all GUIs.
+Event filtering and builder/command pattern usage are described in each GUI's notes file.
+Best practices for accessibility, error handling, and multiplayer safety are documented and implemented.
+See `tag_editor.md`, `fave_bar.md` for details.
 
 ## See Also
 - `data_schema.md` – Persistent data schema and structure.

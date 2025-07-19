@@ -1,15 +1,11 @@
--- core/utils/cursor_utils.lua
--- Utilities for visual indicators during drag-and-drop operations
 
 local ErrorHandler = require("core.utils.error_handler")
 local FavoriteUtils = require("core.favorite.favorite")
 local Cache = require("core.cache.cache")
 local BasicHelpers = require("core.utils.basic_helpers")
 
----@class CursorUtils
 local CursorUtils = {}
 
---- Start dragging a favorite - updates player cache state and sets cursor visuals
 ---@param player LuaPlayer The player
 ---@param favorite Favorite The favorite being dragged
 ---@param slot_index number The slot index being dragged from (1-based)

@@ -1,20 +1,11 @@
--- control_shared_utils.lua
--- Shared helpers for control modules: refresh, update, observer notification, and common utilities
+-- core/control/control_shared_utils.lua
+-- TeleportFavorites Factorio Mod
+-- Provides shared helpers for control modules, including refresh, update, observer notification, and common GUI/event utilities.
 
 local GuiObserver = require("core.events.gui_observer")
 local GuiEventBus = GuiObserver.GuiEventBus
 
 local SharedUtils = {}
-
---- Count the number of elements in a table
----@param t table
----@return number
-function SharedUtils.table_size(t)
-  if type(t) ~= "table" then return 0 end
-  local count = 0
-  for _ in pairs(t) do count = count + 1 end
-  return count
-end
 
 --- Localized string helper
 ---@param key string
@@ -22,17 +13,6 @@ end
 ---@return table
 function SharedUtils.lstr(key, ...)
   return { key, ... }
-end
-
---- Standardized GUI refresh with cache update
----@param cache_setter function
----@param destroyer function
----@param builder function
----@param ... any
-function SharedUtils.refresh_gui_with_cache(cache_setter, destroyer, builder, ...)
-  cache_setter(...)
-  destroyer(...)
-  builder(...)
 end
 
 --- Standardized observer notification

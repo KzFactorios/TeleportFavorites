@@ -1,43 +1,45 @@
 ---@diagnostic disable: undefined-global
+
+-- gui/teleport_history_modal/teleport_history_modal.lua
+-- TeleportFavorites Factorio Mod
+-- Modal Teleport History interface for viewing and navigating teleport history.
 --[[
-Teleport History Modal for TeleportFavorites
-============================================
-Module: gui/teleport_history_modal/teleport_history_modal.lua
+Element Hierarchy:
+teleport_history_modal (frame, modal)
+├─ modal_titlebar (flow, horizontal)
+│  └─ close_button (sprite-button)
+├─ history_scroll_pane (scroll-pane, vertical)
+│  ├─ history_location_1 (button)
+│  ├─ history_location_2 (button)
+│  ├─ ...
+│  └─ history_location_N (button)
+└─ pointer_highlight (label, highlights current pointer)
+]]
 
-Provides the modal Teleport History interface for viewing and navigating teleport history in the TeleportFavorites mod.
-
-Features:
-- Modal dialog showing teleport history stack for current surface
-- Scroll pane with list of teleport locations
-- Click to teleport and update pointer to selected location
-- Current pointer location highlighted in blue
-- Close button in top right corner
-
-Main Functions:
-- teleport_history_modal.build(player):
-    Constructs and returns the teleport history modal frame for the given player.
-    Handles all UI element creation, history population, and state management.
-    The modal is always presented in the player.gui.screen.
-
-- teleport_history_modal.destroy(player):
-    Destroys the teleport history modal for the given player.
-
-- teleport_history_modal.update_history_list(player):
-    Updates the history list display without rebuilding the entire modal.
---]]
-
-local Enum = require("prototypes.enums.enum")
 local GuiBase = require("gui.gui_base")
 local GuiValidation = require("core.utils.gui_validation")
 local Cache = require("core.cache.cache")
-local TeleportHistory = require("core.teleport.teleport_history")
 local BasicHelpers = require("core.utils.basic_helpers")
 local GPSUtils = require("core.utils.gps_utils")
-local RichTextFormatter = require("core.utils.rich_text_formatter")
 local Lookups = require("core.cache.lookups")
 local ErrorHandler = require("core.utils.error_handler")  
 
 local teleport_history_modal = {}
+
+--- Handles GUI close events for teleport history modal
+---@param event table GUI close event from Factorio
+function teleport_history_modal.on_gui_closed(event)
+  local player = game.players[event.player_index]
+  if not player or not player.valid then return end
+  if not event.element or not event.element.valid then return end
+
+  local Enum = require("prototypes.enums.enum")
+  local gui_frame = require("core.utils.gui_validation").get_gui_frame_by_element(event.element)
+  if (gui_frame and gui_frame.name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL) or event.element.name == "teleport_history_modal" then
+    teleport_history_modal.destroy(player)
+    return
+  end
+end
 
 --- Build the teleport history modal dialog
 ---@param player LuaPlayer
@@ -315,16 +317,6 @@ function teleport_history_modal.update_history_list(player)
       })
     end
   end
-end
-
---- Check if the teleport history modal is open for a player
----@param player LuaPlayer
----@return boolean
-function teleport_history_modal.is_open(player)
-  if not BasicHelpers.is_valid_player(player) then return false end
-  
-  local modal_frame = player.gui.screen["teleport_history_modal"]
-  return modal_frame and modal_frame.valid or false
 end
 
 return teleport_history_modal

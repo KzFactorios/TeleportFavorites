@@ -10,7 +10,7 @@ Date: 2025-06-12
     - Moved all test files from the root directory to the tests folder
     - Added test organization guidelines to ensure consistent test file placement
     - Improved settings.lua with robust type checking and validation
-    - Enhanced error handling in settings.lua for missing or invalid settings
+    - Added error handling in settings.lua for missing or invalid settings
 
 ---------------------------------------------------------------------------------------------------
 Version: 0.0.1

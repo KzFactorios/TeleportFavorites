@@ -1,11 +1,27 @@
 # TeleportFavorites – Architecture
-
 ## Overview
-This document describes the architecture of the TeleportFavorites mod, including its modular structure, data flow, and key design patterns. It is intended to help developers understand how the mod is organized and how its components interact.
 
 ---
 
-## Require Statements Policy
+## GUI Builder Pattern (Updated 2025-07-19)
+All GUI modules use shared builder functions from `gui_base.lua` for consistent style and maintainability.
+
+**GuiBase Builder Functions:**
+```
+GuiBase
+├── create_frame(parent, name, direction, style)
+├── create_button(parent, name, caption, style)
+├── create_label(parent, name, caption, style)
+├── create_sprite_button(parent, name, sprite, tooltip, style, enabled)
+├── create_element(element_type, parent, opts)
+├── create_hflow(parent, name, style)
+├── create_vflow(parent, name, style)
+├── create_flow(parent, name, direction, style)
+├── create_draggable(parent, name)
+├── create_titlebar(parent, name, close_button_name)
+└── create_textbox(parent, name, text, style, icon_selector)
+```
+All builder functions use defensive checks and default styles for robust GUI creation. See `gui_base.lua` for details.
 All require statements MUST be placed at the very top of each Lua file, before any function or logic.
 
 Do NOT place require statements inside functions, event handlers, or conditional blocks.
