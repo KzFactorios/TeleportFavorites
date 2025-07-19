@@ -24,10 +24,25 @@ local GPSUtils = require("core.utils.gps_utils")
 local Lookups = require("core.cache.lookups")
 local ErrorHandler = require("core.utils.error_handler")  
 local Enum = require("prototypes.enums.enum")
+local HistoryItem = require("core.teleport.history_item")
 
 
 local teleport_history_modal = {}
 
+
+--- Destroy the teleport history modal for the given player
+---@param player LuaPlayer
+function teleport_history_modal.destroy(player)
+  if not BasicHelpers.is_valid_player(player) then return end
+
+  -- Clear modal dialog state
+  Cache.set_modal_dialog_state(player, nil)
+  local modal_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]
+  if modal_frame and modal_frame.valid then
+    player.opened = nil
+    modal_frame.destroy()
+  end
+end
 
 --- Check if the teleport history modal is open for the player
 ---@param player LuaPlayer
@@ -55,6 +70,7 @@ end
 --- Build the teleport history modal dialog
 ---@param player LuaPlayer
 function teleport_history_modal.build(player)
+  ErrorHandler.debug_log("[MODAL] build called", { player = player and player.name or "<nil>" })
   if not BasicHelpers.is_valid_player(player) then return end
 
   -- Destroy any existing modal first
@@ -101,9 +117,6 @@ function teleport_history_modal.build(player)
   local titlebar, title_label = GuiBase.create_titlebar(modal_frame, "teleport_history_modal_titlebar", "teleport_history_modal_close_button")
   if title_label and title_label.valid then
     title_label.caption = {"tf-gui.teleport_history_modal_title"}
-  else
-    ErrorHandler.debug_log("Title label invalid in teleport history modal, using fallback caption")
-    if title_label then title_label.caption = "Teleport History" end
   end
 
   -- Create content frame (following tag editor pattern)
@@ -114,9 +127,7 @@ function teleport_history_modal.build(player)
     name = "teleport_history_scroll_pane",
     direction = "vertical"
   })
-  scroll_pane.style.width = 270
-  scroll_pane.style.maximal_height = 300
-  scroll_pane.style.vertically_stretchable = false
+  -- Set style via prototype or use default styles; do not assign directly to style fields
 
   -- Create list container inside scroll pane
   local history_list = GuiBase.create_frame(
@@ -175,6 +186,7 @@ end
 --- Update the history list display
 ---@param player LuaPlayer
 function teleport_history_modal.update_history_list(player)
+  ErrorHandler.debug_log("[MODAL] update_history_list called", { player = player and player.name or "<nil>" })
   if not BasicHelpers.is_valid_player(player) then return end
 
   local modal_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]
@@ -208,105 +220,83 @@ function teleport_history_modal.update_history_list(player)
   })
 
   if #stack == 0 then
-    -- Show empty message
-    GuiBase.create_label(history_list, "empty_history_label", {"tf-gui.teleport_history_empty"}, "tf_teleport_history_empty_label")
+  GuiBase.create_label(history_list, "empty_history_label", "tf-gui.teleport_history_empty", "tf_teleport_history_empty_label")
     return
   end
 
   -- Create list items for each history entry (in reverse order, newest first)
   for i = #stack, 1, -1 do
-    local gps_string = stack[i]  -- Stack entries are now GPS strings directly
+    local entry = stack[i] -- HistoryItem object
     local is_current = (i == pointer)
-
-    -- Validate GPS string and process only if valid
-    if type(gps_string) == "string" then
-      -- GPS string is already available, no conversion needed
-      local coords_string = GPSUtils.coords_string_from_gps(gps_string)
-      
-      -- Debug coordinate conversion
+    if entry and type(entry) == "table" and entry.gps then
+      local coords_string = GPSUtils.coords_string_from_gps(entry.gps)
       ErrorHandler.debug_log("Processing history entry", {
         index = i,
-        gps_string = gps_string,
+        gps = entry.gps,
+        timestamp = entry.timestamp,
         coords_string = coords_string,
         is_current = is_current
       })
-      
-      -- Try to find a chart tag for this GPS location to get the icon
-      local chart_tag = Lookups.get_chart_tag_by_gps(gps_string)
+      local chart_tag = Lookups.get_chart_tag_by_gps(entry.gps)
       local tag_icon = chart_tag and chart_tag.icon
-      
-      -- Use the coordinates string for display text, with fallback to the GPS string
-      local display_text = coords_string or gps_string or "Invalid GPS"
-      
-      -- Add rich text icon prefix if chart tag has an icon
+      local display_text = coords_string or entry.gps or "Invalid GPS"
+      local icon_rich_text = nil
       if tag_icon and tag_icon.name then
         local icon_type = tag_icon.type
         local icon_name = tag_icon.name
-        
-        -- Debug logging for icon processing
-        ErrorHandler.debug_log("Processing chart tag icon", {
-          index = i,
-          original_type = icon_type,
-          original_name = icon_name,
-          gps = gps_string
-        })
-        
-        -- Normalize icon type for virtual signals and handle missing types
         if icon_type == "virtual" then
           icon_type = "virtual-signal"
         elseif not icon_type or icon_type == "" then
-          -- Try to determine type based on icon name patterns
           if icon_name == "substation" or icon_name == "artillery-targeting-remote" then
             icon_type = "item"
           elseif icon_name == "defender-capsule" then
             icon_type = "item"
           elseif icon_name == "plastic-bar" or icon_name == "solar-panel" or icon_name == "flamethrower-ammo" then
             icon_type = "item"
-          elseif string.find(icon_name, "%-bar$") or string.find(icon_name, "%-panel$") or string.find(icon_name, "%-ammo$") then
-            -- Pattern matching for common item types
+          elseif string.find(icon_name, "%bar$") or string.find(icon_name, "%panel$") or string.find(icon_name, "%ammo$") then
             icon_type = "item"
-          elseif string.find(icon_name, "^signal%-") then
-            -- Explicit virtual signals start with "signal-"
+          elseif string.find(icon_name, "^signal-") then
             icon_type = "virtual-signal"
           else
-            -- For unknown types, try item first as it's more common
             icon_type = "item"
           end
         end
-        
-        -- Dynamic rich text formatting - works with any icon type
-        -- Format: [type=name] where type and name come directly from the chart tag icon
-        local rich_text_icon = "[" .. icon_type .. "=" .. icon_name .. "]"
-        
-        -- Debug final rich text format
-        ErrorHandler.debug_log("Generated rich text icon", {
-          index = i,
-          final_type = icon_type,
-          final_name = icon_name,
-          rich_text_format = rich_text_icon
-        })
-        
-        -- Use rich text formatting to embed the icon directly in the button text
-        display_text = rich_text_icon .. "  " .. display_text
+        icon_rich_text = "[" .. icon_type .. "=" .. icon_name .. "]"
       end
-      
+
+      -- Add locale-formatted date label (left-aligned, med-light grey)
+      local date_string = nil
+      local ok, result = pcall(function()
+        return HistoryItem.get_locale_time(player, entry)
+      end)
+      if ok then date_string = result else date_string = "" end
+
+      -- Create horizontal flow for this row
+      local row_flow = GuiBase.create_element("flow", history_list, {
+        name = "teleport_history_row_" .. tostring(i),
+        direction = "horizontal",
+        style = "tf_teleport_history_flow"
+      })
+
+      -- Add icon (if any)
+      if icon_rich_text then
+        GuiBase.create_label(row_flow, "teleport_history_icon_label_" .. tostring(i), icon_rich_text, "tf_teleport_history_date_label")
+      end
+
+      -- Add GPS button
       local button_style = is_current and "tf_teleport_history_item_current" or "tf_teleport_history_item"
-      
-      -- Create a simple button with rich text (no need for separate flow or sprite elements)
       local button_name = "teleport_history_item_" .. tostring(i)
       local success_button, item_button = pcall(function()
         return GuiBase.create_button(
-          history_list,
+          row_flow,
           button_name,
           display_text,
           button_style
         )
       end)
-
       if success_button and item_button and item_button.valid then
-        -- Set tooltip after creation
         local tooltip_success = pcall(function()
-          item_button.tooltip = {"tf-gui.teleport_history_item_tooltip", display_text}
+          item_button.tooltip = display_text
         end)
         if not tooltip_success then
           ErrorHandler.debug_log("Failed to set teleport history button tooltip", {
@@ -314,9 +304,7 @@ function teleport_history_modal.update_history_list(player)
             item_index = i
           })
         end
-        -- Store the index in tags for click handling
         item_button.tags = {teleport_history_index = i}
-        -- Debug log for button name and tags
         ErrorHandler.debug_log("Created teleport history item button", {
           button_name = item_button.name,
           button_tags = item_button.tags,
@@ -330,11 +318,19 @@ function teleport_history_modal.update_history_list(player)
           error = item_button
         })
       end
+
+      -- Add date label inline
+      GuiBase.create_label(
+        row_flow,
+        "teleport_history_date_label_" .. tostring(i),
+        date_string,
+        "tf_teleport_history_date_label"
+      )
     else
-      ErrorHandler.debug_log("Invalid GPS string in history stack", {
+      ErrorHandler.debug_log("Invalid HistoryItem in history stack", {
         index = i,
-        type = type(gps_string),
-        value = gps_string
+        type = type(entry),
+        value = entry
       })
     end
   end

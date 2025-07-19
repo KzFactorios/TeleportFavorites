@@ -12,7 +12,7 @@
 --   CursorUtils.is_dragging_favorite(player): Check if player is currently dragging a favorite.
 
 local ErrorHandler = require("core.utils.error_handler")
-local FavoriteUtils = require("core.favorite.favorite")
+local FavoriteUtils = require("core.favorite.favorite_utils")
 local Cache = require("core.cache.cache")
 local BasicHelpers = require("core.utils.basic_helpers")
 

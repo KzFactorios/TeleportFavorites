@@ -6,8 +6,6 @@
 -- Integrates with ErrorHandler and TeleportStrategies for robust multiplayer-safe operations.
 
 local ErrorHandler = require("core.utils.error_handler")
-local TeleportStrategies = require("core.utils.teleport_strategy")
-local TeleportUtils = TeleportStrategies.TeleportUtils
 
 ---@class GameHelpers
 local GameHelpers = {}

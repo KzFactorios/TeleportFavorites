@@ -1,0 +1,2 @@
+-- This file has been archived and replaced by favorite_utils.lua
+-- Please update all references to use require("core.favorite.favorite_utils")

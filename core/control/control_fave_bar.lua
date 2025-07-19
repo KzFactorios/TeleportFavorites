@@ -4,7 +4,7 @@
 -- TeleportFavorites Factorio Mod
 -- Manages the favorites bar GUI and slot interactions, including drag-and-drop and multiplayer-safe favorites management.
 
-local FavoriteUtils = require("core.favorite.favorite")
+local FavoriteUtils = require("core.favorite.favorite_utils")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local ErrorHandler = require("core.utils.error_handler")
@@ -19,7 +19,6 @@ local BasicHelpers = require("core.utils.basic_helpers")
 local TeleportHistoryModal = require("gui.teleport_history_modal.teleport_history_modal")
 local TeleportHistory = require("core.teleport.teleport_history")
 local TeleportStrategy = require("core.utils.teleport_strategy")
-local Enum = require("prototypes.enums.enum")
 
 local M = {}
 
@@ -181,6 +180,10 @@ end
 ---@param event table The GUI click event
 ---@param player LuaPlayer The player
 local function handle_history_toggle_button_click(event, player)
+  ErrorHandler.debug_log("[FAVE_BAR] handle_history_toggle_button_click called", {
+    event = event,
+    player = player and player.name or "<nil>"
+  })
   -- Toggle the teleport history modal
   if TeleportHistoryModal.is_open(player) then
     TeleportHistoryModal.destroy(player)
@@ -229,8 +232,8 @@ local function on_teleport_history_modal_gui_click(event)
       ErrorHandler.warn_log("Teleport history item click: index out of bounds", { index = index, stack_length = #hist.stack })
       return
     end
-    local stack_entry = hist.stack[index]
-    local gps = stack_entry and (stack_entry.gps or stack_entry) or nil -- support both formats
+  local stack_entry = hist.stack[index]
+  local gps = stack_entry and stack_entry.gps or nil
     ErrorHandler.debug_log("[TELEPORT_HISTORY_MODAL] Stack entry and GPS", {
       stack_entry = stack_entry,
       gps = gps
@@ -241,7 +244,7 @@ local function on_teleport_history_modal_gui_click(event)
     end
 
     local ok, result = pcall(function()
-      return TeleportStrategy.teleport_to_gps(player, gps)
+      return TeleportStrategy.teleport_to_gps(player, gps, { from_history_modal = true })
     end)
 
     if ok and result then
@@ -256,6 +259,10 @@ local function on_teleport_history_modal_gui_click(event)
 end
 
 local function on_fave_bar_gui_click(event)
+  ErrorHandler.debug_log("[FAVE_BAR] on_fave_bar_gui_click called", {
+    element_name = event.element and event.element.name or "<nil>",
+    player_index = event.player_index
+  })
   local element = event.element
   if not BasicHelpers.is_valid_element(element) then return end
   local player = game.players[event.player_index]

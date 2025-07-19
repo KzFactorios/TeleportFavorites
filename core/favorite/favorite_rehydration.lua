@@ -3,7 +3,7 @@
 -- Handles runtime rehydration of favorites by restoring chart_tag references from cache, avoiding circular dependencies.
 
 local Cache = require("core.cache.cache")
-local FavoriteUtils = require("core.favorite.favorite")
+local FavoriteUtils = require("core.favorite.favorite_utils")
 
 local FavoriteRehydration = {}
 

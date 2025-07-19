@@ -45,11 +45,18 @@ end
 --- Warning logging helper  
 ---@param message string
 ---@param context table?
-function ErrorHandler.warn_log(message, context)  if _in_error_handler then return end
+function ErrorHandler.warn_log(message, context)
+  if _in_error_handler then return end
   _in_error_handler = true
-  
-  pcall(function() log("[TeleportFavorites] WARNING: " .. message) end)
-  
+  local context_str = ""
+  if context and type(context) == "table" then
+    for k, v in pairs(context) do
+      context_str = context_str .. tostring(k) .. "=" .. tostring(v) .. " "
+    end
+    pcall(function() log("[TeleportFavorites] WARNING: " .. message .. " | Context: " .. context_str) end)
+  else
+    pcall(function() log("[TeleportFavorites] WARNING: " .. message) end)
+  end
   _in_error_handler = false
 end
 

@@ -1,37 +1,40 @@
-
+---@diagnostic disable: undefined-global
 
 -- core/utils/admin_utils.lua
 -- TeleportFavorites Factorio Mod
 -- Admin utilities for handling permissions, overrides, and ownership transfer.
 -- Provides multiplayer-safe helpers for admin checks, override logic, and audit logging.
 -- Uses Factorio's native LuaPlayer.admin property for permission checks.
---
--- API:
---   AdminUtils.is_admin(player): Returns true if player is admin.
---   AdminUtils.can_edit_chart_tag(player, chart_tag): Checks if player can edit chart tag (owner or admin).
---   AdminUtils.can_delete_chart_tag(player, chart_tag, tag): Checks if player can delete chart tag.
---   AdminUtils.transfer_ownership_to_admin(chart_tag, admin_player): Transfers ownership to admin if needed.
---   AdminUtils.log_admin_action(admin_player, action, chart_tag, additional_data): Logs admin actions for audit.
----@diagnostic disable: undefined-global
+
+local ErrorHandler = require("core.utils.error_handler")
+local ValidationUtils = require("core.utils.validation_utils")
+
+
+
+---@class AdminUtils
 local AdminUtils = {}
 
+
+---Checks if the given player is an admin.
+---@param player LuaPlayer
+---@return boolean is_admin True if player is admin, false otherwise
 function AdminUtils.is_admin(player)
-  if player_valid then
-    return player.admin == true
-  end
+  local player_valid, player_error = ValidationUtils.validate_player(player)
   if not player_valid then
     ErrorHandler.debug_log("Chart tag edit permission check failed: invalid player", { error = player_error })
-    return false, false, false
+    return false
   end
-  if not chart_tag or not chart_tag.valid then
-    ErrorHandler.debug_log("Chart tag edit permission check: invalid chart tag", {})
-    return false, false, false
-  end
-  local is_admin = AdminUtils.is_admin(player)
-  local is_owner = (get_last_user_name(chart_tag) == "" or get_last_user_name(chart_tag) == player.name)
-  return is_owner or is_admin, is_owner, is_admin and not is_owner
+  return player.admin == true
 end
 
+---Checks if the given player can delete a chart tag.
+---@param player LuaPlayer
+---@param chart_tag LuaCustomChartTag
+---@param tag table # Tag object with faved_by_players field
+---@return boolean can_delete True if player can delete
+---@return boolean is_owner True if player is owner
+---@return boolean is_admin_override True if admin override
+---@return string|nil reason Reason for denial, or nil if allowed
 function AdminUtils.can_delete_chart_tag(player, chart_tag, tag)
   local player_valid, player_error = ValidationUtils.validate_player(player)
   if not player_valid then
@@ -57,6 +60,10 @@ function AdminUtils.can_delete_chart_tag(player, chart_tag, tag)
   return can_delete, is_owner, is_admin_override, reason
 end
 
+---Transfers ownership of a chart tag to an admin player if needed.
+---@param chart_tag LuaCustomChartTag
+---@param admin_player LuaPlayer
+---@return boolean success True if ownership transferred
 function AdminUtils.transfer_ownership_to_admin(chart_tag, admin_player)
   local player_valid, player_error = ValidationUtils.validate_player(admin_player)
   if not player_valid then
@@ -87,6 +94,11 @@ function AdminUtils.transfer_ownership_to_admin(chart_tag, admin_player)
   return false
 end
 
+---Logs an admin action for audit purposes.
+---@param admin_player LuaPlayer
+---@param action string
+---@param chart_tag LuaCustomChartTag
+---@param additional_data table|nil
 function AdminUtils.log_admin_action(admin_player, action, chart_tag, additional_data)
   local player_valid, _ = ValidationUtils.validate_player(admin_player)
   if not player_valid then return end

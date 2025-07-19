@@ -14,7 +14,7 @@ local Cache = require("core.cache.cache")
 local GuiValidation = require("core.utils.gui_validation")
 local PlayerHelpers = require("core.utils.player_helpers")
 local CursorUtils = require("core.utils.cursor_utils")
-local FavoriteUtils = require("core.favorite.favorite")
+local FavoriteUtils = require("core.favorite.favorite_utils")
 local BasicHelpers = require("core.utils.basic_helpers")
 
 local M = {}
@@ -48,7 +48,12 @@ function M.register_gui_handlers(script)
   end
 
   local function shared_on_gui_click(event)
+      ErrorHandler.debug_log("[DISPATCH] shared_on_gui_click TOP", {
+        element_name = event and event.element and event.element.name or "<none>",
+        player_index = event and event.player_index or "<none>"
+      })
     Cache.init()
+    
     -- Ignore these clicks everywhere EXCEPT on a fave bar slot button
     if event.button == defines.mouse_button_type.right and event.shift then return end
     if event.button == defines.mouse_button_type.left and event.shift and not is_fave_bar_slot_button(event.element) then return end

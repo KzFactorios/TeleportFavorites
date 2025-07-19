@@ -64,6 +64,11 @@ The helper `Tag.update_gps_and_surface_mapping(old_gps, new_gps, chart_tag, play
 ---
 
 ## Data Flow
+
+---
+
+## Migration Note (2025-07-19)
+Legacy teleport history stack migration now ensures unique timestamps for each migrated entry. During migration, each raw GPS string is converted to a `HistoryItem` object with a timestamp incremented by at least 1 second from the previous, guaranteeing uniqueness and correct chronological ordering. This logic is implemented in `core/cache/cache.lua` and uses the updated `HistoryItem.new(gps, timestamp)` constructor.
 1. **Player Action:** Player interacts with the GUI or map.
 2. **GUI/Event Handler:** Calls into core logic (e.g., add favorite, move tag). 
 3. **Core Logic:** Updates persistent data in `storage` via `Cache`.

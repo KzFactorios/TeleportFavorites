@@ -1,7 +1,7 @@
--- This is a work in progress
+# Migration Note (2025-07-19)
+Legacy teleport history stack migration now ensures unique timestamps for each migrated entry. During migration, each raw GPS string is converted to a `HistoryItem` object with a timestamp incremented by at least 1 second from the previous, guaranteeing uniqueness and correct chronological ordering. This logic is implemented in `core/cache/cache.lua` and uses the updated `HistoryItem.new(gps, timestamp)` constructor.
 
 # TODOs for TeleportFavorites
-- [TeleportFavorites GUI Experiments (Copilot Space)](https://github.com/copilot/spaces/kurtzilla/1)  
 
 <!--
   This file tracks outstanding tasks, design notes, and technical debt for the TeleportFavorites mod.

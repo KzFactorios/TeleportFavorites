@@ -1,8 +1,6 @@
 ---@diagnostic disable: undefined-global
 
--- core/cache/cache.lua
--- TeleportFavorites Factorio Mod
--- Manages persistent and runtime cache for mod data, including player, surface, and tag storage. All access via Cache API.
+
 --[[
 Data Structure (v2.0+):
 storage = {
@@ -35,40 +33,55 @@ storage = {
 ]]
 
 
-
-local FavoriteUtils = require("core.favorite.favorite")
+local BasicHelpers = require("core.utils.basic_helpers")
 local Constants = require("constants")
+local FavoriteUtils = require("core.favorite.favorite_utils")
 local GPSUtils = require("core.utils.gps_utils")
+local HistoryItem = require("core.teleport.history_item")
 local Lookups = require("core.cache.lookups")
 local SettingsCache = require("core.cache.settings")
-local BasicHelpers = require("core.utils.basic_helpers")
 
--- Function to get mod version from Factorio's mod system at runtime
-local function get_mod_version()
-  if script and script.active_mods and script.mod_name then
-    return script.active_mods[script.mod_name] or "unknown"
-  end
-  return "unknown"
-end
+local Cache = {}
+
 
 --- Persistent and runtime cache management for TeleportFavorites mod.
 ---@class Cache
 ---@field Lookups table<string, any> Lookup tables for chart tags and other runtime data.
 ---@field Settings table<string, any> Settings cache and access layer for all mod settings.
-local Cache = {}
 Cache.__index = Cache
+
+--- Get a player's teleport history stack for a given surface
+---@param player LuaPlayer
+---@param surface_index integer
+---@return table[]
+Cache.get_player_history_stack = function(player, surface_index)
+  if not player or not player.valid or not surface_index then return {} end
+  local player_data = Cache.get_player_data(player)
+  if not player_data.surfaces or not player_data.surfaces[surface_index] then return {} end
+  local history = player_data.surfaces[surface_index].teleport_history
+  return (history and history.stack) or {}
+end
 
 --- Lookup tables for chart tags and other runtime data.
 ---@type Lookups
 Cache.Lookups = nil
 
 --- Settings cache and access layer for all mod settings.
----@type Settings  
+---@type Settings
 Cache.Settings = nil
 
 -- Ensure storage is always available for persistence (Factorio 2.0+)
 if not storage then
   error("Storage table not available - this mod requires Factorio 2.0+")
+end
+
+-- Function to get mod version from Factorio's mod system at runtime
+local function get_mod_version()
+  ---@diagnostic disable-next-line: undefined-global
+  if script and script.active_mods and script.mod_name then
+    return script.active_mods[script.mod_name] or "unknown"
+  end
+  return "unknown"
 end
 
 --- Safe notification that handles module load order
@@ -105,28 +118,49 @@ end
 
 --- Initialize the persistent cache table if not already present.
 function Cache.init()
+  if ErrorHandler and ErrorHandler.debug_log then
+    ErrorHandler.debug_log("[CACHE] init called", {})
+  end
   if not storage then
     error("Storage table not available - this mod requires Factorio 2.0+")
   end
   storage.players = storage.players or {}
   storage.surfaces = storage.surfaces or {}
-  
+
   -- Version comparison for migration detection
   local current_mod_version = get_mod_version()
   local stored_version = storage.mod_version
   local needs_migration = stored_version and stored_version ~= current_mod_version
-  
+
   -- TODO: Run migrations here if needs_migration is true
   -- if needs_migration then
   --   run_migrations(stored_version, current_mod_version)
   -- end
-  
+
+  -- Legacy stack migration: convert raw GPS strings to HistoryItem objects
+  for player_index, player_data in pairs(storage.players) do
+    if player_data.surfaces then
+      for surface_index, surface_data in pairs(player_data.surfaces) do
+        local history = surface_data.teleport_history
+        if history and history.stack then
+          for idx, entry in ipairs(history.stack) do
+            if type(entry) == "string" then
+              -- Convert legacy GPS string to HistoryItem (timestamp is set to game.tick)
+              local new_item = HistoryItem.new(entry)
+              history.stack[idx] = new_item
+            end
+          end
+        end
+      end
+    end
+  end
+
   -- Update stored version only after migrations would complete
   storage.mod_version = current_mod_version
 
   Lookups.init()
   Cache.Lookups = Lookups
-  
+
   -- Initialize settings cache
   Cache.Settings = SettingsCache
 
@@ -161,8 +195,9 @@ local function init_player_data(player)
   local player_data = storage.players[player.index]
   player_data.surfaces[player.surface.index] = player_data.surfaces[player.surface.index] or {}
   player_data.surfaces[player.surface.index].favorites = init_player_favorites(player)
-  player_data.surfaces[player.surface.index].teleport_history = player_data.surfaces[player.surface.index].teleport_history or { stack = {}, pointer = 0 }
-  
+  player_data.surfaces[player.surface.index].teleport_history = player_data.surfaces[player.surface.index]
+      .teleport_history or { stack = {}, pointer = 0 }
+
   player_data.player_name = player.name or "Unknown"
   player_data.render_mode = player_data.render_mode or player.render_mode
   player_data.tag_editor_data = player_data.tag_editor_data or Cache.create_tag_editor_data()
@@ -278,7 +313,7 @@ function Cache.get_tag_by_gps(player, gps)
 
   local tag_cache = Cache.get_surface_tags(surface_index --[[@as integer]])
   if not tag_cache then return nil end
-  
+
   local cache_keys = {}
   for k, _ in pairs(tag_cache) do
     table.insert(cache_keys, k)
@@ -292,7 +327,7 @@ function Cache.get_tag_by_gps(player, gps)
     local chart_tag_valid, chart_tag_has_position = pcall(function()
       return match_tag.chart_tag.valid and match_tag.chart_tag.position ~= nil
     end)
-    
+
     if not chart_tag_valid or not chart_tag_has_position then
       -- Chart tag is invalid or missing position, try to get a fresh one
       local chart_tag_lookup = Cache.Lookups.get_chart_tag_by_gps(gps)
@@ -324,7 +359,7 @@ function Cache.get_tag_by_gps(player, gps)
     local chart_tag_check_success, is_valid = pcall(function() return match_tag.chart_tag.valid end)
     valid_chart_tag = chart_tag_check_success and is_valid == true
   end
-  
+
   if valid_chart_tag and match_tag then
     return match_tag
   end
@@ -487,7 +522,8 @@ function Cache.get_player_teleport_history(player, surface_index)
   local player_data = Cache.get_player_data(player)
   player_data.surfaces = player_data.surfaces or {}
   player_data.surfaces[surface_index] = player_data.surfaces[surface_index] or {}
-  player_data.surfaces[surface_index].teleport_history = player_data.surfaces[surface_index].teleport_history or { stack = {}, pointer = 0 }
+  player_data.surfaces[surface_index].teleport_history = player_data.surfaces[surface_index].teleport_history or
+      { stack = {}, pointer = 0 }
   return player_data.surfaces[surface_index].teleport_history
 end
 
@@ -518,11 +554,11 @@ function Cache.set_player_favorites(player, favorites)
   end
   local player_data = Cache.get_player_data(player)
   if not player_data then return false end
-  
+
   -- Ensure surface data structure exists
   player_data.surfaces = player_data.surfaces or {}
   player_data.surfaces[player.surface.index] = player_data.surfaces[player.surface.index] or {}
-  
+
   -- Set the favorites
   player_data.surfaces[player.surface.index].favorites = favorites or {}
   return true
@@ -541,9 +577,7 @@ end
 
 --- Mark migration as complete by updating stored version
 function Cache.complete_migration()
-  if storage then
-    storage.mod_version = get_mod_version()
-  end
+  storage.mod_version = get_mod_version()
 end
 
 return Cache

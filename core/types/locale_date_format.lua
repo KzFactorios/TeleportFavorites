@@ -1,0 +1,36 @@
+---@enum LocaleDateFormat
+--- Date format strings for supported locales
+local LocaleDateFormat = {
+    ["en"] = "%Y-%m-%d %H:%M:%S",   -- English (year-month-day)
+    ["zh-Hans"] = "%Y/%m/%d %H:%M:%S",   -- Simplified Chinese (year/month/day)
+    ["zh-Hant"] = "%Y/%m/%d %H:%M:%S",   -- Traditional Chinese (year/month/day)
+    ["de"] = "%d.%m.%Y %H:%M:%S",   -- German (day.month.year)
+    ["fr"] = "%d/%m/%Y %H:%M:%S",   -- French (day/month/year)
+    ["ru"] = "%d.%m.%Y %H:%M:%S",   -- Russian (day.month.year)
+    ["es-ES"] = "%d/%m/%Y %H:%M:%S",   -- Spanish - Spain (day/month/year)
+    ["es-419"] = "%d/%m/%Y %H:%M:%S",   -- Spanish - Latin America (day/month/year)
+    ["es"] = "%d/%m/%Y %H:%M:%S",   -- Spanish (day/month/year)
+    ["ja"] = "%Y/%m/%d %H:%M:%S",   -- Japanese (year/month/day)
+    ["ko"] = "%Y-%m-%d %H:%M:%S",   -- Korean (year-month-day)
+    ["pt-PT"] = "%d/%m/%Y %H:%M:%S",   -- Portuguese - Portugal (day/month/year)
+    ["pt-BR"] = "%d/%m/%Y %H:%M:%S",   -- Portuguese - Brazil (day/month/year)
+    ["it"] = "%d/%m/%Y %H:%M:%S",   -- Italian (day/month/year)
+    ["pl"] = "%d.%m.%Y %H:%M:%S",   -- Polish (day.month.year)
+    ["nl"] = "%d-%m-%Y %H:%M:%S",   -- Dutch (day-month-year)
+    ["sv"] = "%Y-%m-%d %H:%M:%S",   -- Swedish (year-month-day)
+    ["tr"] = "%d.%m.%Y %H:%M:%S",   -- Turkish (day.month.year)
+    ["fi"] = "%d.%m.%Y %H:%M:%S",   -- Finnish (day.month.year)
+    ["uk"] = "%d.%m.%Y %H:%M:%S",   -- Ukrainian (day.month.year)
+    ["hu"] = "%Y.%m.%d %H:%M:%S",   -- Hungarian (year.month.day)
+    ["ro"] = "%d.%m.%Y %H:%M:%S",   -- Romanian (day.month.year)
+    ["cs"] = "%d.%m.%Y %H:%M:%S",   -- Czech (day.month.year)
+    ["da"] = "%d-%m-%Y %H:%M:%S",   -- Danish (day-month-year)
+    ["no"] = "%d.%m.%Y %H:%M:%S",   -- Norwegian (day.month.year)
+    ["el"] = "%d/%m/%Y %H:%M:%S",   -- Greek (day/month/year)
+    ["vi"] = "%d/%m/%Y %H:%M:%S",   -- Vietnamese (day/month/year)
+    ["bg"] = "%d.%m.%Y %H:%M:%S",   -- Bulgarian (day.month.year)
+    ["th"] = "%d/%m/%Y %H:%M:%S",   -- Thai (day/month/year)
+    ["id"] = "%d/%m/%Y %H:%M:%S",   -- Indonesian (day/month/year)
+}
+
+return LocaleDateFormat

@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 -- core/teleport/teleport_history.lua
 -- TeleportFavorites Factorio Mod
 -- Manages player teleport history stack, pointer navigation, and GPS string conversion for history modal.
@@ -5,32 +7,32 @@
 local Cache = require("core.cache.cache")
 local GPSUtils = require("core.utils.gps_utils")
 local ValidationUtils = require("core.utils.validation_utils")
+local HistoryItem = require("core.teleport.history_item")
 
 local HISTORY_STACK_SIZE = 128 -- Only 128 allowed for now (TBA for future options)
 local TeleportHistory = {}
 
 
--- Add a GPS to history (if not duplicate at top)
 function TeleportHistory.add_gps(player, gps)
     local valid = ValidationUtils.validate_player(player)
     if not valid or not gps or not gps.x or not gps.y or not gps.surface then return end
-    
+
     local surface_index = gps.surface
     local hist = Cache.get_player_teleport_history(player, surface_index)
     local stack = hist.stack
-    
-    -- Convert to GPS string format immediately for storage
+
     local gps_string = GPSUtils.gps_from_map_position({ x = gps.x, y = gps.y }, gps.surface)
     if not gps_string then return end
-    
-    -- Only add if not duplicate at top
+
+    local timestamp = math.floor(game.tick) -- Use game.tick as timestamp (Factorio standard)
     local top = stack[#stack]
-    if not (top == gps_string) then
+    local top_gps = top and top.gps or nil
+    if not (top_gps == gps_string) then
         if #stack >= HISTORY_STACK_SIZE then
             table.remove(stack, 1)
         end
-        -- Store as GPS string directly
-        table.insert(stack, gps_string)
+        local item = HistoryItem.new(gps_string, timestamp)
+        table.insert(stack, item)
     end
     hist.pointer = #stack
 end
@@ -40,12 +42,12 @@ function TeleportHistory.set_pointer(player, surface_index, index)
     if not ValidationUtils.validate_player(player) then return end
     local hist = Cache.get_player_teleport_history(player, surface_index)
     local stack = hist.stack
-    
+
     if #stack == 0 then
         hist.pointer = 0
         return
     end
-    
+
     -- Clamp index to valid range
     if index < 1 then
         hist.pointer = 1

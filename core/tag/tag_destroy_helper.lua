@@ -4,7 +4,7 @@
 
 -- Weak tables to track objects being destroyed
 local Cache = require("core.cache.cache")
-local FavoriteUtils = require("core.favorite.favorite")
+local FavoriteUtils = require("core.favorite.favorite_utils")
 local ErrorHandler = require("core.utils.error_handler")
 
 local destroying_tags = setmetatable({}, { __mode = "k" })

@@ -342,6 +342,7 @@ settings = settings or {} ---@type LuaSettings
 ---@field index uint
 ---@field is_shortcut_toggled table<string, boolean>
 ---@field mod_settings table<string, {value: any}>
+---@field locale string
 ---@field name string
 ---@field online_time uint
 ---@field opened? LuaEntity|LuaItemStack|LuaEquipment|LuaEquipmentGrid|LuaPlayer|LuaGuiElement|LuaCustomTable|LuaTransportLine|LuaInfinityContainer|LuaInfinityPipe|LuaLinkedContainer|LuaLogisticContainer|LuaLogisticNetwork|LuaProgrammableSpeaker|LuaTrain|LuaTrainStop|LuaUnitGroup|LuaVirtualSignalPrototype|LuaGui|LuaGuiElement|LuaPermissionGroup|LuaPermissionGroups|LuaRoboport|LuaRoboportControlBehavior|LuaSurface|LuaTile|LuaTilePrototype|LuaTrainStopControlBehavior|LuaTransportBelt|LuaTree|LuaTrivialSmokePrototype|LuaTurret|LuaUnit|LuaUnitGroup|LuaUpgradePlanner|LuaVirtualSignalPrototype|LuaWall

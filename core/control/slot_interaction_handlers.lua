@@ -3,7 +3,7 @@
 -- Specialized handlers for slot interactions in the favorites bar: teleportation, lock toggling, drag-and-drop, and tag editing.
 
 local FavoriteRehydration = require("core.favorite.favorite_rehydration")
-local FavoriteUtils = require("core.favorite.favorite")
+local FavoriteUtils = require("core.favorite.favorite_utils")
 local BasicHelpers = require("core.utils.basic_helpers")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local Cache = require("core.cache.cache")

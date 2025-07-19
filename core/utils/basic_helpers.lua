@@ -1,11 +1,20 @@
-
+---@diagnostic disable: undefined-global
 
 -- core/utils/basic_helpers.lua
 -- TeleportFavorites Factorio Mod
--- Minimal, dependency-free helpers for use by other helpers and modules.
--- Provides number padding/normalization, whole number/index validation, string trimming/manipulation, and safe type conversions.
+-- Dependency-free utility functions for math, string, table, GUI, validation, and command helpers.
+-- 
+-- Key Patterns:
+--   - Math, string, and table helpers
+--   - GUI and validation helpers
+--   - Command registration wrappers (Factorio global 'commands')
+--   - Deep copy and table comparison
+--   - No leading underscores for private fields
+--   - No circular dependencies
+
 
 local basic_helpers = {}
+
 
 function basic_helpers.pad(n, padlen)
   if type(n) ~= "number" or type(padlen) ~= "number" then return tostring(n or "") end
@@ -88,7 +97,6 @@ end
 function basic_helpers.should_hide_favorites_bar_for_space_platform(player)
   if not player or not player.valid then return false end
   local surface = player.surface
-  if surface and surface.platform then return true end
   if player.controller_type == defines.controllers.editor then
     local surface_name = surface and surface.name or ""
     if surface_name:lower():find("space") or surface_name:lower():find("platform") then

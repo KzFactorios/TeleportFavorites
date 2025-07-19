@@ -92,6 +92,7 @@ gui_style.tf_teleport_history_modal_title = {
 }
 
 -- Empty history label style
+
 gui_style.tf_teleport_history_empty_label = {
     type = "label_style",
     parent = "label",
@@ -99,4 +100,15 @@ gui_style.tf_teleport_history_empty_label = {
     left_padding = 12,
     horizontally_stretchable = "on",
     font_color = { r = 0.7, g = 0.7, b = 0.7, a = 1 },
+}
+
+-- Date label style for history entries (left-aligned, med-light grey)
+gui_style.tf_teleport_history_date_label = {
+    type = "label_style",
+    parent = "label",
+    font = "default-small",
+    horizontally_stretchable = "on",
+    left_padding = 8,
+    font_color = {r=1,g=1,b=1,a=1},-- { r = 0.75, g = 0.75, b = 0.75, a = 1 }, -- med-light grey
+    horizontal_align = "left"
 }

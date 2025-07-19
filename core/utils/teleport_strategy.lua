@@ -1,4 +1,4 @@
----@diagnostic disable: undefined-doc-param, param-type-mismatch, missing-parameter
+---@diagnostic disable: undefined-doc-param, param-type-mismatch, missing-parameter, undefined-global
 
 -- core/utils/teleport_strategy.lua
 -- TeleportFavorites Factorio Mod
@@ -6,7 +6,6 @@
 
 local GPSUtils = require("core.utils.gps_utils")
 local ErrorHandler = require("core.utils.error_handler")
-local Enum = require("prototypes.enums.enum")
 local LocaleUtils = require("core.utils.locale_utils")
 local PositionUtils = require("core.utils.position_utils")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
@@ -43,23 +42,38 @@ local function get_landing_position(player, gps)
   return nil, LocaleUtils.get_error_string(player, "invalid_map_position")
 end
 
---- Teleport player to GPS location using safe teleportation logic only
 ---@param player LuaPlayer Player to teleport
 ---@param gps string GPS coordinates in 'xxx.yyy.s' format
----@param context table? Optional teleportation context
+---@param context table? Optional teleportation context (e.g., {from_history_modal=true})
 ---@return boolean|string|integer
-function TeleportStrategy.teleport_to_gps(player, gps)
+function TeleportStrategy.teleport_to_gps(player, gps, context)
   ErrorHandler.debug_log("Executing safe teleportation", {
     player_name = player and player.name or "nil",
-    gps = gps
+    gps = gps,
+    context = context
   })
+  if not player or not player.valid then
+    ErrorHandler.debug_log("Teleportation failed: Invalid player")
+    return false, "invalid_player"
+  end
+  if not gps or type(gps) ~= "string" or gps == "" then
+    ErrorHandler.debug_log("Teleportation failed: Invalid GPS", { gps = gps })
+    return false, "invalid_gps"
+  end
+
+  local valid, error_msg = validate_prerequisites(player, gps)
+  if not valid then
+    ErrorHandler.debug_log("Safe teleport failed validation", { error = error_msg })
+    return false, error_msg
+  end
+
+  local position, pos_error = get_landing_position(player, gps)
   if not player or not player.valid then
     ErrorHandler.debug_log("Teleportation failed: Invalid player")
     return false
   end
   if not gps or type(gps) ~= "string" or gps == "" then
     ErrorHandler.debug_log("Teleportation failed: Invalid GPS", { gps = gps })
-    
     return false
   end
 
@@ -70,7 +84,7 @@ function TeleportStrategy.teleport_to_gps(player, gps)
   end
 
   local position, pos_error = get_landing_position(player, gps)
-  if not position then
+  if not position or type(position.x) ~= "number" or type(position.y) ~= "number" then
     ErrorHandler.debug_log("Safe teleport failed position normalization", { error = pos_error })
     local error_message = pos_error or LocaleUtils.get_error_string(player, "position_normalization_failed")
     PlayerHelpers.safe_player_print(player, tostring(error_message))
@@ -78,15 +92,19 @@ function TeleportStrategy.teleport_to_gps(player, gps)
   end
 
   local safety_radius = 16.0
-  local final_position = position
-  local safe_position = find_safe_landing_position(player.surface, position, safety_radius, 0.5)
-  if safe_position and type(safe_position) == "table" and safe_position.x and safe_position.y then
-    final_position = safe_position
+  ---@type MapPosition
+  local final_position = { x = position.x, y = position.y }
+  local safe_position = find_safe_landing_position(player.surface, final_position, safety_radius, 0.5)
+  if safe_position and type(safe_position.x) == "number" and type(safe_position.y) == "number" then
+    final_position = { x = safe_position.x, y = safe_position.y }
     ErrorHandler.debug_log("Using optimized safe landing position", {
       original = position,
       safe = safe_position
     })
   end
+
+  -- Ensure final_position is a plain MapPosition table for Factorio API
+  final_position = { x = final_position.x, y = final_position.y }
 
   local teleport_success = false
   if player.physical_vehicle and player.physical_vehicle.valid then
@@ -106,18 +124,21 @@ function TeleportStrategy.teleport_to_gps(player, gps)
     if player.render_mode ~= defines.render_mode.game then
       player.exit_remote_view()
     end
-    
-    pcall(function()
-      if remote.interfaces["TeleportFavorites_History"] and
-          remote.interfaces["TeleportFavorites_History"].add_to_history then
-        remote.call("TeleportFavorites_History", "add_to_history", player.index)
-      end
-    end)
+    -- Only add to history if not from history modal
+    if not (context and context.from_history_modal) then
+      pcall(function()
+        if remote.interfaces["TeleportFavorites_History"] and
+            remote.interfaces["TeleportFavorites_History"].add_to_history then
+          remote.call("TeleportFavorites_History", "add_to_history", player.index)
+        end
+      end)
+    end
     return true
   end
 
   ErrorHandler.debug_log("Safe teleport failed: Unforeseen circumstances")
   return false
 end
+
 
 return TeleportStrategy
