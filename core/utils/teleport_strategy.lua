@@ -1,8 +1,8 @@
 ---@diagnostic disable: undefined-doc-param, param-type-mismatch, missing-parameter
+
 -- core/utils/teleport_strategy.lua
 -- TeleportFavorites Factorio Mod
 -- Strategy pattern implementation for extensible teleportation logic and scenario handling.
-
 
 local GPSUtils = require("core.utils.gps_utils")
 local ErrorHandler = require("core.utils.error_handler")

@@ -1,3 +1,5 @@
+
+
 -- core/utils/locale_utils.lua
 -- TeleportFavorites Factorio Mod
 -- Centralized localization helper for consistent localized string access and parameter substitution.

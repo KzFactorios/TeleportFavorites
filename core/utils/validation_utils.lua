@@ -1,4 +1,5 @@
 ---@diagnostic disable: undefined-global
+
 -- core/utils/validation_utils.lua
 -- TeleportFavorites Factorio Mod
 -- Consolidated validation utilities combining all validation functionality.
@@ -11,9 +12,6 @@ local GPSUtils = require("core.utils.gps_utils")
 ---@class ValidationUtils
 local ValidationUtils = {}
 
--- ========================================
--- PLAYER VALIDATION PATTERNS
--- ========================================
 
 --- Standard player validation pattern used across event handlers
 ---@param player LuaPlayer|nil

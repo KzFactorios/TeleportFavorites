@@ -1,15 +1,15 @@
---[[
-UI Enums - TeleportFavorites
-===========================
-Consolidated UI-related enumerations including colors, sprites, and GUI elements.
 
-This module consolidates:
-- color_enum.lua - Color definitions for styling
-- sprite_enum.lua - Valid Factorio sprite paths
-- gui_enum.lua - GUI element identifiers
 
-Provides a unified API for all UI-related constants.
-]]
+-- prototypes/enums/ui_enums.lua
+-- TeleportFavorites Factorio Mod
+-- Consolidated UI-related enumerations: colors, sprites, and GUI element names.
+-- Provides unified API for all UI constants, including backward compatibility aliases.
+--
+-- API:
+--   UIEnums.Colors: Color definitions for styling.
+--   UIEnums.Sprites: Valid Factorio sprite paths.
+--   UIEnums.GUI: GUI element identifiers, organized by context.
+--   UIEnums.ColorEnum, UIEnums.SpriteEnum, UIEnums.GuiEnum: Backward compatibility aliases.
 
 ---@class UIEnums
 local UIEnums = {}
@@ -49,7 +49,6 @@ UIEnums.Colors = {
 -- SPRITE ENUMERATIONS
 -- ========================================
 
---- Valid vanilla Factorio utility sprite names
 --- Reference: https://github.com/wube/factorio-data/blob/master/core/prototypes/utility-sprites.lua
 UIEnums.Sprites = {
   -- Navigation arrows

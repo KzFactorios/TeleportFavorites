@@ -1,9 +1,10 @@
+---@diagnostic disable: undefined-global, param-type-mismatch
+
 -- core/utils/position_utils.lua
 -- TeleportFavorites Factorio Mod
 -- Consolidated position utilities for all position-related functionality.
 -- Includes position validation, normalization, correction, tagging checks, water/space detection, safe landing, and walkability.
 
----@diagnostic disable: undefined-global, param-type-mismatch
 local basic_helpers = require("core.utils.basic_helpers")
 local ErrorHandler = require("core.utils.error_handler")
 local Logger = require("core.utils.error_handler")

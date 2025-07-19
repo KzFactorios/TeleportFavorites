@@ -1,19 +1,17 @@
---[[
-core/utils/admin_utils.lua
-TeleportFavorites Factorio Mod
------------------------------
-Admin utilities for handling administrative permissions and overrides.
 
-This module provides:
-- Admin permission checks using Factorio's built-in admin system
-- Admin override logic for chart tag editing regardless of ownership
-- Automatic ownership transfer to admin when last_user is unspecified
-- Consistent admin privilege validation across the mod
 
-- Uses Factorio's native LuaPlayer.admin property for permission checks
-- Provides clear distinction between owner permissions and admin overrides
-- Comprehensive logging for admin actions for audit purposes
-]]
+-- core/utils/admin_utils.lua
+-- TeleportFavorites Factorio Mod
+-- Admin utilities for handling permissions, overrides, and ownership transfer.
+-- Provides multiplayer-safe helpers for admin checks, override logic, and audit logging.
+-- Uses Factorio's native LuaPlayer.admin property for permission checks.
+--
+-- API:
+--   AdminUtils.is_admin(player): Returns true if player is admin.
+--   AdminUtils.can_edit_chart_tag(player, chart_tag): Checks if player can edit chart tag (owner or admin).
+--   AdminUtils.can_delete_chart_tag(player, chart_tag, tag): Checks if player can delete chart tag.
+--   AdminUtils.transfer_ownership_to_admin(chart_tag, admin_player): Transfers ownership to admin if needed.
+--   AdminUtils.log_admin_action(admin_player, action, chart_tag, additional_data): Logs admin actions for audit.
 ---@diagnostic disable: undefined-global
 local AdminUtils = {}
 

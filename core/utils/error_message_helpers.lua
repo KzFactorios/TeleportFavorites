@@ -1,14 +1,14 @@
---[[
-core/utils/error_message_helpers.lua
-TeleportFavorites Factorio Mod
------------------------------
-Centralized error message display helpers for GUIs.
 
-Provides functions to create, show, hide, and update error rows in GUI frames. Integrates with GuiBase, GuiValidation, and BasicHelpers for robust multiplayer-safe error display.
 
-ErrorMessageHelpers.show_or_update_error_row creates or updates an error row in a GUI frame.
-ErrorMessageHelpers.hide_error_row hides an error row in a GUI frame.
-]]
+-- core/utils/error_message_helpers.lua
+-- TeleportFavorites Factorio Mod
+-- Centralized error message display helpers for GUIs.
+-- Provides multiplayer-safe functions to create, show, hide, and update error rows and labels in GUI frames.
+-- Integrates with GuiBase, GuiValidation, and BasicHelpers for robust error display.
+--
+-- API:
+--   ErrorMessageHelpers.show_or_update_error_row(parent, error_frame_name, error_label_name, message, error_frame_style, error_label_style): Create or update an error row in a GUI frame.
+--   ErrorMessageHelpers.show_simple_error_label(parent, message, label_name, label_style): Show or clear a simple error label in a GUI frame.
 
 local GuiBase = require("gui.gui_base")
 local GuiValidation = require("core.utils.gui_validation")

@@ -1,4 +1,15 @@
 
+
+-- core/utils/chart_tag_spec_builder.lua
+-- TeleportFavorites Factorio Mod
+-- Chart tag specification builder for Factorio API.
+-- Safely constructs chart tag spec tables for creation, update, and migration.
+-- Handles text, ownership, and icon fields with robust validation and fallback logic.
+--
+-- API:
+--   ChartTagSpecBuilder.build(position, source_chart_tag, player, text, set_ownership):
+--     Returns a chart tag spec table for use with force.add_chart_tag or tag mutation.
+
 local ChartTagSpecBuilder = {}
 
 ---@param text string? Custom text override

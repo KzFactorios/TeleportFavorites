@@ -1,3 +1,5 @@
+
+
 -- core/utils/error_handler.lua
 -- TeleportFavorites Factorio Mod
 -- Centralized error handling for consistent reporting, logging, and error propagation.

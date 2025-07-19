@@ -1,4 +1,5 @@
 
+
 -- TeleportFavorites GUI Base Module
 -- Provides reusable builder functions for all major GUI elements in the mod.
 -- Ensures consistent style, structure, and maintainability across GUIs.
@@ -22,10 +23,7 @@
 --   ├── create_draggable(parent, name)
 --   ├── create_titlebar(parent, name, close_button_name)
 --   └── create_textbox(parent, name, text, style, icon_selector)
---
--- All builder functions use defensive checks and default styles for robust GUI creation.
---
--- Each function is annotated with argument and return value details.
+
 
 local ErrorHandler = require("core.utils.error_handler")
 local Enum = require("prototypes.enums.enum")

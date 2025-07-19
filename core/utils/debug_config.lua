@@ -1,3 +1,5 @@
+
+
 -- core/utils/debug_config.lua
 -- TeleportFavorites Factorio Mod
 -- Centralized debug level management for logging verbosity and debug features.

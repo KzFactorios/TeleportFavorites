@@ -1,22 +1,20 @@
---[[
-Core Enums - TeleportFavorites
-=============================
-Consolidated core system enumerations including events, return states, and enum utilities.
-
-This module consolidates:
-- event_enum.lua - Custom event name definitions
-- return_state_enum.lua - Function return state constants
-- enum.lua - Main enum utility functions
-
-Provides a unified API for all core system constants and enum manipulation functions.
-]]
+-- prototypes/enums/core_enums.lua
+-- TeleportFavorites Factorio Mod
+-- Consolidated core system enumerations and enum utilities.
+-- Provides unified API for custom event names, return states, and enum manipulation functions.
+-- Maintains backward compatibility with legacy enum structures.
+--
+-- API:
+--   CoreEnums.Events: Custom event name definitions.
+--   CoreEnums.ReturnStates: Function return state constants.
+--   CoreEnums.get_enum_by_value(value, enum): Get key for matching value in enum table.
+--   CoreEnums.is_value_member_enum(value, enum): Check if value exists in enum table.
+--   CoreEnums.get_key_names(enum): Get array of key names from enum table.
+--   CoreEnums.get_key_values(enum): Get array of values from enum table.
+--   CoreEnums.map_enum(enum, transform_func): Map over enum entries with a transform function.
 
 ---@class CoreEnums
 local CoreEnums = {}
-
--- ========================================
--- EVENT ENUMERATIONS
--- ========================================
 
 --- Custom event names used throughout the mod
 CoreEnums.Events = {
@@ -26,19 +24,11 @@ CoreEnums.Events = {
   CACHE_DUMP = "cache_dump"
 }
 
--- ========================================
--- RETURN STATE ENUMERATIONS
--- ========================================
-
 --- Standard return states for functions throughout the mod
 CoreEnums.ReturnStates = {
   SUCCESS = "success",
   FAILURE = "failure"
 }
-
--- ========================================
--- ENUM UTILITY FUNCTIONS
--- ========================================
 
 --- Given a value to match and an enum table, return the key for the matching value (or nil if not found)
 --- @param value any The value to find
@@ -103,13 +93,5 @@ function CoreEnums.map_enum(enum, transform_func)
   end
   return result
 end
-
--- ========================================
--- BACKWARD COMPATIBILITY ALIASES
--- ========================================
-
--- Maintain backward compatibility with old structure
-CoreEnums.EventEnum = CoreEnums.Events
-CoreEnums.ReturnStateEnum = CoreEnums.ReturnStates
 
 return CoreEnums

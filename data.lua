@@ -1,5 +1,15 @@
--- filepath: v:\Fac2orios\2_Gemini\mods\TeleportFavorites\data.lua
 ---@diagnostic disable: undefined-global
+
+-- data.lua
+-- TeleportFavorites Factorio Mod
+-- Data stage definitions for custom fonts, sprites, and input events.
+-- Registers all mod assets and custom inputs for use in runtime scripts and GUIs.
+-- Integrates with prototypes/styles, item, input, and enums modules for centralized asset management.
+--
+-- API:
+--   Defines custom fonts, sprites, and input events for use in GUIs and mod logic.
+--   Uses Enum.EventEnum for custom input event names.
+
 require("prototypes.styles.init")
 require("prototypes.item.selection_tool")
 require("prototypes.input.teleport_history_inputs")

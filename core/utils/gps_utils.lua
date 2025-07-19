@@ -1,3 +1,5 @@
+
+
 -- core/utils/gps_utils.lua
 -- TeleportFavorites Factorio Mod
 -- Consolidated GPS utilities for all GPS-related functionality.

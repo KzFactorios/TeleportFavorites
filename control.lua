@@ -1,17 +1,12 @@
 ---@diagnostic disable: undefined-global, need-check-nil, assign-type-mismatch, param-type-mismatch, undefined-field
 
---[[
-TeleportFavorites Factorio Mod - Control Script
-Main event handler and public API entry points.
-
-Features:
-- Robust, multiplayer-safe GUI and data handling for favorites, tags, and teleportation.
-- Centralized event wiring for all GUIs (favorites bar, tag editor).
-- EmmyLua-annotated helpers for safe player messaging, teleportation, and GUI frame destruction.
-- Move-mode UX for tag editor, with robust state management and multiplayer safety.
-- All persistent data access is via the Cache module for consistency and safety.
-- All new/changed features are documented inline and in .project/ as appropriate.
-]]
+-- control.lua
+-- TeleportFavorites Factorio Mod
+-- Main event handler and public API entry point for the mod.
+-- Centralizes event registration, GUI wiring, and lifecycle management for multiplayer-safe operation.
+-- All persistent data access is via the Cache module for consistency and safety.
+-- Integrates favorites bar, tag editor, teleport history, debug commands, and GUI observers.
+-- All new/changed features are documented inline and in .project/ as appropriate.
 
 -- Import controllers for various mod components
 

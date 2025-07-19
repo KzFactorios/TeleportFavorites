@@ -1,18 +1,14 @@
---[[
-core/utils/chart_tag_utils.lua
-TeleportFavorites Factorio Mod
------------------------------
-Unified chart tag utilities for all chart tag operations.
-Consolidates chart tag specification creation and click detection/handling.
 
-Features:
-Provides functions to find chart tags at specific positions, manage chart tag cache, and handle click detection logic. Integrates with GPSUtils, ErrorHandler, and Cache for robust multiplayer-safe operations.
 
-API:
-ChartTagUtils.find_closest_chart_tag_to_position(player, cursor_position): Finds chart tag at a position.
-ChartTagUtils.get_last_clicked_chart_tag(player): Returns last clicked chart tag for a player.
-ChartTagUtils.invalidate_chart_tag_cache(surface_index): Invalidates chart tag cache for a surface.
-]]
+-- core/utils/chart_tag_utils.lua
+-- TeleportFavorites Factorio Mod
+-- Unified chart tag utilities for all chart tag operations.
+-- Provides multiplayer-safe helpers for chart tag detection, cache management, and safe creation.
+-- Integrates with GPSUtils, ErrorHandler, and Cache for robust surface-aware operations.
+--
+-- API:
+--   ChartTagUtils.find_closest_chart_tag_to_position(player, cursor_position): Find chart tag at a position.
+--   ChartTagUtils.safe_add_chart_tag(force, surface, spec, player): Safely create or update a chart tag.
 
 local ErrorHandler = require("core.utils.error_handler")
 local GPSUtils = require("core.utils.gps_utils")

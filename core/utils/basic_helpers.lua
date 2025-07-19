@@ -1,3 +1,5 @@
+
+
 -- core/utils/basic_helpers.lua
 -- TeleportFavorites Factorio Mod
 -- Minimal, dependency-free helpers for use by other helpers and modules.

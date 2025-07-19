@@ -1,4 +1,16 @@
 
+
+-- core/utils/cursor_utils.lua
+-- TeleportFavorites Factorio Mod
+-- Cursor utilities for drag-and-drop operations in the favorites bar.
+-- Provides multiplayer-safe helpers for starting, ending, and checking drag state.
+-- Integrates with Cache and FavoriteUtils for robust player data management.
+--
+-- API:
+--   CursorUtils.start_drag_favorite(player, favorite, slot_index): Begin dragging a favorite slot.
+--   CursorUtils.end_drag_favorite(player): End drag and reset player state.
+--   CursorUtils.is_dragging_favorite(player): Check if player is currently dragging a favorite.
+
 local ErrorHandler = require("core.utils.error_handler")
 local FavoriteUtils = require("core.favorite.favorite")
 local Cache = require("core.cache.cache")

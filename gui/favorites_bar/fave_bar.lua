@@ -1,4 +1,5 @@
 ---@diagnostic disable: undefined-global
+
 -- gui/favorites_bar/fave_bar.lua
 -- TeleportFavorites Factorio Mod
 -- Builds the favorites bar UI for quick-access teleport slots.

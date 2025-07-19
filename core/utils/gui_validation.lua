@@ -1,4 +1,5 @@
 ---@diagnostic disable: undefined-global
+
 -- core/utils/gui_validation.lua
 -- TeleportFavorites Factorio Mod
 -- Provides validation and safety utilities for GUI elements and operations.
