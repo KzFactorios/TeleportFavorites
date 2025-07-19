@@ -3,8 +3,9 @@
 -- Tag model and utilities for managing teleportation tags, chart tags, and player favorites.
 
 local ErrorHandler = require("core.utils.error_handler")
-local TeleportStrategies = require("core.utils.teleport_strategy")
-local TeleportUtils = TeleportStrategies.TeleportUtils
+local TeleportStrategy = require("core.utils.teleport_strategy")
+local Cache = require("core.cache.cache")
+local GPSUtils = require("core.utils.gps_utils")
 
 
 ---@class Tag
@@ -25,33 +26,6 @@ function Tag.new(gps, faved_by_players)
   return setmetatable({ gps = gps, faved_by_players = faved_by_players or {} }, Tag)
 end
 
---- Teleport a player to a position on a surface, with robust checks and error messaging.
---- Now uses Strategy Pattern for different teleportation scenarios.
----@param player LuaPlayer
----@param gps string
----@param context TeleportContext? Optional context for strategy selection
----@return string|integer
-function Tag.teleport_player_with_messaging(player, gps, context)
-  ErrorHandler.debug_log("Starting strategy-based teleportation", {
-    player_name = player and player.name,
-    gps = gps,
-    context = context
-  })
-  local result = TeleportUtils.teleport_to_gps(player, gps, context, true)
-  if type(result) == "boolean" then
-    if result then
-      return "success"
-    else
-      return "teleport_failed"
-    end
-  elseif type(result) == "string" or type(result) == "number" then
-    return result
-  else
-    return "teleport_failed"
-  end
-end
-
-
 --- Update GPS and surface mapping for a tag modification event.
 ---@param old_gps string|nil Original GPS coordinate string
 ---@param new_gps string|nil New GPS coordinate string
@@ -65,8 +39,6 @@ function Tag.update_gps_and_surface_mapping(old_gps, new_gps, chart_tag, player)
   end
 
   -- Get or create tag object
-  local Cache = require("core.cache.cache")
-  local GPSUtils = require("core.utils.gps_utils")
   local TagClass = Tag
   local old_tag = Cache.get_tag_by_gps(player, old_gps)
   if old_tag == nil and new_gps then
@@ -122,7 +94,6 @@ function Tag.update_gps_and_surface_mapping(old_gps, new_gps, chart_tag, player)
       Cache.Lookups.invalidate_surface_chart_tags(uint_surface_index)
     end
   end
-
 end
 
 -- Ensure method is attached to Tag table for module export

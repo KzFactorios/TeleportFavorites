@@ -52,6 +52,9 @@ function ChartTagUtils.find_closest_chart_tag_to_position(player, cursor_positio
   -- Get click radius from player settings
   local click_radius = Cache.Settings.get_chart_tag_click_radius(player)
 
+  -- Initialize min_distance and closest_tag
+  local min_distance = math.huge
+  local closest_tag = nil
   -- Find the closest chart tag within detection radius
   for _, tag in pairs(force_tags) do
     if tag and tag.valid then
@@ -60,7 +63,7 @@ function ChartTagUtils.find_closest_chart_tag_to_position(player, cursor_positio
       -- Rectangle search: check if within radius bounds for both X and Y
       if dx <= click_radius and dy <= click_radius then
         -- Calculate distance for finding closest tag within rectangle
-        distance = math.sqrt(dx * dx + dy * dy)
+        local distance = math.sqrt(dx * dx + dy * dy)
         if distance < min_distance then
           min_distance = distance
           closest_tag = tag

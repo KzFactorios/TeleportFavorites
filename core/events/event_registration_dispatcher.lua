@@ -10,22 +10,47 @@ local fave_bar = require("gui.favorites_bar.fave_bar")
 local control_tag_editor = require("core.control.control_tag_editor")
 local teleport_history_modal = require("gui.teleport_history_modal.teleport_history_modal")
 local handlers = require("core.events.handlers")
-local EventHandlerHelpers = require("core.utils.event_handler_helpers")
 local GuiHelpers = require("core.utils.gui_helpers")
-local GuiValidation = require("core.utils.gui_validation")
 local ModalInputBlocker = require("core.events.modal_input_blocker")
-local TeleportHistoryModal = require("gui.teleport_history_modal.teleport_history_modal")
+local GuiValidation = require("core.utils.gui_validation")
 
 
 ---@class EventRegistrationDispatcher
 local EventRegistrationDispatcher = {}
 
-
 -- Track registration state (use rawget to avoid static analysis issues)
 local _registration_state = {}
 
+
 --- Create a safe wrapper for event handlers (using centralized helper)
-local create_safe_event_handler = EventHandlerHelpers.create_safe_handler
+local function create_safe_event_handler(handler, handler_name)
+  return function(event)
+    ErrorHandler.debug_log("Event received", {
+      handler_name = handler_name,
+      player_index = event.player_index,
+      event_type = event.name,
+      event_context = event
+    })
+    
+    local success, err = xpcall(function() handler(event) end, debug.traceback)
+    if not success then
+      ErrorHandler.warn_log("Event handler failed", {
+        handler_name = handler_name,
+        error = tostring(err),
+        stack_trace = debug.traceback(),
+        player_index = event.player_index,
+        event_context = event
+      })
+
+      if event.player_index then
+        local player = game.get_player(event.player_index)
+        if player and player.valid then
+          player.print("[TeleportFavorites] Event handler error occurred: " .. tostring(err))
+        end
+      end
+    end
+  end
+end
 
 --- Register core lifecycle and player events
 ---@param script table The Factorio script object
@@ -156,7 +181,7 @@ function EventRegistrationDispatcher.register_core_events(script)
             
             -- If teleport history is being disabled, close any open modal
             if not player_settings.enable_teleport_history then
-              TeleportHistoryModal.destroy(player)
+              teleport_history_modal.destroy(player)
               ErrorHandler.debug_log("[SETTINGS] Closed teleport history modal for player " .. player.name)
             end
             
@@ -212,8 +237,7 @@ function EventRegistrationDispatcher.register_core_events(script)
   for event_type, event_config in pairs(core_events) do
     local safe_handler = create_safe_event_handler(
       event_config.handler,
-      event_config.name,
-      "core_event"
+      event_config.name
     )
 
     local success, err = pcall(function()
@@ -267,8 +291,7 @@ function EventRegistrationDispatcher.register_gui_events(script)
       -- Try teleport history modal close
       teleport_history_modal.on_gui_closed(event)
     end,
-    "on_gui_closed",
-    "gui_event"
+    "on_gui_closed"
   )
 
   local closed_success = pcall(function()
@@ -307,8 +330,7 @@ function EventRegistrationDispatcher.register_custom_input_events(script)
   -- Register custom tag editor input
   local tag_editor_handler = create_safe_event_handler(
     handlers.on_open_tag_editor_custom_input,
-    "tf-open-tag-editor",
-    "custom_input"
+    "tf-open-tag-editor"
   )
 
   local tag_editor_success = pcall(function()

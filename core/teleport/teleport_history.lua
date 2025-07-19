@@ -2,8 +2,6 @@
 -- TeleportFavorites Factorio Mod
 -- Manages player teleport history stack, pointer navigation, and GPS string conversion for history modal.
 
-local GameHelpers = require("core.utils.game_helpers")
-local PlayerHelpers = require("core.utils.player_helpers")
 local Cache = require("core.cache.cache")
 local GPSUtils = require("core.utils.gps_utils")
 local ValidationUtils = require("core.utils.validation_utils")
@@ -14,7 +12,7 @@ local TeleportHistory = {}
 
 -- Add a GPS to history (if not duplicate at top)
 function TeleportHistory.add_gps(player, gps)
-    local valid = require("core.utils.validation_utils").validate_player(player)
+    local valid = ValidationUtils.validate_player(player)
     if not valid or not gps or not gps.x or not gps.y or not gps.surface then return end
     
     local surface_index = gps.surface

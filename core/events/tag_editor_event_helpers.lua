@@ -62,7 +62,8 @@ function TagEditorEventHelpers.find_nearby_chart_tag(normalized_pos, surface_ind
 
   for _, tag in pairs(force_tags) do
     if tag and tag.valid then
-      local tag_pos = PositionUtils.normalize_if_needed(tag.position)
+      local tag_pos = PositionUtils.normalize_position(tag.position)
+
       local dx = math.abs(tag_pos.x - normalized_pos.x)
       local dy = math.abs(tag_pos.y - normalized_pos.y)
       

@@ -12,9 +12,9 @@ local ErrorHandler = require("core.utils.error_handler")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local FavoriteUtils = require("core.favorite.favorite")
 local Enum = require("prototypes.enums.enum")
-local Tag = require("core.tag.tag")
 local Cache = require("core.cache.cache")
 local BasicHelpers = require("core.utils.basic_helpers")
+local TeleportStrategy = require("core.utils.teleport_strategy")
 
 
 ---@class CustomInputDispatcher
@@ -115,7 +115,7 @@ local function handle_teleport_to_favorite_slot(event, slot_number)
   end
   
   -- Use Tag module for teleportation (already has all the strategy logic)
-  local result = Tag.teleport_player_with_messaging(player, favorite.gps, nil)
+  local result = TeleportStrategy.teleport_to_gps(player, favorite.gps, true)
   local success = result == Enum.ReturnStateEnum.SUCCESS
   
   ErrorHandler.debug_log("Teleport to favorite slot result", {

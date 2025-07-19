@@ -29,7 +29,31 @@ local ErrorHandler = require("core.utils.error_handler")
 local Enum = require("prototypes.enums.enum")
 local BasicHelpers = require("core.utils.basic_helpers")
 
+
 local GuiBase = {}
+
+
+--- Create an icon (sprite) button with tooltip and style.
+--- @param parent LuaGuiElement: Parent element
+--- @param name string: Name of the button
+--- @param sprite string: Icon sprite path
+--- @param tooltip LocalisedString|string|nil: Tooltip for the button
+--- @param style string|nil: Optional style name (default: 'tf_slot_button')
+--- @param enabled boolean|nil: Optional, default true
+--- @return LuaGuiElement: The created button
+function GuiBase.create_icon_button(parent, name, sprite, tooltip, style, enabled)
+    local opts = {
+        name = name,
+        sprite = sprite,
+        style = style or 'tf_slot_button',
+        enabled = enabled == nil and true or enabled
+    }
+    local button = GuiBase.create_element('sprite-button', parent, opts)
+    if tooltip then
+        button.tooltip = tooltip
+    end
+    return button
+end
 
 --- Local helper function to find frame containing element (avoids circular dependency with GuiUtils)
 --- @param element LuaGuiElement Starting element
@@ -47,10 +71,6 @@ local function get_gui_frame_by_element(element)
     end
     return nil
 end
-
---- NOTE: All requires MUST be at the top of the file. Do NOT move requires inside functions to avoid circular dependencies.
---- This is a strict project policy. See .project/architecture.md and coding_standards.md for rationale.
---- gui_base.lua MUST NOT require any control/event modules (e.g., control_fave_bar, control_tag_editor). It is a pure GUI helper module.
 
 --- Create a sprite button with icon, tooltip, and style.
 --- @param parent LuaGuiElement: Parent element

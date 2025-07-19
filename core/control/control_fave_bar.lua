@@ -5,6 +5,7 @@
 -- Manages the favorites bar GUI and slot interactions, including drag-and-drop and multiplayer-safe favorites management.
 
 local FavoriteUtils = require("core.favorite.favorite")
+local PlayerFavorites = require("core.favorite.player_favorites")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local ErrorHandler = require("core.utils.error_handler")
 local SlotInteractionHandlers = require("core.control.slot_interaction_handlers")
@@ -17,7 +18,7 @@ local Cache = require("core.cache.cache")
 local BasicHelpers = require("core.utils.basic_helpers")
 local TeleportHistoryModal = require("gui.teleport_history_modal.teleport_history_modal")
 local TeleportHistory = require("core.teleport.teleport_history")
-local TeleportStrategies = require("core.utils.teleport_strategy")
+local TeleportStrategy = require("core.utils.teleport_strategy")
 local Enum = require("prototypes.enums.enum")
 
 local M = {}
@@ -29,7 +30,6 @@ local M = {}
 ---@param event table The GUI click event
 ---@param player LuaPlayer The player
 ---@param favorites PlayerFavorites The favorites instance
--- Shared favorite slot click handler using centralized helpers
 local function handle_favorite_slot_click(event, player, favorites)
   if not BasicHelpers.is_valid_element(event.element) or not BasicHelpers.is_valid_player(player) then return end
   local slot = tonumber(event.element.name:match("fave_bar_slot_(%d+)"))
@@ -83,7 +83,17 @@ local function handle_favorite_slot_click(event, player, favorites)
   end
 
   local fav = favorites.favorites[slot]
-  if not fav or FavoriteUtils.is_blank_favorite(fav) then return end
+  if not fav then
+    ErrorHandler.warn_log("[FAVE_BAR] Slot data missing or nil", { slot = slot, player = player and player.name or "<nil>" })
+    GameHelpers.player_print(player, "[TeleportFavorites] ERROR: Favorite slot data missing. Please refresh your favorites bar.")
+    return
+  end
+  if FavoriteUtils.is_blank_favorite(fav) then return end
+  if not fav.gps or type(fav.gps) ~= "string" or fav.gps == "" then
+    ErrorHandler.warn_log("[FAVE_BAR] Favorite slot GPS invalid", { slot = slot, fav = fav, player = player and player.name or "<nil>" })
+    GameHelpers.player_print(player, "[TeleportFavorites] ERROR: Favorite slot GPS is invalid. Please update or remove this favorite.")
+    return
+  end
 
   -- Use shared slot interaction handlers
   if SlotInteractionHandlers.handle_shift_left_click(event, player, fav, slot, favorites) then return end
@@ -126,17 +136,24 @@ end
 ---@param player LuaPlayer The player
 ---@return boolean handled
 local function handle_map_right_click(event, player)
-  if event.button == defines.mouse_button_type.right then
-    local is_dragging = CursorUtils.is_dragging_favorite(player)
-    if is_dragging then
-      ErrorHandler.debug_log("[FAVE_BAR] Right-click detected on map during drag, canceling drag operation",
-        { player = player.name })
-      CursorUtils.end_drag_favorite(player)
-      GameHelpers.player_print(player, { "tf-gui.fave_bar_drag_canceled" })
-      return true
+  local ok, err = pcall(function()
+    if event.button == defines.mouse_button_type.right then
+      local is_dragging = CursorUtils.is_dragging_favorite(player)
+      if is_dragging then
+        ErrorHandler.debug_log("[FAVE_BAR] Right-click detected on map during drag, canceling drag operation",
+          { player = player.name })
+        CursorUtils.end_drag_favorite(player)
+        GameHelpers.player_print(player, { "tf-gui.fave_bar_drag_canceled" })
+        return true
+      end
     end
+    return false
+  end)
+  if not ok then
+    ErrorHandler.warn_log("Error in handle_map_right_click", { error = tostring(err), event = event })
+    return false
   end
-  return false
+  return err == true
 end
 
 --- Handle favorites bar GUI click events
@@ -189,30 +206,52 @@ local function on_teleport_history_modal_gui_click(event)
   -- Handle history item clicks
   if element.name and element.name:find("^teleport_history_item_") then
     local index = element.tags and element.tags.teleport_history_index
-    if index and type(index) == "number" then
-      -- Get the GPS location from the history stack
-      local surface_index = player.surface.index
-      local hist = Cache.get_player_teleport_history(player, surface_index)
-      if index >= 1 and index <= #hist.stack then
-        local gps = hist.stack[index].gps
-        if gps then
-          local result = TeleportStrategies.TeleportStrategyManager.execute_teleport(player, gps, {})
-
-          if result == Enum.ReturnStateEnum.SUCCESS then
-            -- Update the pointer to the selected history item without adding new entry
-            TeleportHistory.set_pointer(player, player.surface.index, index)
-            -- Update the modal display to reflect the new pointer position
-            TeleportHistoryModal.update_history_list(player)
-            -- Play teleport sound
-            GameHelpers.safe_play_sound(player, "utility/build_medium")
-          else
-            -- Play error sound if teleportation failed
-            GameHelpers.safe_play_sound(player, "utility/cannot_build")
-          end
-        end
-      end
+    ErrorHandler.debug_log("[TELEPORT_HISTORY_MODAL] Item click", {
+      element_name = element.name,
+      tags = element.tags,
+      index = index
+    })
+    if not index or type(index) ~= "number" then
+      ErrorHandler.warn_log("Teleport history item click: index missing or not a number", { element_name = element.name, tags = element.tags })
+      return
     end
-    return
+    local surface_index = player.surface.index
+    local hist = Cache.get_player_teleport_history(player, surface_index)
+    ErrorHandler.debug_log("[TELEPORT_HISTORY_MODAL] History stack", {
+      surface_index = surface_index,
+      hist_stack = hist and hist.stack or nil
+    })
+    if not hist or not hist.stack then
+      ErrorHandler.warn_log("Teleport history item click: history or stack missing", { surface_index = surface_index, hist = hist })
+      return
+    end
+    if index < 1 or index > #hist.stack then
+      ErrorHandler.warn_log("Teleport history item click: index out of bounds", { index = index, stack_length = #hist.stack })
+      return
+    end
+    local stack_entry = hist.stack[index]
+    local gps = stack_entry and (stack_entry.gps or stack_entry) or nil -- support both formats
+    ErrorHandler.debug_log("[TELEPORT_HISTORY_MODAL] Stack entry and GPS", {
+      stack_entry = stack_entry,
+      gps = gps
+    })
+    if not gps then
+      ErrorHandler.warn_log("Teleport history item click: gps missing for index", { index = index, stack_entry = stack_entry })
+      return
+    end
+
+    local ok, result = pcall(function()
+      return TeleportStrategy.teleport_to_gps(player, gps)
+    end)
+
+    if ok and result then
+      TeleportHistory.set_pointer(player, player.surface.index, index)
+      TeleportHistoryModal.destroy(player)
+    elseif ok and not result then
+      ErrorHandler.warn_log("Teleport failed: strategy returned false", { gps = gps })
+    elseif not ok then
+      ErrorHandler.warn_log("Teleport failed with error", { error = tostring(result), gps = gps })
+    end
   end
 end
 

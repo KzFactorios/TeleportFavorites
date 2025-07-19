@@ -25,7 +25,8 @@ local _tf_gui_click_guard = false
 --- Returns true if the element is a favorite bar slot button
 -- Shared favorite bar slot button check using centralized helpers
 local function is_fave_bar_slot_button(element)
-  return BasicHelpers.is_valid_element(element) and tostring(element.name or ""):find(tostring(Constants.settings.FAVE_BAR_SLOT_PREFIX), 1, true) ~= nil
+  return BasicHelpers.is_valid_element(element) and
+  tostring(element.name or ""):find(tostring(Constants.settings.FAVE_BAR_SLOT_PREFIX), 1, true) ~= nil
 end
 
 -- Shared blank favorite bar slot button check using centralized helpers
@@ -46,35 +47,35 @@ function M.register_gui_handlers(script)
     error("[TeleportFavorites] Invalid script object provided to register_gui_handlers")
   end
 
-  local function shared_on_gui_click(event)    
+  local function shared_on_gui_click(event)
     Cache.init()
+    -- Ignore these clicks everywhere EXCEPT on a fave bar slot button
     if event.button == defines.mouse_button_type.right and event.shift then return end
-    -- Ignore shift+left-click everywhere EXCEPT on a fave bar slot button
     if event.button == defines.mouse_button_type.left and event.shift and not is_fave_bar_slot_button(event.element) then return end
 
-   ErrorHandler.debug_log("[DISPATCH] shared_on_gui_click called",
+    ErrorHandler.debug_log("[DISPATCH] shared_on_gui_click called",
       { event_type = "on_gui_click", element = event and event.element and event.element.name or "<none>" })
 
     if _tf_gui_click_guard then return end
 
     _tf_gui_click_guard = true
-    
-    local ok, result = xpcall(function()      
-    local player = game.get_player(event.player_index)
+
+    local ok, result = xpcall(function()
+      local player = game.get_player(event.player_index)
       if not player or not player.valid then return end
-      
+
       -- Check if a modal dialog is active and block non-dialog interactions
       if Cache.is_modal_dialog_active(player) then
         local element = event.element
         if not BasicHelpers.is_valid_element(element) then return end
-        
+
         -- Get the currently active modal dialog type
         local active_modal_type = Cache.get_modal_dialog_type(player)
         local parent_gui = GuiValidation.get_gui_frame_by_element(element)
-        
+
         -- Only allow interactions with the currently active modal dialog
         local is_allowed_interaction = false
-        
+
         if active_modal_type == "tag_editor" then
           -- Allow only tag editor and its confirmation dialog interactions
           is_allowed_interaction = parent_gui and (
@@ -84,9 +85,9 @@ function M.register_gui_handlers(script)
         elseif active_modal_type == "teleport_history" then
           -- Allow teleport history modal interactions AND history toggle button to close modal
           is_allowed_interaction = (parent_gui and parent_gui.name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL) or
-                                   element.name == "fave_bar_history_toggle"
+              element.name == "fave_bar_history_toggle"
         end
-        
+
         if not is_allowed_interaction then
           ErrorHandler.debug_log("[DISPATCH] Blocking GUI interaction due to active modal dialog", {
             player = player.name,
@@ -97,45 +98,44 @@ function M.register_gui_handlers(script)
           return -- Block all interactions except with the currently active modal
         end
       end
-      
+
       -- Check for right-click during drag operation
       if event.button == defines.mouse_button_type.right then
         local player_data = Cache.get_player_data(player)
         -- Ensure drag_favorite is properly initialized
         if not player_data.drag_favorite then
-          player_data.drag_favorite = {active = false, source_slot = nil, favorite = nil}
+          player_data.drag_favorite = { active = false, source_slot = nil, favorite = nil }
         end
         if player_data.drag_favorite.active then
-          ErrorHandler.debug_log("[DISPATCH] Right-click detected during drag operation, cancelling drag", { 
-            player = player.name, 
+          ErrorHandler.debug_log("[DISPATCH] Right-click detected during drag operation, cancelling drag", {
+            player = player.name,
             source_slot = player_data.drag_favorite.source_slot,
             raw_button = event.button
           })
           CursorUtils.end_drag_favorite(player)
-          PlayerHelpers.safe_player_print(player, {"tf-gui.fave_bar_drag_canceled"})
-          
+          PlayerHelpers.safe_player_print(player, { "tf-gui.fave_bar_drag_canceled" })
+
           -- Set a flag to prevent tag editor opening on this tick
           if not player_data.suppress_tag_editor then
             player_data.suppress_tag_editor = {}
           end
           player_data.suppress_tag_editor.tick = game.tick
-          
+
           _tf_gui_click_guard = false
           return true -- Return true to indicate event was handled and stop propagation
         end
       end
-      
+
       -- Continue with normal processing
       local element = event.element
-      if not BasicHelpers.is_valid_element(element) then return end 
-        
-      -- Global/utility buttons (not tied to a specific GUI)
+      if not BasicHelpers.is_valid_element(element) then return end
+
       -- Check for debug level buttons first
       if element.name and string.match(element.name, "^tf_debug_set_level_") then
         DebugCommands.on_debug_level_button_click(event)
         return true
       end
-      
+
       -- Ignore clicks on blank/empty favorite slots
       if is_blank_fave_bar_slot_button(element, player) then
         if CursorUtils.is_dragging_favorite(player) then
@@ -144,12 +144,12 @@ function M.register_gui_handlers(script)
         end
         return
       end
-      
+
       if element.name == "fave_bar_visibility_toggle" or element.name == "fave_bar_history_toggle" or is_fave_bar_slot_button(element) then
         control_fave_bar.on_fave_bar_gui_click(event)
         return true
       end
-      
+
       local parent_gui = GuiValidation.get_gui_frame_by_element(element)
       if not parent_gui then
         ErrorHandler.debug_log("[DISPATCH] Element parent GUI not found, skipping", {
@@ -180,10 +180,7 @@ function M.register_gui_handlers(script)
         error = tostring(e),
         event_player_index = event and event.player_index
       })
-      local tb = debug and debug.traceback and debug.traceback() or "<no traceback>"
-      ErrorHandler.debug_log("GUI event error traceback", {
-        traceback = tb
-      })
+
       if log then
         local el = event and event.element
         local ename, etype = "<no element>", "<no type>"
@@ -227,10 +224,10 @@ function M.register_gui_handlers(script)
   -- Register text change handler for immediate storage saving
   local function shared_on_gui_text_changed(event)
     if not event or not event.element then return end
-    
+
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end
-    
+
     -- Allow text changes in tag editor even when modal dialog is active
     -- (since user might be editing while confirmation dialog is open)
     local element = event.element
@@ -243,10 +240,10 @@ function M.register_gui_handlers(script)
 
   local function shared_on_gui_elem_changed(event)
     if not event or not event.element then return end
-    
+
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end
-    
+
     -- Allow elem changes in tag editor even when modal dialog is active
     -- (since user might be changing icon while confirmation dialog is open)
     local element = event.element

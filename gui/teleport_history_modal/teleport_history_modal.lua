@@ -23,8 +23,20 @@ local BasicHelpers = require("core.utils.basic_helpers")
 local GPSUtils = require("core.utils.gps_utils")
 local Lookups = require("core.cache.lookups")
 local ErrorHandler = require("core.utils.error_handler")  
+local Enum = require("prototypes.enums.enum")
+
 
 local teleport_history_modal = {}
+
+
+--- Check if the teleport history modal is open for the player
+---@param player LuaPlayer
+---@return boolean
+function teleport_history_modal.is_open(player)
+  if not BasicHelpers.is_valid_player(player) then return false end
+  local modal_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]
+  return modal_frame and modal_frame.valid or false
+end
 
 --- Handles GUI close events for teleport history modal
 ---@param event table GUI close event from Factorio
@@ -33,9 +45,8 @@ function teleport_history_modal.on_gui_closed(event)
   if not player or not player.valid then return end
   if not event.element or not event.element.valid then return end
 
-  local Enum = require("prototypes.enums.enum")
-  local gui_frame = require("core.utils.gui_validation").get_gui_frame_by_element(event.element)
-  if (gui_frame and gui_frame.name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL) or event.element.name == "teleport_history_modal" then
+  local gui_frame = GuiValidation.get_gui_frame_by_element(event.element)
+  if (gui_frame and gui_frame.name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL) or event.element.name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL then
     teleport_history_modal.destroy(player)
     return
   end
@@ -53,7 +64,7 @@ function teleport_history_modal.build(player)
   Cache.set_modal_dialog_state(player, "teleport_history")
 
   -- Destroy any existing modal first to prevent naming conflicts
-  local existing_modal = player.gui.screen["teleport_history_modal"]
+  local existing_modal = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]
   if existing_modal and existing_modal.valid then
     existing_modal.destroy()
     ErrorHandler.debug_log("Destroyed existing teleport history modal")
@@ -62,7 +73,7 @@ function teleport_history_modal.build(player)
   -- Create the main modal frame (following tag editor pattern)
   local modal_frame = player.gui.screen.add {
     type = "frame",
-    name = "teleport_history_modal",
+    name = Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL,
     direction = "vertical",
     style = "tf_teleport_history_modal_frame",
     modal = true
@@ -88,7 +99,12 @@ function teleport_history_modal.build(player)
 
   -- Create titlebar (following tag editor pattern)
   local titlebar, title_label = GuiBase.create_titlebar(modal_frame, "teleport_history_modal_titlebar", "teleport_history_modal_close_button")
-  title_label.caption = {"tf-gui.teleport_history_modal_title"}
+  if title_label and title_label.valid then
+    title_label.caption = {"tf-gui.teleport_history_modal_title"}
+  else
+    ErrorHandler.debug_log("Title label invalid in teleport history modal, using fallback caption")
+    if title_label then title_label.caption = "Teleport History" end
+  end
 
   -- Create content frame (following tag editor pattern)
   local content_frame = GuiBase.create_frame(modal_frame, "teleport_history_modal_content", "vertical", "tf_teleport_history_modal_content")
@@ -149,7 +165,7 @@ function teleport_history_modal.destroy(player)
   Cache.set_modal_dialog_state(player, nil)
 
   -- Close the modal if it exists
-  local modal_frame = player.gui.screen["teleport_history_modal"]
+  local modal_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]
   if modal_frame and modal_frame.valid then
     player.opened = nil
     modal_frame.destroy()
@@ -161,7 +177,7 @@ end
 function teleport_history_modal.update_history_list(player)
   if not BasicHelpers.is_valid_player(player) then return end
 
-  local modal_frame = player.gui.screen["teleport_history_modal"]
+  local modal_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]
   if not modal_frame or not modal_frame.valid then return end
 
   local scroll_pane = GuiValidation.find_child_by_name(modal_frame, "teleport_history_scroll_pane")
@@ -277,30 +293,35 @@ function teleport_history_modal.update_history_list(player)
       local button_style = is_current and "tf_teleport_history_item_current" or "tf_teleport_history_item"
       
       -- Create a simple button with rich text (no need for separate flow or sprite elements)
+      local button_name = "teleport_history_item_" .. tostring(i)
       local success_button, item_button = pcall(function()
         return GuiBase.create_button(
           history_list,
-          "teleport_history_item_" .. i,
+          button_name,
           display_text,
           button_style
         )
       end)
-      
+
       if success_button and item_button and item_button.valid then
         -- Set tooltip after creation
         local tooltip_success = pcall(function()
           item_button.tooltip = {"tf-gui.teleport_history_item_tooltip", display_text}
         end)
-        
         if not tooltip_success then
           ErrorHandler.debug_log("Failed to set teleport history button tooltip", {
             display_text = display_text,
             item_index = i
           })
         end
-
         -- Store the index in tags for click handling
         item_button.tags = {teleport_history_index = i}
+        -- Debug log for button name and tags
+        ErrorHandler.debug_log("Created teleport history item button", {
+          button_name = item_button.name,
+          button_tags = item_button.tags,
+          item_index = i
+        })
       else
         ErrorHandler.debug_log("Failed to create teleport history button", {
           button_style = button_style,

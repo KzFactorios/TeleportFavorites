@@ -342,7 +342,9 @@ function DebugCommands.register_commands()
     { "tf_check_events",      "Check event registration status",           "tf_check_events_handler" },
   })
   local Logger = DebugCommands._deps.Logger
-  Logger.info("Debug commands registered")
+  if Logger and type(Logger.info) == "function" then
+    Logger.info("Debug commands registered")
+  end
 end
 
 return DebugCommands

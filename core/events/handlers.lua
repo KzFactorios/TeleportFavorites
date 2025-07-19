@@ -5,6 +5,7 @@
 -- Centralized event handler implementations for TeleportFavorites.
 -- Handles Factorio events, multiplayer/surface-aware updates, helpers, error handling, validation, and API for all event types.
 
+local BasicHelpers = require("core.utils.basic_helpers")
 local Cache = require("core.cache.cache")
 local PositionUtils = require("core.utils.position_utils")
 local GPSUtils = require("core.utils.gps_utils")

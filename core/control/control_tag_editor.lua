@@ -10,7 +10,6 @@ local GuiValidation = require("core.utils.gui_validation")
 local PlayerHelpers = require("core.utils.player_helpers")
 local GPSUtils = require("core.utils.gps_utils")
 local Constants = require("constants")
-local Enum = require("prototypes.enums.enum")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local LocaleUtils = require("core.utils.locale_utils")
@@ -22,6 +21,8 @@ local BasicHelpers = require("core.utils.basic_helpers")
 local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 local SharedUtils = require("core.control.control_shared_utils")
 local TeleportStrategy = require("core.utils.teleport_strategy")
+local Enum = require("prototypes.enums.enum")
+
 
 local M = {}
 
@@ -32,15 +33,14 @@ function M.on_gui_closed(event)
   if not player or not player.valid then return end
   if not event.element or not event.element.valid then return end
 
-  local gui_frame = require("core.utils.gui_validation").get_gui_frame_by_element(event.element)
-  local Enum = require("prototypes.enums.enum")
+  local gui_frame = GuiValidation.get_gui_frame_by_element(event.element)
   if gui_frame and (gui_frame.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR or 
                     gui_frame.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM) then
     M.close_tag_editor(player)
     return
   end
 
-  local tag_editor_frame = require("core.cache.cache").get_player_data(player).tag_editor_frame
+  local tag_editor_frame = Cache.get_player_data(player).tag_editor_frame
   if tag_editor_frame and tag_editor_frame.valid and event.element == tag_editor_frame then
     M.close_tag_editor(player)
     return
@@ -504,6 +504,11 @@ local function on_tag_editor_gui_click(event)
   local element = event.element
   if not BasicHelpers.is_valid_element(element) then return end
 
+  -- Ignore right-clicks except for delete button
+  if event.button == defines.mouse_button_type.right and element.name ~= "tag_editor_delete_button" then
+    return
+  end
+
   local player = game.get_player(event.player_index)
   if not BasicHelpers.is_valid_player(player) then return end
 
@@ -511,7 +516,7 @@ local function on_tag_editor_gui_click(event)
   local success, result = pcall(function()
     return Cache.get_tag_editor_data(player)
   end)
-  
+
   if success and result then
     tag_data = result
   else
