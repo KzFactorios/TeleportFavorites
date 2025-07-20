@@ -1,8 +1,5 @@
 ---@diagnostic disable: undefined-global, param-type-mismatch
 
--- core/utils/position_utils.lua
--- TeleportFavorites Factorio Mod
--- Consolidated position utilities for all position-related functionality.
 -- Includes position validation, normalization, correction, tagging checks, water/space detection, safe landing, and walkability.
 
 local basic_helpers = require("core.utils.basic_helpers")
@@ -34,6 +31,29 @@ function PositionUtils.normalize_position(map_position)
       return {x = math.floor(x), y = math.floor(y)}
     end
     return nil
+end
+
+-- core/utils/position_utils.lua
+-- TeleportFavorites Factorio Mod
+-- Consolidated position utilities for all position-related functionality.
+--- Check if a map position needs normalization (x or y not whole number)
+---@param map_position MapPosition
+---@return boolean needs_norm
+function PositionUtils.needs_normalization(map_position)
+  if not map_position then return false end
+  local x, y
+  if type(map_position) == "table" then
+    if map_position.x ~= nil and map_position.y ~= nil then
+      x, y = map_position.x, map_position.y
+    elseif type(map_position[1]) == "number" and type(map_position[2]) == "number" then
+      x, y = map_position[1], map_position[2]
+    else
+      return false
+    end
+    if x == nil or y == nil then return false end
+    return not (basic_helpers.is_whole_number(x) and basic_helpers.is_whole_number(y))
+  end
+  return false
 end
 
 --- Create old/new position pair for tracking position changes
@@ -88,22 +108,6 @@ function PositionUtils.is_space_tile(surface, position)
     return true
   end
   return false
-end
-
---- Find safe landing position near a potentially unsafe tile (like water)
----@param surface LuaSurface Surface to search on
----@param position MapPosition Original position
----@param search_radius number? Search radius (default: 16.0)
----@param precision number? Search precision (default: 0.5)
----@return MapPosition? safe_position Safe position or nil if none found
-function PositionUtils.find_safe_landing_position(surface, position, search_radius, precision)
-  if not surface or not position then return nil end
-  
-  search_radius = search_radius or 16.0
-  precision = precision or 0.5
-  
-  -- Use Factorio's built-in collision detection to find a safe position
-  return surface.find_non_colliding_position("character", position, search_radius, precision)
 end
 
 --- Check if a position is walkable (same result as is_valid_tag_position, but does not require a player)

@@ -11,9 +11,10 @@
 -- Import controllers for various mod components
 
 -- Required for favorites bar functionality
-local control_fave_bar = require("core.control.control_fave_bar")
--- Required for tag editor functionality
 local control_tag_editor = require("core.control.control_tag_editor")
+local control_fave_bar = require("core.control.control_fave_bar")
+local control_tag_editor = require("core.control.control_tag_editor")
+local IconTypeLookup = require("core.utils.icon_type_lookup")
 
 local event_registration_dispatcher = require("core.events.event_registration_dispatcher")
 local handlers = require("core.events.handlers")
@@ -45,6 +46,9 @@ end
 local function custom_on_init()
   -- Initialize debug system first
   Logger.initialize()
+
+  -- Initialize icon type lookup for O(1) icon type detection
+  IconTypeLookup.initialize()
 
   -- Register all commands
   register_commands()

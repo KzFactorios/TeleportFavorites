@@ -6,9 +6,9 @@
 -- Provides multiplayer-safe helpers for admin checks, override logic, and audit logging.
 -- Uses Factorio's native LuaPlayer.admin property for permission checks.
 
+
 local ErrorHandler = require("core.utils.error_handler")
 local ValidationUtils = require("core.utils.validation_utils")
-
 
 
 ---@class AdminUtils
@@ -25,6 +25,27 @@ function AdminUtils.is_admin(player)
     return false
   end
   return player.admin == true
+end
+
+---Checks if the given player can edit a chart tag (owner or admin override).
+---@param player LuaPlayer
+---@param chart_tag LuaCustomChartTag
+---@return boolean can_edit True if player can edit
+---@return boolean is_owner True if player is owner
+---@return boolean is_admin_override True if admin override
+function AdminUtils.can_edit_chart_tag(player, chart_tag)
+  local player_valid, player_error = ValidationUtils.validate_player(player)
+  if not player_valid or not chart_tag or not chart_tag.valid then
+    return false, false, false
+  end
+  local is_owner = false
+  if chart_tag.last_user and type(chart_tag.last_user) == "string" then
+    is_owner = (player.name == chart_tag.last_user)
+  end
+  local is_admin = AdminUtils.is_admin(player)
+  local can_edit = is_owner or is_admin
+  local is_admin_override = (not is_owner) and is_admin
+  return can_edit, is_owner, is_admin_override
 end
 
 ---Checks if the given player can delete a chart tag.
@@ -110,7 +131,7 @@ function AdminUtils.log_admin_action(admin_player, action, chart_tag, additional
   if chart_tag and chart_tag.valid then
     log_data.chart_tag_position = chart_tag.position
     log_data.chart_tag_text = chart_tag.text or ""
-    log_data.chart_tag_last_user = get_last_user_name(chart_tag)
+    log_data.chart_tag_last_user = chart_tag.last_user and chart_tag.last_user.name or ""
   end
   if additional_data then
     for key, value in pairs(additional_data) do

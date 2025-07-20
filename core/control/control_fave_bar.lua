@@ -83,14 +83,18 @@ local function handle_favorite_slot_click(event, player, favorites)
 
   local fav = favorites.favorites[slot]
   if not fav then
-    ErrorHandler.warn_log("[FAVE_BAR] Slot data missing or nil", { slot = slot, player = player and player.name or "<nil>" })
-    GameHelpers.player_print(player, "[TeleportFavorites] ERROR: Favorite slot data missing. Please refresh your favorites bar.")
+    ErrorHandler.warn_log("[FAVE_BAR] Slot data missing or nil",
+      { slot = slot, player = player and player.name or "<nil>" })
+    GameHelpers.player_print(player,
+      "[TeleportFavorites] ERROR: Favorite slot data missing. Please refresh your favorites bar.")
     return
   end
   if FavoriteUtils.is_blank_favorite(fav) then return end
   if not fav.gps or type(fav.gps) ~= "string" or fav.gps == "" then
-    ErrorHandler.warn_log("[FAVE_BAR] Favorite slot GPS invalid", { slot = slot, fav = fav, player = player and player.name or "<nil>" })
-    GameHelpers.player_print(player, "[TeleportFavorites] ERROR: Favorite slot GPS is invalid. Please update or remove this favorite.")
+    ErrorHandler.warn_log("[FAVE_BAR] Favorite slot GPS invalid",
+      { slot = slot, fav = fav, player = player and player.name or "<nil>" })
+    GameHelpers.player_print(player,
+      "[TeleportFavorites] ERROR: Favorite slot GPS is invalid. Please update or remove this favorite.")
     return
   end
 
@@ -98,6 +102,7 @@ local function handle_favorite_slot_click(event, player, favorites)
   if SlotInteractionHandlers.handle_shift_left_click(event, player, fav, slot, favorites) then return end
   if SlotInteractionHandlers.handle_toggle_lock(event, player, fav, slot, favorites) then return end
   if SlotInteractionHandlers.handle_teleport(event, player, fav, slot, false) then return end
+  
   SlotInteractionHandlers.handle_request_to_open_tag_editor(event, player, fav, slot)
   fave_bar.update_single_slot(player, slot)
 end
@@ -215,7 +220,8 @@ local function on_teleport_history_modal_gui_click(event)
       index = index
     })
     if not index or type(index) ~= "number" then
-      ErrorHandler.warn_log("Teleport history item click: index missing or not a number", { element_name = element.name, tags = element.tags })
+      ErrorHandler.warn_log("Teleport history item click: index missing or not a number",
+        { element_name = element.name, tags = element.tags })
       return
     end
     local surface_index = player.surface.index
@@ -225,26 +231,30 @@ local function on_teleport_history_modal_gui_click(event)
       hist_stack = hist and hist.stack or nil
     })
     if not hist or not hist.stack then
-      ErrorHandler.warn_log("Teleport history item click: history or stack missing", { surface_index = surface_index, hist = hist })
+      ErrorHandler.warn_log("Teleport history item click: history or stack missing",
+        { surface_index = surface_index, hist = hist })
       return
     end
     if index < 1 or index > #hist.stack then
-      ErrorHandler.warn_log("Teleport history item click: index out of bounds", { index = index, stack_length = #hist.stack })
+      ErrorHandler.warn_log("Teleport history item click: index out of bounds",
+        { index = index, stack_length = #hist.stack })
       return
     end
-  local stack_entry = hist.stack[index]
-  local gps = stack_entry and stack_entry.gps or nil
+    local stack_entry = hist.stack[index]
+    local gps = stack_entry and stack_entry.gps or nil
     ErrorHandler.debug_log("[TELEPORT_HISTORY_MODAL] Stack entry and GPS", {
       stack_entry = stack_entry,
       gps = gps
     })
     if not gps then
-      ErrorHandler.warn_log("Teleport history item click: gps missing for index", { index = index, stack_entry = stack_entry })
+      ErrorHandler.warn_log("Teleport history item click: gps missing for index",
+        { index = index, stack_entry = stack_entry })
       return
     end
 
     local ok, result = pcall(function()
-      return TeleportStrategy.teleport_to_gps(player, gps, { from_history_modal = true })
+      -- don't add history for a history item click
+      return TeleportStrategy.teleport_to_gps(player, gps, false)
     end)
 
     if ok and result then

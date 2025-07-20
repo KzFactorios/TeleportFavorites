@@ -88,9 +88,10 @@ function M.register_gui_handlers(script)
             parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM
           )
         elseif active_modal_type == "teleport_history" then
-          -- Allow teleport history modal interactions AND history toggle button to close modal
-          is_allowed_interaction = (parent_gui and parent_gui.name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL) or
-              element.name == "fave_bar_history_toggle"
+          -- Allow teleport history modal interactions AND all favorites bar interactions
+          is_allowed_interaction = (parent_gui and parent_gui.name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL)
+            or (parent_gui and parent_gui.name == Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
+            or (element.name and tostring(element.name):find(tostring(Constants.settings.FAVE_BAR_SLOT_PREFIX), 1, true) ~= nil)
         end
 
         if not is_allowed_interaction then

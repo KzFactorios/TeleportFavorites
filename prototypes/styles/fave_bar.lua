@@ -25,27 +25,43 @@ gui_style.tf_fave_bar_frame = {
 
 gui_style.tf_fave_toggle_container = {
     type = "frame_style",
-    parent = "quick_bar_inner_panel", --"inside_deep_frame", -- match the slots row background
-    graphical_set = nil,              -- use parent's background
-    left_border = 0,                  -- remove left border
+    parent = "quick_bar_inner_panel",
+    graphical_set = nil,
+    left_border = 0,
+    horizontal_align = "center",
+    left_padding = 0,
+    right_padding = 0,
+    left_margin = 0,
+    right_margin = 0,
+}
+
+gui_style.tf_fave_history_toggle_button = {
+    type = "button_style",
+    parent = "tf_slot_button",
+    padding = 2,
+    right_margin = -4,
+    left_margin = 0,
 }
 
 gui_style.tf_fave_bar_visibility_on = {
     type = "button_style",
     parent = "tf_slot_button",
-    padding = 8,
+    padding = 2,
+    left_margin = 0,
+    right_margin = 0,
 }
 
 gui_style.tf_fave_bar_visibility_off = {
     type = "button_style",
     parent = "tf_slot_button",
-    padding = 8,
+    padding = 2,
+    left_margin = 0,
+    right_margin = 0,
 }
 
 gui_style.tf_fave_slots_row = {
     type = "frame_style",
     parent = "quick_bar_inner_panel",
-    --parent = "slot_button_deep_frame",
     vertically_stretchable = "off",
     horizontally_stretchable = "on",
     left_margin = 5,
@@ -85,7 +101,6 @@ gui_style.tf_slot_button_smallfont_map_pin = {
 
 gui_style.tf_slot_button_locked = {
     type = "button_style",
-    --parent = "tf_slot_button_smallfont",
     parent = "slot_button_in_shallow_frame",
     default_graphical_set = {
         base = { position = { 0, 0 }, corner_size = 8, tint = { r = .3, g = .3, b = .3, a = .4 } }
@@ -120,12 +135,6 @@ gui_style.tf_fave_bar_slot_lock_sprite = {
     type = "image_style",
     top_padding = -3,
     left_padding = -5
-}
-
-gui_style.tf_fave_history_toggle_button = {
-    type = "button_style",
-    parent = "tf_slot_button",
-    padding = 6
 }
 
 return true

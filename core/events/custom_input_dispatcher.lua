@@ -115,7 +115,7 @@ local function handle_teleport_to_favorite_slot(event, slot_number)
   end
   
   -- Use Tag module for teleportation (already has all the strategy logic)
-  local result = TeleportStrategy.teleport_to_gps(player, favorite.gps, true)
+  local result = TeleportStrategy.teleport_to_gps(player, favorite.gps)
   local success = result == Enum.ReturnStateEnum.SUCCESS
   
   ErrorHandler.debug_log("Teleport to favorite slot result", {

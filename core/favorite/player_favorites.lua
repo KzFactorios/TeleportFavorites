@@ -4,10 +4,13 @@
 -- TeleportFavorites Factorio Mod
 -- PlayerFavorites class: manages a collection of favorites for a player, including slot management, persistence, drag-and-drop, and surface-aware data.
 
+
 local Constants = require("constants")
 local FavoriteUtils = require("core.favorite.favorite_utils")
 local Cache = require("core.cache.cache")
-local GuiObserver = _G.GuiObserver or require("core.events.gui_observer")
+local BasicHelpers = require("core.utils.basic_helpers")
+local GuiObserver = require("core.events.gui_observer")
+
 
 --- PlayerFavorites class for managing a player's favorite collection
 --- @class PlayerFavorites
@@ -18,6 +21,7 @@ local GuiObserver = _G.GuiObserver or require("core.events.gui_observer")
 local PlayerFavorites = {}
 PlayerFavorites.__index = PlayerFavorites
 PlayerFavorites._instances = PlayerFavorites._instances or {}
+
 
 --- Constructor for PlayerFavorites
 ---@param player LuaPlayer
@@ -57,6 +61,136 @@ function PlayerFavorites.new(player)
 
   PlayerFavorites._instances[player_index][surface_index] = obj
   return obj
+end
+
+---Add a favorite GPS to the first available slot
+---@param gps string GPS string to add
+---@return boolean success, string? error_message
+function PlayerFavorites:add_favorite(gps)
+  local max_slots = Constants.settings.MAX_FAVORITE_SLOTS
+  if not gps or type(gps) ~= "string" or gps == "" then
+    return false, "invalid_gps"
+  end
+  local favorites = self.favorites
+  if not favorites or #favorites ~= max_slots then
+    return false, "favorites_array_invalid"
+  end
+  -- Check for duplicate
+  for i = 1, max_slots do
+    local fav = favorites[i]
+    if fav and fav.gps == gps then
+      return true -- Already present, treat as success
+    end
+  end
+  -- Find first available (blank and unlocked) slot
+  for i = 1, max_slots do
+    local fav = favorites[i]
+    if BasicHelpers.is_blank_favorite(fav) and not fav.locked then
+      favorites[i].gps = gps
+      favorites[i].locked = false
+      Cache.set_player_favorites(self.player, favorites)
+      return true
+    end
+  end
+  return false, "favorite_slots_full"
+end
+
+---Get a favorite entry by GPS string
+---@param gps string GPS string to search for
+---@return Favorite|nil favorite_entry The favorite entry if found, or nil
+function PlayerFavorites:get_favorite_by_gps(gps)
+  if not gps or type(gps) ~= "string" or gps == "" then
+    return nil
+  end
+  local max_slots = Constants.settings.MAX_FAVORITE_SLOTS
+  local favorites = self.favorites
+  if not favorites or #favorites ~= max_slots then
+    return nil
+  end
+  for i = 1, max_slots do
+    local fav = favorites[i]
+    if fav and fav.gps == gps then
+      return fav
+    end
+  end
+  return nil
+end
+
+---Toggle the lock state of a favorite slot
+---@param slot integer The slot index (1-based)
+---@return boolean success, string? error_message
+function PlayerFavorites:toggle_favorite_lock(slot)
+  local max_slots = Constants.settings.MAX_FAVORITE_SLOTS
+  if not slot or slot < 1 or slot > max_slots then
+    return false, "slot_out_of_range"
+  end
+  local favorites = self.favorites
+  if not favorites or #favorites ~= max_slots then
+    return false, "favorites_array_invalid"
+  end
+  local fav = favorites[slot]
+  if not fav then
+    return false, "favorite_not_found"
+  end
+  if BasicHelpers.is_blank_favorite(fav) then
+    return false, "cannot_lock_blank_slot"
+  end
+  fav.locked = not fav.locked
+  favorites[slot] = fav
+  Cache.set_player_favorites(self.player, favorites)
+  return true
+end
+
+---Reorder favorites using blank-seeking cascade algorithm (drag-drop)
+---@param source_slot integer Source slot index (1-based)
+---@param target_slot integer Target slot index (1-based)
+---@return boolean success, string? error_message
+function PlayerFavorites:reorder_favorites(source_slot, target_slot)
+  if not source_slot or not target_slot or source_slot == target_slot then
+    return false, "invalid_slot_indices"
+  end
+  local max_slots = Constants.settings.MAX_FAVORITE_SLOTS
+  if source_slot < 1 or source_slot > max_slots or target_slot < 1 or target_slot > max_slots then
+    return false, "slot_out_of_range"
+  end
+  local favorites = self.favorites
+  if not favorites or #favorites ~= max_slots then
+    return false, "favorites_array_invalid"
+  end
+  local src_fav = favorites[source_slot]
+  local tgt_fav = favorites[target_slot]
+  if BasicHelpers.is_locked_favorite(src_fav) or BasicHelpers.is_locked_favorite(tgt_fav) then
+    return false, "locked_slot"
+  end
+  -- Deep copy for cascade
+  local new_favorites = {}
+  for i = 1, max_slots do
+    new_favorites[i] = FavoriteUtils.copy(favorites[i])
+  end
+  -- Blank-seeking cascade algorithm
+  if BasicHelpers.is_blank_favorite(tgt_fav) then
+    new_favorites[target_slot] = FavoriteUtils.copy(src_fav)
+    new_favorites[source_slot] = FavoriteUtils.get_blank_favorite()
+  elseif math.abs(source_slot - target_slot) == 1 then
+    new_favorites[source_slot], new_favorites[target_slot] = new_favorites[target_slot], new_favorites[source_slot]
+  else
+    -- Cascade: evacuate source, shift items toward blank
+    local direction = source_slot < target_slot and 1 or -1
+    local range_start, range_end = source_slot, target_slot
+    if direction == 1 then
+      for i = source_slot, target_slot - 1 do
+        new_favorites[i] = FavoriteUtils.copy(new_favorites[i + 1])
+      end
+    else
+      for i = source_slot, target_slot + 1, -1 do
+        new_favorites[i] = FavoriteUtils.copy(new_favorites[i - 1])
+      end
+    end
+    new_favorites[target_slot] = FavoriteUtils.copy(src_fav)
+  end
+  self.favorites = new_favorites
+  Cache.set_player_favorites(self.player, new_favorites)
+  return true
 end
 
 --- Update GPS coordinates across all players and return list of affected players
@@ -143,6 +277,19 @@ function PlayerFavorites:update_gps_coordinates(old_gps, new_gps)
   end
 
   return any_updated
+end
+
+---Returns the number of available (blank) favorite slots for the player.
+---@return integer available_slots Number of blank slots
+function PlayerFavorites:available_slots()
+  local count = 0
+  for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
+    local fav = self.favorites[i]
+    if fav and FavoriteUtils.is_blank_favorite(fav) then
+      count = count + 1
+    end
+  end
+  return count
 end
 
 return PlayerFavorites

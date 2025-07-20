@@ -36,14 +36,17 @@ Never lose track of your adventures! TeleportFavorites keeps a handy history of 
 
 Pro-tip: Your teleport history is private—only you can see your own!
 
+
 Look at the top of your screen for the favorites bar—your gateway to teleportation magic!
 
 - **Toggle the bar** with the eye button
 - **Teleport** by left-clicking any favorite slot
 - **Edit a favorite** by right-clicking it
-- **Lock favorites** with Ctrl+left-click (locked slots can't be moved)
+- **Lock or unlock a favorite slot:** Hold **Ctrl** and left-click the slot. Locked slots show a lock icon and cannot be moved or overwritten until unlocked.
 - **Reorder favorites** by dragging and dropping (except locked slots)
 - **Empty slots** are always present—just waiting for your next adventure!
+
+**Tip:** Locked slots are protected from drag-and-drop and accidental changes. To unlock, simply Ctrl+left-click again.
 
 ## 🗺️ Map Tag Magic
 

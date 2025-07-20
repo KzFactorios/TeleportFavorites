@@ -23,6 +23,33 @@ ErrorHandler.ERROR_TYPES = {
   FACTORIO_API_ERROR = "factorio_api_error"
 }
 
+---Initialize the logging system (debug/production mode, multiplayer-safe)
+function ErrorHandler.initialize()
+  -- Example: Set up debug/production mode flag, or hook into Factorio log system
+  ErrorHandler._initialized = true
+  ErrorHandler._debug_mode = (remote and remote.interfaces and remote.interfaces.TeleportFavorites_Debug) or false
+  -- Optionally, log initialization
+  pcall(function() log("[TeleportFavorites] Logger initialized. Debug mode: " .. tostring(ErrorHandler._debug_mode)) end)
+end
+
+--- Info logging helper
+---@param message string
+---@param context table?
+function ErrorHandler.info(message, context)
+  if _in_error_handler then return end
+  _in_error_handler = true
+  if context and type(context) == "table" then
+    local context_str = ""
+    for k, v in pairs(context) do
+      context_str = context_str .. tostring(k) .. "=" .. tostring(v) .. " "
+    end
+    pcall(function() log("[TeleportFavorites] INFO: " .. message .. " | Context: " .. context_str) end)
+  else
+    pcall(function() log("[TeleportFavorites] INFO: " .. message) end)
+  end
+  _in_error_handler = false
+end
+
 --- Debug logging helper
 ---@param message string
 ---@param context table?

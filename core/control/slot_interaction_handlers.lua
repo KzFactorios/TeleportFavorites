@@ -17,6 +17,8 @@ local PlayerHelpers = require("core.utils.player_helpers")
 local CursorUtils = require("core.utils.cursor_utils")
 local TeleportStrategy = require("core.utils.teleport_strategy")
 local SharedUtils = require("core.control.control_shared_utils")
+local TeleportHistoryModal = require("gui.teleport_history_modal.teleport_history_modal")
+
 
 ---@class SlotInteractionHandlers
 local SlotInteractionHandlers = {}
@@ -49,11 +51,17 @@ function SlotInteractionHandlers.handle_teleport(event, player, fav, slot, did_d
           { slot = slot, gps = fav.gps, fav = fav, player = player and player.name or "<nil>" })
         return false
       end
-      local ok, err = pcall(function()
-        TeleportStrategy.teleport_to_gps(player, fav.gps)
+
+      local ok, result, gps_string = pcall(function()
+        local success, gps_string = TeleportStrategy.teleport_to_gps(player, fav.gps)
+        -- If teleport succeeded and history modal is open, refresh it        
+        if success and TeleportHistoryModal.is_open(player) then
+          TeleportHistoryModal.update_history_list(player)
+        end
+        return true, success, gps_string
       end)
-      if not ok then
-        ErrorHandler.warn_log("[SLOT_INTERACTION] Teleport failed: " .. tostring(err),
+      if not ok or not result then
+        ErrorHandler.warn_log("[SLOT_INTERACTION] Teleport failed: " .. tostring(gps_string),
           { slot = slot, fav = fav, player = player and player.name or "<nil>" })
         return false
       end

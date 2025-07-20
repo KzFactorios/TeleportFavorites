@@ -22,27 +22,21 @@ local Cache = require("core.cache.cache")
 local BasicHelpers = require("core.utils.basic_helpers")
 local GPSUtils = require("core.utils.gps_utils")
 local Lookups = require("core.cache.lookups")
-local ErrorHandler = require("core.utils.error_handler")  
+local ErrorHandler = require("core.utils.error_handler")
 local Enum = require("prototypes.enums.enum")
 local HistoryItem = require("core.teleport.history_item")
+local TeleportHistory = require("core.teleport.teleport_history")
+local IconTypeLookup = require("core.utils.icon_type_lookup")
 
 
 local teleport_history_modal = {}
+if teleport_history_modal._observer_registered == nil then
+  teleport_history_modal._observer_registered = false
+end
 
 
 --- Destroy the teleport history modal for the given player
 ---@param player LuaPlayer
-function teleport_history_modal.destroy(player)
-  if not BasicHelpers.is_valid_player(player) then return end
-
-  -- Clear modal dialog state
-  Cache.set_modal_dialog_state(player, nil)
-  local modal_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]
-  if modal_frame and modal_frame.valid then
-    player.opened = nil
-    modal_frame.destroy()
-  end
-end
 
 --- Check if the teleport history modal is open for the player
 ---@param player LuaPlayer
@@ -70,6 +64,15 @@ end
 --- Build the teleport history modal dialog
 ---@param player LuaPlayer
 function teleport_history_modal.build(player)
+  -- Register observer to auto-refresh modal if not already registered
+  if not teleport_history_modal._observer_registered then
+    TeleportHistory.register_observer(function(obs_player)
+      if obs_player and obs_player.valid and teleport_history_modal.is_open(obs_player) then
+        teleport_history_modal.update_history_list(obs_player)
+      end
+    end)
+    teleport_history_modal._observer_registered = true
+  end
   ErrorHandler.debug_log("[MODAL] build called", { player = player and player.name or "<nil>" })
   if not BasicHelpers.is_valid_player(player) then return end
 
@@ -92,9 +95,9 @@ function teleport_history_modal.build(player)
     name = Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL,
     direction = "vertical",
     style = "tf_teleport_history_modal_frame",
-    modal = true
+    modal = false
   }
-  
+
   -- Critical error check: Ensure modal was created successfully
   if not modal_frame or not modal_frame.valid then
     ErrorHandler.debug_log("CRITICAL: Modal frame creation failed", {
@@ -103,9 +106,9 @@ function teleport_history_modal.build(player)
       player_valid = player and player.valid,
       screen_valid = player.gui and player.gui.screen and player.gui.screen.valid
     })
-    return  -- Abort modal creation
+    return -- Abort modal creation
   end
-  
+
   -- Position modal dynamically relative to the history toggle button
   -- This is done after content creation to ensure GUI elements have valid locations
   ErrorHandler.debug_log("Teleport history modal positioning debug", {
@@ -114,13 +117,15 @@ function teleport_history_modal.build(player)
   })
 
   -- Create titlebar (following tag editor pattern)
-  local titlebar, title_label = GuiBase.create_titlebar(modal_frame, "teleport_history_modal_titlebar", "teleport_history_modal_close_button")
+  local titlebar, title_label = GuiBase.create_titlebar(modal_frame, "teleport_history_modal_titlebar",
+    "teleport_history_modal_close_button")
   if title_label and title_label.valid then
-    title_label.caption = {"tf-gui.teleport_history_modal_title"}
+    title_label.caption = { "tf-gui.teleport_history_modal_title" }
   end
 
   -- Create content frame (following tag editor pattern)
-  local content_frame = GuiBase.create_frame(modal_frame, "teleport_history_modal_content", "vertical", "tf_teleport_history_modal_content")
+  local content_frame = GuiBase.create_frame(modal_frame, "teleport_history_modal_content", "vertical",
+    "tf_teleport_history_modal_content")
 
   -- Create scroll pane for history list
   local scroll_pane = GuiBase.create_element("scroll-pane", content_frame, {
@@ -146,22 +151,22 @@ function teleport_history_modal.build(player)
   -- Position modal with single calculation: center screen, then offset halfway toward top-left
   local screen_width = player.display_resolution.width / player.display_scale
   local screen_height = player.display_resolution.height / player.display_scale
-  
+
   -- Modal dimensions (updated to match new style definitions)
   local modal_width = 350  -- Match maximal_width from style
   local modal_height = 200 -- Estimated height for typical content
-  
+
   -- Calculate center position
   local center_x = (screen_width - modal_width) / 2
   local center_y = (screen_height - modal_height) / 2
-  
+
   -- Offset halfway toward top-left (25% of the distance from center to top-left corner)
   local final_x = center_x - (center_x * 0.25)
   local final_y = center_y - (center_y * 0.25)
-  
+
   -- Move modal 10% higher on screen (split the difference)
   final_y = final_y - (screen_height * 0.10)
-  
+
   modal_frame.location = { x = final_x, y = final_y }
 
   return modal_frame
@@ -220,7 +225,8 @@ function teleport_history_modal.update_history_list(player)
   })
 
   if #stack == 0 then
-  GuiBase.create_label(history_list, "empty_history_label", "tf-gui.teleport_history_empty", "tf_teleport_history_empty_label")
+    GuiBase.create_label(history_list, "empty_history_label", "tf-gui.teleport_history_empty",
+      "tf_teleport_history_empty_label")
     return
   end
 
@@ -230,46 +236,10 @@ function teleport_history_modal.update_history_list(player)
     local is_current = (i == pointer)
     if entry and type(entry) == "table" and entry.gps then
       local coords_string = GPSUtils.coords_string_from_gps(entry.gps)
-      ErrorHandler.debug_log("Processing history entry", {
-        index = i,
-        gps = entry.gps,
-        timestamp = entry.timestamp,
-        coords_string = coords_string,
-        is_current = is_current
-      })
       local chart_tag = Lookups.get_chart_tag_by_gps(entry.gps)
       local tag_icon = chart_tag and chart_tag.icon
-      local display_text = coords_string or entry.gps or "Invalid GPS"
-      local icon_rich_text = nil
-      if tag_icon and tag_icon.name then
-        local icon_type = tag_icon.type
-        local icon_name = tag_icon.name
-        if icon_type == "virtual" then
-          icon_type = "virtual-signal"
-        elseif not icon_type or icon_type == "" then
-          if icon_name == "substation" or icon_name == "artillery-targeting-remote" then
-            icon_type = "item"
-          elseif icon_name == "defender-capsule" then
-            icon_type = "item"
-          elseif icon_name == "plastic-bar" or icon_name == "solar-panel" or icon_name == "flamethrower-ammo" then
-            icon_type = "item"
-          elseif string.find(icon_name, "%bar$") or string.find(icon_name, "%panel$") or string.find(icon_name, "%ammo$") then
-            icon_type = "item"
-          elseif string.find(icon_name, "^signal-") then
-            icon_type = "virtual-signal"
-          else
-            icon_type = "item"
-          end
-        end
-        icon_rich_text = "[" .. icon_type .. "=" .. icon_name .. "]"
-      end
-
-      -- Add locale-formatted date label (left-aligned, med-light grey)
-      local date_string = nil
-      local ok, result = pcall(function()
-        return HistoryItem.get_locale_time(player, entry)
-      end)
-      if ok then date_string = result else date_string = "" end
+      local tag = Cache.get_tag_by_gps(player, entry.gps) or nil
+      
 
       -- Create horizontal flow for this row
       local row_flow = GuiBase.create_element("flow", history_list, {
@@ -278,14 +248,11 @@ function teleport_history_modal.update_history_list(player)
         style = "tf_teleport_history_flow"
       })
 
-      -- Add icon (if any)
-      if icon_rich_text then
-        GuiBase.create_label(row_flow, "teleport_history_icon_label_" .. tostring(i), icon_rich_text, "tf_teleport_history_date_label")
-      end
 
-      -- Add GPS button
+      -- Add GPS button - gps button has children
       local button_style = is_current and "tf_teleport_history_item_current" or "tf_teleport_history_item"
       local button_name = "teleport_history_item_" .. tostring(i)
+      local display_text = coords_string or entry.gps or "Invalid GPS"
       local success_button, item_button = pcall(function()
         return GuiBase.create_button(
           row_flow,
@@ -304,7 +271,7 @@ function teleport_history_modal.update_history_list(player)
             item_index = i
           })
         end
-        item_button.tags = {teleport_history_index = i}
+        item_button.tags = { teleport_history_index = i }
         ErrorHandler.debug_log("Created teleport history item button", {
           button_name = item_button.name,
           button_tags = item_button.tags,
@@ -319,13 +286,29 @@ function teleport_history_modal.update_history_list(player)
         })
       end
 
+      
       -- Add date label inline
       GuiBase.create_label(
-        row_flow,
+        item_button,
         "teleport_history_date_label_" .. tostring(i),
-        date_string,
+        tostring(entry.timestamp),
         "tf_teleport_history_date_label"
       )
+
+
+      -- Add icon (if any)
+      local icon_rich_text = nil
+      if tag_icon and tag_icon.name then
+        local icon_name = tag_icon.name
+        local icon_type = IconTypeLookup.get_icon_type(icon_name) or tag_icon.type or "item"
+        icon_rich_text = "[" .. icon_type .. "=" .. icon_name .. "]"
+      end
+      if icon_rich_text then
+        GuiBase.create_label(item_button, "teleport_history_icon_label_" .. tostring(i), icon_rich_text,
+          "tf_teleport_history_date_label")
+      end
+
+
     else
       ErrorHandler.debug_log("Invalid HistoryItem in history stack", {
         index = i,
