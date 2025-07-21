@@ -218,8 +218,10 @@ local function init_player_data(player)
   }
 
   -- Persistent pin state and modal position
-  player_data.history_modal_pin = player_data.history_modal_pin and player_data.history_modal_pin or false
-  
+  if player_data.history_modal_pin == nil then
+    player_data.history_modal_pin = false
+  end
+
   local pos = player_data.history_modal_position
   local needs_default = false
   if pos == nil then

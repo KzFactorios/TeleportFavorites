@@ -1,29 +1,3 @@
-data:extend {
-  {
-    type = "sprite",
-    name = "tf_eyelash_black",
-    filename = "__TeleportFavorites__/graphics/icons8-eyelash-50.png",
-    width = 50,
-    height = 50,
-    flags = { "gui-icon" }
-  },
-  {
-    type = "sprite",
-    name = "tf_eye_black",
-    filename = "__TeleportFavorites__/graphics/icons8-eye-50.png",
-    width = 50,
-    height = 50,
-    flags = { "gui-icon" }
-  },
-  {
-    type = "sprite",
-    name = "tf_history_black",
-    filename = "__TeleportFavorites__/graphics/icons8-history-48.png",
-    width = 48,
-    height = 48,
-    flags = { "gui-icon" }
-  }
-}
 ---@diagnostic disable: undefined-global
 
 -- data.lua
@@ -328,9 +302,9 @@ data:extend({
   {
     type = "sprite",
     name = "tf_scroll_history",
-    filename = "__TeleportFavorites__/graphics/icons8-history-48.png",
-    width = 48,
-    height = 48,
+    filename = "__TeleportFavorites__/graphics/icons8-history-50.png",
+    width = 50,
+    height = 50,
     flags = { "gui-icon" }
   },
   {

@@ -39,9 +39,18 @@ function teleport_history_modal.on_gui_closed(event)
   if not player or not player.valid then return end
   if not event.element or not event.element.valid then return end
 
+  -- Fallback for gui_closed_reason if not defined
+  local gui_closed_reason = defines and defines.gui_closed_reason or { closed = 0, escaped = 1, switch_guis = 2, unknown = 3 }
+
   local gui_frame = GuiValidation.get_gui_frame_by_element(event.element)
   if (gui_frame and gui_frame.name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL) or event.element.name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL then
-    teleport_history_modal.destroy(player)
+    -- Only clear modal state for user-initiated closes (ESC, close button)
+    local reason = event.reason or gui_closed_reason.unknown
+    if reason == gui_closed_reason.escaped or reason == gui_closed_reason.closed then
+      teleport_history_modal.destroy(player, false) -- user-initiated, clear state
+    else
+      teleport_history_modal.destroy(player, true) -- view switch, preserve state
+    end
     return
   end
 end
@@ -49,6 +58,10 @@ end
 --- Build the teleport history modal dialog
 ---@param player LuaPlayer
 function teleport_history_modal.build(player)
+
+  -- Cache the pin state at the very top so it is preserved across destroy/build
+  local pinned = Cache.get_history_modal_pin(player)
+
   -- Register observer to auto-refresh modal
   TeleportHistory.register_observer(function(obs_player)
     if obs_player and obs_player.valid and teleport_history_modal.is_open(obs_player) then
@@ -59,8 +72,26 @@ function teleport_history_modal.build(player)
   ErrorHandler.debug_log("[MODAL] build called", { player = player and player.name or "<nil>" })
   if not BasicHelpers.is_valid_player(player) then return end
 
-  -- Destroy any existing modal first
-  teleport_history_modal.destroy(player)
+  -- Hide modal in remote view or editor mode if the current surface is a space platform
+  local should_hide = false
+  local surface = player.surface
+  if surface and surface.valid then
+    if surface.platform ~= nil then
+      should_hide = true
+    else
+      local surface_name = surface.name or ""
+      if player.controller_type == defines.controllers.editor and (surface_name:lower():find("space") or surface_name:lower():find("platform")) then
+        should_hide = true
+      end
+    end
+  end
+  if should_hide then
+    ErrorHandler.debug_log("[MODAL] not shown due to space platform/editor logic", { player = player and player.name or "<nil>" })
+    return
+  end
+
+  -- Destroy any existing modal first, but do not reset pin state
+  teleport_history_modal.destroy(player, true)
 
   -- Set modal dialog state in cache
   Cache.set_modal_dialog_state(player, "teleport_history")
@@ -111,14 +142,18 @@ function teleport_history_modal.build(player)
     title_label.caption = { "tf-gui.teleport_history_modal_title" }
   end
 
-  -- Draggable space between title and buttons
+
+  -- Draggable space between title and buttons (always present, but only draggable if not pinned)
   local draggable = GuiBase.create_draggable(titlebar, "tf_titlebar_draggable")
   if draggable and draggable.valid then
-    draggable.drag_target = modal_frame
+    if not pinned then
+      draggable.drag_target = modal_frame
+    else
+      draggable.drag_target = nil -- disables dragging when pinned
+    end
   end
 
   -- Pin button (left of close button)
-  local pinned = Cache.get_history_modal_pin(player)
   local pin_sprite = pinned and "tf_pin_tilt_black" or "tf_pin_tilt_white"
   local pin_style = pinned and "tf_history_modal_pin_button_active" or "tf_teleport_history_modal_pin_button"
   local pin_button = GuiBase.create_icon_button(titlebar, "teleport_history_modal_pin_button",
@@ -126,7 +161,7 @@ function teleport_history_modal.build(player)
 
   -- Close button
   local close_button = GuiBase.create_icon_button(titlebar, "teleport_history_modal_close_button",
-    Enum.SpriteEnum.CLOSE, {"tf-gui.close"}, "tf_frame_action_button")
+    Enum.SpriteEnum.CLOSE, { "tf-gui.close" }, "tf_frame_action_button")
   if close_button and close_button.valid then
     close_button.enabled = not pinned
   end
@@ -183,12 +218,15 @@ end
 
 --- Destroy the teleport history modal
 ---@param player LuaPlayer|nil
-function teleport_history_modal.destroy(player)
+--- Destroy the teleport history modal
+---@param player LuaPlayer|nil
+---@param preserve_state boolean|nil If true, do not clear modal dialog state in cache
+function teleport_history_modal.destroy(player, preserve_state)
   if not BasicHelpers.is_valid_player(player) then return end
-
-  -- Clear modal dialog state
   if not player or not player.valid then return end
-  Cache.set_modal_dialog_state(player, nil)
+  if not preserve_state then
+    Cache.set_modal_dialog_state(player, nil)
+  end
 
   -- Close the modal if it exists
   local modal_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]

@@ -129,13 +129,30 @@ end
 --- Check if player should have favorites bar hidden due to space platform editing
 ---@param player LuaPlayer The player to check
 ---@return boolean should_hide_bar True if the bar should be hidden
+
+--- Check if player should have favorites bar hidden due to remote view of a space platform (Factorio 2.0+)
+---@param player LuaPlayer The player to check
+---@return boolean should_hide_bar True if the bar should be hidden
 function basic_helpers.should_hide_favorites_bar_for_space_platform(player)
   if not player or not player.valid then return false end
+
+  -- Never hide for chart/map view (chart or chart_zoomed_in render modes)
+  if player.render_mode == defines.render_mode.chart or player.render_mode == defines.render_mode.chart_zoomed_in then
+    return false
+  end
+
   local surface = player.surface
-  if player.controller_type == defines.controllers.editor then
-    local surface_name = surface and surface.name or ""
-    if surface_name:lower():find("space") or surface_name:lower():find("platform") then
+  if surface and surface.valid then
+    -- Hide for any space platform surface in any mode (except chart views)
+    if surface.platform ~= nil then
       return true
+    end
+    -- Hide in editor mode if surface name contains 'space' or 'platform'
+    if player.controller_type == defines.controllers.editor then
+      local surface_name = surface.name or ""
+      if surface_name:lower():find("space") or surface_name:lower():find("platform") then
+        return true
+      end
     end
   end
   return false

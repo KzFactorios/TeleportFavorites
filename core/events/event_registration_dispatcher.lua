@@ -58,6 +58,7 @@ end
 ---@param script table The Factorio script object
 ---@return boolean success
 function EventRegistrationDispatcher.register_core_events(script)
+  -- ...existing code...
   if not script or type(script.on_event) ~= "function" then
     ErrorHandler.warn_log("Invalid script object for core events registration")
     return false
@@ -68,155 +69,153 @@ function EventRegistrationDispatcher.register_core_events(script)
   local registration_count = 0
   local error_count = 0
 
-  -- Core lifecycle events
-  local core_events = {
-    [defines.events.on_player_created] = {
-      handler = function(event)
-        handlers.on_player_created(event)
-        -- Also setup observers for new players
-        local player = game.players[event.player_index]
-      end,
-      name = "on_player_created"
-    },
-    [defines.events.on_player_joined_game] = {
-      handler = function(event)
-        handlers.on_player_created(event)
-        -- Also setup observers for joined players
-        local player = game.players[event.player_index]
-        if player and player.valid then
-          -- Reset transient states for rejoining players
-          -- This handles cases where cleanup on leave may have failed
-          local player_data = Cache.get_player_data(player)
+  local core_events = {}
+  core_events[defines.events.on_player_created] = {
+    handler = function(event)
+      handlers.on_player_created(event)
+      -- Also setup observers for new players
+      local player = game.players[event.player_index]
+    end,
+    name = "on_player_created"
+  }
+  core_events[defines.events.on_player_joined_game] = {
+    handler = function(event)
+      handlers.on_player_created(event)
+      -- Also setup observers for joined players
+      local player = game.players[event.player_index]
+      if player and player.valid then
+        -- Reset transient states for rejoining players
+        -- This handles cases where cleanup on leave may have failed
+        local player_data = Cache.get_player_data(player)
 
-          -- Reset drag mode state
-          if player_data.drag_favorite then
-            player_data.drag_favorite.active = false
-            player_data.drag_favorite.source_slot = nil
-            player_data.drag_favorite.favorite = nil
-          end
-
-          -- Reset move mode state
-          if player_data.tag_editor_data and player_data.tag_editor_data.move_mode then
-            player_data.tag_editor_data.move_mode = false
-            player_data.tag_editor_data.error_message = ""
-          end
-
-          -- Clear cursor
-          pcall(function()
-            player.clear_cursor()
-          end)
-
-          ErrorHandler.debug_log("Transient states reset for rejoining player", {
-            player = player.name,
-            player_index = player.index
-          })
-
-          -- Import gui_observer safely
-          local success, gui_observer = pcall(require, "core.events.gui_observer")
-          if success and gui_observer.GuiEventBus and gui_observer.GuiEventBus.register_player_observers then
-            gui_observer.GuiEventBus.register_player_observers(player)
-          end
-        end
-      end,
-      name = "on_player_joined_game"
-    },
-    [defines.events.on_player_changed_surface] = {
-      handler = handlers.on_player_changed_surface,
-      name = "on_player_changed_surface"
-    },
-    [defines.events.on_player_left_game] = {
-      handler = function(event)
-        -- Get the leaving player before handling chart tag ownership
-        local leaving_player = game.players[event.player_index]
-        local ErrorHandler = require("core.utils.error_handler")
-
-        -- Handle chart tag ownership reset
-        local ChartTagOwnershipManager = require("core.control.chart_tag_ownership_manager")
-        ChartTagOwnershipManager.on_player_left_game(event)
-
-      end,
-      name = "on_player_left_game"
-    },
-    [defines.events.on_player_removed] = {
-      handler = function(event)
-        -- Get the removed player before handling chart tag ownership
-        local removed_player = game.players[event.player_index]
-        local ErrorHandler = require("core.utils.error_handler")
-
-        -- Handle chart tag ownership reset
-        local ChartTagOwnershipManager = require("core.control.chart_tag_ownership_manager")
-        ChartTagOwnershipManager.on_player_removed(event)
-
-      end,
-      name = "on_player_removed"
-    },
-    [defines.events.on_runtime_mod_setting_changed] = {
-      handler = function(event) -- Handle changes to the favorites on/off setting
-        ErrorHandler.debug_log("[SETTINGS] on_runtime_mod_setting_changed fired for setting: " .. tostring(event.setting))
-        ErrorHandler.debug_log("[SETTINGS] Event player_index: " .. tostring(event.player_index))
-        ErrorHandler.debug_log("[SETTINGS] Event setting_type: " .. tostring(event.setting_type))
-        
-        if event.setting == "favorites_on" then
-          ErrorHandler.debug_log("[SETTINGS] Processing favorites_on change")
-          for _, player in pairs(game.connected_players) do
-            -- Invalidate cache first to ensure we get fresh settings
-            Cache.Settings.invalidate_player_cache(player)
-            local player_settings = Cache.Settings.get_player_settings(player)
-            ErrorHandler.debug_log("[SETTINGS] Player " .. player.name .. " favorites_on: " .. tostring(player_settings.favorites_on))
-            
-            -- Always rebuild the bar to update visibility - don't destroy it completely
-            -- The build function handles showing/hiding specific elements based on settings
-            fave_bar.build(player, true) -- Force rebuild to update element visibility
-            ErrorHandler.debug_log("[SETTINGS] Rebuilt favorites bar for player " .. player.name .. " (favorites_on: " .. tostring(player_settings.favorites_on) .. ")")
-          end
-          ErrorHandler.debug_log("[SETTINGS] favorites_on processing complete")
-          return
-        end
-        
-        if event.setting == "enable_teleport_history" then
-          ErrorHandler.debug_log("[SETTINGS] Processing enable_teleport_history change")
-          for _, player in pairs(game.connected_players) do
-            -- Invalidate cache first to ensure we get fresh settings
-            Cache.Settings.invalidate_player_cache(player)
-            local player_settings = Cache.Settings.get_player_settings(player)
-            ErrorHandler.debug_log("[SETTINGS] Player " .. player.name .. " enable_teleport_history: " .. tostring(player_settings.enable_teleport_history))
-            
-            -- If teleport history is being disabled, close any open modal
-            if not player_settings.enable_teleport_history then
-              teleport_history_modal.destroy(player)
-              ErrorHandler.debug_log("[SETTINGS] Closed teleport history modal for player " .. player.name)
-            end
-            
-            -- Rebuild the favorites bar to reflect the new teleport history setting
-            fave_bar.build(player, true)
-            ErrorHandler.debug_log("[SETTINGS] Rebuilt favorites bar for teleport history change for player " .. player.name)
-          end
-          ErrorHandler.debug_log("[SETTINGS] enable_teleport_history processing complete")
-          return
+        -- Reset drag mode state
+        if player_data.drag_favorite then
+          player_data.drag_favorite.active = false
+          player_data.drag_favorite.source_slot = nil
+          player_data.drag_favorite.favorite = nil
         end
 
-        -- Destination message setting has been removed - messages always shown
-        ErrorHandler.debug_log("[SETTINGS] Unknown setting changed: " .. tostring(event.setting))
-      end,
-      name = "on_runtime_mod_setting_changed"
-    },
-    [defines.events.on_player_controller_changed] = {
-      handler = fave_bar.on_player_controller_changed,
-      name = "on_player_controller_changed"
-    },
-    -- Chart tag events - Critical: These were missing!
-    [defines.events.on_chart_tag_added] = {
-      handler = handlers.on_chart_tag_added,
-      name = "on_chart_tag_added"
-    },
-    [defines.events.on_chart_tag_modified] = {
-      handler = handlers.on_chart_tag_modified,
-      name = "on_chart_tag_modified"
-    },
-    [defines.events.on_chart_tag_removed] = {
-      handler = handlers.on_chart_tag_removed,
-      name = "on_chart_tag_removed"
-    }
+        -- Reset move mode state
+        if player_data.tag_editor_data and player_data.tag_editor_data.move_mode then
+          player_data.tag_editor_data.move_mode = false
+          player_data.tag_editor_data.error_message = ""
+        end
+
+        -- Clear cursor
+        pcall(function()
+          player.clear_cursor()
+        end)
+
+        ErrorHandler.debug_log("Transient states reset for rejoining player", {
+          player = player.name,
+          player_index = player.index
+        })
+
+        -- Import gui_observer safely
+        local success, gui_observer = pcall(require, "core.events.gui_observer")
+        if success and gui_observer.GuiEventBus and gui_observer.GuiEventBus.register_player_observers then
+          gui_observer.GuiEventBus.register_player_observers(player)
+        end
+      end
+    end,
+    name = "on_player_joined_game"
+  }
+  core_events[defines.events.on_player_changed_surface] = {
+    handler = handlers.on_player_changed_surface,
+    name = "on_player_changed_surface"
+  }
+  core_events[defines.events.on_player_left_game] = {
+    handler = function(event)
+      -- Get the leaving player before handling chart tag ownership
+      local leaving_player = game.players[event.player_index]
+      local ErrorHandler = require("core.utils.error_handler")
+
+      -- Handle chart tag ownership reset
+      local ChartTagOwnershipManager = require("core.control.chart_tag_ownership_manager")
+      ChartTagOwnershipManager.on_player_left_game(event)
+
+    end,
+    name = "on_player_left_game"
+  }
+  core_events[defines.events.on_player_removed] = {
+    handler = function(event)
+      -- Get the removed player before handling chart tag ownership
+      local removed_player = game.players[event.player_index]
+      local ErrorHandler = require("core.utils.error_handler")
+
+      -- Handle chart tag ownership reset
+      local ChartTagOwnershipManager = require("core.control.chart_tag_ownership_manager")
+      ChartTagOwnershipManager.on_player_removed(event)
+
+    end,
+    name = "on_player_removed"
+  }
+  core_events[defines.events.on_runtime_mod_setting_changed] = {
+    handler = function(event) -- Handle changes to the favorites on/off setting
+      ErrorHandler.debug_log("[SETTINGS] on_runtime_mod_setting_changed fired for setting: " .. tostring(event.setting))
+      ErrorHandler.debug_log("[SETTINGS] Event player_index: " .. tostring(event.player_index))
+      ErrorHandler.debug_log("[SETTINGS] Event setting_type: " .. tostring(event.setting_type))
+      
+      if event.setting == "favorites_on" then
+        ErrorHandler.debug_log("[SETTINGS] Processing favorites_on change")
+        for _, player in pairs(game.connected_players) do
+          -- Invalidate cache first to ensure we get fresh settings
+          Cache.Settings.invalidate_player_cache(player)
+          local player_settings = Cache.Settings.get_player_settings(player)
+          ErrorHandler.debug_log("[SETTINGS] Player " .. player.name .. " favorites_on: " .. tostring(player_settings.favorites_on))
+          
+          -- Always rebuild the bar to update visibility - don't destroy it completely
+          -- The build function handles showing/hiding specific elements based on settings
+          fave_bar.build(player, true) -- Force rebuild to update element visibility
+          ErrorHandler.debug_log("[SETTINGS] Rebuilt favorites bar for player " .. player.name .. " (favorites_on: " .. tostring(player_settings.favorites_on) .. ")")
+        end
+        ErrorHandler.debug_log("[SETTINGS] favorites_on processing complete")
+        return
+      end
+      
+      if event.setting == "enable_teleport_history" then
+        ErrorHandler.debug_log("[SETTINGS] Processing enable_teleport_history change")
+        for _, player in pairs(game.connected_players) do
+          -- Invalidate cache first to ensure we get fresh settings
+          Cache.Settings.invalidate_player_cache(player)
+          local player_settings = Cache.Settings.get_player_settings(player)
+          ErrorHandler.debug_log("[SETTINGS] Player " .. player.name .. " enable_teleport_history: " .. tostring(player_settings.enable_teleport_history))
+          
+          -- If teleport history is being disabled, close any open modal
+          if not player_settings.enable_teleport_history then
+            teleport_history_modal.destroy(player)
+            ErrorHandler.debug_log("[SETTINGS] Closed teleport history modal for player " .. player.name)
+          end
+          
+          -- Rebuild the favorites bar to reflect the new teleport history setting
+          fave_bar.build(player, true)
+          ErrorHandler.debug_log("[SETTINGS] Rebuilt favorites bar for teleport history change for player " .. player.name)
+        end
+        ErrorHandler.debug_log("[SETTINGS] enable_teleport_history processing complete")
+        return
+      end
+
+      -- Destination message setting has been removed - messages always shown
+      ErrorHandler.debug_log("[SETTINGS] Unknown setting changed: " .. tostring(event.setting))
+    end,
+    name = "on_runtime_mod_setting_changed"
+  }
+  core_events[defines.events.on_player_controller_changed] = {
+    handler = fave_bar.on_player_controller_changed,
+    name = "on_player_controller_changed"
+  }
+  -- Chart tag events - Critical: These were missing!
+  core_events[defines.events.on_chart_tag_added] = {
+    handler = handlers.on_chart_tag_added,
+    name = "on_chart_tag_added"
+  }
+  core_events[defines.events.on_chart_tag_modified] = {
+    handler = handlers.on_chart_tag_modified,
+    name = "on_chart_tag_modified"
+  }
+  core_events[defines.events.on_chart_tag_removed] = {
+    handler = handlers.on_chart_tag_removed,
+    name = "on_chart_tag_removed"
   }
 
   -- Add scheduled GUI observer cleanup (every 5 minutes = 18000 ticks)

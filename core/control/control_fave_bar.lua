@@ -192,12 +192,8 @@ local function handle_history_toggle_button_click(event, player)
   })
   local modal_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]
   local modal_open = modal_frame and modal_frame.valid
-  local pinned = Cache.get_history_modal_pin(player)
   if modal_open then
-    -- Always unpin and close if open
-    if pinned then
-      Cache.set_history_modal_pin(player, false)
-    end
+    -- Just close the modal, do not change pin state
     TeleportHistoryModal.destroy(player)
   else
     TeleportHistoryModal.build(player)
