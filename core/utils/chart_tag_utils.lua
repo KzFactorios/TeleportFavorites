@@ -14,6 +14,7 @@ local ErrorHandler = require("core.utils.error_handler")
 local GPSUtils = require("core.utils.gps_utils")
 local Cache = require("core.cache.cache")
 local BasicHelpers = require("core.utils.basic_helpers")
+local icon_typing = require("core.cache.icon_typing")
 
 ---@class ChartTagUtils
 local ChartTagUtils = {}
@@ -142,8 +143,7 @@ function ChartTagUtils.safe_add_chart_tag(force, surface, spec, player)
   end
 
   -- Register the icon in icon_typing storage for O(1) lookup
-  if spec.icon then
-    local icon_typing = require("core.cache.icon_typing")
+  if spec.icon then    
     icon_typing.format_icon_as_rich_text(spec.icon)
   end
 

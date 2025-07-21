@@ -66,13 +66,27 @@ end
 ---@param icon table { name: string, type?: string }
 ---@return string # Rich text string for the icon (e.g. [item=iron-plate])
 function icon_typing.format_icon_as_rich_text(icon)
-  if not icon or type(icon) ~= "table" or not icon.name or type(icon.name) ~= "string" or icon.name == "" then
+  local ok, result = pcall(function()
+    if not icon or type(icon) ~= "table" or not icon.name or type(icon.name) ~= "string" or icon.name == "" then
+      return ""
+    end
+    local icon_type = get_icon_type(icon)
+    if type(icon_type) ~= "string" or icon_type == "" then icon_type = "item" end
+    -- Patch: For rich text, use 'virtual-signal' (hyphen) for virtual signals
+    if icon_type == "virtual_signal" then
+      icon_type = "virtual-signal"
+    end
+    local icon_name = icon.name
+    return string.format("[%s=%s]", icon_type, icon_name)
+  end)
+  if ok and type(result) == "string" then
+    return result
+  else
+    if ErrorHandler and ErrorHandler.warn_log then
+      ErrorHandler.warn_log("format_icon_as_rich_text failed, returning blank", { icon = icon, error = result })
+    end
     return ""
   end
-  local icon_type = get_icon_type(icon)
-  if type(icon_type) ~= "string" or icon_type == "" then icon_type = "item" end
-  local icon_name = icon.name
-  return string.format("[%s=%s]", icon_type, icon_name)
 end
 
 --- Erases all entries in the icon_type_lookup table (non-persistent)
