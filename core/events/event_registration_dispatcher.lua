@@ -3,6 +3,7 @@
 -- Centralized event registration dispatcher for all mod events, with safe wrappers and unified API.
 
 local ErrorHandler = require("core.utils.error_handler")
+local icon_typing = require("core.cache.icon_typing")
 local Cache = require("core.cache.cache")
 local gui_event_dispatcher = require("core.events.gui_event_dispatcher")
 local custom_input_dispatcher = require("core.events.custom_input_dispatcher")
@@ -225,12 +226,17 @@ function EventRegistrationDispatcher.register_core_events(script)
         gui_observer.GuiEventBus.schedule_periodic_cleanup()
       end
     end)
+    -- Add scheduled icon_typing table reset (every 15 minutes = 54000 ticks)
+    script.on_nth_tick(54000, function(event)
+      icon_typing.reset_icon_type_lookup()
+      ErrorHandler.debug_log("icon_typing table reset (every 15 minutes)")
+    end)
   end)
 
   if not success then
-    ErrorHandler.warn_log("Failed to register periodic GUI observer cleanup", { error = err })
+    ErrorHandler.warn_log("Failed to register periodic GUI observer cleanup or icon_typing reset", { error = err })
   else
-    ErrorHandler.debug_log("Registered periodic GUI observer cleanup (every 5 minutes)")
+    ErrorHandler.debug_log("Registered periodic GUI observer cleanup (every 5 minutes) and icon_typing reset (every 15 minutes)")
   end
 
   -- Register each core event with safety wrapper

@@ -43,7 +43,6 @@ function handlers.on_player_changed_surface(event)
   with_valid_player(event.player_index, function(player)
     if player.surface and player.surface.valid and player.surface.index ~= event.surface_index then
       Cache.ensure_surface_cache(event.surface_index)
-      Cache.set_player_surface(player, event.surface_index)
     end
   end)
 end
@@ -54,10 +53,10 @@ function handlers.on_init()
   for _, player in pairs(game.players) do
     if Cache.get_player_data(player) == nil then
       Cache.reset_transient_player_states(player)
-    end
 
-    -- TODO use this area to reset old cache keys
-    Cache["players"][player.index].data_viewer_settings = nil
+      -- TODO remove for release
+      storage.players[player.index].data_viewer_settings = nil
+    end
 
     register_gui_observers(player)
     fave_bar.build(player, true) -- Force show during initialization

@@ -34,9 +34,12 @@ local Constants = {
       -- Physics
     BOUNDING_BOX_TOLERANCE = 4,      -- Tolerance in tiles for bounding box calculations    
 
-    -- Text limits
-    -- Maximum character length for tag text
-    TAG_TEXT_MAX_LENGTH = 256
+  -- Text limits
+  -- Maximum character length for tag text
+  TAG_TEXT_MAX_LENGTH = 256,
+
+  -- Teleport history label max display length
+  TELEPORT_HISTORY_LABEL_MAX_DISPLAY = 27
   },
   
   -- Command definitions

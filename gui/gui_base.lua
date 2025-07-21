@@ -33,6 +33,34 @@ local BasicHelpers = require("core.utils.basic_helpers")
 local GuiBase = {}
 
 
+--- Create an image element with optional style.
+--- @param parent LuaGuiElement: Parent element
+--- @param name string: Name of the image element
+--- @param image_path string: Image or sprite path (e.g., 'item/iron-plate')
+--- @param style? string|nil: Optional style name
+--- @return LuaGuiElement: The created image element
+function GuiBase.create_image(parent, name, image_path, style)
+    local opts = { name = name, image = image_path }
+    if style then
+        opts.style = style
+    end
+    return GuiBase.create_element('image', parent, opts)
+end
+
+--- Create a sprite element with optional style.
+--- @param parent LuaGuiElement: Parent element
+--- @param name string: Name of the sprite element
+--- @param sprite_path string: Sprite path (e.g., 'item/iron-plate')
+--- @param style? string|nil: Optional style name
+--- @return LuaGuiElement: The created sprite element
+function GuiBase.create_sprite(parent, name, sprite_path, style)
+    local opts = { name = name, sprite = sprite_path }
+    if style then
+        opts.style = style
+    end
+    return GuiBase.create_element('sprite', parent, opts)
+end
+
 --- Create an icon (sprite) button with tooltip and style.
 --- @param parent LuaGuiElement: Parent element
 --- @param name string: Name of the button

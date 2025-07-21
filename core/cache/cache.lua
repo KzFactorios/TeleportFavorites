@@ -217,7 +217,83 @@ local function init_player_data(player)
     dialog_type = nil
   }
 
+  -- Persistent pin state and modal position
+  if player_data.history_modal_pin == nil then
+    player_data.history_modal_pin = false
+  end
+  if player_data.history_modal_position == nil then
+    player_data.history_modal_position = { x = nil, y = nil }
+  end
+
   return player_data
+
+end
+
+--- Get persistent pin state for teleport history modal
+---@param player LuaPlayer
+---@return boolean
+function Cache.get_history_modal_pin(player)
+  local player_data = Cache.get_player_data(player)
+  return player_data.history_modal_pin == true
+end
+
+--- Set persistent pin state for teleport history modal
+---@param player LuaPlayer
+---@param value boolean
+function Cache.set_history_modal_pin(player, value)
+  local player_data = Cache.get_player_data(player)
+  player_data.history_modal_pin = value == true
+end
+
+--- Get persistent position for teleport history modal
+---@param player LuaPlayer
+---@return table|nil
+function Cache.get_history_modal_position(player)
+  local player_data = Cache.get_player_data(player)
+  return player_data.history_modal_position
+end
+
+--- Set persistent position for teleport history modal
+---@param player LuaPlayer
+---@param pos table { x = number, y = number }
+function Cache.set_history_modal_position(player, pos)
+  local player_data = Cache.get_player_data(player)
+  if type(pos) == "table" and type(pos.x) == "number" and type(pos.y) == "number" then
+    player_data.history_modal_position = { x = pos.x, y = pos.y }
+  end
+--- Get persistent pin state for teleport history modal
+---@param player LuaPlayer
+---@return boolean
+function Cache.get_history_modal_pin(player)
+  local player_data = Cache.get_player_data(player)
+  return player_data.history_modal_pin == true
+end
+
+--- Set persistent pin state for teleport history modal
+---@param player LuaPlayer
+---@param value boolean
+function Cache.set_history_modal_pin(player, value)
+  local player_data = Cache.get_player_data(player)
+  player_data.history_modal_pin = value == true
+end
+
+--- Get persistent position for teleport history modal
+---@param player LuaPlayer
+---@return table|nil
+function Cache.get_history_modal_position(player)
+  local player_data = Cache.get_player_data(player)
+  return player_data.history_modal_position
+end
+
+--- Set persistent position for teleport history modal
+---@param player LuaPlayer
+---@param pos table { x = number, y = number }
+function Cache.set_history_modal_position(player, pos)
+  local player_data = Cache.get_player_data(player)
+  if type(pos) == "table" and type(pos.x) == "number" and type(pos.y) == "number" then
+    player_data.history_modal_position = { x = pos.x, y = pos.y }
+  end
+end
 end
 
 --- Retrieve a value from the persistent cache by key.
@@ -536,14 +612,6 @@ function Cache.ensure_surface_cache(surface_index)
   end
   ---@diagnostic disable-next-line: undefined-field
   return Cache.Lookups.ensure_surface_cache(surface_index)
-end
-
---- Set the player's surface (for test and event handler use)
----@param player LuaPlayer
----@param surface_index integer
-function Cache.set_player_surface(player, surface_index)
-  if not player or not player.valid then return end
-  player.surface = game.surfaces[surface_index]
 end
 
 ---@param player LuaPlayer

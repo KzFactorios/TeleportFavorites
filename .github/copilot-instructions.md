@@ -1,3 +1,4 @@
+# IMPORTANT: All code, API usage, and modding guidance in this project MUST target Factorio v2.0+ and above. Do not use deprecated or legacy patterns from earlier versions. Always verify compatibility and reference the v2.0+ documentation for all features, prototypes, and runtime logic.
 # TeleportFavorites Factorio Mod — AI Agent Instructions
 
 ## 🎯 PROJECT OVERVIEW
@@ -366,16 +367,17 @@ end)
 - `.project/game_rules.md` - Multiplayer permissions & tag ownership
 - `tests/docs/README.md` - Test execution & framework usage
 
-## 🚨 FACTORIO API ESSENTIALS
 
-### Syntax Rules
+## 🚨 FACTORIO API ESSENTIALS (v2.0+)
+
+### Syntax Rules (v2.0+)
 ```lua
 surface:get_tile(position)      # Method calls with ':'
 chart_tag.position             # Property access with '.'
 player.force:add_chart_tag()   # Chain method calls properly
 ```
 
-### Common Validations
+### Common Validations (v2.0+)
 ```lua
 if not player or not player.valid then return end
 if not chart_tag or not chart_tag.valid then return end  

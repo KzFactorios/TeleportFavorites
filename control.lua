@@ -14,7 +14,7 @@
 local control_tag_editor = require("core.control.control_tag_editor")
 local control_fave_bar = require("core.control.control_fave_bar")
 local control_tag_editor = require("core.control.control_tag_editor")
-local IconTypeLookup = require("core.utils.icon_type_lookup")
+
 
 local event_registration_dispatcher = require("core.events.event_registration_dispatcher")
 local handlers = require("core.events.handlers")
@@ -46,9 +46,6 @@ end
 local function custom_on_init()
   -- Initialize debug system first
   Logger.initialize()
-
-  -- Initialize icon type lookup for O(1) icon type detection
-  IconTypeLookup.initialize()
 
   -- Register all commands
   register_commands()
@@ -101,7 +98,6 @@ end)
 event_registration_dispatcher.register_all_events(script)
 
 -- Run-once startup handler for favorites bar initialization
-
 script.on_event(defines.events.on_tick, function(event)
   if not did_run_fave_bar_startup then
     did_run_fave_bar_startup = true
@@ -114,6 +110,5 @@ script.on_event(defines.events.on_tick, function(event)
     script.on_event(defines.events.on_tick, nil)
   end
 end)
-
 
 if script.active_mods["gvv"] then require("__gvv__.gvv")() end

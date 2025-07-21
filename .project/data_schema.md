@@ -21,6 +21,8 @@ Defines the persistent and runtime data structures for the mod, including player
 │ │     ├─render_mode│   │  │     └─chart_tags_     │        │
 │ │     ├─tag_editor_│   │  │        mapped_by_gps  │        │
 │ │     │  data      │   │  └───────────────────────┘        │
+│ │     ├─history_modal_pin      │   │                                   │
+│ │     ├─history_modal_position │   │                                   │
 │ │     └─surfaces   │   │                                   │
 │ │        └─[index] │   │                                   │
 │ │           └─favo │   │                                   │
@@ -57,6 +59,11 @@ storage = {
         error_message = string,        -- Error message to display (empty string if none)
         move_mode = boolean|nil,       -- True if in move mode
         delete_confirmed = boolean|nil,-- True if delete confirmation is active
+      },
+      history_modal_pin = boolean,         -- Whether teleport history modal is pinned (true = pinned)
+      history_modal_position = {           -- Last location of teleport history modal (persisted)
+        x = number,                       -- X screen coordinate
+        y = number,                       -- Y screen coordinate
       },
       surfaces = {
         [surface_index] = {

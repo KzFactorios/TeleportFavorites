@@ -19,6 +19,7 @@ local BasicHelpers = require("core.utils.basic_helpers")
 local TeleportHistoryModal = require("gui.teleport_history_modal.teleport_history_modal")
 local TeleportHistory = require("core.teleport.teleport_history")
 local TeleportStrategy = require("core.utils.teleport_strategy")
+local Enum = require("prototypes.enums.enum")
 
 local M = {}
 
@@ -189,8 +190,14 @@ local function handle_history_toggle_button_click(event, player)
     event = event,
     player = player and player.name or "<nil>"
   })
-  -- Toggle the teleport history modal
-  if TeleportHistoryModal.is_open(player) then
+  local modal_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]
+  local modal_open = modal_frame and modal_frame.valid
+  local pinned = Cache.get_history_modal_pin(player)
+  if modal_open then
+    -- Always unpin and close if open
+    if pinned then
+      Cache.set_history_modal_pin(player, false)
+    end
     TeleportHistoryModal.destroy(player)
   else
     TeleportHistoryModal.build(player)
@@ -205,9 +212,16 @@ local function on_teleport_history_modal_gui_click(event)
   local player = game.players[event.player_index]
   if not BasicHelpers.is_valid_player(player) then return end
 
+
   -- Handle close button
   if element.name == "teleport_history_modal_close_button" then
     TeleportHistoryModal.destroy(player)
+    return
+  end
+
+  -- Handle pin button
+  if element.name == "teleport_history_modal_pin_button" then
+    TeleportHistoryModal.toggle_pin(player)
     return
   end
 
@@ -259,11 +273,18 @@ local function on_teleport_history_modal_gui_click(event)
 
     if ok and result then
       TeleportHistory.set_pointer(player, player.surface.index, index)
-      TeleportHistoryModal.destroy(player)
+      -- Only close modal if not pinned
+      if not Cache.get_history_modal_pin(player) then
+        TeleportHistoryModal.destroy(player)
+      end
     elseif ok and not result then
       ErrorHandler.warn_log("Teleport failed: strategy returned false", { gps = gps })
     elseif not ok then
       ErrorHandler.warn_log("Teleport failed with error", { error = tostring(result), gps = gps })
+      -- Only close modal if not pinned
+      if not Cache.get_history_modal_pin(player) then
+        TeleportHistoryModal.destroy(player)
+      end
     end
   end
 end

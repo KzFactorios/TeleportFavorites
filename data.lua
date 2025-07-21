@@ -1,3 +1,29 @@
+data:extend {
+  {
+    type = "sprite",
+    name = "tf_eyelash_black",
+    filename = "__TeleportFavorites__/graphics/icons8-eyelash-50.png",
+    width = 50,
+    height = 50,
+    flags = { "gui-icon" }
+  },
+  {
+    type = "sprite",
+    name = "tf_eye_black",
+    filename = "__TeleportFavorites__/graphics/icons8-eye-50.png",
+    width = 50,
+    height = 50,
+    flags = { "gui-icon" }
+  },
+  {
+    type = "sprite",
+    name = "tf_history_black",
+    filename = "__TeleportFavorites__/graphics/icons8-history-48.png",
+    width = 48,
+    height = 48,
+    flags = { "gui-icon" }
+  }
+}
 ---@diagnostic disable: undefined-global
 
 -- data.lua
@@ -176,7 +202,7 @@ data:extend({
     from = "default",
     size = 6
   },
-    {
+  {
     type = "font",
     name = "tf_font_7",
     from = "default",
@@ -249,7 +275,7 @@ data:extend({
     width = 32,
     height = 32,
     scale = 0.25,
-    flags = {"gui-icon"}
+    flags = { "gui-icon" }
   },
   {
     type = "sprite",
@@ -257,7 +283,7 @@ data:extend({
     filename = "__TeleportFavorites__/graphics/square-custom-tag-in-map-view-small.png",
     width = 16,
     height = 16,
-    flags = {"gui-icon"}
+    flags = { "gui-icon" }
   },
   {
     type = "sprite",
@@ -265,7 +291,7 @@ data:extend({
     filename = "__TeleportFavorites__/graphics/icons8-lock-a50.png",
     width = 24,
     height = 24,
-    flags = {"gui-icon"}
+    flags = { "gui-icon" }
   },
   {
     type = "sprite",
@@ -273,7 +299,7 @@ data:extend({
     filename = "__TeleportFavorites__/graphics/icons8-eye-50.png",
     width = 75,
     height = 75,
-    flags = {"gui-icon"}
+    flags = { "gui-icon" }
   },
   {
     type = "sprite",
@@ -281,7 +307,7 @@ data:extend({
     filename = "__TeleportFavorites__/graphics/icons8-eyelash-50.png",
     width = 75,
     height = 75,
-    flags = {"gui-icon"}
+    flags = { "gui-icon" }
   },
   {
     type = "sprite",
@@ -289,23 +315,38 @@ data:extend({
     filename = "__TeleportFavorites__/graphics/icons8-activity-history-72.png", --64 available
     width = 72,
     height = 72,
-    flags = {"gui-icon"}
+    flags = { "gui-icon" }
   },
   {
     type = "sprite",
     name = "tf_time_machine",
-    filename = "__TeleportFavorites__/graphics/icons8-time-machine-50.png", 
+    filename = "__TeleportFavorites__/graphics/icons8-time-machine-50.png",
     width = 72,
     height = 72,
-    flags = {"gui-icon"}
+    flags = { "gui-icon" }
   },
   {
     type = "sprite",
     name = "tf_scroll_history",
-    filename = "__TeleportFavorites__/graphics/icons8-history-48.png", 
+    filename = "__TeleportFavorites__/graphics/icons8-history-48.png",
     width = 48,
     height = 48,
-    flags = {"gui-icon"}
-  }
+    flags = { "gui-icon" }
+  },
+  {
+    type = "sprite",
+    name = "tf_pin_tilt_white",
+    filename = "__TeleportFavorites__/graphics/tf_pin_tilt_white.png",
+    width = 32,
+    height = 32,
+    flags = { "gui-icon" }
+  },
+  {
+    type = "sprite",
+    name = "tf_pin_tilt_black",
+    filename = "__TeleportFavorites__/graphics/tf_pin_tilt_black.png",
+    width = 32,
+    height = 32,
+    flags = { "gui-icon" }
+  },
 })
-

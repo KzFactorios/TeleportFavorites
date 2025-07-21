@@ -36,9 +36,10 @@ function HistoryItem.get_locale_time(player, item)
     if not item or type(item) ~= "table" or type(item.timestamp) ~= "number" then
         return ""
     end
-    if not player or type(player) ~= "table" or not player.valid then
+    if not player or not player.valid then
         return ""
     end
+    
     local now = game and game.tick or 0
     local ticks_ago = now - item.timestamp
     if ticks_ago < 0 then ticks_ago = 0 end

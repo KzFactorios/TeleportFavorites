@@ -3,7 +3,7 @@
 -- core/utils/basic_helpers.lua
 -- TeleportFavorites Factorio Mod
 -- Dependency-free utility functions for math, string, table, GUI, validation, and command helpers.
--- 
+--
 -- Key Patterns:
 --   - Math, string, and table helpers
 --   - GUI and validation helpers
@@ -11,6 +11,9 @@
 --   - Deep copy and table comparison
 --   - No leading underscores for private fields
 --   - No circular dependencies
+
+
+local Constants = require("constants")
 
 
 local basic_helpers = {}
@@ -64,20 +67,52 @@ function basic_helpers.normalize_index(index)
 end
 
 -- ===========================
--- FAVORITE SLOT UTILITIES 
--- ===========================
 
 function basic_helpers.is_locked_favorite(fav)
   return fav and fav.locked == true
 end
 
 function basic_helpers.is_blank_favorite(fav)
-  return not fav or (not fav.gps and not fav.text)
+  return not fav or fav.gps == nil or fav.gps == "" or fav.gps == Constants.settings.BLANK_GPS
+end
+--- Truncates a string containing rich text tags, counting each tag as 3 display spaces
+--- @param text string
+--- @param max_display number
+--- @return string
+function basic_helpers.truncate_rich_text(text, max_display)
+  if not text or text == "" then return "" end
+  local display_count = 0
+  local out = ""
+  local i = 1
+  while i <= #text and display_count < max_display do
+    local tag_start, tag_end = string.find(text, "%[.-%]", i)
+    if tag_start == i then
+      -- Found a rich text tag at current position
+      if type(tag_start) == "number" and type(tag_end) == "number" then
+        if display_count + 3 > max_display then
+          out = out .. "..."
+          break
+        end
+        out = out .. string.sub(text, tag_start, tag_end)
+        display_count = display_count + 3
+        i = tag_end + 1
+      else
+        out = out .. "..."
+        break
+      end
+    else
+      out = out .. string.sub(text, i, i)
+      display_count = display_count + 1
+      i = i + 1
+    end
+    if display_count >= max_display then
+      out = out .. "..."
+      break
+    end
+  end
+  return out
 end
 
--- ===========================
--- GUI HELPERS
--- ===========================
 
 function basic_helpers.update_error_message(update_fn, player, message)
   if update_fn and player then update_fn(player, message) end
@@ -112,18 +147,18 @@ end
 
 --- Ultra-safe player validation (no dependencies)
 --- Returns true only if player exists and is valid
----@param player any 
+---@param player any
 ---@return boolean is_valid
 function basic_helpers.is_valid_player(player)
   return player ~= nil and player.valid == true
 end
 
---- Ultra-safe element validation (no dependencies)  
+--- Ultra-safe element validation (no dependencies)
 --- Returns true only if element exists and is valid
 ---@param element any
 ---@return boolean is_valid
 function basic_helpers.is_valid_element(element)
-  return element ~= nil and element.valid == true  
+  return element ~= nil and element.valid == true
 end
 
 --- Ultra-safe GPS string validation (no dependencies)

@@ -1,16 +1,48 @@
+local position_utils = require("core.utils.position_utils")
 ---@diagnostic disable: undefined-global
 
 -- Custom styles for the Teleport History Modal GUI
 
--- 'data' is a global provided by Factorio during mod loading
----@diagnostic disable-next-line: undefined-global
+
 local gui_style = data.raw["gui-style"].default
+
+
+gui_style.tf_teleport_history_modal_pin_button = {
+    type = "button_style",
+    parent = "tf_frame_action_button",
+    font_color = { r = 1, g = 1, b = 1, a = 1 },
+    right_margin = 8,
+}
+
+-- Pin button style for active (pinned) state
+gui_style.tf_history_modal_pin_button_active = {
+    type = "button_style",
+    parent = "tf_frame_action_button",
+    width = 24,
+    height = 24,
+    right_margin = 8,
+    padding = -4,
+    --icon_scale = 2,
+    font_color = { r = 0, g = 0, b = 0, a = 1 },
+    default_graphical_set = {
+        base = {
+            filename = "__core__/graphics/gui-new.png",
+            priority = "extra-high-no-scale",
+            position = {30,16},
+            width = 20,
+            height = 20,
+            corner_size = 8,
+            scale = 1,
+        }
+    },
+}
 
 -- Teleport history item button (normal state)
 gui_style.tf_teleport_history_item = {
     type = "button_style",
     parent = "list_box_item",
     horizontally_stretchable = "on",
+    horizontal_align = "right",
     padding = 0,
     top_padding = 0,
     bottom_padding = 0,
@@ -25,7 +57,6 @@ gui_style.tf_teleport_history_item = {
     clicked_font_color = { r = 0.5, g = 0.81, b = 0.94 },
     minimal_width = 0,
     height = 20,
-    horizontal_align = "right",
 }
 
 -- Teleport history item button (current/selected state)
@@ -34,8 +65,8 @@ gui_style.tf_teleport_history_item_current = {
     parent = "tf_teleport_history_item",
     font = "default-bold",
     default_font_color = { r = 0.98, g = 0.66, b = 0.22, a = 1 },
-    hovered_font_color = { r = 0.98, g = 0.66, b = 0.22, a = 1 },
-    clicked_font_color = { r = 0.98, g = 0.66, b = 0.22, a = 1 },
+    hovered_font_color = { r = 0.98, g = 0.98, b = 0.98, a = 1 },
+    clicked_font_color = { r = 0.98, g = 0.98, b = 0.98, a = 1 },
 }
 
 -- Flow container for teleport history items (icon + text)
@@ -50,15 +81,6 @@ gui_style.tf_teleport_history_flow = {
     vertical_align = "center",
 }
 
--- Icon sprite for teleport history items
-gui_style.tf_teleport_history_icon = {
-    type = "image_style",
-    size = { 16, 16 },
-    top_margin = 0,
-    right_margin = 6,
-    left_margin = 6,
-}
-
 -- Main modal frame style (reusing tag editor pattern)
 gui_style.tf_teleport_history_modal_frame = {
     type = "frame_style",
@@ -66,7 +88,7 @@ gui_style.tf_teleport_history_modal_frame = {
     padding = 4,
     horizontally_stretchable = "off",
     vertically_stretchable = "off",
-    minimal_width = 280,
+    minimal_width = 350,
     maximal_width = 350,
     minimal_height = 100,
     maximal_height = 500,
@@ -107,8 +129,18 @@ gui_style.tf_teleport_history_date_label = {
     parent = "label",
     font = "tf_font_7",
     horizontally_stretchable = "on",
-    left_padding = 4,
-    font_color = { r = 0.4, g = 0.4, b = 0.4, a = 1 }, -- med-light grey
     horizontal_align = "left",
-    width = 100,
+    right_padding = 4,
+    font_color = { r = 0.4, g = 0.4, b = 0.4, a = 1 }, -- med-light grey
+    width = 110,
+}
+
+-- History icon label style (for rich text icon labels)
+gui_style.tf_history_icon_label = {
+    type = "label_style",
+    font = "tf_font_9",
+    top_padding = -2,
+    left_padding = 40,
+    horizontally_stretchable = "off",
+    vertically_stretchable = "off",
 }
