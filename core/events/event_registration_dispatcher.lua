@@ -14,6 +14,7 @@ local handlers = require("core.events.handlers")
 local GuiHelpers = require("core.utils.gui_helpers")
 local ModalInputBlocker = require("core.events.modal_input_blocker")
 local GuiValidation = require("core.utils.gui_validation")
+local Enum = require("prototypes.enums.enum")
 
 
 ---@class EventRegistrationDispatcher
@@ -231,12 +232,24 @@ function EventRegistrationDispatcher.register_core_events(script)
       icon_typing.reset_icon_type_lookup()
       ErrorHandler.debug_log("icon_typing table reset (every 15 minutes)")
     end)
+    -- Register on_gui_location_changed for modal position saving
+    script.on_event(defines.events.on_gui_location_changed, function(event)
+      local player = game.players[event.player_index]
+      if not player or not player.valid then return end
+      local element = event.element
+      if element and element.valid and element.name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL then
+        local loc = element.location
+        if loc and type(loc.x) == "number" and type(loc.y) == "number" then
+          Cache.set_history_modal_position(player, { x = loc.x, y = loc.y })
+        end
+      end
+    end)
   end)
 
   if not success then
-    ErrorHandler.warn_log("Failed to register periodic GUI observer cleanup or icon_typing reset", { error = err })
+    ErrorHandler.warn_log("Failed to register periodic GUI observer cleanup, icon_typing reset, or modal drag position handler", { error = err })
   else
-    ErrorHandler.debug_log("Registered periodic GUI observer cleanup (every 5 minutes) and icon_typing reset (every 15 minutes)")
+    ErrorHandler.debug_log("Registered periodic GUI observer cleanup (every 5 minutes), icon_typing reset (every 15 minutes), and modal drag position handler")
   end
 
   -- Register each core event with safety wrapper

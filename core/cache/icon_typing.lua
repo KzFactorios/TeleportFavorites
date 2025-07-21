@@ -19,12 +19,23 @@ local function get_icon_type(icon)
   if lookup[icon_name] then
     return lookup[icon_name]
   end
-  -- Try explicit type first
-  if icon.type and type(icon.type) == "string" and icon.type ~= "" then
-    local proto_table = prototypes[icon.type]
-    if proto_table and proto_table[icon_name] then
-      lookup[icon_name] = icon.type
-      return icon.type
+  -- Normalize icon.type = "virtual" to "virtual_signal" for all lookups
+  local icon_type = icon.type
+  if icon_type == "virtual" then
+    icon_type = "virtual_signal"
+  end
+  -- Try explicit type first (only if valid)
+  if icon_type and type(icon_type) == "string" and icon_type ~= "" then
+    local valid_types = {
+      ["item"] = true, ["fluid"] = true, ["virtual_signal"] = true, ["entity"] = true, ["equipment"] = true,
+      ["technology"] = true, ["recipe"] = true, ["tile"] = true
+    }
+    if valid_types[icon_type] then
+      local proto_table = prototypes[icon_type]
+      if proto_table and proto_table[icon_name] then
+        lookup[icon_name] = icon_type
+        return icon_type
+      end
     end
   end
   -- Try all known vanilla types
@@ -42,6 +53,10 @@ local function get_icon_type(icon)
       lookup[icon_name] = proto_type
       return proto_type
     end
+  end
+  -- If nothing found, log a warning and default to item
+  if ErrorHandler and ErrorHandler.warn_log then
+    ErrorHandler.warn_log("Unknown icon type or prototype lookup failed", { icon = icon, icon_name = icon_name, icon_type = icon_type })
   end
   lookup[icon_name] = "item"
   return "item"

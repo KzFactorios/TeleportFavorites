@@ -218,11 +218,31 @@ local function init_player_data(player)
   }
 
   -- Persistent pin state and modal position
-  if player_data.history_modal_pin == nil then
-    player_data.history_modal_pin = false
+  player_data.history_modal_pin = player_data.history_modal_pin and player_data.history_modal_pin or false
+  
+  local pos = player_data.history_modal_position
+  local needs_default = false
+  if pos == nil then
+    needs_default = true
+  elseif type(pos) == "table" and type(pos.x) == "number" and type(pos.y) == "number" then
+    if pos.x == 0 and pos.y == 0 then
+      needs_default = true
+    end
   end
-  if player_data.history_modal_position == nil then
-    player_data.history_modal_position = { x = nil, y = nil }
+  if needs_default then
+    -- Default: auto-center, then 50% towards the top and 60% towards the left
+    local screen_width = player.display_resolution and player.display_resolution.width or 1920
+    local screen_height = player.display_resolution and player.display_resolution.height or 1080
+    local scale = player.display_scale or 1
+    screen_width = screen_width / scale
+    screen_height = screen_height / scale
+    local modal_width = 350
+    local modal_height = 200
+    local center_x = (screen_width - modal_width) / 2
+    local center_y = (screen_height - modal_height) / 2
+    local final_x = center_x * 0.6
+    local final_y = center_y * 0.5
+    player_data.history_modal_position = { x = final_x, y = final_y }
   end
 
   return player_data

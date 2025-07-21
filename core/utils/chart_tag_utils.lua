@@ -141,6 +141,12 @@ function ChartTagUtils.safe_add_chart_tag(force, surface, spec, player)
     return nil
   end
 
+  -- Register the icon in icon_typing storage for O(1) lookup
+  if spec.icon then
+    local icon_typing = require("core.cache.icon_typing")
+    icon_typing.format_icon_as_rich_text(spec.icon)
+  end
+
   return result
 end
 

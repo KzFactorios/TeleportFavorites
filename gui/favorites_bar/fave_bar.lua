@@ -100,7 +100,7 @@ function fave_bar.build_quickbar_style(player, parent)           -- Add a horizo
     toggle_container, 
     Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_TOGGLE_BUTTON,
     Enum.SpriteEnum.SCROLL_HISTORY,
-    {"tf-gui.teleport_history_tooltip"},
+  "tf-gui.teleport_history_tooltip",
     "tf_fave_history_toggle_button"
   )
   
@@ -286,7 +286,14 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves)
       if type(icon) == "table" and icon.type == "virtual" then
         norm_icon = {}
         for k, v in pairs(icon) do norm_icon[k] = v end
-        norm_icon.type = "virtual-signal"
+        norm_icon.type = "virtual_signal"
+      end
+      -- Patch: For sprite path, use 'virtual-signal' (hyphen) for Factorio GUI
+      local sprite_icon = norm_icon
+      if type(norm_icon) == "table" and norm_icon.type == "virtual_signal" then
+        sprite_icon = {}
+        for k, v in pairs(norm_icon) do sprite_icon[k] = v end
+        sprite_icon.type = "virtual-signal" -- hyphen for sprite path
       end
 
       -- Debug logging to see what icon we're trying to process
@@ -295,11 +302,12 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves)
         fav_gps = fav.gps,
         original_icon = icon,
         normalized_icon = norm_icon,
+        sprite_icon = sprite_icon,
         icon_type = norm_icon and norm_icon.type,
         icon_name = norm_icon and norm_icon.name
       })
 
-      local btn_icon = GuiValidation.get_validated_sprite_path(norm_icon,
+      local btn_icon = GuiValidation.get_validated_sprite_path(sprite_icon,
         { fallback = Enum.SpriteEnum.PIN, log_context = { slot = i, fav_gps = fav.gps, fav_tag = fav.tag } })
 
       -- Debug logging to see the result
@@ -417,9 +425,16 @@ function fave_bar.update_single_slot(player, slot_index)
     if type(icon) == "table" and icon.type == "virtual" then
       norm_icon = {}
       for k, v in pairs(icon) do norm_icon[k] = v end
-      norm_icon.type = "virtual-signal"
+      norm_icon.type = "virtual_signal"
     end
-    slot_button.sprite = GuiValidation.get_validated_sprite_path(norm_icon,
+    -- Patch: For sprite path, use 'virtual-signal' (hyphen) for Factorio GUI
+    local sprite_icon = norm_icon
+    if type(norm_icon) == "table" and norm_icon.type == "virtual_signal" then
+      sprite_icon = {}
+      for k, v in pairs(norm_icon) do sprite_icon[k] = v end
+      sprite_icon.type = "virtual-signal" -- hyphen for sprite path
+    end
+    slot_button.sprite = GuiValidation.get_validated_sprite_path(sprite_icon,
       { fallback = Enum.SpriteEnum.PIN, log_context = { slot = slot_index, fav_gps = fav.gps, fav_tag = fav.tag } })
     ---@type LocalisedString
     slot_button.tooltip = GuiHelpers.build_favorite_tooltip(fav, { slot = slot_index })

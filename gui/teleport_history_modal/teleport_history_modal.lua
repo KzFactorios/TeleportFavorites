@@ -113,6 +113,9 @@ function teleport_history_modal.build(player)
 
   -- Draggable space between title and buttons
   local draggable = GuiBase.create_draggable(titlebar, "tf_titlebar_draggable")
+  if draggable and draggable.valid then
+    draggable.drag_target = modal_frame
+  end
 
   -- Pin button (left of close button)
   local pinned = Cache.get_history_modal_pin(player)

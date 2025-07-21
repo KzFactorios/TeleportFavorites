@@ -59,25 +59,25 @@ local function setup_tag_editor_ui(refs, tag_data, player)
   end
 
   -- Set button enablement using consolidated helper
-  GuiElementBuilders.set_button_state_and_tooltip(refs.icon_btn, is_owner, { "tf-gui.icon_tooltip" })
-  GuiElementBuilders.set_button_state_and_tooltip(refs.teleport_btn, true, { "tf-gui.teleport_tooltip" })
+  GuiElementBuilders.set_button_state_and_tooltip(refs.icon_btn, is_owner, "tf-gui.icon_tooltip")
+  GuiElementBuilders.set_button_state_and_tooltip(refs.teleport_btn, true, "tf-gui.teleport_tooltip")
 
   -- Favorite button: disable if at max favorites for this surface
   local player_faves = PlayerFavorites.new(player)
   local at_max_faves = player_faves:available_slots() == 0
   if refs.favorite_btn then
     if at_max_faves and not (tag_data and tag_data.is_favorite) then
-      GuiElementBuilders.set_button_state_and_tooltip(refs.favorite_btn, false, { "tf-gui.max_favorites_warning" })
+  GuiElementBuilders.set_button_state_and_tooltip(refs.favorite_btn, false, "tf-gui.max_favorites_warning")
     else
-      GuiElementBuilders.set_button_state_and_tooltip(refs.favorite_btn, true, { "tf-gui.favorite_tooltip" })
+  GuiElementBuilders.set_button_state_and_tooltip(refs.favorite_btn, true, "tf-gui.favorite_tooltip")
     end
   end
-  GuiElementBuilders.set_button_state_and_tooltip(refs.rich_text_input, is_owner, { "tf-gui.text_tooltip" })
+  GuiElementBuilders.set_button_state_and_tooltip(refs.rich_text_input, is_owner, "tf-gui.text_tooltip")
 
   -- Delete button logic
   if refs.delete_btn then
     local is_temp_tag = (not tag_data.chart_tag) or (type(tag_data.chart_tag) == "userdata" and not tag_data.chart_tag.valid)
-    GuiElementBuilders.set_button_state_and_tooltip(refs.delete_btn, is_owner and can_delete and not is_temp_tag, { "tf-gui.delete_tooltip" })
+    GuiElementBuilders.set_button_state_and_tooltip(refs.delete_btn, is_owner and can_delete and not is_temp_tag, "tf-gui.delete_tooltip")
   end
 
   -- Confirm button enabled if text input has content OR icon is selected
@@ -85,7 +85,7 @@ local function setup_tag_editor_ui(refs, tag_data, player)
   local has_icon = ValidationUtils.has_valid_icon(tag_data.icon)
   local can_confirm = has_text or has_icon
 
-  GuiElementBuilders.set_button_state_and_tooltip(refs.confirm_btn, can_confirm, { "tf-gui.confirm_tooltip" })
+  GuiElementBuilders.set_button_state_and_tooltip(refs.confirm_btn, can_confirm, "tf-gui.confirm_tooltip")
 
   if refs.cancel_btn then refs.cancel_btn.tooltip = { "tf-gui.cancel_tooltip" } end
 

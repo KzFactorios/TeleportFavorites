@@ -174,7 +174,7 @@ function GuiValidation.validate_sprite(sprite_path)
   local valid_prefixes = {
     "item/", "entity/", "technology/", "recipe/",
     "fluid/", "tile/", "signal/", "utility/",
-    "virtual-signal/", "equipment/", "achievement/",
+  "virtual-signal/", "equipment/", "achievement/",
     "quality/", "space-location/" -- Space Age prefixes
   }
 
@@ -208,13 +208,13 @@ function GuiValidation.get_validated_sprite_path(icon, opts)
   used_fallback = false
   debug_info = { original_icon = icon, fallback = fallback }
 
-  -- Normalize icon.type = "virtual" to "virtual-signal" at the very start
+  -- Normalize icon.type = "virtual" to "virtual_signal" at the very start
   local normalized_icon = icon
   if type(icon) == "table" and icon.type == "virtual" then
     normalized_icon = {}
     for k, v in pairs(icon) do normalized_icon[k] = v end
-    normalized_icon.type = "virtual-signal"
-    debug_info.normalized_type = "virtual-signal"
+  normalized_icon.type = "virtual_signal"
+  debug_info.normalized_type = "virtual_signal"
   end
 
   if not normalized_icon or normalized_icon == "" then
