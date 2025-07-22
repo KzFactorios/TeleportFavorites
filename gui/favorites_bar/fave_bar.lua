@@ -76,11 +76,12 @@ function fave_bar.on_player_controller_changed(event)
 
   -- Restore teleport history modal if it was open before switching to map/chart view, regardless of pin state
   local modal_was_open = Cache.get_modal_dialog_type(player) == "teleport_history"
-  local is_chart_view = player.render_mode == defines.render_mode.chart or player.render_mode == defines.render_mode.chart_zoomed_in
+  local is_chart_view = player.render_mode == defines.render_mode.chart or
+  player.render_mode == defines.render_mode.chart_zoomed_in
   if (player.controller_type == defines.controllers.remote or is_chart_view) and modal_was_open then
     -- Destroy modal (if present) but preserve state, then rebuild
-  teleport_history_modal.destroy(player, true)
-  teleport_history_modal.build(player)
+    teleport_history_modal.destroy(player, true)
+    teleport_history_modal.build(player)
   end
 
   -- Update favorites bar visibility based on new controller type
@@ -141,12 +142,14 @@ function fave_bar.build(player, force_show)
   if not force_show then
     local should_hide = BasicHelpers.should_hide_favorites_bar_for_space_platform(player)
     if should_hide then
+      fave_bar.destroy()
       return
     end
 
     -- Also skip for god mode and spectator mode
     if player.controller_type == defines.controllers.god or
         player.controller_type == defines.controllers.spectator then
+      fave_bar.destroy()
       return
     end
   end
@@ -187,7 +190,7 @@ function fave_bar.build(player, force_show)
     local fave_bar_frame = GuiBase.create_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR, "horizontal",
       "tf_fave_bar_frame")
     local _bar_flow, slots_frame, _toggle_button, _toggle_container, _history_toggle_button = fave_bar
-    .build_quickbar_style(player, fave_bar_frame)
+        .build_quickbar_style(player, fave_bar_frame)
 
     -- Handle visibility based on settings
     local favorites_enabled = player_settings.favorites_on
@@ -202,7 +205,7 @@ function fave_bar.build(player, force_show)
     if not favorites_enabled then
       -- Find and hide only the visibility toggle button, not the entire container
       local toggle_container = GuiValidation.find_child_by_name(_bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT
-      .TOGGLE_CONTAINER)
+        .TOGGLE_CONTAINER)
       if toggle_container and toggle_container.valid then
         local visibility_toggle_button = GuiValidation.find_child_by_name(toggle_container,
           Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_BUTTON)
@@ -221,7 +224,7 @@ function fave_bar.build(player, force_show)
 
       -- Show the visibility toggle button
       local toggle_container = GuiValidation.find_child_by_name(_bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT
-      .TOGGLE_CONTAINER)
+        .TOGGLE_CONTAINER)
       if toggle_container and toggle_container.valid then
         local visibility_toggle_button = GuiValidation.find_child_by_name(toggle_container,
           Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_BUTTON)

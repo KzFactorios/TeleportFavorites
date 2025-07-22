@@ -30,7 +30,6 @@ function TeleportHistory.notify_observers(player)
     end
 end
 
-
 function TeleportHistory.add_gps(player, gps)
     local valid = ValidationUtils.validate_player(player)
     if not valid or not gps then return end

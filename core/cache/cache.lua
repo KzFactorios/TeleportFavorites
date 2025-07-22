@@ -270,6 +270,10 @@ end
 --- Get persistent position for teleport history modal
 ---@param player LuaPlayer
 ---@return table|nil
+
+--- Get persistent position and size for teleport history modal
+---@param player LuaPlayer
+---@return table|nil
 function Cache.get_history_modal_position(player)
   local player_data = Cache.get_player_data(player)
   return player_data.history_modal_position
@@ -310,10 +314,19 @@ end
 --- Set persistent position for teleport history modal
 ---@param player LuaPlayer
 ---@param pos table { x = number, y = number }
+
+--- Set persistent position and size for teleport history modal
+---@param player LuaPlayer
+---@param pos table { x = number, y = number, width = number|nil, height = number|nil }
 function Cache.set_history_modal_position(player, pos)
   local player_data = Cache.get_player_data(player)
   if type(pos) == "table" and type(pos.x) == "number" and type(pos.y) == "number" then
-    player_data.history_modal_position = { x = pos.x, y = pos.y }
+    player_data.history_modal_position = {
+      x = pos.x,
+      y = pos.y,
+      width = pos.width,
+      height = pos.height
+    }
   end
 end
 end
@@ -625,9 +638,8 @@ function Cache.get_player_teleport_history(player, surface_index)
   return player_data.surfaces[surface_index].teleport_history
 end
 
---- Ensure the runtime cache for a surface is initialized (pass-through to Lookups)
----@param surface_index integer
 function Cache.ensure_surface_cache(surface_index)
+  Cache.init() -- Ensure Lookups is initialized
   ---@diagnostic disable-next-line: undefined-field
   if not Cache.Lookups or not Cache.Lookups.ensure_surface_cache then
     error("Lookups.ensure_surface_cache not available")

@@ -63,6 +63,29 @@ function PlayerFavorites.new(player)
   return obj
 end
 
+---Remove a favorite GPS from the player's favorites
+---@param gps string GPS string to remove
+---@return boolean success, string? error_message
+function PlayerFavorites:remove_favorite(gps)
+  local max_slots = Constants.settings.MAX_FAVORITE_SLOTS
+  if not gps or type(gps) ~= "string" or gps == "" then
+    return false, "invalid_gps"
+  end
+  local favorites = self.favorites
+  if not favorites or #favorites ~= max_slots then
+    return false, "favorites_array_invalid"
+  end
+  for i = 1, max_slots do
+    local fav = favorites[i]
+    if fav and fav.gps == gps then
+      favorites[i] = FavoriteUtils.get_blank_favorite()
+      Cache.set_player_favorites(self.player, favorites)
+      return true
+    end
+  end
+  return false, "favorite_not_found"
+end
+
 ---Add a favorite GPS to the first available slot
 ---@param gps string GPS string to add
 ---@return boolean success, string? error_message

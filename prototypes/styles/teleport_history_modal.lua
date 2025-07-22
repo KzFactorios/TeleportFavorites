@@ -1,10 +1,10 @@
-local position_utils = require("core.utils.position_utils")
 ---@diagnostic disable: undefined-global
 
 -- Custom styles for the Teleport History Modal GUI
 
-
 local gui_style = data.raw["gui-style"].default
+
+
 
 
 gui_style.tf_teleport_history_modal_pin_button = {
@@ -12,6 +12,8 @@ gui_style.tf_teleport_history_modal_pin_button = {
     parent = "tf_frame_action_button",
     font_color = { r = 1, g = 1, b = 1, a = 1 },
     right_margin = 8,
+    bottom_padding = 2,
+    right_padding = 2,
 }
 
 -- Pin button style for active (pinned) state
@@ -28,7 +30,7 @@ gui_style.tf_history_modal_pin_button_active = {
         base = {
             filename = "__core__/graphics/gui-new.png",
             priority = "extra-high-no-scale",
-            position = {30,16},
+            position = { 30, 16 },
             width = 20,
             height = 20,
             corner_size = 8,
@@ -56,7 +58,7 @@ gui_style.tf_teleport_history_item = {
     hovered_font_color = { r = 0.5, g = 0.81, b = 0.94 },
     clicked_font_color = { r = 0.5, g = 0.81, b = 0.94 },
     minimal_width = 0,
-    height = 20,
+    height = 22,
 }
 
 -- Teleport history item button (current/selected state)
@@ -86,12 +88,9 @@ gui_style.tf_teleport_history_modal_frame = {
     type = "frame_style",
     parent = "slot_window_frame",
     padding = 4,
+    top_padding = 0,
     horizontally_stretchable = "off",
     vertically_stretchable = "off",
-    minimal_width = 350,
-    maximal_width = 350,
-    minimal_height = 100,
-    maximal_height = 500,
 }
 
 -- Modal content frame style (reusing tag editor pattern)
@@ -129,10 +128,10 @@ gui_style.tf_teleport_history_date_label = {
     parent = "label",
     font = "tf_font_7",
     horizontally_stretchable = "on",
-    horizontal_align = "left",
+    horizontal_align = "right",
     right_padding = 4,
-    font_color = { r = 0.4, g = 0.4, b = 0.4, a = 1 }, -- med-light grey
-    width = 110,
+    font_color = { r = 0.5, g = 0.5, b = 0.5, a = 1 }, -- med-light grey
+    width = 60,
 }
 
 -- History icon label style (for rich text icon labels)
@@ -140,7 +139,7 @@ gui_style.tf_history_icon_label = {
     type = "label_style",
     font = "tf_font_9",
     top_padding = -2,
-    left_padding = 40,
+    left_padding = 64,
     horizontally_stretchable = "off",
     vertically_stretchable = "off",
 }

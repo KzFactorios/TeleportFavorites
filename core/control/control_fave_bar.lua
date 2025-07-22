@@ -6,6 +6,7 @@
 
 local FavoriteUtils = require("core.favorite.favorite_utils")
 local PlayerFavorites = require("core.favorite.player_favorites")
+local PlayerHelpers = require("core.utils.player_helpers")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local ErrorHandler = require("core.utils.error_handler")
 local SlotInteractionHandlers = require("core.control.slot_interaction_handlers")
@@ -22,6 +23,30 @@ local TeleportStrategy = require("core.utils.teleport_strategy")
 local Enum = require("prototypes.enums.enum")
 
 local M = {}
+
+-- Runtime state for modal resizing per player
+local resize_drag_state = {} -- [player_index] = {dragging=true, start_x, start_y, start_width, start_height}
+
+local function get_mouse_position(event)
+  if event and event.cursor_position then
+    return event.cursor_position.x, event.cursor_position.y
+  end
+  return nil, nil
+end
+
+local function set_modal_size(player, width, height)
+  local modal_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]
+  if modal_frame and modal_frame.valid then
+    if modal_frame.style then
+      if width then pcall(function()
+          modal_frame.style.minimal_width = width; modal_frame.style.maximal_width = width
+        end) end
+      if height then pcall(function()
+          modal_frame.style.minimal_height = height; modal_frame.style.maximal_height = height
+        end) end
+    end
+  end
+end
 
 --- Reorder favorites using modular handlers
 --- Handle individual favorite slot click events
@@ -40,18 +65,6 @@ local function handle_favorite_slot_click(event, player, favorites)
     })
     return
   end
-  ErrorHandler.debug_log("[FAVE_BAR] Slot click detected", {
-    player = player and player.name or "<nil>",
-    slot = slot,
-    button_type = event and event.button and (
-      event.button == 1 and "LEFT_CLICK" or
-      event.button == 2 and "RIGHT_CLICK" or
-      event.button == 3 and "MIDDLE_CLICK" or
-      "UNKNOWN_BUTTON_" .. tostring(event.button)
-    ) or "<nil>",
-    shift = event and event.shift or false,
-    control = event and event.control or false
-  })
 
   -- Use shared drag logic
   local is_dragging, source_slot = CursorUtils.is_dragging_favorite(player)
@@ -103,7 +116,7 @@ local function handle_favorite_slot_click(event, player, favorites)
   if SlotInteractionHandlers.handle_shift_left_click(event, player, fav, slot, favorites) then return end
   if SlotInteractionHandlers.handle_toggle_lock(event, player, fav, slot, favorites) then return end
   if SlotInteractionHandlers.handle_teleport(event, player, fav, slot, false) then return end
-  
+
   SlotInteractionHandlers.handle_request_to_open_tag_editor(event, player, fav, slot)
   fave_bar.update_single_slot(player, slot)
 end
@@ -208,6 +221,25 @@ local function on_teleport_history_modal_gui_click(event)
   local player = game.players[event.player_index]
   if not BasicHelpers.is_valid_player(player) then return end
 
+  -- Handle resize handle click (start drag)
+  if element.name == "teleport_history_modal_resize_handle" then
+    local mouse_x, mouse_y = get_mouse_position(event)
+    local modal_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]
+    if modal_frame and modal_frame.valid and mouse_x and mouse_y then
+      local width = modal_frame.style and modal_frame.style.minimal_width or 350
+      local height = modal_frame.style and modal_frame.style.minimal_height or 200
+      resize_drag_state[player.index] = {
+        dragging = true,
+        start_x = mouse_x,
+        start_y = mouse_y,
+        start_width = width,
+        start_height = height
+      }
+      ErrorHandler.debug_log("[MODAL] Resize drag started",
+        { player = player.name, x = mouse_x, y = mouse_y, width = width, height = height })
+    end
+    return
+  end
 
   -- Handle close button
   if element.name == "teleport_history_modal_close_button" then
@@ -262,24 +294,23 @@ local function on_teleport_history_modal_gui_click(event)
       return
     end
 
-    local ok, result = pcall(function()
-      -- don't add history for a history item click
-      return TeleportStrategy.teleport_to_gps(player, gps, false)
-    end)
-
-    if ok and result then
+    -- don't add history for a history item click
+    local success, err = TeleportStrategy.teleport_to_gps(player, gps, false)
+    if success then
       TeleportHistory.set_pointer(player, player.surface.index, index)
       -- Only close modal if not pinned
       if not Cache.get_history_modal_pin(player) then
         TeleportHistoryModal.destroy(player)
       end
-    elseif ok and not result then
-      ErrorHandler.warn_log("Teleport failed: strategy returned false", { gps = gps })
-    elseif not ok then
-      ErrorHandler.warn_log("Teleport failed with error", { error = tostring(result), gps = gps })
-      -- Only close modal if not pinned
-      if not Cache.get_history_modal_pin(player) then
-        TeleportHistoryModal.destroy(player)
+    else
+      if err and err == "already_at_target" then
+        return
+      else
+        local error_message = err or "Unknown teleportation failure."
+        ErrorHandler.warn_log("Teleport failed", { gps = gps, error = error_message })
+        if player and player.valid then
+          PlayerHelpers.safe_player_print(player, { "tf-gui.teleport_failed", error_message })
+        end
       end
     end
   end

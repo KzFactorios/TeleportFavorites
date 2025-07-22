@@ -43,6 +43,9 @@ function handlers.on_player_changed_surface(event)
   with_valid_player(event.player_index, function(player)
     if player.surface and player.surface.valid and player.surface.index ~= event.surface_index then
       Cache.ensure_surface_cache(event.surface_index)
+
+      -- TODO build fave bar and optionally history modal
+
     end
   end)
 end

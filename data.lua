@@ -157,7 +157,7 @@ data:extend({
   {
     type = "sprite",
     name = "logo_36",
-    filename = "__TeleportFavorites__/graphics/prelim_logo_36.png",
+    filename = "__TeleportFavorites__/graphics/logo_36.png",
     width = 36,
     height = 36,
     flags = { "gui-icon" }
@@ -165,7 +165,7 @@ data:extend({
   {
     type = "sprite",
     name = "logo_144",
-    filename = "__TeleportFavorites__/graphics/prelim_logo_144.png",
+    filename = "__TeleportFavorites__/graphics/logo_144.png",
     width = 144,
     height = 144,
     flags = { "gui-icon" }
@@ -281,14 +281,6 @@ data:extend({
     filename = "__TeleportFavorites__/graphics/icons8-eyelash-50.png",
     width = 75,
     height = 75,
-    flags = { "gui-icon" }
-  },
-  {
-    type = "sprite",
-    name = "tf_history",
-    filename = "__TeleportFavorites__/graphics/icons8-activity-history-72.png", --64 available
-    width = 72,
-    height = 72,
     flags = { "gui-icon" }
   },
   {

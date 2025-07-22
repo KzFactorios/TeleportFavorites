@@ -40,7 +40,8 @@ function teleport_history_modal.on_gui_closed(event)
   if not event.element or not event.element.valid then return end
 
   -- Fallback for gui_closed_reason if not defined
-  local gui_closed_reason = defines and defines.gui_closed_reason or { closed = 0, escaped = 1, switch_guis = 2, unknown = 3 }
+  local gui_closed_reason = defines and defines.gui_closed_reason or
+  { closed = 0, escaped = 1, switch_guis = 2, unknown = 3 }
 
   local gui_frame = GuiValidation.get_gui_frame_by_element(event.element)
   if (gui_frame and gui_frame.name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL) or event.element.name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL then
@@ -49,7 +50,7 @@ function teleport_history_modal.on_gui_closed(event)
     if reason == gui_closed_reason.escaped or reason == gui_closed_reason.closed then
       teleport_history_modal.destroy(player, false) -- user-initiated, clear state
     else
-      teleport_history_modal.destroy(player, true) -- view switch, preserve state
+      teleport_history_modal.destroy(player, true)  -- view switch, preserve state
     end
     return
   end
@@ -58,7 +59,6 @@ end
 --- Build the teleport history modal dialog
 ---@param player LuaPlayer
 function teleport_history_modal.build(player)
-
   -- Cache the pin state at the very top so it is preserved across destroy/build
   local pinned = Cache.get_history_modal_pin(player)
 
@@ -86,7 +86,8 @@ function teleport_history_modal.build(player)
     end
   end
   if should_hide then
-    ErrorHandler.debug_log("[MODAL] not shown due to space platform/editor logic", { player = player and player.name or "<nil>" })
+    ErrorHandler.debug_log("[MODAL] not shown due to space platform/editor logic",
+      { player = player and player.name or "<nil>" })
     return
   end
 
@@ -103,6 +104,11 @@ function teleport_history_modal.build(player)
     ErrorHandler.debug_log("Destroyed existing teleport history modal")
   end
 
+  -- Get persistent size if available
+  local pos = Cache.get_history_modal_position(player)
+  local modal_width = (pos and type(pos.width) == "number") and pos.width or 350
+  local modal_height = (pos and type(pos.height) == "number") and pos.height or 392
+
   -- Create the main modal frame (following tag editor pattern)
   local modal_frame = player.gui.screen.add {
     type = "frame",
@@ -111,6 +117,8 @@ function teleport_history_modal.build(player)
     style = "tf_teleport_history_modal_frame",
     modal = false
   }
+  modal_frame.style.width = modal_width
+  modal_frame.style.height = modal_height
 
   -- Critical error check: Ensure modal was created successfully
   if not modal_frame or not modal_frame.valid then
@@ -141,7 +149,6 @@ function teleport_history_modal.build(player)
   if title_label and title_label.valid then
     title_label.caption = { "tf-gui.teleport_history_modal_title" }
   end
-
 
   -- Draggable space between title and buttons (always present, but only draggable if not pinned)
   local draggable = GuiBase.create_draggable(titlebar, "tf_titlebar_draggable")
@@ -188,30 +195,19 @@ function teleport_history_modal.build(player)
   -- Populate the history list
   teleport_history_modal.update_history_list(player)
 
-  -- Set player.opened for ESC key support only if modal is unpinned
-  if not pinned then
-    player.opened = modal_frame
-  else
-    player.opened = nil
-  end
+  -- Do not set player.opened for teleport history modal; ESC key should not close it
+  player.opened = nil
 
   -- Position modal: use persistent position if available, else default
-  local pos = Cache.get_history_modal_position(player)
-  if pos and type(pos.x) == "number" and type(pos.y) == "number" then
+  --[[if pos and type(pos.x) == "number" and type(pos.y) == "number" then
     modal_frame.location = { x = pos.x, y = pos.y }
-  else
-    local screen_width = player.display_resolution.width / player.display_scale
-    local screen_height = player.display_resolution.height / player.display_scale
-    local modal_width = 350
-    local modal_height = 200
-    local center_x = (screen_width - modal_width) / 2
-    local center_y = (screen_height - modal_height) / 2
-    local final_x = center_x - (center_x * 0.25)
-    local final_y = center_y - (center_y * 0.25)
-    final_y = final_y - (screen_height * 0.10)
+  else]]
+    local screen_width = player.display_resolution.width
+    local final_x = screen_width - modal_width - 870 - 8
+    local final_y = 0
     modal_frame.location = { x = final_x, y = final_y }
-    Cache.set_history_modal_position(player, { x = final_x, y = final_y })
-  end
+    Cache.set_history_modal_position(player, { x = final_x, y = final_y, width = modal_width, height = modal_height })
+  --end
 
   return modal_frame
 end
@@ -231,7 +227,7 @@ function teleport_history_modal.destroy(player, preserve_state)
   -- Close the modal if it exists
   local modal_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]
   if modal_frame and modal_frame.valid then
-    -- Save modal position before destroying
+    -- Save modal position before destroying (do not attempt to read style.width/height)
     if modal_frame.location and type(modal_frame.location.x) == "number" and type(modal_frame.location.y) == "number" then
       Cache.set_history_modal_position(player, { x = modal_frame.location.x, y = modal_frame.location.y })
     end
@@ -280,8 +276,8 @@ function teleport_history_modal.update_history_list(player)
   })
 
   if #stack == 0 then
-    GuiBase.create_label(history_list, "empty_history_label", { "tf-gui.teleport_history_empty" },
-      "tf_teleport_history_empty_label")
+    GuiBase.create_label(history_list, "empty_history_label",
+      { "tf-gui.teleport_history_empty" }, "tf_teleport_history_empty_label")
     return
   end
 
@@ -318,7 +314,8 @@ function teleport_history_modal.update_history_list(player)
       end)
       if success_button and item_button and item_button.valid then
         local tooltip_success = pcall(function()
-          item_button.tooltip = truncate_tag_text(chart_tag_text, Constants.settings.TELEPORT_HISTORY_LABEL_MAX_DISPLAY)
+          item_button.tooltip = { "", truncate_tag_text(chart_tag_text,
+            Constants.settings.TELEPORT_HISTORY_LABEL_MAX_DISPLAY) }
         end)
         if not tooltip_success then
           ErrorHandler.debug_log("Failed to set teleport history button tooltip", {
@@ -378,11 +375,7 @@ function teleport_history_modal.toggle_pin(player)
   Cache.set_history_modal_pin(player, pinned)
   local modal_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]
   if modal_frame and modal_frame.valid then
-    if pinned then
-      player.opened = nil
-    else
-      player.opened = modal_frame
-    end
+    player.opened = nil
     -- Optionally rebuild modal to update pin button style
     teleport_history_modal.build(player)
   end
