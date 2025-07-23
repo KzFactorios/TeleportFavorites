@@ -1,0 +1,60 @@
+
+name: Release Mod
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 0.0.15)'
+        required: true
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    environment: release-approval
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies (if needed)
+        run: |
+          python -m pip install --upgrade pip
+
+      - name: Copy production files to .dist
+        run: python .scripts/copy_for_deploy.py
+
+      - name: Strip comments from Lua files in .dist
+        run: python .scripts/strip_comments.py
+
+      - name: Scan for forbidden dev flags/settings in .dist
+        run: python .scripts/find_dev_flags.py
+
+      - name: Validate changelog.txt format in .dist
+        run: python .scripts/validate_changelog.py
+
+      - name: Zip the .dist directory for release
+        run: |
+          Compress-Archive -Path .dist\* -DestinationPath TeleportFavorites_v${{ github.event.inputs.version }}.zip -Force
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TeleportFavorites_v${{ github.event.inputs.version }}.zip
+          path: TeleportFavorites_v${{ github.event.inputs.version }}.zip
+
+      - name: Create GitHub Release
+        if: ${{ success() }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.event.inputs.version }}
+          name: TeleportFavorites v${{ github.event.inputs.version }}
+          body_path: .dist\changelog.txt
+          files: TeleportFavorites_v${{ github.event.inputs.version }}.zip

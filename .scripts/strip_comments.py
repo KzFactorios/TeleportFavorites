@@ -10,6 +10,13 @@ def strip_comments_from_file(filepath):
         lines = f.readlines()
     new_lines = []
     license_header = True
+    forbidden_patterns = [
+        r'debug_log',
+        r'warn_log',
+        r'print\s*\(',
+        r'DEBUG'
+    ]
+    forbidden_re = re.compile('|'.join(forbidden_patterns), re.IGNORECASE)
     for line in lines:
         stripped = line.lstrip()
         # Preserve license header at the top
@@ -19,6 +26,9 @@ def strip_comments_from_file(filepath):
         license_header = False if not stripped.startswith('--') else license_header
         # Remove full-line comments
         if stripped.startswith('--') and not license_header:
+            continue
+        # Remove lines with forbidden dev flags/settings
+        if forbidden_re.search(line):
             continue
         # Remove inline comments (but not URLs)
         if '--' in line and not 'http' in line:

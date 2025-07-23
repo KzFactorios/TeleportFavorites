@@ -4,11 +4,21 @@ import shutil
 # Configuration
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 DIST = os.path.join(ROOT, '.dist')
-EXCLUDE_DIRS = {'tests', '.git', '.github', '.vscode', '.project', '.scripts'}
+EXCLUDE_DIRS = {'tests', '.git', '.github', '.vscode', '.project', '.scripts', '.dist'}
 EXCLUDE_FILES = {
     'TeleportFavorites_workspace.code-workspace',
 }
-INCLUDE_DOCS = {'README.md', 'LICENSE', 'changelog.txt', 'info.json'}
+
+REQUIRED_ROOT_FILES = [
+    'changelog.txt',
+    'constants.lua',
+    'control.lua',
+    'data.lua',
+    'info.json',
+    'LICENSE',
+    'README.md',
+    'settings.lua',
+]
 
 # Utility: Remove empty files
 def remove_empty_files(path):
@@ -42,6 +52,15 @@ if os.path.exists(DIST):
     shutil.rmtree(DIST)
 os.makedirs(DIST, exist_ok=True)
 
+
+
+# Always copy required root files to .dist
+for fname in REQUIRED_ROOT_FILES:
+    src = os.path.join(ROOT, fname)
+    dst = os.path.join(DIST, fname)
+    if os.path.exists(src):
+        shutil.copy2(src, dst)
+
 for dirpath, dirnames, filenames in os.walk(ROOT):
     rel_dir = os.path.relpath(dirpath, ROOT)
     # Skip excluded dirs
@@ -52,8 +71,8 @@ for dirpath, dirnames, filenames in os.walk(ROOT):
         rel_file = os.path.join(rel_dir, fname)
         if should_exclude(rel_file):
             continue
-        # Only include allowed docs from root
-        if rel_dir == '.' and fname.endswith('.md') and fname not in INCLUDE_DOCS:
+        # Skip root files already copied
+        if rel_dir == '.' and fname in REQUIRED_ROOT_FILES:
             continue
         src = os.path.join(dirpath, fname)
         dst_dir = os.path.join(DIST, rel_dir)
