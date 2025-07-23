@@ -10,8 +10,25 @@ def strip_comments_from_file(filepath):
         lines = f.readlines()
     new_lines = []
     license_header = True
+    forbidden_patterns = [
+        r'debug_log',
+        r'warn_log',
+        r'print\s*\(',
+        r'DEBUG'
+    ]
+    forbidden_re = re.compile('|'.join(forbidden_patterns), re.IGNORECASE)
+    in_block_comment = False
     for line in lines:
         stripped = line.lstrip()
+        # Block comment start
+        if not in_block_comment and stripped.startswith('--[['):
+            in_block_comment = True
+            continue
+        # Block comment end
+        if in_block_comment:
+            if ']]' in line:
+                in_block_comment = False
+            continue
         # Preserve license header at the top
         if license_header and LICENSE_HEADER_PATTERN.match(stripped):
             new_lines.append(line)
@@ -20,11 +37,23 @@ def strip_comments_from_file(filepath):
         # Remove full-line comments
         if stripped.startswith('--') and not license_header:
             continue
-        # Remove inline comments (but not URLs)
+        # Remove lines with forbidden dev flags/settings
+        if forbidden_re.search(line):
+            continue
+        # Remove inline comments (but not URLs), preserve code after '--'
         if '--' in line and not 'http' in line:
-            line = re.sub(r'--.*', '', line)
+            comment_pos = line.find('--')
+            code_before = line[:comment_pos].rstrip()
+            code_after = line[comment_pos:]
+            # If code_after contains a closing parenthesis, append it to code_before
+            if ')' in code_after and not code_before.endswith(')'):
+                code_before += ')'
+            line = code_before + '\n'
         # Remove trailing whitespace
         new_lines.append(line.rstrip() + '\n')
+    # Remove leading blank lines
+    while new_lines and new_lines[0].strip() == '':
+        new_lines.pop(0)
     # Remove trailing blank lines
     while new_lines and new_lines[-1].strip() == '':
         new_lines.pop()

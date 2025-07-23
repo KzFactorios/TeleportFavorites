@@ -50,18 +50,6 @@ local Cache = {}
 ---@field Settings table<string, any> Settings cache and access layer for all mod settings.
 Cache.__index = Cache
 
---- Get a player's teleport history stack for a given surface
----@param player LuaPlayer
----@param surface_index integer
----@return table[]
-Cache.get_player_history_stack = function(player, surface_index)
-  if not player or not player.valid or not surface_index then return {} end
-  local player_data = Cache.get_player_data(player)
-  if not player_data.surfaces or not player_data.surfaces[surface_index] then return {} end
-  local history = player_data.surfaces[surface_index].teleport_history
-  return (history and history.stack) or {}
-end
-
 --- Lookup tables for chart tags and other runtime data.
 ---@type Lookups
 Cache.Lookups = nil
@@ -74,6 +62,20 @@ Cache.Settings = nil
 if not storage then
   error("Storage table not available - this mod requires Factorio 2.0+")
 end
+
+
+--- Get a player's teleport history stack for a given surface
+---@param player LuaPlayer
+---@param surface_index integer
+---@return table[]
+Cache.get_player_history_stack = function(player, surface_index)
+  if not player or not player.valid or not surface_index then return {} end
+  local player_data = Cache.get_player_data(player)
+  if not player_data.surfaces or not player_data.surfaces[surface_index] then return {} end
+  local history = player_data.surfaces[surface_index].teleport_history
+  return (history and history.stack) or {}
+end
+
 
 -- Function to get mod version from Factorio's mod system at runtime
 local function get_mod_version()
