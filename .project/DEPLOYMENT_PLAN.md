@@ -55,6 +55,11 @@ This deployment plan is a guide, not a prescriptive process. The actual deployme
 
 ## User-Specified Deployment Requirements & Preferences
 
+9. **Documentation & Config File Exclusion:**
+  - Only `README.md`, `LICENSE`, `changelog.txt`, and `info.json` are included in the release. All other documentation files are excluded.
+  - Workspace configuration files (e.g., `TeleportFavorites_workspace.code-workspace`) are excluded from the release.
+  - Empty files should be removed from the codebase before packaging.
+
 1. **Staging Directory:**
   - All production edits and packaging will use the `.dist` directory. Source files are never modified.
 
@@ -228,6 +233,9 @@ To ensure that only production debug settings are present (and no other developm
 ---
 
 ## Additional Steps for GitHub CI/CD Release
+- [ ] Exclude all documentation files except `README.md`, `LICENSE`, `changelog.txt`, and `info.json`
+- [ ] Exclude workspace configuration files (e.g., `TeleportFavorites_workspace.code-workspace`)
+- [ ] Remove any empty files from the codebase before packaging
 
 
 
