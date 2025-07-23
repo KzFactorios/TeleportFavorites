@@ -1,17 +1,17 @@
 ---------------------------------------------------------------------------------------------------
-Version: 0.0.2
-Date: 2025-06-12    
+Version: 0.0.15
+Date: 2025-07-23
   Features:
-    - Added proper localization for all keyboard shortcuts
-    - Fixed formatting inconsistencies in data.lua
-    - Improved custom input definitions with proper order properties
-    - Created shortcuts.cfg locale file for better organization of shortcut strings
-  Refactoring:
-    - Moved all test files from the root directory to the tests folder
-    - Added test organization guidelines to ensure consistent test file placement
-    - Improved settings.lua with robust type checking and validation
-    - Added error handling in settings.lua for missing or invalid settings
-
+    - Added favorites bar with 10 quick-access teleport slots (hotkeys 1-0)
+    - Introduced drag-and-drop reordering for favorites, with slot locking
+    - Map tag editor for creating, editing, and favoriting teleportable tags
+    - Teleport history modal to revisit recent destinations
+    - Surface-aware favorites and history for multiplayer compatibility
+    - Admin and ownership system for tag editing and deletion
+    - Multi-language support (English, German, French, Spanish)
+    - Advanced mod settings for history update interval and tag click radius
+    - Improved error handling and user feedback for permissions
+    - Visual UI enhancements and tooltips for all major features
 ---------------------------------------------------------------------------------------------------
 Version: 0.0.1
 Date: 2025-05-22  
