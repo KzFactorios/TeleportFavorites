@@ -81,12 +81,23 @@ function M.register_gui_handlers(script)
         -- Only allow interactions with the currently active modal dialog
         local is_allowed_interaction = false
 
-        if active_modal_type == "tag_editor" then
-          -- Allow only tag editor and its confirmation dialog interactions
-          is_allowed_interaction = parent_gui and (
-            parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR or
-            parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM
-          )
+          if active_modal_type == "delete_confirmation" then
+            -- Always allow confirm/cancel buttons for delete confirmation modal
+        if element.name == Enum.UIEnums.GUI.TagEditor.CONFIRM_DIALOG_CONFIRM_BTN or
+          element.name == Enum.UIEnums.GUI.TagEditor.CONFIRM_DIALOG_CANCEL_BTN then
+              is_allowed_interaction = true
+            else
+              is_allowed_interaction = false
+            end
+          elseif active_modal_type == "tag_editor" then
+            -- Allow tag editor and its confirmation dialog interactions
+            if parent_gui and (
+              parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR or
+              parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM
+            ) then
+              is_allowed_interaction = true
+            end
+        
         elseif active_modal_type == "teleport_history" then
           -- Allow teleport history modal interactions AND all favorites bar interactions
           is_allowed_interaction = (parent_gui and parent_gui.name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL)
@@ -98,8 +109,11 @@ function M.register_gui_handlers(script)
           ErrorHandler.debug_log("[DISPATCH] Blocking GUI interaction due to active modal dialog", {
             player = player.name,
             element_name = element.name,
+            parent_gui_name = parent_gui and parent_gui.name or "none",
             active_modal_type = active_modal_type,
-            parent_gui = parent_gui and parent_gui.name or "none"
+            ENUM_TAG_EDITOR_DELETE_CONFIRM = Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM,
+            ENUM_CONFIRM_BTN = Enum.UIEnums.GUI.TagEditor.CONFIRM_DIALOG_CONFIRM_BTN,
+            ENUM_CANCEL_BTN = Enum.UIEnums.GUI.TagEditor.CONFIRM_DIALOG_CANCEL_BTN
           })
           return -- Block all interactions except with the currently active modal
         end

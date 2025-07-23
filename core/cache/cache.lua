@@ -267,10 +267,6 @@ function Cache.set_history_modal_pin(player, value)
   player_data.history_modal_pin = value == true
 end
 
---- Get persistent position for teleport history modal
----@param player LuaPlayer
----@return table|nil
-
 --- Get persistent position and size for teleport history modal
 ---@param player LuaPlayer
 ---@return table|nil
@@ -278,42 +274,6 @@ function Cache.get_history_modal_position(player)
   local player_data = Cache.get_player_data(player)
   return player_data.history_modal_position
 end
-
---- Set persistent position for teleport history modal
----@param player LuaPlayer
----@param pos table { x = number, y = number }
-function Cache.set_history_modal_position(player, pos)
-  local player_data = Cache.get_player_data(player)
-  if type(pos) == "table" and type(pos.x) == "number" and type(pos.y) == "number" then
-    player_data.history_modal_position = { x = pos.x, y = pos.y }
-  end
---- Get persistent pin state for teleport history modal
----@param player LuaPlayer
----@return boolean
-function Cache.get_history_modal_pin(player)
-  local player_data = Cache.get_player_data(player)
-  return player_data.history_modal_pin == true
-end
-
---- Set persistent pin state for teleport history modal
----@param player LuaPlayer
----@param value boolean
-function Cache.set_history_modal_pin(player, value)
-  local player_data = Cache.get_player_data(player)
-  player_data.history_modal_pin = value == true
-end
-
---- Get persistent position for teleport history modal
----@param player LuaPlayer
----@return table|nil
-function Cache.get_history_modal_position(player)
-  local player_data = Cache.get_player_data(player)
-  return player_data.history_modal_position
-end
-
---- Set persistent position for teleport history modal
----@param player LuaPlayer
----@param pos table { x = number, y = number }
 
 --- Set persistent position and size for teleport history modal
 ---@param player LuaPlayer
@@ -328,7 +288,6 @@ function Cache.set_history_modal_position(player, pos)
       height = pos.height
     }
   end
-end
 end
 
 --- Retrieve a value from the persistent cache by key.
