@@ -19,7 +19,10 @@ Welcome, engineer! TeleportFavorites is your personal teleportation toolkit for 
 
 ## 🕑 Teleport History
 
+
 Never lose track of your adventures! TeleportFavorites keeps a handy history of your recent teleports so you can quickly revisit important locations.
+
+- **Quick Access:** If a hotkey is assigned for the teleport history modal (e.g., `Shift+H`), you can open it instantly from anywhere. Otherwise, use the history button on your favorites bar.
 
 - **Where to find it:** Click the history button on your favorites bar to open the teleport history modal.
 - **What gets recorded:**
@@ -35,6 +38,8 @@ Never lose track of your adventures! TeleportFavorites keeps a handy history of 
 	- History is per-player and per-surface, so you always see relevant locations
 
 Pro-tip: Your teleport history is private—only you can see your own!
+
+**Surface Switching:** Your favorites and history are always shown for your current surface. If you change surfaces (e.g., via portals or admin commands), your favorites and history will update automatically to match the new world.
 
 
 Look at the top of your screen for the favorites bar—your gateway to teleportation magic!
@@ -76,6 +81,11 @@ Look at the top of your screen for the favorites bar—your gateway to teleporta
 - Only the tag owner can edit, but everyone can favorite and teleport
 - If a player leaves, their favorites and tags are cleaned up automatically
 
+
+
+## 🏗️ Visual Guide
+
+Want to see how it works? Check out the screenshots in the mod portal or GitHub repository for a visual guide to the favorites bar, tag editor, and teleport history modal.
 
 ## 🏗️ How It Works & Rulesets
 
