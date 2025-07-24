@@ -1,5 +1,6 @@
 ---@diagnostic disable: undefined-global
 -- Custom styles for the Favorites Bar GUI (fave_bar)
+
 gui_style.tf_fave_bar_frame = {
     type = "frame_style",
     padding = 3,
@@ -83,7 +84,7 @@ gui_style.tf_slot_button_smallfont = {
 gui_style.tf_slot_button_smallfont_map_pin = {
     type = "button_style",
     parent = "tf_slot_button_smallfont",
-    top_padding = 4, -- More padding for map pin icon
+    top_padding = 4, 
     right_padding = 8,
     bottom_padding = 8,
     left_padding = 8

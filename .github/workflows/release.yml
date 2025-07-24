@@ -1,4 +1,6 @@
 
+# Trivial change to force GitHub Actions workflow re-index (2025-07-24)
+
 name: Release Mod
 
 permissions:
@@ -44,11 +46,22 @@ jobs:
       - name: List files in .dist
         run: Get-ChildItem .dist -Recurse
 
+      - name: Verify diagnostic annotations preserved (debug)
+        run: |
+          Write-Host "Checking slot_interaction_handlers.lua first 3 lines:"
+          Get-Content .dist\core\control\slot_interaction_handlers.lua | Select-Object -First 3
+          Write-Host "Checking settings.lua first 3 lines:"
+          Get-Content .dist\core\cache\settings.lua | Select-Object -First 3
+
+      - name: Create artifact zip for upload
+        run: |
+          Compress-Archive -Path .dist\* -DestinationPath TeleportFavorites_dist.zip -Force
+
       - name: Upload .dist directory as artifact
         uses: actions/upload-artifact@v4
         with:
           name: TeleportFavorites_dist
-          path: .dist/**/*
+          path: TeleportFavorites_dist.zip
 
       - name: Create GitHub Release
         if: ${{ success() }}

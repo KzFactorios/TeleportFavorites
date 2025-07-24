@@ -1,4 +1,4 @@
-
+---@diagnostic disable: undefined-global
 
 ---@class HistoryItem
 ---@field gps string GPS string for the teleport location (required, not nil)

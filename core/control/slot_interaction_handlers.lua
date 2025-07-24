@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 -- core/control/slot_interaction_handlers.lua
 -- TeleportFavorites Factorio Mod
 -- Specialized handlers for slot interactions in the favorites bar: teleportation, lock toggling, drag-and-drop, and tag editing.

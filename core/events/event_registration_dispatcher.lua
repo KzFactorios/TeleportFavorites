@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 -- core/events/event_registration_dispatcher.lua
 -- TeleportFavorites Factorio Mod
 -- Centralized event registration dispatcher for all mod events, with safe wrappers and unified API.

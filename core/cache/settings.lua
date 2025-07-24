@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 -- core/cache/settings.lua
 -- TeleportFavorites Factorio Mod
 -- Centralized settings cache and access layer for unified, type-safe Factorio settings management.

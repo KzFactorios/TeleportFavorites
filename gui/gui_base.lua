@@ -1,4 +1,4 @@
-
+---@diagnostic disable: undefined-global
 
 -- TeleportFavorites GUI Base Module
 -- Provides reusable builder functions for all major GUI elements in the mod.

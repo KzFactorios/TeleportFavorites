@@ -1,6 +1,8 @@
+---@diagnostic disable: undefined-global
+
 local Constants = require("constants")
 
----@diagnostic disable-next-line: undefined-global, param-type-mismatch, missing-parameter, duplicate-set-field
+
 data:extend({
   {
     name = "favorites_on",

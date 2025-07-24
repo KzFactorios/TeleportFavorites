@@ -6,8 +6,6 @@
 -- Provides a unified API for all validation operations throughout the mod.
 
 local constants = require("constants")
-local basic_helpers = require("core.utils.basic_helpers")
-local GPSUtils = require("core.utils.gps_utils")
 
 ---@class ValidationUtils
 local ValidationUtils = {}
