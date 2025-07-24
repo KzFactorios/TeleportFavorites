@@ -1,17 +1,7 @@
 ---@diagnostic disable: undefined-global
---[[
-Custom styles for the Favorites Bar GUI (fave_bar)
-]]
-
--- 'data' is a global provided by Factorio during mod loading
----@diagnostic disable-next-line: undefined-global
-local gui_style = data.raw["gui-style"].default
-
-
--- Favorites bar frame (padding: 4, margin: {4, 0, 0, 4})
+-- Custom styles for the Favorites Bar GUI (fave_bar)
 gui_style.tf_fave_bar_frame = {
     type = "frame_style",
-    parent = "slot_window_frame",
     padding = 3,
     left_padding = 4,
     right_padding = 4,

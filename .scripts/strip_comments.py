@@ -4,17 +4,16 @@ import re
 DIST = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.dist'))
 LICENSE_HEADER_PATTERN = re.compile(r'^(--.*copyright|--.*license)', re.IGNORECASE)
 
-# Remove comments from Lua files, except license headers at the top
+# Remove comments from Lua files, except license headers at the top and EmmyLua annotations
 def strip_comments_from_file(filepath):
     with open(filepath, 'r', encoding='utf-8') as f:
         lines = f.readlines()
     new_lines = []
-    license_header = True
     forbidden_patterns = [
-        r'debug_log',
-        r'warn_log',
-        r'print\s*\(',
-        r'DEBUG'
+        r'^\s*debug_log\b',
+        r'^\s*warn_log\b',
+        r'^\s*print\s*\(',
+        r'^\s*DEBUG\b'
     ]
     forbidden_re = re.compile('|'.join(forbidden_patterns), re.IGNORECASE)
     in_block_comment = False
@@ -29,11 +28,17 @@ def strip_comments_from_file(filepath):
             if ']]' in line:
                 in_block_comment = False
             continue
-        # Remove all standalone comment lines
-        if stripped.startswith('--'):
+        # Preserve EmmyLua annotation comments
+        if stripped.startswith('---@'):
+            new_lines.append(line.rstrip() + '\n')
             continue
-        # Remove lines with forbidden dev flags/settings
-        if forbidden_re.search(line):
+        # Remove all standalone comment lines (except license headers)
+        if stripped.startswith('--'):
+            if LICENSE_HEADER_PATTERN.match(stripped):
+                new_lines.append(line.rstrip() + '\n')
+            continue
+        # Remove lines with forbidden dev flags/settings (only if line starts with them)
+        if forbidden_re.match(line):
             continue
         # Remove inline comments (but not URLs), preserve code before '--'
         if '--' in line and not 'http' in line:
@@ -56,4 +61,4 @@ for dirpath, _, filenames in os.walk(DIST):
         if fname.endswith('.lua'):
             strip_comments_from_file(os.path.join(dirpath, fname))
 
-print('Comments stripped from Lua files in .dist.')
+print('Comments stripped from Lua files in .dist, EmmyLua annotations preserved.')

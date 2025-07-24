@@ -1,6 +1,3 @@
----@diagnostic disable: undefined-global
-
--- prototypes/item/selection_tool.lua
 
 data:extend({
   {

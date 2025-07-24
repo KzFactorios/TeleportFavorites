@@ -1,6 +1,3 @@
----@diagnostic disable: undefined-global
-
---- Leaving this here to demonstrate that it will not work here due to lifecycle
 -- local Enum = require("prototypes.enums.enum")
 
 -- 'data' is a global provided by Factorio during mod loading
