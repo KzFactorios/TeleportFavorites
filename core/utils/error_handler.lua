@@ -6,7 +6,6 @@
 -- Provides error type categorization, debug logging, and safe error bubbling.
 
 local BasicHelpers = require("core.utils.basic_helpers")
-local PlayerHelpers = require("core.utils.player_helpers")
 
 -- Prevent infinite recursion in error handling
 local _in_error_handler = false
@@ -17,6 +16,14 @@ local _in_error_handler = false
 
 local ErrorHandler = {}
 
+--- Local helper to send error messages to players (breaks circular dependency with PlayerHelpers)
+---@param player LuaPlayer The player to send message to
+---@param error_key string Error message
+local function send_error_to_player(player, error_key)
+    if not BasicHelpers.is_valid_player(player) then return end
+    local message_text = "[TeleportFavorites] " .. error_key
+    pcall(function() player.print(message_text) end)
+end
 
 --- Set the log level for the mod ('production', 'debug', etc.)
 ErrorHandler._log_level = "production"
@@ -103,8 +110,7 @@ function ErrorHandler.error_log(handler_name, error, event, event_type)
     if BasicHelpers.is_valid_player(player) then
       -- Only show generic error message for critical failures
       if event_type and (event_type:find("gui") or event_type:find("input")) then
-        PlayerHelpers.error_message_to_player(player --[[@as LuaPlayer]], "Event handler error occurred",
-          { event_type = event_type })
+        send_error_to_player(player --[[@as LuaPlayer]], "Event handler error occurred")
       end
     end
   end

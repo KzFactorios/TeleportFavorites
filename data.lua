@@ -285,14 +285,6 @@ data:extend({
   },
   {
     type = "sprite",
-    name = "tf_time_machine",
-    filename = "__TeleportFavorites__/graphics/icons8-time-machine-50.png",
-    width = 72,
-    height = 72,
-    flags = { "gui-icon" }
-  },
-  {
-    type = "sprite",
     name = "tf_scroll_history",
     filename = "__TeleportFavorites__/graphics/icons8-history-50.png",
     width = 50,
