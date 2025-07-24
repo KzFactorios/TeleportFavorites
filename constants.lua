@@ -2,9 +2,9 @@
 -- Defines mod constants for TeleportFavorites.
  -- This is the central configuration point for the mod with values used throughout the codebase.
 
---- @class Constants
---- @field PREFIX string 
---- @field settings table<string, number|string|boolean> 
+---@class Constants
+---@field PREFIX string 
+---@field settings table<string, number|string|boolean> 
 local Constants = {
   PREFIX = "tf_",
     settings = {

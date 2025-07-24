@@ -1,4 +1,6 @@
+---@diagnostic disable: undefined-global
 data:extend({
+  {
     type = "custom-input",
     name = "teleport_history-prev",
     key_sequence = "CONTROL + MINUS", -- Changed format from CONTROL-- to CONTROL + MINUS

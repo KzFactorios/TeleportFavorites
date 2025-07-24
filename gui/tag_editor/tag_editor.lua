@@ -202,7 +202,7 @@ end
 
 -- Main builder for the tag editor, matching the full semantic/nested structure from .project/tag_editor.md
 ---
---- @param player LuaPlayer
+---@param player LuaPlayer
 function tag_editor.build(player)
   if not BasicHelpers.is_valid_player(player) then return end
   local tag_data = Cache.get_player_data(player).tag_editor_data or Cache.create_tag_editor_data()

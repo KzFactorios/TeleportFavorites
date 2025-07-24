@@ -1,4 +1,4 @@
---- @diagnostic disable: undefined-global
+---@diagnostic disable: undefined-global
 
 --[[
 Centralized GUI style prototypes for TeleportFavorites

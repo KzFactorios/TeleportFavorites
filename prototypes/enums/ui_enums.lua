@@ -18,7 +18,7 @@ local UIEnums = {}
 -- COLOR ENUMERATIONS
 -- ========================================
 
---- @class ColorEnum
+---@class ColorEnum
 UIEnums.Colors = {
   -- Basic colors
   BLACK = { r = 0, g = 0, b = 0, a = 1 },

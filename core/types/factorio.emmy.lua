@@ -1,35 +1,35 @@
 ---@diagnostic disable: undefined-global, lowercase-global, duplicate-set-field, duplicate-doc-field, assign-type-mismatch, param-type-mismatch, return-type-mismatch, redundant-parameter, missing-return, cast-local-type, need-check-nil, deprecated, undefined-field, redefined-local, unused-local, unused-function, unused-label, trailing-space
---- @class defines
---- @diagnostic disable-next-line: duplicate-doc-alias
---- @enum defines.print_sound
---- @diagnostic disable-next-line: duplicate-doc-alias
---- @enum defines.print_skip
---- @diagnostic disable-next-line: duplicate-doc-alias
---- @enum defines.inventory
---- @diagnostic disable-next-line: duplicate-doc-alias
---- @enum defines.chunk_generated_status
---- @diagnostic disable-next-line: duplicate-doc-alias
---- @enum defines.controllers
---- @diagnostic disable-next-line: duplicate-doc-alias
---- @enum defines.gui_type
---- @diagnostic disable-next-line: duplicate-doc-alias
---- @enum defines.render_mode
---- @diagnostic disable-next-line: duplicate-doc-alias
---- @enum defines.riding.acceleration
---- @diagnostic disable-next-line: duplicate-doc-alias
---- @enum defines.riding.direction
---- @diagnostic disable-next-line: duplicate-doc-alias
---- @enum defines.direction
---- @diagnostic disable-next-line: duplicate-doc-alias
---- @enum defines.alert_type
---- @diagnostic disable-next-line: duplicate-doc-alias
---- @enum defines.wire_type
---- @diagnostic disable-next-line: duplicate-doc-alias
---- @enum defines.circuit_connector_id
---- @diagnostic disable-next-line: duplicate-doc-alias
---- @enum defines.rail_direction
---- @diagnostic disable-next-line: duplicate-doc-alias
---- @enum defines.rail_connection_direction
+---@class defines
+---@diagnostic disable-next-line: duplicate-doc-alias
+---@enum defines.print_sound
+---@diagnostic disable-next-line: duplicate-doc-alias
+---@enum defines.print_skip
+---@diagnostic disable-next-line: duplicate-doc-alias
+---@enum defines.inventory
+---@diagnostic disable-next-line: duplicate-doc-alias
+---@enum defines.chunk_generated_status
+---@diagnostic disable-next-line: duplicate-doc-alias
+---@enum defines.controllers
+---@diagnostic disable-next-line: duplicate-doc-alias
+---@enum defines.gui_type
+---@diagnostic disable-next-line: duplicate-doc-alias
+---@enum defines.render_mode
+---@diagnostic disable-next-line: duplicate-doc-alias
+---@enum defines.riding.acceleration
+---@diagnostic disable-next-line: duplicate-doc-alias
+---@enum defines.riding.direction
+---@diagnostic disable-next-line: duplicate-doc-alias
+---@enum defines.direction
+---@diagnostic disable-next-line: duplicate-doc-alias
+---@enum defines.alert_type
+---@diagnostic disable-next-line: duplicate-doc-alias
+---@enum defines.wire_type
+---@diagnostic disable-next-line: duplicate-doc-alias
+---@enum defines.circuit_connector_id
+---@diagnostic disable-next-line: duplicate-doc-alias
+---@enum defines.rail_direction
+---@diagnostic disable-next-line: duplicate-doc-alias
+---@enum defines.rail_connection_direction
 
 ---@class uint: integer
 ---@class double: number

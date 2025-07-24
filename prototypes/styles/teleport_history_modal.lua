@@ -1,3 +1,6 @@
+---@diagnostic disable: undefined-global
+
+-- Custom styles for the Teleport History Modal GUI
 
 local gui_style = data.raw["gui-style"].default
 

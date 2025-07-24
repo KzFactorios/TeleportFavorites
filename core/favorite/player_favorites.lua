@@ -13,11 +13,11 @@ local GuiObserver = require("core.events.gui_observer")
 
 
 --- PlayerFavorites class for managing a player's favorite collection
---- @class PlayerFavorites
---- @field player LuaPlayer
---- @field player_index uint
---- @field surface_index uint
---- @field favorites Favorite[]
+---@class PlayerFavorites
+---@field player LuaPlayer
+---@field player_index uint
+---@field surface_index uint
+---@field favorites Favorite[]
 local PlayerFavorites = {}
 PlayerFavorites.__index = PlayerFavorites
 PlayerFavorites._instances = PlayerFavorites._instances or {}
