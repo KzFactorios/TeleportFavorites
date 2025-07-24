@@ -11,3 +11,11 @@ For any coding, architectural, or deployment questions, consult `.github/copilot
 ---
 
 *If you believe a standard is missing or unclear, update `.github/copilot-instructions.md` directly.*
+
+
+
+## Changelog Format & Verification
+
+All changelog formatting rules, verification requirements, and automation scripts (including changelog validation) are maintained in `.github/copilot-instructions.md`.
+
+Before packaging or releasing, ensure the changelog is validated using the prescribed script and matches the strict Factorio mod format. For details, see the Changelog section in `.github/copilot-instructions.md`.

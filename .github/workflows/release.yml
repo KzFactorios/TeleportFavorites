@@ -41,11 +41,14 @@ jobs:
         run: |
           Compress-Archive -Path .dist\* -DestinationPath TeleportFavorites_${{ github.event.inputs.version }}.zip -Force
 
-      - name: Upload release artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: TeleportFavorites_${{ github.event.inputs.version }}.zip
-          path: TeleportFavorites_${{ github.event.inputs.version }}.zip
+        - name: List files in .dist
+          run: Get-ChildItem .dist -Recurse
+
+      - name: Upload .dist directory as artifact
+          uses: actions/upload-artifact@v4
+          with:
+            name: TeleportFavorites_dist
+            path: .dist/**/*
 
       - name: Create GitHub Release
         if: ${{ success() }}
