@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 local GuiValidation = require("core.utils.gui_validation")
 local GuiBase = require("gui.gui_base")
 local GPSUtils = require("core.utils.gps_utils")

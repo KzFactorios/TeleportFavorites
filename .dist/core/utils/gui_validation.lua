@@ -1,6 +1,5 @@
 ---@diagnostic disable: undefined-global
 
-
 local Logger = require("core.utils.error_handler")
 local Enum = require("prototypes.enums.ui_enums")
 local BasicHelpers = require("core.utils.basic_helpers")

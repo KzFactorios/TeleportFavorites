@@ -1,4 +1,5 @@
 ---@diagnostic disable: undefined-global
+
 data:extend({
   {
     type = "custom-input",

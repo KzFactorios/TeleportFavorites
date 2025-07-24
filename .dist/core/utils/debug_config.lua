@@ -1,6 +1,5 @@
 ---@diagnostic disable: undefined-global
 
-
 ---@class DebugConfig
 local DebugConfig = {}
 

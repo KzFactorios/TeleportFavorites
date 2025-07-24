@@ -1,9 +1,6 @@
 ---@diagnostic disable: undefined-global
 
-
 local gui_style = data.raw["gui-style"].default
-
-
 
 
 gui_style.tf_teleport_history_modal_pin_button = {

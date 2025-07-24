@@ -1,12 +1,8 @@
 ---@diagnostic disable: undefined-global
 
-
----@diagnostic disable-next-line: undefined-global
 local gui_style = data.raw["gui-style"].default
+
 local line_height = 44
-
-
-
 
 gui_style.tf_tag_editor_outer_frame = {
   type = "frame_style",

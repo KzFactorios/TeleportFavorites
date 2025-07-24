@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 ---@class UIEnums
 local UIEnums = {}
 

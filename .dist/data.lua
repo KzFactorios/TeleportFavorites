@@ -1,6 +1,5 @@
 ---@diagnostic disable: undefined-global
 
-
 require("prototypes.styles.init")
 require("prototypes.item.selection_tool")
 require("prototypes.input.teleport_history_inputs")

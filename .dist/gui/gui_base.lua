@@ -1,7 +1,5 @@
 ---@diagnostic disable: undefined-global
 
-
-
 local ErrorHandler = require("core.utils.error_handler")
 local Enum = require("prototypes.enums.enum")
 local BasicHelpers = require("core.utils.basic_helpers")

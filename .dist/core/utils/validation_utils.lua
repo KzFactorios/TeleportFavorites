@@ -1,6 +1,5 @@
 ---@diagnostic disable: undefined-global
 
-
 local constants = require("constants")
 
 ---@class ValidationUtils

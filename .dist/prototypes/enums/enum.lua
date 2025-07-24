@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 local UIEnums = require("prototypes.enums.ui_enums")
 local CoreEnums = require("prototypes.enums.core_enums")
 

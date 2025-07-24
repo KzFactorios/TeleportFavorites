@@ -1,7 +1,5 @@
 ---@diagnostic disable: undefined-global
 
-
-
 local ErrorHandler = require("core.utils.error_handler")
 local ValidationUtils = require("core.utils.validation_utils")
 

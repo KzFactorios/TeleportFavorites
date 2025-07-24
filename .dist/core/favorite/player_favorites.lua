@@ -1,7 +1,5 @@
 ---@diagnostic disable: undefined-global
 
-
-
 local Constants = require("constants")
 local FavoriteUtils = require("core.favorite.favorite_utils")
 local Cache = require("core.cache.cache")

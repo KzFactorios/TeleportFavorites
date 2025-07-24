@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 ---@class Constants
 ---@field PREFIX string
 ---@field settings table<string, number|string|boolean>

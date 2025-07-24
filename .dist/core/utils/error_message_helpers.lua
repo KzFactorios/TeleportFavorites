@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 local GuiBase = require("gui.gui_base")
 local GuiValidation = require("core.utils.gui_validation")
 local BasicHelpers = require("core.utils.basic_helpers")

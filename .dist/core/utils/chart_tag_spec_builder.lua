@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 local ChartTagSpecBuilder = {}
 
 ---@param text string? Custom text override

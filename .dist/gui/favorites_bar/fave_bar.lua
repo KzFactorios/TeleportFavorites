@@ -1,6 +1,5 @@
 ---@diagnostic disable: undefined-global
 
-
 local GuiBase = require("gui.gui_base")
 local GuiElementBuilders = require("core.utils.gui_element_builders")
 local ErrorMessageHelpers = require("core.utils.error_message_helpers")

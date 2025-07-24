@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 local ErrorHandler = require("core.utils.error_handler")
 local TeleportStrategy = require("core.utils.teleport_strategy")
 local Cache = require("core.cache.cache")

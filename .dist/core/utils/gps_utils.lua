@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 local BasicHelpers = require("core.utils.basic_helpers")
 local Constants = require("constants")
 

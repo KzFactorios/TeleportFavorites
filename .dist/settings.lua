@@ -2,7 +2,6 @@
 
 local Constants = require("constants")
 
-
 data:extend({
   {
     name = "favorites_on",

@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 local GuiBase = require("gui.gui_base")
 local GuiValidation = require("core.utils.gui_validation")
 local Enum = require("prototypes.enums.enum")

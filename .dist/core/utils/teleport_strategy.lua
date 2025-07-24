@@ -1,6 +1,5 @@
 ---@diagnostic disable: undefined-doc-param, param-type-mismatch, missing-parameter, undefined-global
 
-
 local GPSUtils = require("core.utils.gps_utils")
 local ErrorHandler = require("core.utils.error_handler")
 local LocaleUtils = require("core.utils.locale_utils")

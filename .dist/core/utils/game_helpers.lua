@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 local ErrorHandler = require("core.utils.error_handler")
 
 ---@class GameHelpers

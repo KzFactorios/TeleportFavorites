@@ -1,6 +1,5 @@
 ---@diagnostic disable: undefined-global
 
-
 data:extend({
   {
     type = "selection-tool",

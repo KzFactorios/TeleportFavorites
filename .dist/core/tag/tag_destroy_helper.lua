@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 local Cache = require("core.cache.cache")
 local FavoriteUtils = require("core.favorite.favorite_utils")
 local ErrorHandler = require("core.utils.error_handler")

@@ -1,6 +1,5 @@
 ---@diagnostic disable: undefined-global
 
-
 local ErrorHandler = require("core.utils.error_handler")
 local GPSUtils = require("core.utils.gps_utils")
 local Cache = require("core.cache.cache")

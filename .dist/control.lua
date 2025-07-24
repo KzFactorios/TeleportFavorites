@@ -1,11 +1,8 @@
 ---@diagnostic disable: undefined-global, need-check-nil, assign-type-mismatch, param-type-mismatch, undefined-field
 
-
-
 local control_tag_editor = require("core.control.control_tag_editor")
 local control_fave_bar = require("core.control.control_fave_bar")
 local control_tag_editor = require("core.control.control_tag_editor")
-
 
 local event_registration_dispatcher = require("core.events.event_registration_dispatcher")
 local handlers = require("core.events.handlers")

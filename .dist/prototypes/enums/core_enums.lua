@@ -1,4 +1,5 @@
----@class CoreEnums
+---@diagnostic disable: undefined-global---@class CoreEnums
+
 local CoreEnums = {}
 
 CoreEnums.Events = {

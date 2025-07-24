@@ -1,7 +1,5 @@
 ---@diagnostic disable: undefined-global
 
-
-
 require("prototypes.styles.fave_bar")
 require("prototypes.styles.tag_editor")
 require("prototypes.styles.teleport_history_modal")
