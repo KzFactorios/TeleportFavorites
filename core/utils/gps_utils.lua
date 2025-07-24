@@ -1,4 +1,4 @@
-
+---@diagnostic disable: undefined-global
 
 -- core/utils/gps_utils.lua
 -- TeleportFavorites Factorio Mod

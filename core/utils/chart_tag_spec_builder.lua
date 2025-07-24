@@ -1,4 +1,4 @@
-
+---@diagnostic disable: undefined-global
 
 -- core/utils/chart_tag_spec_builder.lua
 -- TeleportFavorites Factorio Mod

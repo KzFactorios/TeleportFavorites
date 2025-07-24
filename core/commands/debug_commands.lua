@@ -1,26 +1,14 @@
---[[
 -- core/commands/debug_commands.lua
 -- TeleportFavorites Factorio Mod
--- -----------------------------
--- This module provides debug commands for runtime debug level control. It allows changing debug levels during gameplay, showing debug info, and toggling between production and development modes.
---]]
+-- Debug commands for runtime debug level control, showing debug info, and toggling between production and development modes.
+--
+-- Commands:
+-- - /tf_debug_level <level> - Set debug level (0-4)
+-- - /tf_debug_info - Show current debug configuration  
+-- - /tf_debug_production - Enable production mode (minimal logging)
 
 ---@diagnostic disable: undefined-global
---[[
-core/commands/debug_commands.lua
-TeleportFavorites Factorio Mod
------------------------------
-Debug commands for runtime debug level control.
 
-This module provides console commands and GUI controls for changing
-debug levels during gameplay without requiring restarts.
-
-Commands:
-- /tf_debug_level <level> - Set debug level (0-4)
-- /tf_debug_info - Show current debug configuration
-- /tf_debug_production - Enable production mode (minimal logging)
-- /tf_debug_debug - Enable debug mode (verbose logging)
-]]
 local basic_helpers = require("core.utils.basic_helpers")
 local ValidationUtils = require("core.utils.validation_utils")
 local Cache = require("core.cache.cache")

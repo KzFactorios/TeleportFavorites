@@ -1,7 +1,6 @@
 ---@diagnostic disable: undefined-global
 
 
----@diagnostic disable-next-line: undefined-global
 local gui_style = data.raw["gui-style"].default
 local line_height = 44
 

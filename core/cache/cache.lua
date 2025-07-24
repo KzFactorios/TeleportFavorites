@@ -1,37 +1,33 @@
 ---@diagnostic disable: undefined-global
 
-
---[[
-Data Structure (v2.0+):
-storage = {
-  mod_version = string,
-  players = {
-    [player_index] = {
-      player_name = string,
-      render_mode = string,
-      tag_editor_data = table,
-      fave_bar_slots_visible = bool,
-      drag_favorite = table,
-      modal_dialog = table,
-      surfaces = {
-        [surface_index] = {
-          favorites = { Favorite, ... },
-          teleport_history = {
-            stack = { gps_string, ... },
-            pointer = number
-          }
-        }, ...
-      }
-    }, ...
-  },
-  surfaces = {
-    [surface_index] = {
-      tags = { [gps_string] = Tag },
-    }, ...
-  }
-}
-]]
-
+-- Data Structure (v2.0+):
+-- storage = {
+--   mod_version = string,
+--   players = {
+--     [player_index] = {
+--       player_name = string,
+--       render_mode = string,
+--       tag_editor_data = table,
+--       fave_bar_slots_visible = bool,
+--       drag_favorite = table,
+--       modal_dialog = table,
+--       surfaces = {
+--         [surface_index] = {
+--           favorites = { Favorite, ... },
+--           teleport_history = {
+--             stack = { gps_string, ... },
+--             pointer = number
+--           }
+--         }, ...
+--       }
+--     }, ...
+--   },
+--   surfaces = {
+--     [surface_index] = {
+--       tags = { [gps_string] = Tag },
+--     }, ...
+--   }
+-- }
 
 local BasicHelpers = require("core.utils.basic_helpers")
 local Constants = require("constants")

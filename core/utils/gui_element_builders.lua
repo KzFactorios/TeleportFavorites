@@ -1,4 +1,4 @@
-
+---@diagnostic disable: undefined-global
 
 -- core/utils/gui_element_builders.lua
 -- TeleportFavorites Factorio Mod

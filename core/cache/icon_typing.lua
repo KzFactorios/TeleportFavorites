@@ -1,5 +1,8 @@
 ---@diagnostic disable: undefined-global
 
+-- core/cache/icon_typing.lua
+-- TeleportFavorites Factorio Mod
+-- Provides O(1) icon type resolution for rich text rendering using dynamic prototype lookups.
 
 local icon_typing = {}
 

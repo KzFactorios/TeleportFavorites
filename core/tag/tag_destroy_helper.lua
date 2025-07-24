@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 -- core/tag/tag_destroy_helper.lua
 -- TeleportFavorites Factorio Mod
 -- Centralized, recursion-safe destruction for tags and chart_tags, with multiplayer and transaction safety.

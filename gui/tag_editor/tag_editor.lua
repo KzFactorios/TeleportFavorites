@@ -3,24 +3,22 @@
 -- gui/tag_editor/tag_editor.lua
 -- TeleportFavorites Factorio Mod
 -- Modal Tag Editor for creating/editing map tags.
---[[
-Element Hierarchy:
-tag_editor_modal (frame, modal)
-├─ frame_titlebar (flow, horizontal)
-│  ├─ draggable_grip (sprite)
-│  └─ close_button (sprite-button)
-├─ tag_icon_picker (sprite-button)
-├─ tag_text_field (textfield)
-├─ action_buttons_flow (flow, horizontal)
-│  ├─ move_button (sprite-button)
-│  ├─ delete_button (sprite-button)
-│  ├─ teleport_button (sprite-button)
-│  ├─ favorite_button (sprite-button)
-│  ├─ confirm_button (button)
-│  └─ cancel_button (button)
-└─ error_row (label, visible on error)
-]]
-
+--
+-- Element Hierarchy:
+-- tag_editor_modal (frame, modal)
+-- ├─ frame_titlebar (flow, horizontal)
+-- │  ├─ draggable_grip (sprite)
+-- │  └─ close_button (sprite-button)
+-- ├─ tag_icon_picker (sprite-button)
+-- ├─ tag_text_field (textfield)
+-- ├─ action_buttons_flow (flow, horizontal)
+-- │  ├─ move_button (sprite-button)
+-- │  ├─ delete_button (sprite-button)
+-- │  ├─ teleport_button (sprite-button)
+-- │  ├─ favorite_button (sprite-button)
+-- │  ├─ confirm_button (button)
+-- │  └─ cancel_button (button)
+-- └─ error_row (label, visible on error)
 
 local Enum = require("prototypes.enums.enum")
 local GuiBase = require("gui.gui_base")

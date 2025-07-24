@@ -1,6 +1,10 @@
 ---@diagnostic disable: undefined-global
 -- Custom styles for the Favorites Bar GUI (fave_bar)
 
+local gui_style = data.raw["gui-style"].default
+
+-- add all new styles under this line
+
 gui_style.tf_fave_bar_frame = {
     type = "frame_style",
     padding = 3,

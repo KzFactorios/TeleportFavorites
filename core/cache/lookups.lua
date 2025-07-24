@@ -1,17 +1,16 @@
 -- core/cache/lookups.lua
 -- TeleportFavorites Factorio Mod
 -- Manages runtime cache for chart tag lookups, rebuilt from game state for performance and multiplayer safety.
---[[
-Runtime Lookups Structure:
-Lookups = {
-  surfaces = {
-    [surface_index] = {
-      chart_tags = { LuaCustomChartTag, ... },
-      chart_tags_mapped_by_gps = { [gps_string] = LuaCustomChartTag }
-    }, ...
-  }
-}
-]]
+--
+-- Runtime Lookups Structure:
+-- Lookups = {
+--   surfaces = {
+--     [surface_index] = {
+--       chart_tags = { LuaCustomChartTag, ... },
+--       chart_tags_mapped_by_gps = { [gps_string] = LuaCustomChartTag }
+--     }, ...
+--   }
+-- }
 
 ---@diagnostic disable: undefined-global
 

@@ -3,19 +3,18 @@
 -- gui/favorites_bar/fave_bar.lua
 -- TeleportFavorites Factorio Mod
 -- Builds the favorites bar UI for quick-access teleport slots.
---[[
-Element Hierarchy:
-fave_bar_frame (frame)
-└─ fave_bar_flow (flow, horizontal)
-   ├─ fave_bar_toggle_container (frame, vertical)
-   │  ├─ fave_bar_history_toggle (sprite-button)
-   │  └─ fave_bar_visibility_toggle (sprite-button)
-   └─ fave_bar_slots_flow (frame, horizontal)
-      ├─ fave_bar_slot_1 (sprite-button)
-      ├─ fave_bar_slot_2 (sprite-button)
-      ├─ ...
-      └─ fave_bar_slot_N (sprite-button)
-]]
+--
+-- Element Hierarchy:
+-- fave_bar_frame (frame)
+-- └─ fave_bar_flow (flow, horizontal)
+--    ├─ fave_bar_toggle_container (frame, vertical)
+--    │  ├─ fave_bar_history_toggle (sprite-button)
+--    │  └─ fave_bar_visibility_toggle (sprite-button)
+--    └─ fave_bar_slots_flow (frame, horizontal)
+--       ├─ fave_bar_slot_1 (sprite-button)
+--       ├─ fave_bar_slot_2 (sprite-button)
+--       ├─ ...
+--       └─ fave_bar_slot_N (sprite-button)
 
 local GuiBase = require("gui.gui_base")
 local GuiElementBuilders = require("core.utils.gui_element_builders")

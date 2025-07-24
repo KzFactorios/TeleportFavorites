@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 -- core/tag/tag.lua
 -- TeleportFavorites Factorio Mod
 -- Tag model and utilities for managing teleportation tags, chart tags, and player favorites.

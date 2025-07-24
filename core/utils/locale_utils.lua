@@ -21,24 +21,20 @@ local LOCALE_PREFIXES = {
 -- Debug flag for missing translation warnings
 local DEBUG_MISSING_TRANSLATIONS = true
 
---[[
-Get a localized string from the GUI category
-@param player - The player object for localization context
-@param key - The locale key (without prefix)
-@param params - Optional table of parameters for string substitution
-@return localized string
-]]
+-- Get a localized string from the GUI category
+-- @param player - The player object for localization context
+-- @param key - The locale key (without prefix)
+-- @param params - Optional table of parameters for string substitution
+-- @return localized string
 function LocaleUtils.get_gui_string(player, key, params)
     return LocaleUtils.get_string(player, "gui", key, params)
 end
 
---[[
-Get a localized string from the error category
-@param player - The player object for localization context
-@param key - The locale key (without prefix)
-@param params - Optional table of parameters for string substitution
-@return localized string
-]]
+-- Get a localized string from the error category
+-- @param player - The player object for localization context
+-- @param key - The locale key (without prefix)
+-- @param params - Optional table of parameters for string substitution
+-- @return localized string
 function LocaleUtils.get_error_string(player, key, params)
     return LocaleUtils.get_string(player, "error", key, params)
 end

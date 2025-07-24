@@ -55,13 +55,13 @@ jobs:
 
       - name: Create artifact zip for upload
         run: |
-          Compress-Archive -Path .dist\* -DestinationPath TeleportFavorites_dist.zip -Force
+          Compress-Archive -Path .dist\* -DestinationPath TeleportFavorites_${{ github.event.inputs.version }}.zip -Force
 
       - name: Upload .dist directory as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TeleportFavorites_dist
-          path: TeleportFavorites_dist.zip
+          name: TeleportFavorites_${{ github.event.inputs.version }}
+          path: TeleportFavorites_${{ github.event.inputs.version }}.zip
 
       - name: Create GitHub Release
         if: ${{ success() }}

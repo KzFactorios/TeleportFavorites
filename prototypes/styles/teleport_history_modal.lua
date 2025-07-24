@@ -4,8 +4,7 @@
 
 local gui_style = data.raw["gui-style"].default
 
-
-
+-- add all new styles under this line
 
 gui_style.tf_teleport_history_modal_pin_button = {
     type = "button_style",
