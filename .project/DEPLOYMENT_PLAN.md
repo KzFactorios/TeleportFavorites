@@ -140,7 +140,7 @@ This document describes the step-by-step workflow for deploying and releasing th
   ```powershell
   python .scripts/copy_for_deploy.py
   python .scripts/strip_comments.py --target deploy/
-  python .scripts/find_dev_flags.py --target deploy/
+  # (find_dev_flags.py removed)
   ```
   _Note: The source files in the repository must remain untouched. All modifications for deployment are performed only on the copies in the staging directory._
 
@@ -196,7 +196,7 @@ To ensure that only production debug settings are present (and no other developm
 - Maintain a list of all development-only flags, settings, and constants (e.g., `DEV_MODE`, `ENABLE_TEST_FEATURES`, etc.) in `.project/coding_standards.md` or a dedicated config file. Only production-level debug settings (e.g., `DEBUG_LEVEL = "production"`) are permitted in release builds.
 - Use Python scripts (run via PowerShell) to search for these identifiers in all Lua and config files:
   ```powershell
-  python .scripts/find_dev_flags.py
+  # (find_dev_flags.py removed)
   ```
 
 ### Step 2: Automated Exclusion (Comments Only)
@@ -204,13 +204,13 @@ To ensure that only production debug settings are present (and no other developm
 - Use Python scripts to automate comment stripping and flag detection. Example:
   ```powershell
   python .scripts/strip_comments.py
-  python .scripts/find_dev_flags.py
+  # (find_dev_flags.py removed)
   ```
 
 ### Step 3: Validation
 - After packaging, run a final scan using the Python script to ensure no development flags/settings remain except permitted production debug settings:
   ```powershell
-  python .scripts/find_dev_flags.py
+  # (find_dev_flags.py removed)
   ```
 - If any matches are found (other than allowed production debug settings), abort deployment and resolve before proceeding.
 
@@ -226,7 +226,7 @@ To ensure that only production debug settings are present (and no other developm
 - Example GitHub Actions step:
   ```yaml
   - name: Check for dev flags
-    run: python .scripts/find_dev_flags.py
+  # (find_dev_flags.py removed)
   ```
 ---
 

@@ -46,7 +46,7 @@ function GuiValidation.apply_style_properties(element, style_props)
   end)
 
   if not success then
-    Logger.debug_log("Failed to apply style properties", {
+    Logger.warn_log("Failed to apply style properties", {
       element_name = element.name or "<no name>",
       element_type = element.type or "<no type>",
       error = error_msg

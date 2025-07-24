@@ -8,37 +8,22 @@
 ---@class DebugConfig
 local DebugConfig = {}
 
--- Debug levels (from least to most verbose)
 DebugConfig.LEVELS = {
   NONE = 0,
   ERROR = 1,
   WARN = 2,
   INFO = 3,
-  DEBUG = 4,
-  TRACE = 5
+  DEBUG = 4
 }
 
 -- Default debug level based on environment detection
 local function detect_environment()
-  -- Check for development indicators
-  local is_development = false
-  
-  -- Look for development-only files/modules
-  local dev_indicators = {
-    "tests/validate_syntax.lua",
-    ".project/TODO.md", 
-    ".scripts/",
-    ".github/"
-  }
-  
-  -- In Factorio, we can't directly check file existence, so we use other indicators
-  -- Check if debug constants or development settings exist
+  -- Only support production and debug modes
+  local is_debug = false
   if script and script.mod_name then
-    -- Look for development-specific storage variables or settings
-    is_development = (storage and storage._tf_debug_mode) == true
+    is_debug = (storage and storage._tf_debug_mode) == true
   end
-  
-  return is_development and DebugConfig.LEVELS.DEBUG or DebugConfig.LEVELS.WARN
+  return is_debug and DebugConfig.LEVELS.DEBUG or DebugConfig.LEVELS.WARN
 end
 
 -- Current debug level (initialized based on environment)
@@ -108,16 +93,16 @@ function DebugConfig.log(level, message, data)
   end
 end
 
---- Enable production mode (minimal logging)
+-- Enable production mode (minimal logging)
 function DebugConfig.enable_production_mode()
   DebugConfig.set_level(DebugConfig.LEVELS.WARN)
   DebugConfig.log(DebugConfig.LEVELS.INFO, "Production mode enabled")
 end
 
---- Enable development mode (verbose logging)
-function DebugConfig.enable_development_mode()
+-- Enable debug mode (verbose logging)
+function DebugConfig.enable_debug_mode()
   DebugConfig.set_level(DebugConfig.LEVELS.DEBUG)
-  DebugConfig.log(DebugConfig.LEVELS.INFO, "Development mode enabled")
+  DebugConfig.log(DebugConfig.LEVELS.INFO, "Debug mode enabled")
 end
 
 --- Get debug level name for display
@@ -141,8 +126,8 @@ function DebugConfig.initialize()
   current_debug_level = detect_environment()
   DebugConfig.log(DebugConfig.LEVELS.INFO, "Debug system initialized", {
     level = current_debug_level,
-    level_name = DebugConfig.get_level_name(),
-    environment = current_debug_level >= DebugConfig.LEVELS.DEBUG and "development" or "production"
+  level_name = DebugConfig.get_level_name(),
+  environment = current_debug_level == DebugConfig.LEVELS.DEBUG and "debug" or "production"
   })
 end
 

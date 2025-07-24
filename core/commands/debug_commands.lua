@@ -16,10 +16,10 @@ This module provides console commands and GUI controls for changing
 debug levels during gameplay without requiring restarts.
 
 Commands:
-- /tf_debug_level <level> - Set debug level (0-5)
+- /tf_debug_level <level> - Set debug level (0-4)
 - /tf_debug_info - Show current debug configuration
 - /tf_debug_production - Enable production mode (minimal logging)
-- /tf_debug_development - Enable development mode (verbose logging)
+- /tf_debug_debug - Enable debug mode (verbose logging)
 ]]
 local basic_helpers = require("core.utils.basic_helpers")
 local ValidationUtils = require("core.utils.validation_utils")
@@ -92,20 +92,17 @@ local function tf_debug_production_handler(deps, command)
   local PlayerHelpers = deps.PlayerHelpers
   local player = game.players[command.player_index]
   if not player then return end
-  PlayerHelpers.debug_print_to_player(player, "tf_debug_production_handler")
   DebugConfig.enable_production_mode()
   PlayerHelpers.safe_player_print(player, "Production mode enabled (debug level: " .. DebugConfig.get_level_name() .. ")")
 end
 
-local function tf_debug_development_handler(deps, command)
+local function tf_debug_debug_handler(deps, command)
   local DebugConfig = deps.DebugConfig
   local PlayerHelpers = deps.PlayerHelpers
   local player = game.players[command.player_index]
   if not player then return end
-  PlayerHelpers.debug_print_to_player(player, "tf_debug_development_handler")
-  DebugConfig.enable_development_mode()
-  PlayerHelpers.safe_player_print(player,
-    "Development mode enabled (debug level: " .. DebugConfig.get_level_name() .. ")")
+  DebugConfig.enable_debug_mode()
+  PlayerHelpers.safe_player_print(player, "Debug mode enabled (debug level: " .. DebugConfig.get_level_name() .. ")")
 end
 
 local function tf_test_controller_handler(deps, command)
@@ -322,7 +319,7 @@ end
 DebugCommands.tf_debug_level_handler = function(cmd) return tf_debug_level_handler(DebugCommands._deps, cmd) end
 DebugCommands.tf_debug_info_handler = function(cmd) return tf_debug_info_handler(DebugCommands._deps, cmd) end
 DebugCommands.tf_debug_production_handler = function(cmd) return tf_debug_production_handler(DebugCommands._deps, cmd) end
-DebugCommands.tf_debug_development_handler = function(cmd) return tf_debug_development_handler(DebugCommands._deps, cmd) end
+DebugCommands.tf_debug_debug_handler = function(cmd) return tf_debug_debug_handler(DebugCommands._deps, cmd) end
 DebugCommands.tf_test_controller_handler = function(cmd) return tf_test_controller_handler(DebugCommands._deps, cmd) end
 DebugCommands.tf_force_build_bar_handler = function(cmd) return tf_force_build_bar_handler(DebugCommands._deps, cmd) end
 DebugCommands.tf_test_settings_handler = function(cmd) return tf_test_settings_handler(DebugCommands._deps, cmd) end
@@ -331,10 +328,10 @@ DebugCommands.tf_check_events_handler = function(cmd) return tf_check_events_han
 
 function DebugCommands.register_commands()
   basic_helpers.register_module_commands(DebugCommands, {
-    { "tf_debug_level",       "Set debug level (0-5)",                     "tf_debug_level_handler" },
-    { "tf_debug_info",        "Show current debug configuration",          "tf_debug_info_handler" },
-    { "tf_debug_production",  "Enable production mode (minimal logging)",  "tf_debug_production_handler" },
-    { "tf_debug_development", "Enable development mode (verbose logging)", "tf_debug_development_handler" },
+  { "tf_debug_level",       "Set debug level (0-4)",                     "tf_debug_level_handler" },
+  { "tf_debug_info",        "Show current debug configuration",          "tf_debug_info_handler" },
+  { "tf_debug_production",  "Enable production mode (minimal logging)",  "tf_debug_production_handler" },
+  { "tf_debug_debug",       "Enable debug mode (verbose logging)",       "tf_debug_debug_handler" },
     { "tf_test_controller",   "Print controller test info",                "tf_test_controller_handler" },
     { "tf_force_build_bar",   "Force build favorites bar",                 "tf_force_build_bar_handler" },
     { "tf_test_settings",     "Test settings system functionality",        "tf_test_settings_handler" },

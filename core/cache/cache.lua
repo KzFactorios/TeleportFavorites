@@ -60,6 +60,9 @@ Cache.Settings = nil
 
 -- Ensure storage is always available for persistence (Factorio 2.0+)
 if not storage then
+  if ErrorHandler and ErrorHandler.error_log then
+    ErrorHandler.error_log("CacheInit", "Storage table not available - this mod requires Factorio 2.0+", nil, "init")
+  end
   error("Storage table not available - this mod requires Factorio 2.0+")
 end
 
@@ -124,6 +127,9 @@ function Cache.init()
     ErrorHandler.debug_log("[CACHE] init called", {})
   end
   if not storage then
+    if ErrorHandler and ErrorHandler.error_log then
+      ErrorHandler.error_log("CacheInit", "Storage table not available - this mod requires Factorio 2.0+", nil, "init")
+    end
     error("Storage table not available - this mod requires Factorio 2.0+")
   end
   storage.players = storage.players or {}
@@ -349,6 +355,9 @@ end
 ---@return table<string, any>|nil Table of tags indexed by GPS string, or nil if invalid
 function Cache.get_surface_tags(surface_index)
   if not surface_index or type(surface_index) ~= "number" then
+    if ErrorHandler and ErrorHandler.warn_log then
+      ErrorHandler.warn_log("Invalid surface_index in get_surface_tags", { surface_index = surface_index })
+    end
     return nil
   end
   local sdata = init_surface_data(surface_index)

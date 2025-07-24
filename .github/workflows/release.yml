@@ -34,25 +34,24 @@ jobs:
       - name: Strip comments from Lua files in .dist
         run: python .scripts/strip_comments.py
 
-
       - name: Validate changelog.txt format in .dist
         run: python .scripts/validate_changelog.py
 
       - name: Zip the .dist directory for release
         run: |
-          Compress-Archive -Path .dist\* -DestinationPath TeleportFavorites_v${{ github.event.inputs.version }}.zip -Force
+          Compress-Archive -Path .dist\* -DestinationPath TeleportFavorites_${{ github.event.inputs.version }}.zip -Force
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TeleportFavorites_v${{ github.event.inputs.version }}.zip
-          path: TeleportFavorites_v${{ github.event.inputs.version }}.zip
+          name: TeleportFavorites_${{ github.event.inputs.version }}.zip
+          path: TeleportFavorites_${{ github.event.inputs.version }}.zip
 
       - name: Create GitHub Release
         if: ${{ success() }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.event.inputs.version }}
-          name: TeleportFavorites v${{ github.event.inputs.version }}
+          name: TeleportFavorites ${{ github.event.inputs.version }}
           body_path: .dist\changelog.txt
-          files: TeleportFavorites_v${{ github.event.inputs.version }}.zip
+          files: TeleportFavorites_${{ github.event.inputs.version }}.zip

@@ -18,7 +18,7 @@ local control_tag_editor = require("core.control.control_tag_editor")
 
 local event_registration_dispatcher = require("core.events.event_registration_dispatcher")
 local handlers = require("core.events.handlers")
-local Logger = require("core.utils.error_handler")
+local ErrorHandler = require("core.utils.error_handler")
 local DebugCommands = require("core.commands.debug_commands")
 local DeleteFavoriteCommand = require("core.commands.delete_favorite_command")
 local TeleportHistory = require("core.teleport.teleport_history")
@@ -45,7 +45,7 @@ end
 -- Custom on_init to allow easy toggling of intro cutscene skip
 local function custom_on_init()
   -- Initialize debug system first
-  Logger.initialize()
+  ErrorHandler.initialize()
 
   -- Register all commands
   register_commands()
@@ -55,9 +55,9 @@ local function custom_on_init()
 
   -- Set debug mode based on development indicators
   if storage and storage._tf_debug_mode then
-    Logger.info("Development mode detected - enabling debug logging")
+    ErrorHandler.info("Development mode detected - enabling debug logging")
   else
-    Logger.info("Production mode - using minimal logging")
+    ErrorHandler.info("Production mode - using minimal logging")
   end
 
   handlers.on_init()

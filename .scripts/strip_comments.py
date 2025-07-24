@@ -29,25 +29,16 @@ def strip_comments_from_file(filepath):
             if ']]' in line:
                 in_block_comment = False
             continue
-        # Preserve license header at the top
-        if license_header and LICENSE_HEADER_PATTERN.match(stripped):
-            new_lines.append(line)
-            continue
-        license_header = False if not stripped.startswith('--') else license_header
-        # Remove full-line comments
-        if stripped.startswith('--') and not license_header:
+        # Remove all standalone comment lines
+        if stripped.startswith('--'):
             continue
         # Remove lines with forbidden dev flags/settings
         if forbidden_re.search(line):
             continue
-        # Remove inline comments (but not URLs), preserve code after '--'
+        # Remove inline comments (but not URLs), preserve code before '--'
         if '--' in line and not 'http' in line:
             comment_pos = line.find('--')
             code_before = line[:comment_pos].rstrip()
-            code_after = line[comment_pos:]
-            # If code_after contains a closing parenthesis, append it to code_before
-            if ')' in code_after and not code_before.endswith(')'):
-                code_before += ')'
             line = code_before + '\n'
         # Remove trailing whitespace
         new_lines.append(line.rstrip() + '\n')

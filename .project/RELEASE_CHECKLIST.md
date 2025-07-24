@@ -29,9 +29,7 @@ Run the following commands in PowerShell from the mod root directory:
     ```
 
 3. **Scan for forbidden dev flags/settings in .dist:**
-    ```powershell
-    python .scripts\find_dev_flags.py
-    ```
+    # (find_dev_flags.py removed)
 
 4. **Validate changelog.txt format in .dist:**
     ```powershell
@@ -67,7 +65,6 @@ Run the following commands in PowerShell from the mod root directory:
 - [ ] **Run Deployment Scripts:**
     - `.scripts/copy_for_deploy.py` — Copy production files to `.dist`.
     - `.scripts/strip_comments.py` — Remove comments from Lua files in `.dist`.
-    - `.scripts/find_dev_flags.py` — Scan for forbidden dev flags/settings in `.dist`.
     - `.scripts/validate_changelog.py` — Validate `changelog.txt` format in `.dist`.
 
 - [ ] **Manual Verification:**
