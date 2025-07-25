@@ -126,10 +126,6 @@ end
 -- SPACE PLATFORM DETECTION
 -- ===========================
 
---- Check if player should have favorites bar hidden due to space platform editing
----@param player LuaPlayer The player to check
----@return boolean should_hide_bar True if the bar should be hidden
-
 --- Check if player should have favorites bar hidden due to remote view of a space platform (Factorio 2.0+)
 ---@param player LuaPlayer The player to check
 ---@return boolean should_hide_bar True if the bar should be hidden
