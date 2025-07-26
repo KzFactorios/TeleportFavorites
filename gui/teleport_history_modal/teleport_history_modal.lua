@@ -128,15 +128,8 @@ function teleport_history_modal.build(player)
       player_valid = player and player.valid,
       screen_valid = player.gui and player.gui.screen and player.gui.screen.valid
     })
-    return -- Abort modal creation
+    return 
   end
-
-  -- Position modal dynamically relative to the history toggle button
-  -- This is done after content creation to ensure GUI elements have valid locations
-  ErrorHandler.debug_log("Teleport history modal positioning debug", {
-    player_name = player.name,
-    player_index = player.index
-  })
 
   -- Create custom titlebar with pin button to the left of close button
   local titlebar = GuiBase.create_element('flow', modal_frame, {
@@ -198,22 +191,24 @@ function teleport_history_modal.build(player)
   -- Do not set player.opened for teleport history modal; ESC key should not close it
   player.opened = nil
 
-  -- Position modal: use persistent position if available, else default
-  --[[if pos and type(pos.x) == "number" and type(pos.y) == "number" then
-    modal_frame.location = { x = pos.x, y = pos.y }
-  else]]
-    local screen_width = player.display_resolution.width
-    local final_x = screen_width - modal_width - 870 - 8
-    local final_y = 0
-    modal_frame.location = { x = final_x, y = final_y }
-    Cache.set_history_modal_position(player, { x = final_x, y = final_y, width = modal_width, height = modal_height })
-  --end
+  -- Initial placement: use storage position if available, else auto-center (only if not pinned)
+  if not pinned and modal_frame and modal_frame.valid then
+    if not pos or type(pos.x) ~= "number" or type(pos.y) ~= "number" then
+      if modal_frame.force_auto_center then
+        modal_frame.force_auto_center()
+        -- Save the auto-centered position to storage (including {x=0, y=0})
+        if modal_frame.location and type(modal_frame.location.x) == "number" and type(modal_frame.location.y) == "number" then
+          Cache.set_history_modal_position(player, { x = modal_frame.location.x, y = modal_frame.location.y })
+        end
+      end
+    else
+      modal_frame.location = { x = pos.x, y = pos.y }
+    end
+  end
 
   return modal_frame
 end
 
---- Destroy the teleport history modal
----@param player LuaPlayer|nil
 --- Destroy the teleport history modal
 ---@param player LuaPlayer|nil
 ---@param preserve_state boolean|nil If true, do not clear modal dialog state in cache
@@ -374,10 +369,20 @@ function teleport_history_modal.toggle_pin(player)
   local pinned = not Cache.get_history_modal_pin(player)
   Cache.set_history_modal_pin(player, pinned)
   local modal_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]
+  local prev_location = modal_frame and modal_frame.valid and modal_frame.location or nil
   if modal_frame and modal_frame.valid then
+    -- Save current position before rebuilding (pinning)
+    if prev_location and type(prev_location.x) == "number" and type(prev_location.y) == "number" then
+      Cache.set_history_modal_position(player, { x = prev_location.x, y = prev_location.y })
+    end
     player.opened = nil
-    -- Optionally rebuild modal to update pin button style
+    -- Rebuild modal to update pin button style
     teleport_history_modal.build(player)
+    -- After rebuild, set modal location to previous position to prevent repositioning
+    local new_modal_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]
+    if new_modal_frame and new_modal_frame.valid and prev_location and type(prev_location.x) == "number" and type(prev_location.y) == "number" then
+      new_modal_frame.location = { x = prev_location.x, y = prev_location.y }
+    end
   end
 end
 

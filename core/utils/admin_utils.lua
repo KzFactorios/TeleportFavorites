@@ -7,8 +7,23 @@
 -- Uses Factorio's native LuaPlayer.admin property for permission checks.
 
 
+
 local ErrorHandler = require("core.utils.error_handler")
 local ValidationUtils = require("core.utils.validation_utils")
+
+--- Safely extract last user name from chart tag
+---@param chart_tag LuaCustomChartTag
+---@return string
+local function get_chart_tag_last_user_name(chart_tag)
+  if not chart_tag or not chart_tag.valid then return "" end
+  local last_user = chart_tag.last_user
+  if type(last_user) == "string" then
+    return last_user
+  elseif type(last_user) == "table" and last_user.name then
+    return last_user.name
+  end
+  return ""
+end
 
 
 ---@class AdminUtils
@@ -65,7 +80,7 @@ function AdminUtils.can_delete_chart_tag(player, chart_tag, tag)
     return false, false, false, "Invalid chart tag"
   end
   local is_admin = AdminUtils.is_admin(player)
-  local last_user = get_last_user_name(chart_tag)
+  local last_user = get_chart_tag_last_user_name(chart_tag)
   local is_owner = (last_user == "" or last_user == player.name)
   local has_other_favorites = tag and tag.faved_by_players and #tag.faved_by_players > 1
   local can_delete = (is_owner and not has_other_favorites) or is_admin
@@ -96,7 +111,7 @@ function AdminUtils.transfer_ownership_to_admin(chart_tag, admin_player)
     return false
   end
   local is_admin = AdminUtils.is_admin(admin_player)
-  local last_user = get_last_user_name(chart_tag)
+  local last_user = get_chart_tag_last_user_name(chart_tag)
   if is_admin and last_user == "" then
     rawset(chart_tag, "last_user", admin_player.name)
     ErrorHandler.debug_log("Admin ownership transferred", {
