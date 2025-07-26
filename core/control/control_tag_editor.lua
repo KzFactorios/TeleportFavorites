@@ -414,6 +414,10 @@ local function handle_delete_confirm(player)
   -- Store tag info for observers before deletion
   local tag_gps = tag.gps
 
+  -- Remove favorite for this GPS before destroying tag
+  local player_favorites = PlayerFavorites.new(player)
+  player_favorites:remove_favorite(tag_gps)
+
   tag_destroy_helper.destroy_tag_and_chart_tag(tag, tag.chart_tag)
 
   -- Notify observers of tag deletion
@@ -436,7 +440,13 @@ local function handle_delete_confirm(player)
   Cache.reset_tag_editor_delete_mode(player)
 
   -- Always show destination messages
-  PlayerHelpers.safe_player_print(player, { "tf-gui.tag_deleted" })
+  PlayerHelpers.safe_player_print(player, "tf-gui.tag_deleted")
+
+  -- Force favorites bar rebuild to update UI and remove stale icon
+  local ok, fave_bar = pcall(require, "gui.favorites_bar.fave_bar")
+  if ok and fave_bar and type(fave_bar.build) == "function" then
+    fave_bar.build(player, true)
+  end
 end
 
 -- User cancelled deletion - close confirmation dialog and return to tag editor

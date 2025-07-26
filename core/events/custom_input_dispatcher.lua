@@ -16,6 +16,70 @@ local TeleportStrategy = require("core.utils.teleport_strategy")
 local TeleportHistory = require("core.teleport.teleport_history")
 
 
+local M = {}
+
+
+-- Helper function to handle teleporting to a favorite slot
+local function handle_teleport_to_favorite_slot(event, slot_number)
+  local player = game.get_player(event.player_index)
+  if not player or not player.valid then
+    ErrorHandler.debug_log("Invalid player in teleport handler", { player_index = event.player_index })
+    return
+  end
+
+  -- Early exit if favorites are disabled
+  local player_settings = Cache.Settings.get_player_settings(player)
+  if not player_settings.favorites_on then
+    ErrorHandler.debug_log("Favorites are disabled in player settings", { player = player.name })
+    return
+  end
+
+  local surface_index = player.surface.index
+  local favorites = Cache.get_player_favorites_for_surface(player, surface_index)
+  ErrorHandler.debug_log("Fetched favorites for surface", {
+    player = player.name,
+    surface_index = surface_index,
+    favorites_count = favorites and #favorites or 0,
+    favorites = favorites
+  })
+  if not favorites then
+    PlayerHelpers.safe_player_print(player, "tf-gui.no_favorites_available")
+    ErrorHandler.debug_log("No favorites available for player", { player = player.name, surface_index = surface_index })
+    return
+  end
+  -- Get the favorite at the specified slot
+  local favorite = favorites[slot_number]
+  ErrorHandler.debug_log("Favorite slot data", {
+    player = player.name,
+    slot = slot_number,
+    favorite = favorite
+  })
+  if not favorite or FavoriteUtils.is_blank_favorite(favorite) then
+    ErrorHandler.debug_log("Favorite slot empty or blank", { player = player.name, slot = slot_number, favorite = favorite })
+    PlayerHelpers.safe_player_print(player, "tf-gui.favorite_slot_empty")
+    return
+  end
+
+  -- Use Tag module for teleportation (already has all the strategy logic)
+  ErrorHandler.debug_log("Attempting teleport to GPS", {
+    player = player.name,
+    slot = slot_number,
+    gps = favorite.gps,
+    favorite = favorite
+  })
+  local result = TeleportStrategy.teleport_to_gps(player, favorite.gps)
+  local success = result == Enum.ReturnStateEnum.SUCCESS
+
+  ErrorHandler.debug_log("Teleport to favorite slot result", {
+    player = player.name,
+    slot = slot_number,
+    gps = favorite.gps,
+    result = result,
+    success = success,
+    favorite = favorite
+  })
+end
+
 local default_custom_input_handlers = {
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "1"] = function(event) handle_teleport_to_favorite_slot(event, 1) end,
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "2"] = function(event) handle_teleport_to_favorite_slot(event, 2) end,
@@ -130,16 +194,6 @@ local default_custom_input_handlers = {
   end,
 }
 
-
-
-local M = {}
-
-M.default_custom_input_handlers = default_custom_input_handlers
-
--- Log handler keys
-ErrorHandler.debug_log("[CUSTOM_INPUT_DISPATCHER] Handler table loaded", { keys = (M.default_custom_input_handlers and table.concat((function() local t={} for k,_ in pairs(default_custom_input_handlers) do table.insert(t,k) end return t end)(), ", ") or "nil") })
-
-
 --- Create a safe wrapper for handler functions with error handling
 local function create_safe_handler(handler, handler_name)
   return function(event)
@@ -220,65 +274,7 @@ function M.register_default_inputs(script)
   return true
 end
 
---- Helper function to handle teleporting to a favorite slot
-local function handle_teleport_to_favorite_slot(event, slot_number)
-  local player = game.get_player(event.player_index)
-  if not player or not player.valid then
-    ErrorHandler.debug_log("Invalid player in teleport handler", { player_index = event.player_index })
-    return
-  end
 
-  -- Early exit if favorites are disabled
-  local player_settings = Cache.Settings.get_player_settings(player)
-  if not player_settings.favorites_on then
-    ErrorHandler.debug_log("Favorites are disabled in player settings", { player = player.name })
-    return
-  end
-
-  local surface_index = player.surface.index
-  local favorites = Cache.get_player_favorites_for_surface(player, surface_index)
-  ErrorHandler.debug_log("Fetched favorites for surface", {
-    player = player.name,
-    surface_index = surface_index,
-    favorites_count = favorites and #favorites or 0,
-    favorites = favorites
-  })
-  if not favorites then
-    PlayerHelpers.safe_player_print(player, "tf-gui.no_favorites_available")
-    ErrorHandler.debug_log("No favorites available for player", { player = player.name, surface_index = surface_index })
-    return
-  end
-  -- Get the favorite at the specified slot
-  local favorite = favorites[slot_number]
-  ErrorHandler.debug_log("Favorite slot data", {
-    player = player.name,
-    slot = slot_number,
-    favorite = favorite
-  })
-  if not favorite or FavoriteUtils.is_blank_favorite(favorite) then
-    ErrorHandler.debug_log("Favorite slot empty or blank", { player = player.name, slot = slot_number, favorite = favorite })
-    PlayerHelpers.safe_player_print(player, "tf-gui.favorite_slot_empty")
-    return
-  end
-
-  -- Use Tag module for teleportation (already has all the strategy logic)
-  ErrorHandler.debug_log("Attempting teleport to GPS", {
-    player = player.name,
-    slot = slot_number,
-    gps = favorite.gps,
-    favorite = favorite
-  })
-  local result = TeleportStrategy.teleport_to_gps(player, favorite.gps)
-  local success = result == Enum.ReturnStateEnum.SUCCESS
-
-  ErrorHandler.debug_log("Teleport to favorite slot result", {
-    player = player.name,
-    slot = slot_number,
-    gps = favorite.gps,
-    result = result,
-    success = success,
-    favorite = favorite
-  })
-end
+M.default_custom_input_handlers = default_custom_input_handlers
 
 return M
