@@ -17,7 +17,8 @@ local GuiHelpers = require("core.utils.gui_helpers")
 local ModalInputBlocker = require("core.events.modal_input_blocker")
 local GuiValidation = require("core.utils.gui_validation")
 local Enum = require("prototypes.enums.enum")
-
+local ChartTagOwnershipManager = require("core.control.chart_tag_ownership_manager")
+local GuiObserver = require("core.events.gui_observer")
 
 ---@class EventRegistrationDispatcher
 local EventRegistrationDispatcher = {}
@@ -35,7 +36,7 @@ local function create_safe_event_handler(handler, handler_name)
       event_type = event.name,
       event_context = event
     })
-    
+
     local success, err = xpcall(function() handler(event) end, debug.traceback)
     if not success then
       ErrorHandler.warn_log("Event handler failed", {
@@ -129,12 +130,8 @@ function EventRegistrationDispatcher.register_core_events(script)
     handler = function(event)
       -- Get the leaving player before handling chart tag ownership
       local leaving_player = game.players[event.player_index]
-      local ErrorHandler = require("core.utils.error_handler")
 
-      -- Handle chart tag ownership reset
-      local ChartTagOwnershipManager = require("core.control.chart_tag_ownership_manager")
       ChartTagOwnershipManager.on_player_left_game(event)
-
     end,
     name = "on_player_left_game"
   }
@@ -142,12 +139,9 @@ function EventRegistrationDispatcher.register_core_events(script)
     handler = function(event)
       -- Get the removed player before handling chart tag ownership
       local removed_player = game.players[event.player_index]
-      local ErrorHandler = require("core.utils.error_handler")
 
       -- Handle chart tag ownership reset
-      local ChartTagOwnershipManager = require("core.control.chart_tag_ownership_manager")
       ChartTagOwnershipManager.on_player_removed(event)
-
     end,
     name = "on_player_removed"
   }
@@ -156,41 +150,45 @@ function EventRegistrationDispatcher.register_core_events(script)
       ErrorHandler.debug_log("[SETTINGS] on_runtime_mod_setting_changed fired for setting: " .. tostring(event.setting))
       ErrorHandler.debug_log("[SETTINGS] Event player_index: " .. tostring(event.player_index))
       ErrorHandler.debug_log("[SETTINGS] Event setting_type: " .. tostring(event.setting_type))
-      
+
       if event.setting == "favorites_on" then
         ErrorHandler.debug_log("[SETTINGS] Processing favorites_on change")
         for _, player in pairs(game.connected_players) do
           -- Invalidate cache first to ensure we get fresh settings
           Cache.Settings.invalidate_player_cache(player)
           local player_settings = Cache.Settings.get_player_settings(player)
-          ErrorHandler.debug_log("[SETTINGS] Player " .. player.name .. " favorites_on: " .. tostring(player_settings.favorites_on))
-          
+          ErrorHandler.debug_log("[SETTINGS] Player " ..
+            player.name .. " favorites_on: " .. tostring(player_settings.favorites_on))
+
           -- Always rebuild the bar to update visibility - don't destroy it completely
           -- The build function handles showing/hiding specific elements based on settings
           fave_bar.build(player, true) -- Force rebuild to update element visibility
-          ErrorHandler.debug_log("[SETTINGS] Rebuilt favorites bar for player " .. player.name .. " (favorites_on: " .. tostring(player_settings.favorites_on) .. ")")
+          ErrorHandler.debug_log("[SETTINGS] Rebuilt favorites bar for player " ..
+            player.name .. " (favorites_on: " .. tostring(player_settings.favorites_on) .. ")")
         end
         ErrorHandler.debug_log("[SETTINGS] favorites_on processing complete")
         return
       end
-      
+
       if event.setting == "enable_teleport_history" then
         ErrorHandler.debug_log("[SETTINGS] Processing enable_teleport_history change")
         for _, player in pairs(game.connected_players) do
           -- Invalidate cache first to ensure we get fresh settings
           Cache.Settings.invalidate_player_cache(player)
           local player_settings = Cache.Settings.get_player_settings(player)
-          ErrorHandler.debug_log("[SETTINGS] Player " .. player.name .. " enable_teleport_history: " .. tostring(player_settings.enable_teleport_history))
-          
+          ErrorHandler.debug_log("[SETTINGS] Player " ..
+            player.name .. " enable_teleport_history: " .. tostring(player_settings.enable_teleport_history))
+
           -- If teleport history is being disabled, close any open modal
           if not player_settings.enable_teleport_history then
             teleport_history_modal.destroy(player)
             ErrorHandler.debug_log("[SETTINGS] Closed teleport history modal for player " .. player.name)
           end
-          
+
           -- Rebuild the favorites bar to reflect the new teleport history setting
           fave_bar.build(player, true)
-          ErrorHandler.debug_log("[SETTINGS] Rebuilt favorites bar for teleport history change for player " .. player.name)
+          ErrorHandler.debug_log("[SETTINGS] Rebuilt favorites bar for teleport history change for player " ..
+            player.name)
         end
         ErrorHandler.debug_log("[SETTINGS] enable_teleport_history processing complete")
         return
@@ -247,9 +245,12 @@ function EventRegistrationDispatcher.register_core_events(script)
   end)
 
   if not success then
-    ErrorHandler.warn_log("Failed to register periodic GUI observer cleanup, icon_typing reset, or modal drag position handler", { error = err })
+    ErrorHandler.warn_log(
+      "Failed to register periodic GUI observer cleanup, icon_typing reset, or modal drag position handler",
+      { error = err })
   else
-    ErrorHandler.debug_log("Registered periodic GUI observer cleanup (every 5 minutes), icon_typing reset (every 15 minutes), and modal drag position handler")
+    ErrorHandler.debug_log(
+      "Registered periodic GUI observer cleanup (every 5 minutes), icon_typing reset (every 15 minutes), and modal drag position handler")
   end
 
   -- Register each core event with safety wrapper
@@ -375,9 +376,8 @@ function EventRegistrationDispatcher.register_observer_events(script)
   end
 
   -- Register observer for favorites bar updates
-  local GuiObserver = require("core.events.gui_observer")
   local GuiEventBus = GuiObserver.GuiEventBus
-  
+
   -- Create a simple observer function for favorites bar updates
   local favorites_bar_observer = {
     observer_type = "favorites_bar_observer",
@@ -390,43 +390,43 @@ function EventRegistrationDispatcher.register_observer_events(script)
         player = event_data.player and event_data.player.name or "nil",
         action = event_data.action or "unknown"
       })
-      
+
       -- Wrap the entire observer logic in pcall to prevent framework failures
       local observer_success, observer_error = pcall(function()
         ErrorHandler.debug_log("[FAVORITES_BAR] Starting observer execution", {
           player = event_data.player and event_data.player.name or "nil"
         })
-        
+
         if event_data.player and event_data.player.valid then
           ErrorHandler.debug_log("[FAVORITES_BAR] Player is valid, loading modules", {
             player = event_data.player.name
           })
-          
+
           ErrorHandler.debug_log("[FAVORITES_BAR] Modules loaded successfully", {
             player = event_data.player.name
           })
-          
+
           ErrorHandler.debug_log("[FAVORITES_BAR] Attempting to get main flow", {
             player = event_data.player.name
           })
-          
+
           local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(event_data.player)
           if main_flow then
             ErrorHandler.debug_log("[FAVORITES_BAR] Main flow found, searching for bar", {
               player = event_data.player.name,
               main_flow_valid = main_flow.valid
             })
-            
+
             -- Find the bar frame and bar flow for proper update
             local bar_frame = GuiValidation.find_child_by_name(main_flow, "fave_bar_frame")
             local bar_flow = bar_frame and GuiValidation.find_child_by_name(bar_frame, "fave_bar_flow")
-            
+
             ErrorHandler.debug_log("[FAVORITES_BAR] GUI search results", {
               player = event_data.player.name,
               bar_frame_found = bar_frame and true or false,
               bar_flow_found = bar_flow and true or false
             })
-            
+
             if bar_flow then
               ErrorHandler.debug_log("[FAVORITES_BAR] Updating slot row for player", {
                 player = event_data.player.name,
@@ -475,7 +475,7 @@ function EventRegistrationDispatcher.register_observer_events(script)
           ErrorHandler.debug_log("[FAVORITES_BAR] Invalid player in event data")
         end
       end)
-      
+
       if not observer_success then
         -- Multiple approaches to capture the error
         local error_str = "unknown error"
@@ -486,7 +486,7 @@ function EventRegistrationDispatcher.register_observer_events(script)
             error_str = tostring(observer_error)
           end
         end
-        
+
         ErrorHandler.warn_log("[FAVORITES_BAR] Observer execution failed", {
           player = event_data.player and event_data.player.name or "nil",
           error = error_str,
@@ -495,19 +495,19 @@ function EventRegistrationDispatcher.register_observer_events(script)
           player_valid = event_data.player and event_data.player.valid or false,
           raw_error = observer_error -- Include raw error for debugging
         })
-        
+
         -- Also try to log to game console for immediate visibility
         if event_data.player and event_data.player.valid then
           event_data.player.print("[TeleportFavorites] Observer failed: " .. error_str)
         end
-        
+
         return false -- Explicitly return false to indicate failure
       end
-      
+
       return true -- Explicitly return true to indicate success
     end
   }
-  
+
   -- Subscribe to the favorites_bar_updated event
   ErrorHandler.debug_log("[OBSERVER] Registering favorites_bar_updated observer")
   GuiEventBus.subscribe("favorites_bar_updated", favorites_bar_observer)
@@ -528,6 +528,14 @@ function EventRegistrationDispatcher.register_all_events(script)
 
   ErrorHandler.debug_log("Starting comprehensive event registration")
 
+  if custom_input_dispatcher and custom_input_dispatcher.default_custom_input_handlers then
+    local input_names = {}
+    for k, _ in pairs(custom_input_dispatcher.default_custom_input_handlers) do
+      table.insert(input_names, k)
+    end
+    ErrorHandler.debug_log("Custom input event names registered:", { input_names = input_names })
+  end
+
   local results = {}
   local overall_success = true
 
@@ -546,6 +554,7 @@ function EventRegistrationDispatcher.register_all_events(script)
     end
   end
 
+  ErrorHandler.debug_log("Comprehensive event registration complete", { results = results })
   return overall_success
 end
 

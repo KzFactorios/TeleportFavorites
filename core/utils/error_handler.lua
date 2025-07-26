@@ -29,6 +29,12 @@ end
 ErrorHandler._log_level = "production"
 
 ---Initialize the logging system (debug/production mode, multiplayer-safe)
+function ErrorHandler.set_log_level(level)
+  if level and (level == "debug" or level == "production" or level == "warn" or level == "error") then
+    ErrorHandler._log_level = level
+    pcall(function() log("[TeleFaves] Log level set to: " .. tostring(level)) end)
+  end
+end
 function ErrorHandler.initialize(log_level)
   ErrorHandler._initialized = true
   if log_level then
@@ -94,15 +100,11 @@ function ErrorHandler.error_log(handler_name, error, event, event_type)
     error = error,
     player_index = event and event.player_index
   }
-  if context then
-    local context_str = ""
-    for k, v in pairs(context) do
-      context_str = context_str .. tostring(k) .. "=" .. tostring(v) .. " "
-    end
-    pcall(function() log(msg .. " | Context: " .. context_str) end)
-  else
-    pcall(function() log(msg) end)
+  local context_str = ""
+  for k, v in pairs(context) do
+    context_str = context_str .. tostring(k) .. "=" .. tostring(v) .. " "
   end
+  pcall(function() log(msg .. " | Context: " .. context_str) end)
 
   -- Show player message for user-facing errors if applicable
   if event and event.player_index then
@@ -110,7 +112,7 @@ function ErrorHandler.error_log(handler_name, error, event, event_type)
     if BasicHelpers.is_valid_player(player) then
       -- Only show generic error message for critical failures
       if event_type and (event_type:find("gui") or event_type:find("input")) then
-        send_error_to_player(player --[[@as LuaPlayer]], "Event handler error occurred")
+        send_error_to_player(player --[[---@as LuaPlayer]], "Event handler error occurred")
       end
     end
   end

@@ -1,3 +1,11 @@
+# 🛑 LUA FUNCTION/VARIABLE ORDERING NOTE
+
+**Lua does NOT hoist function or variable declarations.**
+- All functions, tables, and variables must be defined before they are referenced or used in the file.
+- If you reference a function or table before its definition, you will get a runtime error (nil value).
+- Always declare helper functions and handler tables at the top of the file, before any code that uses them.
+- This is different from JavaScript, where function declarations are hoisted.
+
 # IMPORTANT: All code, API usage, and modding guidance in this project MUST target Factorio v2.0+ and above. Do not use deprecated or legacy patterns from earlier versions. Always verify compatibility and reference the v2.0+ documentation for all features, prototypes, and runtime logic.
 # TeleportFavorites Factorio Mod — AI Agent Instructions
 

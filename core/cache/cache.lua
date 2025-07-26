@@ -319,9 +319,6 @@ function Cache.get_player_data(player)
   return result
 end
 
---- Returns the player's favorites array, or nil if not found/invalid.
----@param player LuaPlayer
----@return table[]|nil
 function Cache.get_player_favorites(player)
   if not player or not player.valid or not player.surface or not player.surface.index then
     return nil
@@ -331,6 +328,22 @@ function Cache.get_player_favorites(player)
     return nil
   end
   local favorites = player_data.surfaces[player.surface.index].favorites or {}
+  return favorites
+end
+
+--- Returns the player's favorites array for a specific surface index, or nil if not found/invalid.
+---@param player LuaPlayer
+---@param surface_index integer
+---@return table[]|nil
+function Cache.get_player_favorites_for_surface(player, surface_index)
+  if not player or not player.valid or not surface_index then
+    return nil
+  end
+  local player_data = Cache.get_player_data(player)
+  if not player_data.surfaces or not player_data.surfaces[surface_index] then
+    return nil
+  end
+  local favorites = player_data.surfaces[surface_index].favorites or {}
   return favorites
 end
 
@@ -374,7 +387,6 @@ function Cache.remove_stored_tag(gps)
   if not tag_cache or not tag_cache[gps] then return end
   tag_cache[gps] = nil
 
-  -- Remove the tag from the Lookups cache as well
   Cache.init()
   ---@diagnostic disable-next-line: undefined-field, need-check-nil
   Cache.Lookups.remove_chart_tag_from_cache_by_gps(gps)

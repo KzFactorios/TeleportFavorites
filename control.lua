@@ -17,6 +17,9 @@ local control_tag_editor = require("core.control.control_tag_editor")
 
 
 local event_registration_dispatcher = require("core.events.event_registration_dispatcher")
+local ErrorHandler = require("core.utils.error_handler")
+ErrorHandler.set_log_level("debug")
+ErrorHandler.debug_log("[CONTROL] control.lua loaded, logger active")
 local handlers = require("core.events.handlers")
 local ErrorHandler = require("core.utils.error_handler")
 local DebugCommands = require("core.commands.debug_commands")
@@ -31,7 +34,6 @@ local did_run_fave_bar_startup = false
 local success, module = pcall(require, "core.events.gui_observer")
 if success then gui_observer = module end
 
--- Register all commands
 
 local function register_commands()
   -- Register debug commands
@@ -40,12 +42,13 @@ local function register_commands()
   DeleteFavoriteCommand.register_commands()
 end
 
--- Core lifecycle event registration through centralized dispatcher
-
 -- Custom on_init to allow easy toggling of intro cutscene skip
 local function custom_on_init()
   -- Initialize debug system first
   ErrorHandler.initialize()
+
+  -- TEMPORARY: Set log level to debug for troubleshooting. Change to "warn" or "error" at deploy time.
+  ErrorHandler.set_log_level("debug")
 
   -- Register all commands
   register_commands()
