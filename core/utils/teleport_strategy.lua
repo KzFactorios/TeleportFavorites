@@ -118,7 +118,7 @@ function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history)
       return false, "no_safe_landing_position"
     end
 
-    working_gps = GPSUtils.gps_from_map_position(non_collide_position)
+  working_gps = GPSUtils.gps_from_map_position(non_collide_position, tonumber(player.surface.index) or 1)
   end
 
   if not working_gps then
@@ -155,6 +155,12 @@ function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history)
 
     if add_to_history then
       local ok, result = pcall(function()
+        ErrorHandler.debug_log("[DEBUG] Attempting to add to history", {
+          player_index = player.index,
+          working_gps = working_gps,
+          remote_available = remote.interfaces["TeleportFavorites_History"] ~= nil,
+          remote_add_to_history = remote.interfaces["TeleportFavorites_History"] and remote.interfaces["TeleportFavorites_History"].add_to_history ~= nil
+        })
         if remote.interfaces["TeleportFavorites_History"] and
             remote.interfaces["TeleportFavorites_History"].add_to_history then
           remote.call("TeleportFavorites_History", "add_to_history", player.index, working_gps)

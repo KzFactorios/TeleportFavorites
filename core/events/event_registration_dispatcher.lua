@@ -60,7 +60,6 @@ end
 ---@param script table The Factorio script object
 ---@return boolean success
 function EventRegistrationDispatcher.register_core_events(script)
-  -- ...existing code...
   if not script or type(script.on_event) ~= "function" then
     ErrorHandler.warn_log("Invalid script object for core events registration")
     return false

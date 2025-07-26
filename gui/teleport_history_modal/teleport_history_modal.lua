@@ -94,8 +94,8 @@ function teleport_history_modal.build(player)
   -- Destroy any existing modal first, but do not reset pin state
   teleport_history_modal.destroy(player, true)
 
-  -- Set modal dialog state in cache
-  Cache.set_modal_dialog_state(player, "teleport_history")
+  -- Do NOT set modal dialog state in cache for teleport history modal (should not block input)
+  -- Cache.set_modal_dialog_state(player, "teleport_history")
 
   -- Destroy any existing modal first to prevent naming conflicts
   local existing_modal = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]
@@ -215,9 +215,8 @@ end
 function teleport_history_modal.destroy(player, preserve_state)
   if not BasicHelpers.is_valid_player(player) then return end
   if not player or not player.valid then return end
-  if not preserve_state then
-    Cache.set_modal_dialog_state(player, nil)
-  end
+  -- Always clear modal dialog state when closing teleport history modal (should never block input)
+  Cache.set_modal_dialog_state(player, nil)
 
   -- Close the modal if it exists
   local modal_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]

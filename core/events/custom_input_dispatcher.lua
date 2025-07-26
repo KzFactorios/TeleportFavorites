@@ -7,6 +7,8 @@
 -- Usage: register default/custom handlers, all handlers receive Factorio event object.
 
 -- Dependencies
+local TeleportHistory = require("core.teleport.teleport_history")
+local TeleportHistoryModal = require("gui.teleport_history_modal.teleport_history_modal")
 local PlayerHelpers = require("core.utils.player_helpers")
 local ErrorHandler = require("core.utils.error_handler")
 local PlayerFavorites = require("core.favorite.player_favorites")
@@ -15,6 +17,8 @@ local Enum = require("prototypes.enums.enum")
 local Cache = require("core.cache.cache")
 local BasicHelpers = require("core.utils.basic_helpers")
 local TeleportStrategy = require("core.utils.teleport_strategy")
+local TeleportHistory = require("core.teleport.teleport_history")
+local TeleportHistoryModal = require("gui.teleport_history_modal.teleport_history_modal")
 
 
 ---@class CustomInputDispatcher
@@ -47,7 +51,6 @@ local function create_safe_handler(handler, handler_name)
         local input_allowed = false
         for _, allowed_input in ipairs(allowed_inputs) do
           if event.input_name == allowed_input then
-            input_allowed = true
             break
           end
         end
@@ -66,17 +69,13 @@ local function create_safe_handler(handler, handler_name)
     local success, err = pcall(handler, event)
     if not success then
       ErrorHandler.warn_log("Custom input handler failed", {
-        handler_name = handler_name,
         error = tostring(err),
         player_index = event.player_index 
       })
       -- Could also show player message for user-facing errors
       if event.player_index then
-        ---@diagnostic disable-next-line: undefined-field
         local player = game.get_player(event.player_index)
-        ---@diagnostic disable-next-line: need-check-nil
         if player and player.valid then
-          ---@diagnostic disable-next-line: param-type-mismatch
           PlayerHelpers.error_message_to_player(player, "Input handler error occurred")
         end
       end
@@ -89,9 +88,9 @@ end
 ---@param slot_number number The favorite slot number (1-10)
 local function handle_teleport_to_favorite_slot(event, slot_number)
   local player = game.get_player(event.player_index)
-  if not player or not player.valid then 
+  if not player or not player.valid then
     ErrorHandler.debug_log("Invalid player in teleport handler", { player_index = event.player_index })
-    return 
+    return
   end
 
   -- Early exit if favorites are disabled
@@ -100,12 +99,12 @@ local function handle_teleport_to_favorite_slot(event, slot_number)
     return
   end
 
-  local player_favorites = PlayerFavorites.new(player)
+  local player_favorites = Cache.get_player_favorites(player)
   if not player_favorites or not player_favorites.favorites then
     PlayerHelpers.safe_player_print(player, {"tf-gui.no_favorites_available"})
     return
   end
-  
+
   -- Get the favorite at the specified slot
   local favorite = player_favorites.favorites[slot_number]
   if not favorite or FavoriteUtils.is_blank_favorite(favorite) then
@@ -113,11 +112,11 @@ local function handle_teleport_to_favorite_slot(event, slot_number)
     PlayerHelpers.safe_player_print(player, {"tf-gui.favorite_slot_empty"})
     return
   end
-  
+
   -- Use Tag module for teleportation (already has all the strategy logic)
   local result = TeleportStrategy.teleport_to_gps(player, favorite.gps)
   local success = result == Enum.ReturnStateEnum.SUCCESS
-  
+
   ErrorHandler.debug_log("Teleport to favorite slot result", {
     player = player.name,
     slot = slot_number,
@@ -138,6 +137,75 @@ local default_custom_input_handlers = {
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "8"] = function(event) handle_teleport_to_favorite_slot(event, 8) end,
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "9"] = function(event) handle_teleport_to_favorite_slot(event, 9) end,
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "10"] = function(event) handle_teleport_to_favorite_slot(event, 10) end,
+  ["teleport_history-prev"] = function(event)
+    local player = game.get_player(event.player_index)
+    if player and player.valid then
+      local surface_index = player.surface.index
+      local hist = Cache.get_player_teleport_history(player, surface_index)
+      if hist and hist.stack and #hist.stack > 0 then
+        local new_pointer = math.max(1, hist.pointer - 1)
+        TeleportHistory.set_pointer(player, surface_index, new_pointer)
+        local entry = hist.stack[hist.pointer]
+        if entry and entry.gps then
+          TeleportStrategy.teleport_to_gps(player, entry.gps, false)
+        end
+      end
+    end
+  end,
+  ["teleport_history-next"] = function(event)
+    local player = game.get_player(event.player_index)
+    if player and player.valid then
+      local surface_index = player.surface.index
+      local hist = Cache.get_player_teleport_history(player, surface_index)
+      if hist and hist.stack and #hist.stack > 0 then
+        local new_pointer = math.min(#hist.stack, hist.pointer + 1)
+        TeleportHistory.set_pointer(player, surface_index, new_pointer)
+        local entry = hist.stack[hist.pointer]
+        if entry and entry.gps then
+          TeleportStrategy.teleport_to_gps(player, entry.gps, false)
+        end
+      end
+    end
+  end,
+  ["teleport_history-first"] = function(event)
+    local player = game.get_player(event.player_index)
+    if player and player.valid then
+      local surface_index = player.surface.index
+      local hist = Cache.get_player_teleport_history(player, surface_index)
+      if hist and hist.stack and #hist.stack > 0 then
+        TeleportHistory.set_pointer(player, surface_index, 1)
+        local entry = hist.stack[hist.pointer]
+        if entry and entry.gps then
+          TeleportStrategy.teleport_to_gps(player, entry.gps, false)
+        end
+      end
+    end
+  end,
+  ["teleport_history-last"] = function(event)
+    local player = game.get_player(event.player_index)
+    if player and player.valid then
+      local surface_index = player.surface.index
+      local hist = Cache.get_player_teleport_history(player, surface_index)
+      if hist and hist.stack and #hist.stack > 0 then
+        TeleportHistory.set_pointer(player, surface_index, #hist.stack)
+        local entry = hist.stack[hist.pointer]
+        if entry and entry.gps then
+          TeleportStrategy.teleport_to_gps(player, entry.gps, false)
+        end
+      end
+    end
+  end,
+  ["teleport_history-clear"] = function(event)
+    local player = game.get_player(event.player_index)
+    if player and player.valid then
+      local surface_index = player.surface.index
+      local hist = Cache.get_player_teleport_history(player, surface_index)
+      hist.stack = {}
+      hist.pointer = 0
+      TeleportHistory.notify_observers(player)
+      -- Modal will auto-update via observer
+    end
+  end,
 }
 
 --- Register custom input handlers with comprehensive validation

@@ -41,6 +41,11 @@ end
 function SlotInteractionHandlers.handle_teleport(event, player, fav, slot, did_drag)
   if event.button == defines.mouse_button_type.left and not event.control and not did_drag then
     if fav and not FavoriteUtils.is_blank_favorite(fav) then
+      ErrorHandler.debug_log("[DEBUG] SlotInteractionHandlers.handle_teleport called", {
+        slot = slot,
+        fav_gps = fav.gps,
+        player_name = player and player.name or "<nil>"
+      })
       if not fav.gps or type(fav.gps) ~= "string" or fav.gps == "" then
         ErrorHandler.warn_log("[SLOT_INTERACTION] Invalid GPS for favorite teleport",
           { slot = slot, fav = fav, player = player and player.name or "<nil>" })
