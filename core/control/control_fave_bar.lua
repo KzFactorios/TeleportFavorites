@@ -225,9 +225,30 @@ end
 ---@param event table The GUI click event
 local function on_teleport_history_modal_gui_click(event)
   local element = event.element
-  if not BasicHelpers.is_valid_element(element) then return end
   local player = game.players[event.player_index]
+  if not BasicHelpers.is_valid_element(element) then return end
   if not BasicHelpers.is_valid_player(player) then return end
+    
+  -- Handle trash can button click for history item deletion
+  if element.name and element.name:find("^teleport_history_trash_button_") then
+    local index = element.tags and element.tags.teleport_history_index
+    ErrorHandler.debug_log("[TELEPORT_HISTORY_MODAL] Trash button click", {
+      element_name = element.name,
+      tags = element.tags,
+      index = index
+    })
+    if not index or type(index) ~= "number" then
+      ErrorHandler.warn_log("Teleport history trash button: index missing or not a number", {
+        element_name = element.name, tags = element.tags
+      })
+      return
+    end
+    local surface_index = (player.surface and player.surface.valid and player.surface.index) or 1
+    local idx = tonumber(index)
+    TeleportHistory.remove_history_item(player, surface_index, idx)
+    TeleportHistoryModal.update_history_list(player)
+    return
+  end
 
   -- Handle resize handle click (start drag)
   if element.name == "teleport_history_modal_resize_handle" then

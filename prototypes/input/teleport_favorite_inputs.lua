@@ -1,5 +1,7 @@
 ---@diagnostic disable: undefined-global
+
 -- Custom input definitions for favorite slot teleport hotkeys (Ctrl+1..Ctrl+0)
+
 data:extend({
   {
     type = "custom-input",
@@ -29,18 +31,6 @@ data:extend({
     type = "custom-input",
     name = "teleport_history-clear",
     key_sequence = "CONTROL + SHIFT + BACKSPACE",
-    consuming = "none"
-  },
-  {
-    type = "custom-input",
-    name = "tf-delete-favorite-slot-right",
-    key_sequence = "CONTROL + ALT + SHIFT + mouse-button-2",
-    consuming = "none"
-  },
-  {
-    type = "custom-input",
-    name = "tf-delete-favorite-slot",
-    key_sequence = "CONTROL + ALT + SHIFT + mouse-button-1",
     consuming = "none"
   },
   {

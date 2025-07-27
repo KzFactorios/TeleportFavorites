@@ -6,6 +6,20 @@ local gui_style = data.raw["gui-style"].default
 
 -- add all new styles under this line
 
+
+gui_style.tf_teleport_history_trash_button = {
+    type = "button_style",
+    parent = "red_button",
+    height = 20,
+    width = 20,
+    padding = 1,
+    top_margin = 0,
+    right_margin = -4,
+    bottom_margin = 0,
+    left_margin = 0,
+    horizontally_stretchable = "off",
+}
+
 gui_style.tf_teleport_history_modal_pin_button = {
     type = "button_style",
     parent = "tf_frame_action_button",
@@ -115,11 +129,11 @@ gui_style.tf_teleport_history_empty_label = {
 gui_style.tf_teleport_history_date_label = {
     type = "label_style",
     parent = "label",
-    font = "tf_font_7",
+    font = "tf_font_8",
     horizontally_stretchable = "on",
     horizontal_align = "right",
     right_padding = 4,
-    font_color = { r = 0.5, g = 0.5, b = 0.5, a = 1 }, 
+    font_color = { r = 0.4, g = 0.4, b = 0.4, a = 1 }, 
     width = 60,
 }
 

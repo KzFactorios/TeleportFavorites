@@ -22,8 +22,6 @@ ErrorHandler.set_log_level("debug")
 ErrorHandler.debug_log("[CONTROL] control.lua loaded, logger active")
 local handlers = require("core.events.handlers")
 local ErrorHandler = require("core.utils.error_handler")
-local DebugCommands = require("core.commands.debug_commands")
-local DeleteFavoriteCommand = require("core.commands.delete_favorite_command")
 local TeleportHistory = require("core.teleport.teleport_history")
 
 
@@ -34,14 +32,6 @@ local did_run_fave_bar_startup = false
 local success, module = pcall(require, "core.events.gui_observer")
 if success then gui_observer = module end
 
-
-local function register_commands()
-  -- Register debug commands
-  DebugCommands.register_commands()
-  -- Register delete favorite command
-  DeleteFavoriteCommand.register_commands()
-end
-
 -- Custom on_init to allow easy toggling of intro cutscene skip
 local function custom_on_init()
   -- Initialize debug system first
@@ -49,18 +39,15 @@ local function custom_on_init()
 
   -- TEMPORARY: Set log level to debug for troubleshooting. Change to "warn" or "error" at deploy time.
   ErrorHandler.set_log_level("debug")
-
-  -- Register all commands
-  register_commands()
   
   -- Register teleport history remote interface
   TeleportHistory.register_remote_interface()
 
   -- Set debug mode based on development indicators
   if storage and storage._tf_debug_mode then
-    ErrorHandler.info("Development mode detected - enabling debug logging")
+    ErrorHandler.debug_log("Development mode detected - enabling debug logging")
   else
-    ErrorHandler.info("Production mode - using minimal logging")
+    ErrorHandler.debug_log("Production mode - using minimal logging")
   end
 
   handlers.on_init()
@@ -68,8 +55,6 @@ end
 
 -- Custom on_load to ensure commands are registered
 local function custom_on_load()
-  -- Register all commands
-  register_commands()
   
   -- Register teleport history remote interface
   TeleportHistory.register_remote_interface()

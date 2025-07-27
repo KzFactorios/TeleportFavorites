@@ -280,11 +280,22 @@ function teleport_history_modal.update_history_list(player)
       local tag_icon = chart_tag and chart_tag.icon
 
       -- Create horizontal flow for this row
+
       local row_flow = GuiBase.create_element("flow", history_list, {
         name = "teleport_history_row_" .. tostring(i),
         direction = "horizontal",
         style = "tf_teleport_history_flow"
       })
+
+      -- Add red trash can button to the left
+      local trash_button = GuiBase.create_icon_button(row_flow,
+        "teleport_history_trash_button_" .. tostring(i),
+        Enum.SpriteEnum.TRASH, -- use the same icon as tag editor delete button
+        { "tf-gui.teleport_history_delete_tooltip" },
+        "tf_teleport_history_trash_button", true)
+      if trash_button and trash_button.valid then
+        trash_button.tags = { teleport_history_index = i }
+      end
 
       -- Add GPS button - gps button has children
       local button_style = is_current and "tf_teleport_history_item_current" or "tf_teleport_history_item"

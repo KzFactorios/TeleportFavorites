@@ -14,6 +14,26 @@ local ErrorHandler = require("core.utils.error_handler")
 local HISTORY_STACK_SIZE = 128 -- Only 128 allowed for now (TBA for future options)
 local TeleportHistory = {}
 
+
+--- Remove a history item at a specific index
+---@param player LuaPlayer
+---@param surface_index integer
+---@param index integer|string
+function TeleportHistory.remove_history_item(player, surface_index, index)
+	if not ValidationUtils.validate_player(player) then return end
+	local hist = Cache.get_player_teleport_history(player, surface_index)
+	local stack = hist.stack
+	if not stack or #stack == 0 then return end
+	local idx = tonumber(index)
+	if not idx or idx < 1 or idx > #stack then return end
+	table.remove(stack, math.floor(idx))
+	-- Adjust pointer if needed
+	if hist.pointer > #stack then
+		hist.pointer = #stack
+	end
+	TeleportHistory.notify_observers(player)
+end
+
 -- Observer pattern for history changes
 TeleportHistory._observers = {}
 

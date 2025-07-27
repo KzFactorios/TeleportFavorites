@@ -76,7 +76,7 @@ function fave_bar.on_player_controller_changed(event)
   -- Restore teleport history modal if it was open before switching to map/chart view, regardless of pin state
   local modal_was_open = Cache.get_modal_dialog_type(player) == "teleport_history"
   local is_chart_view = player.render_mode == defines.render_mode.chart or
-  player.render_mode == defines.render_mode.chart_zoomed_in
+      player.render_mode == defines.render_mode.chart_zoomed_in
   if (player.controller_type == defines.controllers.remote or is_chart_view) and modal_was_open then
     -- Destroy modal (if present) but preserve state, then rebuild
     teleport_history_modal.destroy(player, true)
@@ -158,7 +158,7 @@ function fave_bar.build(player, force_show)
   local bar_frame = main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
   -- Always recreate bar_frame if missing or invalid
   if not bar_frame or not bar_frame.valid then
-    bar_frame = GuiBase.create_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR, "vertical", "tf_fave_bar_main_frame")
+    bar_frame = GuiBase.create_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR, "vertical", "tf_fave_bar_frame")
   end
   if not force_show then
     if last_build_tick[player.index] == tick and bar_frame and bar_frame.valid then
@@ -184,8 +184,8 @@ function fave_bar.build(player, force_show)
     if not (mode == defines.render_mode.game or mode == defines.render_mode.chart or mode == defines.render_mode.chart_zoomed_in) then
       -- Only skip for remote view, god, or spectator, not for chart view
       if mode == defines.render_mode.remote_view or
-         player.controller_type == defines.controllers.god or
-         player.controller_type == defines.controllers.spectator then
+          player.controller_type == defines.controllers.god or
+          player.controller_type == defines.controllers.spectator then
         fave_bar.destroy()
         return
       end
@@ -232,8 +232,8 @@ function fave_bar.build(player, force_show)
       end
     else
       -- Only build slots and set visibility if favorites are enabled
-  local surface_index = player.surface.index
-  local pfaves = Cache.get_player_favorites(player, surface_index)
+      local surface_index = player.surface.index
+      local pfaves = Cache.get_player_favorites(player, surface_index)
 
       -- Show the visibility toggle button
       local toggle_container = GuiValidation.find_child_by_name(_bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT

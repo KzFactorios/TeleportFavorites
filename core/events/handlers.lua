@@ -96,7 +96,7 @@ function handlers.on_open_tag_editor_custom_input(event)
       if reason == "Drag mode active" then
         CursorUtils.end_drag_favorite(player)
         if player and player.play_sound then
-          player.play_sound { path = "utility/cancel" }
+          player.play_sound { path = "utility/cannot_build" }
         end
       end
       return
@@ -268,7 +268,6 @@ function handlers.on_chart_tag_removed(event)
 
     Cache.Lookups.invalidate_surface_chart_tags(player.surface.index)
 
-    -- TODO does the above actions notify observers? Were they triggered elsewhere in factorioland?
   end)
 end
 

@@ -55,7 +55,8 @@ local function handle_teleport_to_favorite_slot(event, slot_number)
     favorite = favorite
   })
   if not favorite or FavoriteUtils.is_blank_favorite(favorite) then
-    ErrorHandler.debug_log("Favorite slot empty or blank", { player = player.name, slot = slot_number, favorite = favorite })
+    ErrorHandler.debug_log("Favorite slot empty or blank",
+      { player = player.name, slot = slot_number, favorite = favorite })
     PlayerHelpers.safe_player_print(player, "tf-gui.favorite_slot_empty")
     return
   end
@@ -81,110 +82,6 @@ local function handle_teleport_to_favorite_slot(event, slot_number)
 end
 
 local default_custom_input_handlers = {
-  ["tf-delete-favorite-slot-right"] = function(event)
-    -- Reuse the same handler as left-click delete
-    local player = game.get_player(event.player_index)
-    if not player or not player.valid then
-      ErrorHandler.debug_log("Invalid player in delete favorite slot handler (right-click)", { player_index = event.player_index })
-      return
-    end
-
-    local element = event.element
-    if not element or not element.valid or not element.name or not element.name:find("^fave_bar_slot_") then
-      ErrorHandler.debug_log("Delete favorite slot (right-click): not a valid favorites bar slot element", { element = element and element.name or "<nil>" })
-      return
-    end
-
-    local slot_number = tonumber(element.name:match("fave_bar_slot_(%d+)"))
-    if not slot_number then
-      ErrorHandler.debug_log("Delete favorite slot (right-click): could not parse slot number", { element_name = element.name })
-      return
-    end
-
-    local surface_index = player.surface.index
-  local favorites = Cache.get_player_favorites(player, surface_index)
-    if not favorites then
-      ErrorHandler.debug_log("Delete favorite slot (right-click): no favorites found for surface", { player = player.name, surface_index = surface_index })
-      return
-    end
-
-    local favorite = favorites[slot_number]
-    if not favorite or FavoriteUtils.is_blank_favorite(favorite) then
-      ErrorHandler.debug_log("Delete favorite slot (right-click): slot already blank or invalid", { player = player.name, slot = slot_number })
-      return
-    end
-
-    if favorite.locked then
-      PlayerHelpers.safe_player_print(player, "tf-gui.favorite_slot_locked")
-      ErrorHandler.debug_log("Delete favorite slot (right-click): slot is locked", { player = player.name, slot = slot_number })
-      return
-    end
-
-    favorites[slot_number] = FavoriteUtils.get_blank_favorite()
-    Cache.set_player_favorites(player, favorites)
-
-    Cache.notify_observers_safe("favorite_removed", {
-      player = player,
-      gps = favorite.gps,
-      slot = slot_number,
-      tag = favorite
-    })
-
-    ErrorHandler.debug_log("Delete favorite slot (right-click): slot deleted and UI notified", { player = player.name, slot = slot_number })
-  end,
-  ["tf-delete-favorite-slot"] = function(event)
-    local player = game.get_player(event.player_index)
-    if not player or not player.valid then
-      ErrorHandler.debug_log("Invalid player in delete favorite slot handler", { player_index = event.player_index })
-      return
-    end
-
-    -- Only process if the event has a GUI element and it's a favorites bar slot
-    local element = event.element
-    if not element or not element.valid or not element.name or not element.name:find("^fave_bar_slot_") then
-      ErrorHandler.debug_log("Delete favorite slot: not a valid favorites bar slot element", { element = element and element.name or "<nil>" })
-      return
-    end
-
-    local slot_number = tonumber(element.name:match("fave_bar_slot_(%d+)"))
-    if not slot_number then
-      ErrorHandler.debug_log("Delete favorite slot: could not parse slot number", { element_name = element.name })
-      return
-    end
-
-    local surface_index = player.surface.index
-  local favorites = Cache.get_player_favorites(player, surface_index)
-    if not favorites then
-      ErrorHandler.debug_log("Delete favorite slot: no favorites found for surface", { player = player.name, surface_index = surface_index })
-      return
-    end
-
-    local favorite = favorites[slot_number]
-    if not favorite or FavoriteUtils.is_blank_favorite(favorite) then
-      ErrorHandler.debug_log("Delete favorite slot: slot already blank or invalid", { player = player.name, slot = slot_number })
-      return
-    end
-
-    if favorite.locked then
-      PlayerHelpers.safe_player_print(player, "tf-gui.favorite_slot_locked")
-      ErrorHandler.debug_log("Delete favorite slot: slot is locked", { player = player.name, slot = slot_number })
-      return
-    end
-
-    -- Remove the favorite from the slot
-    favorites[slot_number] = FavoriteUtils.get_blank_favorite()
-    Cache.set_player_favorites(player, favorites)
-
-    -- Notify observers to update the favorites bar UI
-    Cache.notify_observers_safe("favorite_removed", {
-      player = player,
-      gps = favorite.gps,
-      slot = slot_number,
-      tag = favorite
-    })
-
-    ErrorHandler.debug_log("Delete favorite slot: slot deleted and UI notified", { player = player.name, slot = slot_number })
-  end,
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "1"] = function(event) handle_teleport_to_favorite_slot(event, 1) end,
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "2"] = function(event) handle_teleport_to_favorite_slot(event, 2) end,
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "3"] = function(event) handle_teleport_to_favorite_slot(event, 3) end,
@@ -306,40 +203,40 @@ local function create_safe_handler(handler, handler_name)
       player_index = event.player_index,
       input_name = event.input_name
     })
-    
+
     -- Block custom inputs when modal dialogs are active (except ESC key equivalents)
     if event.player_index then
       local player = game.get_player(event.player_index)
       if BasicHelpers.is_valid_player(player) and Cache.is_modal_dialog_active(player) then
         -- Allow certain inputs that should work in modals (like ESC key)
         local allowed_inputs = {
-          "tf-close-tag-editor",  -- Allow closing tag editor
-          "tf-close-modal"        -- Allow generic modal close
+          "tf-close-tag-editor", -- Allow closing tag editor
+          "tf-close-modal"       -- Allow generic modal close
         }
-        
-          local input_allowed = false
-          for _, allowed_input in ipairs(allowed_inputs) do
-            if event.input_name == allowed_input then
-              input_allowed = true
-              break
-            end
+
+        local input_allowed = false
+        for _, allowed_input in ipairs(allowed_inputs) do
+          if event.input_name == allowed_input then
+            input_allowed = true
+            break
           end
-          if not input_allowed then
-            ErrorHandler.debug_log("[MODAL BLOCKER] Blocking custom input", {
-              input_name = event.input_name,
-              player_index = event.player_index,
-              modal_type = Cache.get_modal_dialog_type(player)
-            })
-            return -- Block the input
-          end
+        end
+        if not input_allowed then
+          ErrorHandler.debug_log("[MODAL BLOCKER] Blocking custom input", {
+            input_name = event.input_name,
+            player_index = event.player_index,
+            modal_type = Cache.get_modal_dialog_type(player)
+          })
+          return   -- Block the input
+        end
       end
     end
-    
+
     local success, err = pcall(handler, event)
     if not success then
       ErrorHandler.warn_log("Custom input handler failed", {
         error = tostring(err),
-        player_index = event.player_index 
+        player_index = event.player_index
       })
       -- Could also show player message for user-facing errors
       if event.player_index then
@@ -360,7 +257,12 @@ function M.register_default_inputs(script)
     return false
   end
   ErrorHandler.debug_log("Registering default custom input handlers")
-  ErrorHandler.debug_log("Handler table keys:", { keys = (default_custom_input_handlers and table.concat((function() local t={} for k,_ in pairs(default_custom_input_handlers) do table.insert(t,k) end return t end)(), ", ") or "nil") })
+  ErrorHandler.debug_log("Handler table keys:",
+    { keys = (default_custom_input_handlers and table.concat((function()
+      local t = {}
+      for k, _ in pairs(default_custom_input_handlers) do table.insert(t, k) end
+      return t
+    end)(), ", ") or "nil") })
   local count = 0
   for input_name, handler in pairs(default_custom_input_handlers) do
     local safe_handler = create_safe_handler(handler, input_name)
@@ -377,7 +279,6 @@ function M.register_default_inputs(script)
   ErrorHandler.debug_log("Custom input handler registration complete", { registered = count })
   return true
 end
-
 
 M.default_custom_input_handlers = default_custom_input_handlers
 

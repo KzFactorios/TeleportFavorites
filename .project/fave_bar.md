@@ -87,10 +87,11 @@ Yes. pretty sure I mentioned this below, but a locked favorite should show with 
 3. **Favorite Slot Overflow:** What should happen if a player tries to add more favorites than `MAX_FAVORITE_SLOTS`? Should there be a message or animation?
 There should be a beep, and a message that indictaes that the player already has the max number of available slots.
 
-4. **Slot Button Accessibility:** Should slot buttons have tooltips for all states (locked, disabled, etc.)?
 yes and no. locked buttons sould just not react to any left clicks. right clicks should open the tag_editor with the faves info and a ctrl+left-click should toggle the locked state immediatley. ctrl-right-click should be ignored. Blank favorites should not show as disabled, they just shouldn't do anything if left,right, ctrl+? clicked. A blank favorite cannot be locked, and a blank favorite should have no tooltip and no icon
+4. **Slot Button Accessibility:** Should slot buttons have tooltips for all states (locked, disabled, etc.)?
+yes and no. locked buttons should just not react to any left clicks. right clicks should open the tag_editor with the faves info and a ctrl+left-click should toggle the locked state immediately. ctrl-right-click should be ignored. Blank favorites should not show as disabled, they just shouldn't do anything if left, right, or ctrl+? clicked. A blank favorite cannot be locked, and a blank favorite should have no tooltip and no icon
 5. **Favorite Removal:** Is there a quick way to remove a favorite (e.g., middle-click or context menu)?
-You can delete by right clicking the favorite thereby open the tag editor with the favorites' information and the ability to delete if not locked and with all of the other ownership rules which are handled in the tag_editor
+You can delete by right clicking the favorite, which opens the tag editor with the favorite's information and the ability to delete if not locked and with all of the other ownership rules handled in the tag_editor. (Ctrl/Alt/Shift click to delete is not supported.)
 6. **Favorite Sorting:** Should there be an option to auto-sort favorites (e.g., by name, location, last used)?
 No. instead we are going to offer drag and drop
 7. **Favorite Import/Export:** Should players be able to import/export their favorites (e.g., for sharing or backup)?

@@ -39,11 +39,6 @@ local Constants = {
   -- Teleport history label max display length
   TELEPORT_HISTORY_LABEL_MAX_DISPLAY = 27
   },
-  
-  -- Command definitions
-  COMMANDS = {
-    DELETE_FAVORITE_BY_SLOT = "tf-delete-favorite-slot"
-  }
 }
 
 return Constants
