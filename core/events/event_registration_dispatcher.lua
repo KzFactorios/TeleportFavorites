@@ -375,143 +375,52 @@ function EventRegistrationDispatcher.register_observer_events(script)
     return false
   end
 
-  -- Register observer for favorites bar updates
+
+  -- Register observer for favorite_added and favorite_removed events
   local GuiEventBus = GuiObserver.GuiEventBus
 
-  -- Create a simple observer function for favorites bar updates
   local favorites_bar_observer = {
     observer_type = "favorites_bar_observer",
     is_valid = function(self)
-      return true -- This observer is always valid since it doesn't depend on GUI elements
+      return true
     end,
     update = function(self, event_data)
-      ErrorHandler.debug_log("[FAVORITES_BAR] Observer triggered", {
+      ErrorHandler.debug_log("[FAVORITES_BAR] Observer triggered (force rebuild)", {
         event_data = event_data,
-        player = event_data.player and event_data.player.name or "nil",
-        action = event_data.action or "unknown"
+        player = event_data.player and event_data.player.name or "nil"
       })
-
-      -- Wrap the entire observer logic in pcall to prevent framework failures
       local observer_success, observer_error = pcall(function()
-        ErrorHandler.debug_log("[FAVORITES_BAR] Starting observer execution", {
-          player = event_data.player and event_data.player.name or "nil"
-        })
-
         if event_data.player and event_data.player.valid then
-          ErrorHandler.debug_log("[FAVORITES_BAR] Player is valid, loading modules", {
-            player = event_data.player.name
-          })
-
-          ErrorHandler.debug_log("[FAVORITES_BAR] Modules loaded successfully", {
-            player = event_data.player.name
-          })
-
-          ErrorHandler.debug_log("[FAVORITES_BAR] Attempting to get main flow", {
-            player = event_data.player.name
-          })
-
-          local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(event_data.player)
-          if main_flow then
-            ErrorHandler.debug_log("[FAVORITES_BAR] Main flow found, searching for bar", {
+          local build_success, build_error = pcall(function()
+            fave_bar.build(event_data.player, true) -- Force rebuild
+          end)
+          if not build_success then
+            ErrorHandler.warn_log("[FAVORITES_BAR] Failed to build favorites bar (force rebuild)", {
               player = event_data.player.name,
-              main_flow_valid = main_flow.valid
-            })
-
-            -- Find the bar frame and bar flow for proper update
-            local bar_frame = GuiValidation.find_child_by_name(main_flow, "fave_bar_frame")
-            local bar_flow = bar_frame and GuiValidation.find_child_by_name(bar_frame, "fave_bar_flow")
-
-            ErrorHandler.debug_log("[FAVORITES_BAR] GUI search results", {
-              player = event_data.player.name,
-              bar_frame_found = bar_frame and true or false,
-              bar_flow_found = bar_flow and true or false
-            })
-
-            if bar_flow then
-              ErrorHandler.debug_log("[FAVORITES_BAR] Updating slot row for player", {
-                player = event_data.player.name,
-                gps = event_data.gps or "unknown"
-              })
-              -- Safely update the slot row to reflect the new favorite
-              local update_success, update_error = pcall(function()
-                fave_bar.update_slot_row(event_data.player, bar_flow)
-              end)
-              if not update_success then
-                ErrorHandler.warn_log("[FAVORITES_BAR] Failed to update slot row", {
-                  player = event_data.player.name,
-                  error = tostring(update_error)
-                })
-              else
-                ErrorHandler.debug_log("[FAVORITES_BAR] Successfully updated slot row", {
-                  player = event_data.player.name,
-                  gps = event_data.gps or "unknown"
-                })
-              end
-            else
-              -- Bar doesn't exist yet, try to build it if the player has favorites enabled
-              ErrorHandler.debug_log("[FAVORITES_BAR] Bar not found, attempting to build for player", {
-                player = event_data.player.name
-              })
-              local build_success, build_error = pcall(function()
-                fave_bar.build(event_data.player)
-              end)
-              if not build_success then
-                ErrorHandler.warn_log("[FAVORITES_BAR] Failed to build favorites bar", {
-                  player = event_data.player.name,
-                  error = tostring(build_error)
-                })
-              else
-                ErrorHandler.debug_log("[FAVORITES_BAR] Successfully built favorites bar", {
-                  player = event_data.player.name
-                })
-              end
-            end
-          else
-            ErrorHandler.debug_log("[FAVORITES_BAR] Main flow not found for player", {
-              player = event_data.player.name
+              error = tostring(build_error)
             })
           end
-        else
-          ErrorHandler.debug_log("[FAVORITES_BAR] Invalid player in event data")
         end
       end)
-
       if not observer_success then
-        -- Multiple approaches to capture the error
-        local error_str = "unknown error"
-        if observer_error then
-          if type(observer_error) == "string" then
-            error_str = observer_error
-          else
-            error_str = tostring(observer_error)
-          end
-        end
-
+        local error_str = observer_error and tostring(observer_error) or "unknown error"
         ErrorHandler.warn_log("[FAVORITES_BAR] Observer execution failed", {
           player = event_data.player and event_data.player.name or "nil",
-          error = error_str,
-          error_type = type(observer_error),
-          event_data_type = type(event_data),
-          player_valid = event_data.player and event_data.player.valid or false,
-          raw_error = observer_error -- Include raw error for debugging
+          error = error_str
         })
-
-        -- Also try to log to game console for immediate visibility
         if event_data.player and event_data.player.valid then
           event_data.player.print("[TeleportFavorites] Observer failed: " .. error_str)
         end
-
-        return false -- Explicitly return false to indicate failure
+        return false
       end
-
-      return true -- Explicitly return true to indicate success
+      return true
     end
   }
 
-  -- Subscribe to the favorites_bar_updated event
-  ErrorHandler.debug_log("[OBSERVER] Registering favorites_bar_updated observer")
-  GuiEventBus.subscribe("favorites_bar_updated", favorites_bar_observer)
-  ErrorHandler.debug_log("[OBSERVER] favorites_bar_updated observer registered successfully")
+  ErrorHandler.debug_log("[OBSERVER] Registering favorite_added and favorite_removed observers")
+  GuiEventBus.subscribe("favorite_added", favorites_bar_observer)
+  GuiEventBus.subscribe("favorite_removed", favorites_bar_observer)
+  ErrorHandler.debug_log("[OBSERVER] favorite_added and favorite_removed observers registered successfully")
   ErrorHandler.debug_log("Observer events registration complete")
 
   return true

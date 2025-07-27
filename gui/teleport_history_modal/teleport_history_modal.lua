@@ -146,11 +146,7 @@ function teleport_history_modal.build(player)
   -- Draggable space between title and buttons (always present, but only draggable if not pinned)
   local draggable = GuiBase.create_draggable(titlebar, "tf_titlebar_draggable")
   if draggable and draggable.valid then
-    if not pinned then
-      draggable.drag_target = modal_frame
-    else
-      draggable.drag_target = nil -- disables dragging when pinned
-    end
+  draggable.drag_target = modal_frame
   end
 
   -- Pin button (left of close button)
@@ -163,7 +159,6 @@ function teleport_history_modal.build(player)
   local close_button = GuiBase.create_icon_button(titlebar, "teleport_history_modal_close_button",
     Enum.SpriteEnum.CLOSE, { "tf-gui.close" }, "tf_frame_action_button")
   if close_button and close_button.valid then
-    close_button.enabled = not pinned
   end
 
   -- Create content frame (following tag editor pattern)

@@ -12,7 +12,7 @@
 
 require("prototypes.styles.init")
 require("prototypes.item.selection_tool")
-require("prototypes.input.teleport_history_inputs")
+require("prototypes.input.teleport_favorite_inputs")
 local Enum = require("prototypes.enums.enum")
 
 ---@diagnostic disable-next-line: undefined-global, param-type-mismatch, missing-parameter, duplicate-set-field

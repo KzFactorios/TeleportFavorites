@@ -156,10 +156,16 @@ function fave_bar.build(player, force_show)
   local tick = game and game.tick or 0
   local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   local bar_frame = main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
-  if not force_show and last_build_tick[player.index] == tick and bar_frame and bar_frame.valid then
-    return
+  -- Always recreate bar_frame if missing or invalid
+  if not bar_frame or not bar_frame.valid then
+    bar_frame = GuiBase.create_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR, "vertical", "tf_fave_bar_main_frame")
   end
-  last_build_tick[player.index] = tick
+  if not force_show then
+    if last_build_tick[player.index] == tick and bar_frame and bar_frame.valid then
+      return
+    end
+    last_build_tick[player.index] = tick
+  end
 
   local success, result = pcall(function()
     local player_settings = Cache.Settings.get_player_settings(player)
@@ -176,7 +182,14 @@ function fave_bar.build(player, force_show)
 
     local mode = player and player.render_mode
     if not (mode == defines.render_mode.game or mode == defines.render_mode.chart or mode == defines.render_mode.chart_zoomed_in) then
-      return
+      -- Only skip for remote view, god, or spectator, not for chart view
+      if mode == defines.render_mode.remote_view or
+         player.controller_type == defines.controllers.god or
+         player.controller_type == defines.controllers.spectator then
+        fave_bar.destroy()
+        return
+      end
+      -- Otherwise, allow bar in chart view
     end
 
     -- Use shared vertical flow
@@ -219,7 +232,8 @@ function fave_bar.build(player, force_show)
       end
     else
       -- Only build slots and set visibility if favorites are enabled
-      local pfaves = Cache.get_player_favorites(player)
+  local surface_index = player.surface.index
+  local pfaves = Cache.get_player_favorites(player, surface_index)
 
       -- Show the visibility toggle button
       local toggle_container = GuiValidation.find_child_by_name(_bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT
@@ -265,6 +279,10 @@ end
 -- Build a row of favorite slot buttons for the favorites bar
 function fave_bar.build_favorite_buttons_row(parent, player, pfaves)
   local max_slots = Constants.settings.MAX_FAVORITE_SLOTS or 10
+
+  -- Always fetch the latest favorites from storage for this surface
+  local surface_index = player.surface.index
+  local pfaves_surface = Cache.get_player_favorites(player, surface_index) or {}
 
   local function get_slot_btn_props(i, fav)
     -- Safely rehydrate favorite, catch any errors and return blank favorite
@@ -339,7 +357,7 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves)
   end
 
   for i = 1, max_slots do
-    local fav = pfaves[i]
+    local fav = pfaves_surface[i]
     local btn_icon, tooltip, style, locked = get_slot_btn_props(i, fav)
     local btn = GuiHelpers.create_slot_button(parent, "fave_bar_slot_" .. i, tostring(btn_icon), tooltip,
       { style = style })
@@ -379,7 +397,8 @@ function fave_bar.update_slot_row(player, parent_flow)
     end
   end
 
-  local pfaves = Cache.get_player_favorites(player)
+  local surface_index = player.surface.index
+  local pfaves = Cache.get_player_favorites(player, surface_index)
 
   -- Rebuild only the slot buttons
   fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves)
@@ -397,7 +416,8 @@ function fave_bar.update_single_slot(player, slot_index)
   local slot_button = GuiValidation.find_child_by_name(slots_frame, "fave_bar_slot_" .. slot_index)
   if not slot_button then return end
 
-  local pfaves = Cache.get_player_favorites(player)
+  local surface_index = player.surface.index
+  local pfaves = Cache.get_player_favorites(player, surface_index)
   if not pfaves then return end -- Safety check for nil pfaves
   local fav = pfaves[slot_index]
 

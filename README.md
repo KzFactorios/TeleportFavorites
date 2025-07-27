@@ -42,12 +42,14 @@ Pro-tip: Your teleport history is private—only you can see your own!
 **Surface Switching:** Your favorites and history are always shown for your current surface. If you change surfaces (e.g., via portals or admin commands), your favorites and history will update automatically to match the new world.
 
 
+
 Look at the top of your screen for the favorites bar—your gateway to teleportation magic!
 
 - **Toggle the bar** with the eye button
 - **Teleport** by left-clicking any favorite slot
 - **Edit a favorite** by right-clicking it
 - **Lock or unlock a favorite slot:** Hold **Ctrl** and left-click the slot. Locked slots show a lock icon and cannot be moved or overwritten until unlocked.
+- **Delete a favorite slot:** Hold **Ctrl + Alt + Shift** and left-click the slot to instantly clear it (removes the favorite from that slot).
 - **Reorder favorites** by dragging and dropping (except locked slots)
 - **Empty slots** are always present—just waiting for your next adventure!
 

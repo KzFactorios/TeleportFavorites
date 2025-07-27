@@ -56,6 +56,14 @@ end
 ---@param player LuaPlayer The player
 ---@param favorites PlayerFavorites The favorites instance
 local function handle_favorite_slot_click(event, player, favorites)
+  -- Block all slot actions if Ctrl+Alt+Shift+left-click is pressed (delete hotkey)
+  if event.button == defines.mouse_button_type.left and event.control and event.alt and event.shift then
+    ErrorHandler.debug_log("[FAVE_BAR] Delete hotkey combo detected, blocking slot actions for custom input handler", {
+      player = player.name,
+      slot = slot
+    })
+    return
+  end
   if not BasicHelpers.is_valid_element(event.element) or not BasicHelpers.is_valid_player(player) then return end
   local slot = tonumber(event.element.name:match("fave_bar_slot_(%d+)"))
   if not slot then

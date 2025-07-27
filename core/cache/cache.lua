@@ -319,31 +319,23 @@ function Cache.get_player_data(player)
   return result
 end
 
-function Cache.get_player_favorites(player)
-  if not player or not player.valid or not player.surface or not player.surface.index then
-    return nil
-  end
-  local player_data = Cache.get_player_data(player)
-  if not player_data.surfaces or not player_data.surfaces[player.surface.index] then
-    return nil
-  end
-  local favorites = player_data.surfaces[player.surface.index].favorites or {}
-  return favorites
-end
-
 --- Returns the player's favorites array for a specific surface index, or nil if not found/invalid.
 ---@param player LuaPlayer
----@param surface_index integer
+---@param surface_index integer|nil
 ---@return table[]|nil
-function Cache.get_player_favorites_for_surface(player, surface_index)
-  if not player or not player.valid or not surface_index then
+function Cache.get_player_favorites(player, surface_index)
+  if not player or not player.valid then
+    return nil
+  end
+  local idx = surface_index or (player.surface and player.surface.index)
+  if not idx then
     return nil
   end
   local player_data = Cache.get_player_data(player)
-  if not player_data.surfaces or not player_data.surfaces[surface_index] then
+  if not player_data.surfaces or not player_data.surfaces[idx] then
     return nil
   end
-  local favorites = player_data.surfaces[surface_index].favorites or {}
+  local favorites = player_data.surfaces[idx].favorites or {}
   return favorites
 end
 

@@ -281,15 +281,13 @@ local function handle_confirm_btn(player, element, tag_data)
 
     refreshed_tag.faved_by_players[player.index] = player.index
     -- Notify favorites bar to update after adding favorite
-    ErrorHandler.debug_log("[TAG_EDITOR] Sending favorites_bar_updated notification (ADD)", {
+    ErrorHandler.debug_log("[TAG_EDITOR] Sending favorite_added notification", {
       player = player.name,
-      gps = refreshed_tag.gps,
-      action = "add"
+      gps = refreshed_tag.gps
     })
-    SharedUtils.notify_observer("favorites_bar_updated", {
+    SharedUtils.notify_observer("favorite_added", {
       player = player,
       gps = refreshed_tag.gps,
-      action = "add",
       tag = refreshed_tag
     })
   else
@@ -297,15 +295,13 @@ local function handle_confirm_btn(player, element, tag_data)
     player_favorites:remove_favorite(refreshed_tag.gps)
     refreshed_tag.faved_by_players[player.index] = nil
     -- Notify favorites bar to update after removing favorite
-    ErrorHandler.debug_log("[TAG_EDITOR] Sending favorites_bar_updated notification (REMOVE)", {
+    ErrorHandler.debug_log("[TAG_EDITOR] Sending favorite_removed notification", {
       player = player.name,
-      gps = refreshed_tag.gps,
-      action = "remove"
+      gps = refreshed_tag.gps
     })
-    SharedUtils.notify_observer("favorites_bar_updated", {
+    SharedUtils.notify_observer("favorite_removed", {
       player = player,
       gps = refreshed_tag.gps,
-      action = "remove",
       tag = refreshed_tag
     })
   end
@@ -431,6 +427,12 @@ local function handle_delete_confirm(player)
   SharedUtils.notify_observer("tag_collection_changed", {
     gps = tag_gps
   })
+  -- Notify favorites bar observer to refresh UI after deletion
+  SharedUtils.notify_observer("favorite_removed", {
+    player = player,
+    gps = tag_gps,
+    tag = tag
+  })
 
   -- Close both dialogs
   GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
@@ -439,14 +441,7 @@ local function handle_delete_confirm(player)
  
   Cache.reset_tag_editor_delete_mode(player)
 
-  -- Always show destination messages
-  PlayerHelpers.safe_player_print(player, "tf-gui.tag_deleted")
-
-  -- Force favorites bar rebuild to update UI and remove stale icon
-  local ok, fave_bar = pcall(require, "gui.favorites_bar.fave_bar")
-  if ok and fave_bar and type(fave_bar.build) == "function" then
-    fave_bar.build(player, true)
-  end
+  -- PlayerHelpers.safe_player_print(player, { "tf-gui.tag_deleted" })
 end
 
 -- User cancelled deletion - close confirmation dialog and return to tag editor
@@ -454,7 +449,6 @@ local function handle_delete_cancel(player)
   GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
   Cache.set_modal_dialog_state(player, nil) -- Clear modal state
   player.opened = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
-  -- Reset delete mode
   Cache.reset_tag_editor_delete_mode(player)
 end
 
