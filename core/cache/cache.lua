@@ -221,11 +221,7 @@ local function init_player_data(player)
     dialog_type = nil
   }
 
-  -- Persistent pin state and modal position
-  if player_data.history_modal_pin == nil then
-    player_data.history_modal_pin = false
-  end
-
+  -- Persistent modal position
   local pos = player_data.history_modal_position
   local needs_default = false
   if pos == nil then
@@ -253,22 +249,6 @@ local function init_player_data(player)
 
   return player_data
 
-end
-
---- Get persistent pin state for teleport history modal
----@param player LuaPlayer
----@return boolean
-function Cache.get_history_modal_pin(player)
-  local player_data = Cache.get_player_data(player)
-  return player_data.history_modal_pin == true
-end
-
---- Set persistent pin state for teleport history modal
----@param player LuaPlayer
----@param value boolean
-function Cache.set_history_modal_pin(player, value)
-  local player_data = Cache.get_player_data(player)
-  player_data.history_modal_pin = value == true
 end
 
 --- Get persistent position and size for teleport history modal

@@ -214,7 +214,7 @@ local function handle_history_toggle_button_click(event, player)
   local modal_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]
   local modal_open = modal_frame and modal_frame.valid
   if modal_open then
-    -- Just close the modal, do not change pin state
+    -- Close the modal
     TeleportHistoryModal.destroy(player)
   else
     TeleportHistoryModal.build(player)
@@ -276,12 +276,6 @@ local function on_teleport_history_modal_gui_click(event)
     return
   end
 
-  -- Handle pin button
-  if element.name == "teleport_history_modal_pin_button" then
-    TeleportHistoryModal.toggle_pin(player)
-    return
-  end
-
   -- Handle history item clicks
   if element.name and element.name:find("^teleport_history_item_") then
     local index = element.tags and element.tags.teleport_history_index
@@ -327,10 +321,7 @@ local function on_teleport_history_modal_gui_click(event)
     local success, err = TeleportStrategy.teleport_to_gps(player, gps, false)
     if success then
       TeleportHistory.set_pointer(player, player.surface.index, index)
-      -- Only close modal if not pinned
-      if not Cache.get_history_modal_pin(player) then
-        TeleportHistoryModal.destroy(player)
-      end
+      -- Modal stays open after successful teleport from history
     else
       if err and err == "already_at_target" then
         return

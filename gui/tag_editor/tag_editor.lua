@@ -164,6 +164,7 @@ local function build_rich_text_row(parent, tag_data)
   local row = GuiElementBuilders.create_two_element_row(parent, "tag_editor_rich_text_row")
   local icon_btn = create_icon_button(row, tag_data)
   local text_input = create_text_input(row, tag_data)
+  text_input.focus()
   return row, icon_btn, text_input
 end
 

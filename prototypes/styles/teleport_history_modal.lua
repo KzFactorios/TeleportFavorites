@@ -20,36 +20,6 @@ gui_style.tf_teleport_history_trash_button = {
     horizontally_stretchable = "off",
 }
 
-gui_style.tf_teleport_history_modal_pin_button = {
-    type = "button_style",
-    parent = "tf_frame_action_button",
-    font_color = { r = 1, g = 1, b = 1, a = 1 },
-    right_margin = 8,
-    bottom_padding = 2,
-    right_padding = 2,
-}
-
-gui_style.tf_history_modal_pin_button_active = {
-    type = "button_style",
-    parent = "tf_frame_action_button",
-    width = 24,
-    height = 24,
-    right_margin = 8,
-    padding = -4,
-    font_color = { r = 0, g = 0, b = 0, a = 1 },
-    default_graphical_set = {
-        base = {
-            filename = "__core__/graphics/gui-new.png",
-            priority = "extra-high-no-scale",
-            position = { 30, 16 },
-            width = 20,
-            height = 20,
-            corner_size = 8,
-            scale = 1,
-        }
-    },
-}
-
 gui_style.tf_teleport_history_item = {
     type = "button_style",
     parent = "list_box_item",

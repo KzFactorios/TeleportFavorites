@@ -271,16 +271,16 @@ data:extend({
     type = "sprite",
     name = "tf_eye",
     filename = "__TeleportFavorites__/graphics/icons8-eye-50.png",
-    width = 75,
-    height = 75,
+    width = 50,
+    height = 50,
     flags = { "gui-icon" }
   },
   {
     type = "sprite",
     name = "tf_eyelash",
     filename = "__TeleportFavorites__/graphics/icons8-eyelash-50.png",
-    width = 75,
-    height = 75,
+    width = 50,
+    height = 50,
     flags = { "gui-icon" }
   },
   {
