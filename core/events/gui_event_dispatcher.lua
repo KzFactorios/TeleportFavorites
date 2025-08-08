@@ -81,15 +81,7 @@ function M.register_gui_handlers(script)
         -- Only allow interactions with the currently active modal dialog
         local is_allowed_interaction = false
 
-          if active_modal_type == "delete_confirmation" then
-            -- Always allow confirm/cancel buttons for delete confirmation modal
-        if element.name == Enum.UIEnums.GUI.TagEditor.CONFIRM_DIALOG_CONFIRM_BTN or
-          element.name == Enum.UIEnums.GUI.TagEditor.CONFIRM_DIALOG_CANCEL_BTN then
-              is_allowed_interaction = true
-            else
-              is_allowed_interaction = false
-            end
-          elseif active_modal_type == "tag_editor" then
+          if active_modal_type == "tag_editor" then
             -- Allow tag editor and its confirmation dialog interactions
             if parent_gui and (
               parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR or
@@ -103,6 +95,12 @@ function M.register_gui_handlers(script)
           is_allowed_interaction = (parent_gui and parent_gui.name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL)
             or (parent_gui and parent_gui.name == Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
             or (element.name and tostring(element.name):find(tostring(Constants.settings.FAVE_BAR_SLOT_PREFIX), 1, true) ~= nil)
+        elseif active_modal_type == "delete_confirmation" then
+          -- Allow any confirm/cancel buttons from supported confirmation dialogs
+          is_allowed_interaction = (element.name == Enum.UIEnums.GUI.TagEditor.CONFIRM_DIALOG_CONFIRM_BTN)
+                                   or (element.name == Enum.UIEnums.GUI.TagEditor.CONFIRM_DIALOG_CANCEL_BTN)
+                                   or (element.name == Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_CONFIRM_BTN)
+                                   or (element.name == Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_CANCEL_BTN)
         end
 
         if not is_allowed_interaction then
@@ -121,19 +119,16 @@ function M.register_gui_handlers(script)
 
       -- Check for right-click during drag operation
       if event.button == defines.mouse_button_type.right then
-        local player_data = Cache.get_player_data(player)
-        -- Ensure drag_favorite is properly initialized
-        if not player_data.drag_favorite then
-          player_data.drag_favorite = { active = false, source_slot = nil, favorite = nil }
-        end
-        if player_data.drag_favorite.active then
+        local is_dragging, _ = CursorUtils.is_dragging_favorite(player)
+        if is_dragging then
+          local player_data = Cache.get_player_data(player)
           ErrorHandler.debug_log("[DISPATCH] Right-click detected during drag operation, cancelling drag", {
             player = player.name,
-            source_slot = player_data.drag_favorite.source_slot,
+            source_slot = player_data.drag_favorite and player_data.drag_favorite.source_slot or nil,
             raw_button = event.button
           })
           CursorUtils.end_drag_favorite(player)
-          PlayerHelpers.safe_player_print(player, { "tf-gui.fave_bar_drag_canceled" })
+          GameHelpers.player_print(player, { "tf-gui.fave_bar_drag_canceled" })
 
           -- Set a flag to prevent tag editor opening on this tick
           if not player_data.suppress_tag_editor then
@@ -184,6 +179,9 @@ function M.register_gui_handlers(script)
         return true
       elseif parent_gui.name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL then
         control_fave_bar.on_teleport_history_modal_gui_click(event)
+        return true
+      elseif parent_gui.name == Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_FRAME then
+        control_fave_bar.on_history_confirm_dialog_click(event)
         return true
       else
         -- Special handling for tag editor elements that might have wrong parent detection

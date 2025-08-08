@@ -18,6 +18,7 @@ fave_bar_frame (frame)
 - The number of slot buttons depends on the user's settings (`MAX_FAVORITE_SLOTS`).
 - The bar is always parented to the player's top GUI and strives to be the rightmost item.
 - The history toggle button opens the teleport history modal (visibility controlled by `enable_teleport_history` setting).
+    - You can also press Ctrl + Shift + T to toggle the Teleport History modal without clicking the button.
 - The visibility toggle button controls the visibility of the slot buttons container.
 - All GUI state and slot order is persisted per player.
 - Drag-and-drop, lock, and click actions are handled as described in the rest of this document.ick access to teleportation favorites. It is designed to be idiomatic for Factorio 2.0, robust in multiplayer, and visually consistent with vanilla UI paradigms. The bar is managed automatically by the GUI and mod settings; there is no dedicated hotkey or custom event for opening it. The bar should be built using the builder pattern for GUI construction and the command pattern for user/event handling.

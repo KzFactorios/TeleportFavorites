@@ -18,7 +18,7 @@ data:extend({
     default_value = true,
     order = "ka-1",
   },
-  {
+  --[[{
     name = "history-update-interval", 
     type = "int-setting",
     setting_type = "startup",
@@ -38,5 +38,5 @@ data:extend({
     allowed_values = {1, 5, 10, 15, 20, 25},
     hidden = true,
     order = "kc",
-  }
+  }]]
 })

@@ -87,21 +87,8 @@ function Settings.get_number_setting(player, setting_name, default, min_value, m
   if not global_settings then
     return default
   end
-  
-  local setting = global_settings[setting_name]
-  if setting and setting.value ~= nil then
-    local value = tonumber(setting.value)
-    if value then
-      -- Apply range validation if specified
-      if min_value and value < min_value then
-        return min_value
-      end
-      if max_value and value > max_value then
-        return max_value
-      end
-      return value
-    end
-  end
+
+  -- TODO debate on wether or not to have a player-specific setting
   
   return default
 end

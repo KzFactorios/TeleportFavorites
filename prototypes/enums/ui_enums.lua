@@ -106,7 +106,8 @@ UIEnums.GUI = {
   Frame = {},
   FaveBar = {},
   TagEditor = {},
-  Shared = {}
+  Shared = {},
+  TeleportHistory = {}
 }
 
 UIEnums.GUI.Frame = {
@@ -195,6 +196,13 @@ UIEnums.GUI.Shared = {
   TELEPORT_HISTORY_MODAL_CLOSE_BUTTON = "teleport_history_modal_close_button",
   TELEPORT_HISTORY_SCROLL_PANE = "teleport_history_scroll_pane",
   TELEPORT_HISTORY_LIST = "teleport_history_list",
+}
+
+--- Teleport history specific dialog elements
+UIEnums.GUI.TeleportHistory = {
+  CONFIRM_DIALOG_FRAME = "tf_history_confirm_dialog_frame",
+  CONFIRM_DIALOG_CONFIRM_BTN = "tf_history_confirm_dialog_confirm_btn",
+  CONFIRM_DIALOG_CANCEL_BTN = "tf_history_confirm_dialog_cancel_btn"
 }
 
 -- ========================================

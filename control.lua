@@ -10,19 +10,19 @@
 
 -- Import controllers for various mod components
 
--- Required for favorites bar functionality
 local control_tag_editor = require("core.control.control_tag_editor")
 local control_fave_bar = require("core.control.control_fave_bar")
-local control_tag_editor = require("core.control.control_tag_editor")
 
 
 local event_registration_dispatcher = require("core.events.event_registration_dispatcher")
+local Constants = require("constants")
 local ErrorHandler = require("core.utils.error_handler")
-ErrorHandler.set_log_level("debug")
-ErrorHandler.debug_log("[CONTROL] control.lua loaded, logger active")
 local handlers = require("core.events.handlers")
-local ErrorHandler = require("core.utils.error_handler")
 local TeleportHistory = require("core.teleport.teleport_history")
+
+-- Initialize logging immediately using single source of truth
+ErrorHandler.initialize(Constants.settings.DEFAULT_LOG_LEVEL)
+ErrorHandler.debug_log("[CONTROL] control.lua loaded, logger active", { level = Constants.settings.DEFAULT_LOG_LEVEL })
 
 
 local gui_observer = nil
@@ -35,10 +35,7 @@ if success then gui_observer = module end
 -- Custom on_init to allow easy toggling of intro cutscene skip
 local function custom_on_init()
   -- Initialize debug system first
-  ErrorHandler.initialize()
-
-  -- TEMPORARY: Set log level to debug for troubleshooting. Change to "warn" or "error" at deploy time.
-  ErrorHandler.set_log_level("debug")
+  ErrorHandler.initialize(Constants.settings.DEFAULT_LOG_LEVEL)
   
   -- Register teleport history remote interface
   TeleportHistory.register_remote_interface()

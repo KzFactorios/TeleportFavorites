@@ -1,19 +1,21 @@
----@diagnostic disable: undefined-global, undefined-field, missing-fields, need-check-nil, param-type-mismatch
+---@diagnostic disable: undefined-global, undefined-field, missing-fields, need-check-nil, param-type-mismatch, assign-type-mismatch
 
 -- core/events/custom_input_dispatcher.lua
 -- TeleportFavorites Factorio Mod
--- Centralized dispatcher for custom input (keyboard shortcut) events.
 -- Features: safe handler registration, error handling, logging, extensible pattern, no global namespace pollution.
 -- Usage: register default/custom handlers, all handlers receive Factorio event object.
 
-local PlayerHelpers = require("core.utils.player_helpers")
-local ErrorHandler = require("core.utils.error_handler")
-local FavoriteUtils = require("core.favorite.favorite_utils")
-local Enum = require("prototypes.enums.enum")
 local Cache = require("core.cache.cache")
-local BasicHelpers = require("core.utils.basic_helpers")
-local TeleportStrategy = require("core.utils.teleport_strategy")
+local FavoriteUtils = require("core.favorite.favorite_utils")
 local TeleportHistory = require("core.teleport.teleport_history")
+local BasicHelpers = require("core.utils.basic_helpers")
+local GuiElementBuilders = require("core.utils.gui_element_builders")
+local GuiValidation = require("core.utils.gui_validation")
+local ErrorHandler = require("core.utils.error_handler")
+local PlayerHelpers = require("core.utils.player_helpers")
+local TeleportStrategy = require("core.utils.teleport_strategy")
+local teleport_history_modal = require("gui.teleport_history_modal.teleport_history_modal")
+local Enum = require("prototypes.enums.enum")
 
 
 local M = {}
@@ -82,6 +84,23 @@ local function handle_teleport_to_favorite_slot(event, slot_number)
 end
 
 local default_custom_input_handlers = {
+  ["teleport_history-toggle"] = function(event)
+    local player = game.get_player(event.player_index)
+    if not BasicHelpers.is_valid_player(player) then return end
+
+    -- Respect player setting: only act if history is enabled
+    local settings = Cache.Settings.get_player_settings(player)
+    if not settings.enable_teleport_history then
+      ErrorHandler.debug_log("Teleport history toggle pressed but feature disabled", { player = player.name })
+      return
+    end
+
+    if teleport_history_modal.is_open(player) then
+      teleport_history_modal.destroy(player, true)
+    else
+      teleport_history_modal.build(player)
+    end
+  end,
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "1"] = function(event) handle_teleport_to_favorite_slot(event, 1) end,
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "2"] = function(event) handle_teleport_to_favorite_slot(event, 2) end,
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "3"] = function(event) handle_teleport_to_favorite_slot(event, 3) end,
@@ -185,12 +204,26 @@ local default_custom_input_handlers = {
   ["teleport_history-clear"] = function(event)
     local player = game.get_player(event.player_index)
     if player and player.valid then
-      local surface_index = player.surface.index
-      local hist = Cache.get_player_teleport_history(player, surface_index)
-      hist.stack = {}
-      hist.pointer = 0
-      TeleportHistory.notify_observers(player)
-      -- Modal will auto-update via observer
+      -- Only allow clearing when the Teleport History modal is open
+      if not teleport_history_modal.is_open(player) then
+        ErrorHandler.debug_log("Teleport history clear pressed but modal not open", { player = player.name })
+        return
+      end
+      -- Destroy any existing history confirm dialog
+      GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
+      GuiValidation.safe_destroy_frame(player.gui.screen, Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_FRAME)
+      -- Build confirmation dialog with teleport-history specific names
+  local message ---@type LocalisedString
+  message = { "tf-gui.confirm_delete_history_message" }
+  ---@cast message LocalisedString
+      GuiElementBuilders.create_confirmation_dialog(
+        player.gui.screen,
+        Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_FRAME,
+        message,
+        Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_CONFIRM_BTN,
+        Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_CANCEL_BTN
+      )
+      Cache.set_modal_dialog_state(player, "delete_confirmation")
     end
   end,
 }

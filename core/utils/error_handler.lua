@@ -5,6 +5,7 @@
 -- Centralized error handling for consistent reporting, logging, and error propagation.
 -- Provides error type categorization, debug logging, and safe error bubbling.
 
+local Constants = require("constants")
 local BasicHelpers = require("core.utils.basic_helpers")
 
 -- Prevent infinite recursion in error handling
@@ -17,16 +18,23 @@ local _in_error_handler = false
 local ErrorHandler = {}
 
 --- Local helper to send error messages to players (breaks circular dependency with PlayerHelpers)
----@param player LuaPlayer The player to send message to
+---@param player LuaPlayer|nil The player to send message to
 ---@param error_key string Error message
 local function send_error_to_player(player, error_key)
-    if not BasicHelpers.is_valid_player(player) then return end
+  if not player then return end
+  if not BasicHelpers.is_valid_player(player) then return end
     local message_text = "[TeleportFavorites] " .. error_key
-    pcall(function() player.print(message_text) end)
+  pcall(function() player.print(message_text) end)
 end
 
 --- Set the log level for the mod ('production', 'debug', etc.)
-ErrorHandler._log_level = "production"
+ErrorHandler._log_level = (Constants and Constants.settings and Constants.settings.DEFAULT_LOG_LEVEL) or "production"
+
+--- Return true if current log level is debug
+---@return boolean
+function ErrorHandler.is_debug()
+  return ErrorHandler._log_level == "debug"
+end
 
 ---Initialize the logging system (debug/production mode, multiplayer-safe)
 function ErrorHandler.set_log_level(level)
@@ -37,12 +45,8 @@ function ErrorHandler.set_log_level(level)
 end
 function ErrorHandler.initialize(log_level)
   ErrorHandler._initialized = true
-  if log_level then
+  if log_level and (log_level == "debug" or log_level == "production" or log_level == "warn" or log_level == "error") then
     ErrorHandler._log_level = log_level
-  else
-    -- Optionally, detect from remote or settings
-    ErrorHandler._log_level = (remote and remote.interfaces and remote.interfaces.TeleportFavorites_Debug) and "debug" or
-    "production"
   end
   pcall(function() log("[TeleFaves] Logger initialized. Log level: " .. tostring(ErrorHandler._log_level)) end)
 end
@@ -51,7 +55,7 @@ end
 ---@param message string
 ---@param context table?
 function ErrorHandler.debug_log(message, context)
-  if ErrorHandler._log_level ~= "debug" then return end
+  if not ErrorHandler.is_debug() then return end
   if _in_error_handler then return end
   _in_error_handler = true
   local prefix = "[TeleFaves][DEBUG] "
@@ -112,7 +116,7 @@ function ErrorHandler.error_log(handler_name, error, event, event_type)
     if BasicHelpers.is_valid_player(player) then
       -- Only show generic error message for critical failures
       if event_type and (event_type:find("gui") or event_type:find("input")) then
-        send_error_to_player(player --[[---@as LuaPlayer]], "Event handler error occurred")
+  send_error_to_player(player, "Event handler error occurred")
       end
     end
   end

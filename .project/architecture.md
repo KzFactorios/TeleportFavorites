@@ -44,6 +44,13 @@ This policy applies to all Lua modules in the codebase.
 
 ---
 
+## Teleport History Modal Access (Hotkey)
+- The Teleport History modal can be toggled at any time using the custom input Ctrl + Shift + T ("teleport_history-toggle").
+- The toggle respects the per-player setting `enable_teleport_history`; when disabled, the toggle does nothing.
+- The modal is non-blocking (not modal=true) and does not set `player.opened`; ESC doesn’t auto-close it. Use the close button or the toggle hotkey.
+
+---
+
 ## Module Breakdown
 ### Shared Tag Mutation & Surface Mapping Helper (2025-07-19)
 The helper `Tag.update_gps_and_surface_mapping(old_gps, new_gps, chart_tag, player)` centralizes all logic for moving tag data between GPS keys, updating tag objects, and synchronizing runtime lookup caches. This replaces inline logic in event handlers and ensures multiplayer and surface consistency. Always use this helper for chart tag position changes.

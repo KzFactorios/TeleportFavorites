@@ -1,4 +1,4 @@
----@diagnostic disable: undefined-global
+---@diagnostic disable: undefined-global, assign-type-mismatch, param-type-mismatch, undefined-field
 
 -- core/utils/gui_element_builders.lua
 -- TeleportFavorites Factorio Mod
@@ -24,9 +24,14 @@ local GuiElementBuilders = {}
 ---@param enabled boolean Whether the button should be enabled
 ---@return LuaGuiElement button The created button
 function GuiElementBuilders.create_favorite_button(parent, name, is_favorite, enabled)
-  return GuiBase.create_icon_button(parent, name, 
+  local tooltip_on ---@type any
+  tooltip_on = { "tf-gui.favorite_tooltip" }
+  local tooltip_off ---@type any
+  tooltip_off = { "tf-gui.max_favorites_warning" }
+  local tooltip = enabled and tooltip_on or tooltip_off
+  return GuiBase.create_icon_button(parent, name,
     is_favorite and Enum.SpriteEnum.STAR or Enum.SpriteEnum.STAR_DISABLED,
-    enabled and { "tf-gui.favorite_tooltip" } or { "tf-gui.max_favorites_warning" },
+    tooltip,
     is_favorite and "slot_orange_favorite_on" or "slot_orange_favorite_off", enabled)
 end
 
@@ -38,8 +43,12 @@ end
 ---@return LuaGuiElement button The created button
 function GuiElementBuilders.create_teleport_button(parent, name, gps, enabled)
   local coords = GPSUtils.coords_string_from_gps(gps) or ""
-  local button = GuiBase.create_icon_button(parent, name, "", { "tf-gui.teleport_tooltip" }, "tf_teleport_button", enabled ~= false)
-  button.caption = {"tf-gui.teleport_to", tostring(coords)}
+  local tt ---@type any
+  tt = { "tf-gui.teleport_tooltip" }
+  local button = GuiBase.create_icon_button(parent, name, "", tt, "tf_teleport_button", enabled ~= false)
+  local cap ---@type any
+  cap = { "tf-gui.teleport_to", tostring(coords) }
+  button.caption = cap
   return button
 end
 
@@ -49,8 +58,9 @@ end
 ---@param enabled boolean Whether the button should be enabled
 ---@return LuaGuiElement button The created button
 function GuiElementBuilders.create_delete_button(parent, name, enabled)
-  return GuiBase.create_icon_button(parent, name, Enum.SpriteEnum.TRASH, 
-    { "tf-gui.delete_tooltip" }, "tf_delete_button", enabled)
+  local tt ---@type any
+  tt = { "tf-gui.delete_tooltip" }
+  return GuiBase.create_icon_button(parent, name, Enum.SpriteEnum.TRASH, tt, "tf_delete_button", enabled)
 end
 
 --- Create a visibility toggle button with proper sprite and style
@@ -77,7 +87,7 @@ end
 ---@param cancel_button_name string Name for cancel button
 ---@return LuaGuiElement frame, LuaGuiElement confirm_btn, LuaGuiElement cancel_btn
 function GuiElementBuilders.create_confirmation_dialog(parent, name, message, confirm_button_name, cancel_button_name)
-  local frame = parent.add {
+  local frame = parent.add({
     type = "frame",
     name = name,
     caption = "",
@@ -85,60 +95,55 @@ function GuiElementBuilders.create_confirmation_dialog(parent, name, message, co
     style = "tf_confirm_dialog_frame",
     force_auto_center = true,
     modal = true
-  }
+  })
   frame.auto_center = true
   frame.visible = true
-  frame.style.minimal_height = 80
 
-  -- Ensure message is a valid LocalisedString
+  -- Normalize message to a LocalisedString
   if type(message) == "string" then
     message = { message }
   elseif type(message) ~= "table" then
     message = { "tf-gui.confirm_delete_message" }
   end
-  
+
   GuiBase.create_label(frame, "confirm_dialog_label", message, "tf_dlg_confirm_title")
 
   -- Button row with left and right alignment
-  local btn_row = frame.add {
+  local btn_row = frame.add({
     type = "flow",
     name = "confirm_dialog_btn_row",
     direction = "horizontal",
     style = "tf_confirm_dialog_btn_row"
-  }
-  btn_row.style.horizontally_stretchable = true
+  })
 
   -- Left flow for cancel button
-  local left_flow = btn_row.add {
+  local left_flow = btn_row.add({
     type = "flow",
     name = "confirm_dialog_left_flow",
     direction = "horizontal"
-  }
-  left_flow.style.horizontally_stretchable = false
+  })
 
   -- Right flow for confirm button
-  local right_flow = btn_row.add {
-    type = "flow", 
+  local right_flow = btn_row.add({
+    type = "flow",
     name = "confirm_dialog_right_flow",
     direction = "horizontal"
-  }
-  right_flow.style.horizontally_stretchable = true
-  right_flow.style.horizontal_align = "right"
+  })
 
-  local cancel_btn = left_flow.add {
+  local cancel_btn = left_flow.add({
     type = "button",
     name = cancel_button_name,
     caption = { "tf-gui.confirm_delete_cancel" },
     style = "back_button"
-  }
+  })
   cancel_btn.tags = { action = "cancel_delete" }
 
-  local confirm_btn = right_flow.add {
+  local confirm_btn = right_flow.add({
     type = "button",
     name = confirm_button_name,
     caption = { "tf-gui.confirm_delete_confirm" },
     style = "tf_dlg_confirm_button"
-  }
+  })
   confirm_btn.tags = { action = "confirm_delete" }
   confirm_btn.visible = true
 
@@ -187,6 +192,7 @@ function GuiElementBuilders.set_button_state_and_tooltip(button, enabled, toolti
   
   GuiValidation.set_button_state(button, enabled)
   if tooltip then
+    ---@cast tooltip LocalisedString|string
     button.tooltip = tooltip
   end
 end

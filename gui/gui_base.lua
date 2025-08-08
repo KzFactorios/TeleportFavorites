@@ -1,4 +1,4 @@
----@diagnostic disable: undefined-global
+---@diagnostic disable: undefined-global, assign-type-mismatch, param-type-mismatch
 
 -- TeleportFavorites GUI Base Module
 -- Provides reusable builder functions for all major GUI elements in the mod.
@@ -65,7 +65,7 @@ end
 --- @param parent LuaGuiElement: Parent element
 --- @param name string: Name of the button
 --- @param sprite string: Icon sprite path
---- @param tooltip LocalisedString|string|nil: Tooltip for the button
+-- @param tooltip any: Tooltip for the button (LocalisedString|string|nil)
 --- @param style string|nil: Optional style name (default: 'tf_slot_button')
 --- @param enabled boolean|nil: Optional, default true
 --- @return LuaGuiElement: The created button
@@ -78,6 +78,7 @@ function GuiBase.create_icon_button(parent, name, sprite, tooltip, style, enable
     }
     local button = GuiBase.create_element('sprite-button', parent, opts)
     if tooltip then
+        ---@cast tooltip LocalisedString|string
         button.tooltip = tooltip
     end
     return button
@@ -104,7 +105,7 @@ end
 --- @param parent LuaGuiElement: Parent element
 --- @param name string: Name of the button
 --- @param sprite string: Icon sprite path
---- @param tooltip LocalisedString|string|nil: Tooltip for the button
+-- @param tooltip any: Tooltip for the button (LocalisedString|string|nil)
 --- @param style string: Optional style name (default: 'tf_slot_button')
 --- @param enabled? boolean|nil: Optional, default true
 --- @return LuaGuiElement: The created button
@@ -113,10 +114,10 @@ function GuiBase.create_sprite_button(parent, name, sprite, tooltip, style, enab
 end
 
 --- Factory for creating GUI elements with type and options
---- @param element_type string: The type of GUI element (e.g., 'frame', 'label', 'sprite-button', etc.)
---- @param parent LuaGuiElement: The parent element
---- @param opts table: Table of options (name, caption, direction, style, etc.)
---- @return LuaGuiElement: The created element
+--- @param element_type string The type of GUI element (e.g., 'frame', 'label', 'sprite-button', etc.)
+--- @param parent LuaGuiElement The parent element
+--- @param opts table Options (name, caption, direction, style, etc.)
+--- @return LuaGuiElement elem The created element
 function GuiBase.create_element(element_type, parent, opts)
     if (type(parent) ~= "table" and type(parent) ~= "userdata") or type(parent.add) ~= "function" then
         error("GuiBase.create_element: parent is not a valid LuaGuiElement")
@@ -129,7 +130,6 @@ function GuiBase.create_element(element_type, parent, opts)
         if (k == "visible" or k == "enabled" or k == "modal" or k == "auto_center" or k == "force_auto_center") and v == nil then
             ErrorHandler.warn_log("Nil boolean property detected in GUI element creation", {
                 element_type = element_type,
-                property = k,
                 parent_name = parent.name or "unknown"
             })
             -- Skip adding nil boolean properties to prevent Factorio API errors
@@ -149,7 +149,7 @@ function GuiBase.create_element(element_type, parent, opts)
         })
     end
 
-    ---@diagnostic disable-next-line
+    ---@diagnostic disable-next-line: undefined-field
     local elem = parent.add(params)
     return elem
 end
@@ -163,7 +163,7 @@ function GuiBase.create_frame(parent, name, direction, style)
     })
 end
 
---- @param caption LocalisedString|string: Label text
+-- @param caption any: Label text (LocalisedString|string)
 --- @param style? string|nil: Optional style name
 --- @return LuaGuiElement: The created label
 function GuiBase.create_label(parent, name, caption, style)

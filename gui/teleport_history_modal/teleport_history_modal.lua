@@ -40,8 +40,7 @@ function teleport_history_modal.on_gui_closed(event)
   if not event.element or not event.element.valid then return end
 
   -- Fallback for gui_closed_reason if not defined
-  local gui_closed_reason = defines and defines.gui_closed_reason or
-  { closed = 0, escaped = 1, switch_guis = 2, unknown = 3 }
+  local gui_closed_reason = { closed = 0, escaped = 1, switch_guis = 2, unknown = 3 }
 
   local gui_frame = GuiValidation.get_gui_frame_by_element(event.element)
   if (gui_frame and gui_frame.name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL) or event.element.name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL then
@@ -69,19 +68,8 @@ function teleport_history_modal.build(player)
   ErrorHandler.debug_log("[MODAL] build called", { player = player and player.name or "<nil>" })
   if not BasicHelpers.is_valid_player(player) then return end
 
-  -- Hide modal in remote view or editor mode if the current surface is a space platform
-  local should_hide = false
-  local surface = player.surface
-  if surface and surface.valid then
-    if surface.platform ~= nil then
-      should_hide = true
-    else
-      local surface_name = surface.name or ""
-      if player.controller_type == defines.controllers.editor and (surface_name:lower():find("space") or surface_name:lower():find("platform")) then
-        should_hide = true
-      end
-    end
-  end
+  -- Hide modal based on shared helper (space platform/editor logic)
+  local should_hide = BasicHelpers.should_hide_favorites_bar_for_space_platform(player)
   if should_hide then
     ErrorHandler.debug_log("[MODAL] not shown due to space platform/editor logic",
       { player = player and player.name or "<nil>" })
@@ -94,12 +82,7 @@ function teleport_history_modal.build(player)
   -- Do NOT set modal dialog state in cache for teleport history modal (should not block input)
   -- Cache.set_modal_dialog_state(player, "teleport_history")
 
-  -- Destroy any existing modal first to prevent naming conflicts
-  local existing_modal = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]
-  if existing_modal and existing_modal.valid then
-    existing_modal.destroy()
-    ErrorHandler.debug_log("Destroyed existing teleport history modal")
-  end
+  -- Existing modal is already destroyed above via destroy(); skip redundant check
 
   -- Get persistent position if available
   local pos = Cache.get_history_modal_position(player)
@@ -114,8 +97,7 @@ function teleport_history_modal.build(player)
     style = "tf_teleport_history_modal_frame",
     modal = false
   }
-  modal_frame.style.width = modal_width
-  modal_frame.style.height = modal_height
+  -- Sizing is defined by style; do not mutate style fields at runtime
 
   -- Critical error check: Ensure modal was created successfully
   if not modal_frame or not modal_frame.valid then
@@ -135,10 +117,8 @@ function teleport_history_modal.build(player)
     style = "tf_titlebar_flow"
   })
 
-  local title_label = GuiBase.create_label(titlebar, "teleport_history_modal_title_label", "", "tf_frame_title")
-  if title_label and title_label.valid then
-    title_label.caption = { "tf-gui.teleport_history_modal_title" }
-  end
+  local title_label = GuiBase.create_label(titlebar, "teleport_history_modal_title_label",
+    { "tf-gui.teleport_history_modal_title" }, "tf_frame_title")
 
   -- Draggable space between title and close button
   local draggable = GuiBase.create_draggable(titlebar, "tf_titlebar_draggable")
@@ -179,19 +159,17 @@ function teleport_history_modal.build(player)
 
   -- Initial placement: use storage position if available, else auto-center
   local pos = Cache.get_history_modal_position(player)
-  if modal_frame and modal_frame.valid then
-    if not pos or type(pos.x) ~= "number" or type(pos.y) ~= "number" then
-      -- Set default position in center of screen
-      local screen_resolution = player.display_resolution
-      local screen_scale = player.display_scale
-      local x = (screen_resolution.width / screen_scale - modal_width) / 2
-      local y = (screen_resolution.height / screen_scale - modal_height) / 2
-      modal_frame.location = { x = x, y = y }
-      -- Save the centered position to storage
-      Cache.set_history_modal_position(player, { x = x, y = y })
-    else
-      modal_frame.location = { x = pos.x, y = pos.y }
-    end
+  if not pos or type(pos.x) ~= "number" or type(pos.y) ~= "number" then
+    -- Set default position in center of screen
+    local screen_resolution = player.display_resolution
+    local screen_scale = player.display_scale
+    local x = (screen_resolution.width / screen_scale - modal_width) / 2
+    local y = (screen_resolution.height / screen_scale - modal_height) / 2
+    modal_frame.location = { x = x, y = y }
+    -- Save the centered position to storage
+    Cache.set_history_modal_position(player, { x = x, y = y })
+  else
+    modal_frame.location = { x = pos.x, y = pos.y }
   end
 
   return modal_frame
@@ -284,7 +262,7 @@ function teleport_history_modal.update_history_list(player)
       local trash_button = GuiBase.create_icon_button(row_flow,
         "teleport_history_trash_button_" .. tostring(i),
         Enum.SpriteEnum.TRASH, -- use the same icon as tag editor delete button
-        { "tf-gui.teleport_history_delete_tooltip" },
+        { "tf-gui.delete_tooltip" },
         "tf_teleport_history_trash_button", true)
       if trash_button and trash_button.valid then
         trash_button.tags = { teleport_history_index = i }
@@ -307,8 +285,10 @@ function teleport_history_modal.update_history_list(player)
       end)
       if success_button and item_button and item_button.valid then
         local tooltip_success = pcall(function()
-          item_button.tooltip = { "", truncate_tag_text(chart_tag_text,
-            Constants.settings.TELEPORT_HISTORY_LABEL_MAX_DISPLAY) }
+          local coords_str = tostring(coords_string or entry.gps or "")
+          ---@type any
+          local tip = { "tf-gui.teleport_history_item_tooltip", coords_str }
+          item_button.tooltip = tip
         end)
         if not tooltip_success then
           ErrorHandler.debug_log("Failed to set teleport history button tooltip", {

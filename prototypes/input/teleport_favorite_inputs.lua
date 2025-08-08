@@ -5,6 +5,13 @@
 data:extend({
   {
     type = "custom-input",
+    name = "teleport_history-toggle",
+    key_sequence = "CONTROL + SHIFT + T",
+    consuming = "none",
+    order = "tf-history-00"
+  },
+  {
+    type = "custom-input",
     name = "teleport_history-prev",
     key_sequence = "CONTROL + MINUS",
     consuming = "none"

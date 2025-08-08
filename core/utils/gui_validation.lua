@@ -113,7 +113,9 @@ function GuiValidation.get_gui_frame_by_element(element)
       if name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR or
           name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM or
           name == Enum.GuiEnum.GUI_FRAME.FAVE_BAR or
-          name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL then
+          name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL or
+          -- Also detect Teleport History confirmation dialog frame
+          name == (Enum.GUI and Enum.GUI.TeleportHistory and Enum.GUI.TeleportHistory.CONFIRM_DIALOG_FRAME) then
         return current
       end
     end

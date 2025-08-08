@@ -244,8 +244,9 @@ local function on_teleport_history_modal_gui_click(event)
       return
     end
     local surface_index = (player.surface and player.surface.valid and player.surface.index) or 1
-    local idx = tonumber(index)
-    TeleportHistory.remove_history_item(player, surface_index, idx)
+  local idx = BasicHelpers.normalize_index(index)
+  if not idx then return end
+  TeleportHistory.remove_history_item(player, surface_index, tostring(idx))
     TeleportHistoryModal.update_history_list(player)
     return
   end
@@ -326,13 +327,40 @@ local function on_teleport_history_modal_gui_click(event)
       if err and err == "already_at_target" then
         return
       else
-        local error_message = err or "Unknown teleportation failure."
+        local error_message = tostring(err or "Unknown teleportation failure.")
         ErrorHandler.warn_log("Teleport failed", { gps = gps, error = error_message })
         if player and player.valid then
-          PlayerHelpers.safe_player_print(player, { "tf-gui.teleport_failed", error_message })
+          ---@type any
+          local msg = { "tf-gui.teleport_failed", error_message }
+          PlayerHelpers.safe_player_print(player, msg)
         end
       end
     end
+  end
+end
+
+-- Handle Teleport History confirmation dialog clicks
+local function on_history_confirm_dialog_click(event)
+  local element = event.element
+  local player = game.players[event.player_index]
+  if not BasicHelpers.is_valid_element(element) or not BasicHelpers.is_valid_player(player) then return end
+
+  if element.name == Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_CONFIRM_BTN then
+    -- Clear history for current surface
+    local surface_index = player.surface.index
+    local hist = Cache.get_player_teleport_history(player, surface_index)
+    hist.stack = {}
+    hist.pointer = 0
+    TeleportHistory.notify_observers(player)
+    -- Close dialog and clear modal state
+    GuiValidation.safe_destroy_frame(player.gui.screen, Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_FRAME)
+    Cache.set_modal_dialog_state(player, nil)
+    return
+  elseif element.name == Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_CANCEL_BTN then
+    -- Close dialog and clear modal state
+    GuiValidation.safe_destroy_frame(player.gui.screen, Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_FRAME)
+    Cache.set_modal_dialog_state(player, nil)
+    return
   end
 end
 
@@ -372,5 +400,6 @@ end
 M.on_fave_bar_gui_click = on_fave_bar_gui_click
 M.on_fave_bar_gui_click_impl = on_fave_bar_gui_click
 M.on_teleport_history_modal_gui_click = on_teleport_history_modal_gui_click
+M.on_history_confirm_dialog_click = on_history_confirm_dialog_click
 
 return M
