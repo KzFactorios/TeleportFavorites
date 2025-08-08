@@ -36,12 +36,33 @@ jobs:
       - name: Strip comments from Lua files in .dist
         run: python .scripts/strip_comments.py
 
+      - name: Update info.json version in .dist
+        run: |
+          $infoPath = ".dist/info.json"
+          if (Test-Path $infoPath) {
+            $json = Get-Content $infoPath -Raw | ConvertFrom-Json
+            $json.version = "${{ github.event.inputs.version }}"
+            $json | ConvertTo-Json -Depth 32 | Set-Content $infoPath -Encoding UTF8
+          } else {
+            Write-Error "info.json not found in .dist; build failed to stage required files."
+          }
+
       - name: Validate changelog.txt format in .dist
         run: python .scripts/validate_changelog.py
 
+      - name: Wrap .dist contents in versioned mod folder
+        run: |
+          $modFolder = "TeleportFavorites_${{ github.event.inputs.version }}"
+          $target = ".dist/$modFolder"
+          if (-not (Test-Path $target)) { New-Item -ItemType Directory -Path $target | Out-Null }
+          Get-ChildItem ".dist" -Force | Where-Object { $_.Name -ne $modFolder } | ForEach-Object {
+            Move-Item -Path $_.FullName -Destination $target
+          }
+
       - name: Zip the .dist directory for release
         run: |
-          Compress-Archive -Path .dist\* -DestinationPath TeleportFavorites_${{ github.event.inputs.version }}.zip -Force
+          $modFolder = "TeleportFavorites_${{ github.event.inputs.version }}"
+          Compress-Archive -Path ".dist/$modFolder" -DestinationPath "TeleportFavorites_${{ github.event.inputs.version }}.zip" -Force
 
       - name: List files in .dist
         run: Get-ChildItem .dist -Recurse
@@ -49,9 +70,9 @@ jobs:
       - name: Verify diagnostic annotations preserved (debug)
         run: |
           Write-Host "Checking slot_interaction_handlers.lua first 3 lines:"
-          Get-Content .dist\core\control\slot_interaction_handlers.lua | Select-Object -First 3
+          Get-Content .dist\TeleportFavorites_${{ github.event.inputs.version }}\core\control\slot_interaction_handlers.lua | Select-Object -First 3
           Write-Host "Checking settings.lua first 3 lines:"
-          Get-Content .dist\core\cache\settings.lua | Select-Object -First 3
+          Get-Content .dist\TeleportFavorites_${{ github.event.inputs.version }}\core\cache\settings.lua | Select-Object -First 3
 
       - name: Upload .dist directory as artifact
         uses: actions/upload-artifact@v4
@@ -67,6 +88,6 @@ jobs:
         with:
           tag_name: v${{ github.event.inputs.version }}
           name: TeleportFavorites ${{ github.event.inputs.version }}
-          body_path: .dist\changelog.txt
+          body_path: .dist\TeleportFavorites_${{ github.event.inputs.version }}\changelog.txt
           files: TeleportFavorites_${{ github.event.inputs.version }}.zip
 
