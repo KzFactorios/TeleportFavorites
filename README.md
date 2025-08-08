@@ -130,4 +130,3 @@ https://github.com/KzFactorios/TeleportFavorites
 This mod uses graphical assets from Factorio, © Wube Software Ltd. Used with permission under the Factorio modding terms. All rights reserved by Wube Software Ltd. These assets are only for use within Factorio and Factorio mods.
 
 Some images are courtesy of https://www.icons8.com
-<a target="_blank" href="https://icons8.com/icon/XcNEegRfACLm/eye">Eye</a> icon by <a target="_blank" href="https://icons8.com">Icons8</a>
