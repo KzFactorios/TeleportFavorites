@@ -50,6 +50,12 @@ jobs:
       - name: Validate changelog.txt format in .dist
         run: python .scripts/validate_changelog.py
 
+      - name: Validate thumbnail.png present in .dist
+        run: |
+          if (!(Test-Path ".dist/thumbnail.png")) {
+            Write-Error "thumbnail.png is missing from .dist. Ensure it's added at repo root or graphics/logo_144.png exists for fallback."
+          }
+
       - name: Wrap .dist contents in versioned mod folder
         run: |
           $modFolder = "TeleportFavorites_${{ github.event.inputs.version }}"

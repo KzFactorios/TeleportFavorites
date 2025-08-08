@@ -18,6 +18,7 @@ REQUIRED_ROOT_FILES = [
     'LICENSE',
     'README.md',
     'settings.lua',
+    'thumbnail.png',  # Optional but recommended by Factorio; ensure it's copied if present
 ]
 
 # Utility: Remove empty files
@@ -82,5 +83,20 @@ for dirpath, dirnames, filenames in os.walk(ROOT):
 
 # Remove empty files from .dist
 remove_empty_files(DIST)
+
+# Ensure thumbnail.png exists in .dist; fallback to graphics/logo_144.png if available
+thumbnail_dst = os.path.join(DIST, 'thumbnail.png')
+if not os.path.exists(thumbnail_dst):
+    # Prefer root-level thumbnail.png if present
+    thumbnail_src_root = os.path.join(ROOT, 'thumbnail.png')
+    if os.path.exists(thumbnail_src_root):
+        shutil.copy2(thumbnail_src_root, thumbnail_dst)
+    else:
+        # Fallback to common asset if present
+        logo_144 = os.path.join(ROOT, 'graphics', 'logo_144.png')
+        if os.path.exists(logo_144):
+            shutil.copy2(logo_144, thumbnail_dst)
+        else:
+            print('WARNING: thumbnail.png not found and no fallback graphics/logo_144.png available.')
 
 print('Production files copied to .dist.')
