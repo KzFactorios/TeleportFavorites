@@ -58,6 +58,7 @@ jobs:
         with:
           name: TeleportFavorites_${{ github.event.inputs.version }}
           path: .dist
+          include-hidden-files: true
           if-no-files-found: error
 
       - name: Create GitHub Release
