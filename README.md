@@ -63,6 +63,7 @@ Look at the top of your screen for the favorites bar—your gateway to teleporta
 
 **Tip:** Locked slots are protected from drag-and-drop and accidental changes. To unlock, simply Ctrl+left-click again.
 
+
 ## 🗺️ Map Tag Magic
 
 ### Creating & Managing Tags
