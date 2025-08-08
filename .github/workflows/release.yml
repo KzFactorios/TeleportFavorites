@@ -53,15 +53,12 @@ jobs:
           Write-Host "Checking settings.lua first 3 lines:"
           Get-Content .dist\core\cache\settings.lua | Select-Object -First 3
 
-      - name: Create artifact zip for upload
-        run: |
-          Compress-Archive -Path .dist\* -DestinationPath TeleportFavorites_${{ github.event.inputs.version }}.zip -Force
-
-      - name: Upload .dist directory as artifact
+    - name: Upload .dist directory as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TeleportFavorites_${{ github.event.inputs.version }}
-          path: TeleportFavorites_${{ github.event.inputs.version }}.zip
+      name: TeleportFavorites_${{ github.event.inputs.version }}
+      path: .dist/**
+      if-no-files-found: error
 
       - name: Create GitHub Release
         if: ${{ success() }}
