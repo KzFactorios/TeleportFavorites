@@ -2,6 +2,11 @@
 Version: 0.0.2
 Date: 2025-08-08
   Features:
+    - include mod thumbnail
+---------------------------------------------------------------------------------------------------
+Version: 0.0.2
+Date: 2025-08-08
+  Features:
     - Initial release with basic teleport functionality
     - Favorites management system for quick access to teleport locations
     - Basic UI for adding, editing, and deleting favorites
