@@ -8,8 +8,6 @@ local gui_style = data.raw["gui-style"].default
 gui_style.tf_fave_bar_frame = {
     type = "frame_style",
     parent = "slot_window_frame",
-    --top_padding = 3,
-    -- padding is border width
     left_padding = 5,
     right_padding = 6,
 }
@@ -20,9 +18,9 @@ gui_style.tf_fave_toggle_container = {
     graphical_set = nil,
     left_border = 0,
     horizontal_align = "center",
-    top_padding = 0,
+    top_padding = 1,
     right_padding = 0,
-    bottom_padding = 0,
+    bottom_padding = 1,
     left_padding = 0,
     left_margin = 0,
     right_margin = 0,
@@ -36,9 +34,9 @@ gui_style.tf_fave_slots_row = {
     horizontally_stretchable = "on",
     left_margin = 6, -- left border
     right_margin = 0,
-    top_padding = 0,
+    top_padding = 1,
     right_padding = 4,
-    bottom_padding = 0,
+    bottom_padding = 1,
     left_padding = 0,
 }
 
