@@ -9,6 +9,9 @@ gui_style.tf_fave_bar_frame = {
     type = "frame_style",
     parent = "slot_window_frame",
     --top_padding = 3,
+    -- padding is border width
+    left_padding = 5,
+    right_padding = 6,
 }
 
 gui_style.tf_fave_toggle_container = {
@@ -31,7 +34,7 @@ gui_style.tf_fave_slots_row = {
     parent = "quick_bar_inner_panel",
     vertically_stretchable = "off",
     horizontally_stretchable = "on",
-    left_margin = 5,
+    left_margin = 6, -- left border
     right_margin = 0,
     top_padding = 0,
     right_padding = 4,
