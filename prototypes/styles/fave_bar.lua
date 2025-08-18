@@ -8,7 +8,7 @@ local gui_style = data.raw["gui-style"].default
 gui_style.tf_fave_bar_frame = {
     type = "frame_style",
     parent = "slot_window_frame",
-    top_padding = 3,
+    --top_padding = 3,
 }
 
 gui_style.tf_fave_toggle_container = {
@@ -19,8 +19,8 @@ gui_style.tf_fave_toggle_container = {
     horizontal_align = "center",
     top_padding = 0,
     right_padding = 0,
-    left_padding = 0,
     bottom_padding = 0,
+    left_padding = 0,
     left_margin = 0,
     right_margin = 0,
     bottom_margin = 0,
