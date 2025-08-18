@@ -77,7 +77,7 @@ gui_style.tf_slot_button_smallfont = {
 
     top_margin = 0,
     right_margin = -4,
-    --bottom_margin = 1,
+    bottom_margin = 0,
     left_margin = 0,
     size = { 40, 40 }
 }
