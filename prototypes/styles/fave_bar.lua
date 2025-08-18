@@ -7,15 +7,8 @@ local gui_style = data.raw["gui-style"].default
 
 gui_style.tf_fave_bar_frame = {
     type = "frame_style",
-    padding = 3,
-    left_padding = 4,
-    right_padding = 4,
-    top_margin = 0,
-    right_margin = 0,
-    bottom_margin = 0,
-    left_margin = 0,
-    vertically_stretchable = "on",
-    horizontally_stretchable = "off",
+    parent = "slot_window_frame",
+    top_padding = 3,
 }
 
 gui_style.tf_fave_toggle_container = {
@@ -24,10 +17,26 @@ gui_style.tf_fave_toggle_container = {
     graphical_set = nil,
     left_border = 0,
     horizontal_align = "center",
-    left_padding = 0,
+    top_padding = 0,
     right_padding = 0,
+    left_padding = 0,
+    bottom_padding = 0,
     left_margin = 0,
     right_margin = 0,
+    bottom_margin = 0,
+}
+
+gui_style.tf_fave_slots_row = {
+    type = "frame_style",
+    parent = "quick_bar_inner_panel",
+    vertically_stretchable = "off",
+    horizontally_stretchable = "on",
+    left_margin = 5,
+    right_margin = 0,
+    top_padding = 0,
+    right_padding = 4,
+    bottom_padding = 0,
+    left_padding = 0,
 }
 
 gui_style.tf_fave_history_toggle_button = {
@@ -54,18 +63,6 @@ gui_style.tf_fave_bar_visibility_off = {
     right_margin = 0,
 }
 
-gui_style.tf_fave_slots_row = {
-    type = "frame_style",
-    parent = "quick_bar_inner_panel",
-    vertically_stretchable = "off",
-    horizontally_stretchable = "on",
-    left_margin = 5,
-    right_margin = 0,
-    padding = 0,
-    right_padding = 4,
-    left_padding = 0,
-}
-
 gui_style.tf_slot_button_smallfont = {
     type = "button_style",
     parent = "slot_button",
@@ -80,7 +77,7 @@ gui_style.tf_slot_button_smallfont = {
 
     top_margin = 0,
     right_margin = -4,
-    bottom_margin = 0,
+    --bottom_margin = 1,
     left_margin = 0,
     size = { 40, 40 }
 }

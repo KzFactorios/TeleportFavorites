@@ -1,7 +1,7 @@
 
 # 🌟 TeleportFavorites - Blink Across Your Factory!
 
-*"And you may find yourself in another part of the world..."*
+*"I'm tired of traveling, I want to be somewhere"*
 
 ## 📖 What is TeleportFavorites?
 

@@ -1,5 +1,17 @@
 ---------------------------------------------------------------------------------------------------
-Version: 0.0.2
+Version: 0.0.5
+Date: 2025-08-18
+  Changes:
+    - fave bar styling - attempt to match vanilla sizing
+    - teleport history modal styling - define maximal height
+---------------------------------------------------------------------------------------------------
+Version: 0.0.4
+Date: 2025-08-08
+  Features:
+    - Update readme, changelog
+    - add key for controls.teleport_history-toggle
+---------------------------------------------------------------------------------------------------
+Version: 0.0.3
 Date: 2025-08-08
   Features:
     - include mod thumbnail

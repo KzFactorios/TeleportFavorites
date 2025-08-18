@@ -79,11 +79,6 @@ function teleport_history_modal.build(player)
   -- Destroy any existing modal first
   teleport_history_modal.destroy(player, true)
 
-  -- Do NOT set modal dialog state in cache for teleport history modal (should not block input)
-  -- Cache.set_modal_dialog_state(player, "teleport_history")
-
-  -- Existing modal is already destroyed above via destroy(); skip redundant check
-
   -- Get persistent position if available
   local pos = Cache.get_history_modal_position(player)
   local modal_width = (pos and type(pos.width) == "number") and pos.width or 350

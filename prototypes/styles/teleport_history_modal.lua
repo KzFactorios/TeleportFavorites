@@ -70,6 +70,7 @@ gui_style.tf_teleport_history_modal_frame = {
     vertically_stretchable = "off",
     minimal_width = 350,
     minimal_height = 392,
+    maximal_height = 600,
 }
 
 gui_style.tf_teleport_history_modal_content = {
