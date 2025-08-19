@@ -182,9 +182,8 @@ function fave_bar.build(player, force_show)
 
     local mode = player and player.render_mode
     if not (mode == defines.render_mode.game or mode == defines.render_mode.chart or mode == defines.render_mode.chart_zoomed_in) then
-      -- Only skip for remote view, god, or spectator, not for chart view
-      if mode == defines.render_mode.remote_view or
-          player.controller_type == defines.controllers.god or
+      -- Only skip for god, or spectator, not for chart view
+      if player.controller_type == defines.controllers.god or
           player.controller_type == defines.controllers.spectator then
         fave_bar.destroy()
         return
@@ -259,7 +258,8 @@ function fave_bar.build(player, force_show)
 
       -- Do NOT update toggle state in pdata here! Only the event handler should do that.
 
-      if pfaves and #pfaves > Constants.settings.MAX_FAVORITE_SLOTS then
+      local max_slots = Cache.Settings.get_player_max_favorite_slots(player)
+      if pfaves and #pfaves > max_slots then
         ErrorMessageHelpers.show_simple_error_label(fave_bar_frame, "tf-gui.fave_bar_overflow_error")
       end
     end
@@ -278,7 +278,7 @@ end
 
 -- Build a row of favorite slot buttons for the favorites bar
 function fave_bar.build_favorite_buttons_row(parent, player, pfaves)
-  local max_slots = Constants.settings.MAX_FAVORITE_SLOTS or 10
+  local max_slots = Cache.Settings.get_player_max_favorite_slots(player) or 10
 
   -- Always fetch the latest favorites from storage for this surface
   local surface_index = player.surface.index
@@ -364,7 +364,7 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves)
     if btn and btn.valid then
       local label_style = locked and "tf_fave_bar_locked_slot_number" or "tf_fave_bar_slot_number"
       -- slot #10 shuold show as 0
-      local slot_num = (i == 10) and 0 or i
+      local slot_num = i -- no longer compensating for this (i == 10) and 0 or i
       GuiBase.create_label(btn, "tf_fave_bar_slot_number_" .. tostring(i), tostring(slot_num), label_style)
       if locked then
         btn.add {

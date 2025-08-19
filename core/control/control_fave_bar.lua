@@ -34,20 +34,6 @@ local function get_mouse_position(event)
   return nil, nil
 end
 
-local function set_modal_size(player, width, height)
-  local modal_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]
-  if modal_frame and modal_frame.valid then
-    if modal_frame.style then
-      if width then pcall(function()
-          modal_frame.style.minimal_width = width; modal_frame.style.maximal_width = width
-        end) end
-      if height then pcall(function()
-          modal_frame.style.minimal_height = height; modal_frame.style.maximal_height = height
-        end) end
-    end
-  end
-end
-
 --- Reorder favorites using modular handlers
 --- Handle individual favorite slot click events
 --- This is the main dispatcher for slot interactions, routing different types

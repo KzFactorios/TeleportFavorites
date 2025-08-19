@@ -9,7 +9,11 @@ Welcome, engineer! TeleportFavorites is your personal teleportation toolkit for 
 
 ## 🚀 Features
 
-- **Favorites Bar:** 10-slot GUI for instant teleportation (hotkeys 1-0)
+- **Favorites Bar:** Per-player configurable 10/20/30-slot GUI for instant teleportation (hotkeys 1-0 map to slots 1-10)
+## ⚙️ Settings
+
+- Max Slots (Runtime-per-user): Choose 10, 20, or 30 favorites. Lowering this value permanently deletes any favorites in slots above the new maximum (even if locked).
+
 - **Teleport History:** Can't recall where you last teleported to? Read below to see how teleport history works
 - **Map Tag Editor:** Right-click the map to create, edit, or favorite teleportable tags
 - **Drag & Drop:** Custom drag-and-drop system for reordering favorites (Shift+left-click to enable, locked slots can't move)
@@ -114,7 +118,7 @@ Look at the top of your screen for the favorites bar—your gateway to teleporta
 - Only the tag creator (or admin) can edit or move a tag
 
 **"How many favorites can I have?"**
-- Up to 10 favorites per surface (slots 1-0)
+- You can choose 10, 20, or 30 slots per player in Mod Settings (Runtime-per-user) under “Max Slots.” Note: lowering this value deletes any favorites beyond the new maximum, even if those slots were locked.
 
 ## 🐞 Found a Bug?
 

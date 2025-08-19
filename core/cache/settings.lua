@@ -93,6 +93,33 @@ function Settings.get_number_setting(player, setting_name, default, min_value, m
   return default
 end
 
+--- Get per-player max favorite slots as a number (10, 20, or 30)
+--- @param player LuaPlayer|nil
+--- @return integer
+function Settings.get_player_max_favorite_slots(player)
+  local default_slots = math.floor(tonumber(Constants.settings.DEFAULT_MAX_FAVORITE_SLOTS) or 10)
+  local setting_key = Constants and Constants.settings and Constants.settings.MAX_FAVORITE_SLOTS_SETTING or nil
+  if not setting_key then return default_slots end
+
+  local global_settings = get_global_settings(player)
+  if not global_settings then return default_slots end
+
+  local s = global_settings[setting_key]
+  local value = s and s.value or nil
+  if type(value) == "string" then
+    local n = tonumber(value)
+    if n == 10 or n == 20 or n == 30 then
+      return math.floor(n)
+    end
+  elseif type(value) == "number" then
+    local n = math.floor(value)
+    if n == 10 or n == 20 or n == 30 then
+      return n
+    end
+  end
+  return default_slots
+end
+
 --- Returns a table of all per-player mod settings with caching
 --- @param player LuaPlayer|nil The player to get settings for
 --- @return table settings Complete settings table with all values

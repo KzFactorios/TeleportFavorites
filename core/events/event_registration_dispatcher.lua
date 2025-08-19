@@ -5,6 +5,7 @@
 -- Centralized event registration dispatcher for all mod events, with safe wrappers and unified API.
 
 local ErrorHandler = require("core.utils.error_handler")
+local Constants = require("constants")
 local icon_typing = require("core.cache.icon_typing")
 local Cache = require("core.cache.cache")
 local gui_event_dispatcher = require("core.events.gui_event_dispatcher")
@@ -151,7 +152,7 @@ function EventRegistrationDispatcher.register_core_events(script)
       ErrorHandler.debug_log("[SETTINGS] Event player_index: " .. tostring(event.player_index))
       ErrorHandler.debug_log("[SETTINGS] Event setting_type: " .. tostring(event.setting_type))
 
-      if event.setting == "favorites_on" then
+  if event.setting == "favorites_on" then
         ErrorHandler.debug_log("[SETTINGS] Processing favorites_on change")
         for _, player in pairs(game.connected_players) do
           -- Invalidate cache first to ensure we get fresh settings
@@ -170,7 +171,45 @@ function EventRegistrationDispatcher.register_core_events(script)
         return
       end
 
-      if event.setting == "enable_teleport_history" then
+      -- Handle per-player max favorite slots change
+      if event.setting == Constants.settings.MAX_FAVORITE_SLOTS_SETTING then
+        ErrorHandler.debug_log("[SETTINGS] Processing max-favorite-slots change")
+        local player = (event.player_index and game.players[event.player_index]) or nil
+        if player and player.valid then
+          -- Invalidate cache and compute old vs new (old from persistent, new from settings)
+          local old_max = Cache.get_last_max_favorite_slots(player)
+          Cache.Settings.invalidate_player_cache(player)
+          local new_max = Cache.Settings.get_player_max_favorite_slots(player)
+          ErrorHandler.debug_log("[SETTINGS] old_max vs new_max", { player = player.name, old_max = old_max, new_max = new_max })
+          -- Apply changes
+          Cache.apply_player_max_slots(player, new_max)
+          -- Persist last known value
+          Cache.set_last_max_favorite_slots(player, new_max)
+          -- Rebuild favorites bar for this player only
+          fave_bar.build(player, true)
+          -- If decreased, inform via game.print (global message per requirement)
+          if type(old_max) == "number" and type(new_max) == "number" and new_max < old_max then
+            local msg = string.format("[TeleportFavorites] %s set Max Slots to %d. Favorites beyond this new maximum have been permanently deleted.", player.name, new_max)
+            game.print(msg)
+          end
+        else
+          -- No specific player in event; fallback to all connected players to be safe
+          for _, p in pairs(game.connected_players) do
+            local old_max = Cache.get_last_max_favorite_slots(p)
+            Cache.Settings.invalidate_player_cache(p)
+            local new_max = Cache.Settings.get_player_max_favorite_slots(p)
+            Cache.apply_player_max_slots(p, new_max)
+            Cache.set_last_max_favorite_slots(p, new_max)
+            fave_bar.build(p, true)
+            if type(old_max) == "number" and type(new_max) == "number" and new_max < old_max then
+              local msg = string.format("[TeleportFavorites] %s set Max Slots to %d. Favorites beyond this new maximum have been permanently deleted.", p.name, new_max)
+              game.print(msg)
+            end
+          end
+        end
+        return
+      end
+  if event.setting == "enable_teleport_history" then
         ErrorHandler.debug_log("[SETTINGS] Processing enable_teleport_history change")
         for _, player in pairs(game.connected_players) do
           -- Invalidate cache first to ensure we get fresh settings
@@ -437,13 +476,11 @@ function EventRegistrationDispatcher.register_all_events(script)
 
   ErrorHandler.debug_log("Starting comprehensive event registration")
 
-  if custom_input_dispatcher and custom_input_dispatcher.default_custom_input_handlers then
-    local input_names = {}
-    for k, _ in pairs(custom_input_dispatcher.default_custom_input_handlers) do
-      table.insert(input_names, k)
-    end
-    ErrorHandler.debug_log("Custom input event names registered:", { input_names = input_names })
+  local input_names = {}
+  for k, _ in pairs(custom_input_dispatcher.default_custom_input_handlers) do
+    table.insert(input_names, k)
   end
+  ErrorHandler.debug_log("Custom input event names registered:", { input_names = input_names })
 
   local results = {}
   local overall_success = true

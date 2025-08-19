@@ -175,7 +175,8 @@ local function init_player_favorites(player)
   if not player or not player.valid then return {} end
 
   local pfaves = storage.players[player.index].surfaces[player.surface.index].favorites or {}
-  for i = 1, Constants.settings.MAX_FAVORITE_SLOTS do
+  local seed_max = tonumber(Constants.settings.DEFAULT_MAX_FAVORITE_SLOTS) or 10
+  for i = 1, seed_max do
     if not pfaves[i] or type(pfaves[i]) ~= "table" then
       pfaves[i] = FavoriteUtils.get_blank_favorite()
     end
@@ -186,6 +187,64 @@ local function init_player_favorites(player)
 
   storage.players[player.index].surfaces[player.surface.index].favorites = pfaves or {}
   return storage.players[player.index].surfaces[player.surface.index].favorites
+end
+
+--- Get the last known max favorite slots value for a player from persistent storage
+---@param player LuaPlayer
+---@return integer|nil
+function Cache.get_last_max_favorite_slots(player)
+  if not player or not player.valid then return nil end
+  local pdata = Cache.get_player_data(player)
+  local v = pdata and pdata.last_max_favorite_slots or nil
+  if type(v) == "number" then return math.floor(v) end
+  return nil
+end
+
+--- Set the last known max favorite slots value for a player in persistent storage
+---@param player LuaPlayer
+---@param value integer
+function Cache.set_last_max_favorite_slots(player, value)
+  if not player or not player.valid then return end
+  local pdata = Cache.get_player_data(player)
+  if type(value) == "number" then
+    pdata.last_max_favorite_slots = math.floor(value)
+  end
+end
+
+--- Apply per-player max slots to all surfaces: pad when increasing, trim (delete) when decreasing
+--- Trimming removes entries beyond new_max entirely, even if locked
+--- @param player LuaPlayer
+--- @param new_max integer
+function Cache.apply_player_max_slots(player, new_max)
+  if not player or not player.valid then return end
+  if type(new_max) ~= "number" then return end
+  new_max = math.floor(new_max)
+  if new_max < 1 then return end
+
+  local player_data = Cache.get_player_data(player)
+  if not player_data or not player_data.surfaces then return end
+
+  for surface_index, sdata in pairs(player_data.surfaces) do
+    local favorites = sdata.favorites or {}
+    local current_len = #favorites
+
+    if current_len < new_max then
+      -- pad with blanks up to new_max
+      for i = current_len + 1, new_max do
+        favorites[i] = FavoriteUtils.get_blank_favorite()
+      end
+    elseif current_len > new_max then
+      -- clear and remove beyond new_max (even if locked)
+      for i = new_max + 1, current_len do
+        favorites[i] = nil
+      end
+    end
+    -- Ensure array is set back
+    sdata.favorites = favorites
+  end
+
+  -- Persist changes
+  storage.players[player.index] = player_data
 end
 
 local function init_player_data(player)
@@ -220,6 +279,12 @@ local function init_player_data(player)
     active = false,
     dialog_type = nil
   }
+
+  -- Initialize last_max_favorite_slots if missing so we can detect decreases later
+  if player_data.last_max_favorite_slots == nil then
+    local current_max = SettingsCache.get_player_max_favorite_slots(player)
+    player_data.last_max_favorite_slots = current_max
+  end
 
   -- Persistent modal position
   local pos = player_data.history_modal_position

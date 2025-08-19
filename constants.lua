@@ -15,8 +15,9 @@ local Constants = {
     CHART_TAG_TEXT_MAX_LENGTH = 1024, -- Maximum length for chart tag text (1024 chars)
 
     -- UI settings
-    DEFAULT_SNAP_SCALE = 1,                  -- Scale factor for position snapping
-    MAX_FAVORITE_SLOTS = 10,                 -- Maximum number of favorite slots per player
+  DEFAULT_SNAP_SCALE = 1,                  -- Scale factor for position snapping
+  DEFAULT_MAX_FAVORITE_SLOTS = 10,         -- Default max number of favorite slots per player
+  MAX_FAVORITE_SLOTS_SETTING = "max-favorite-slots", -- Setting name for per-player max slots
     FAVE_BAR_SLOT_PREFIX = "fave_bar_slot_", -- Prefix for favorite bar slot element names
 
     -- Label update intervals (in ticks)
