@@ -3,6 +3,7 @@ Version: 0.0.5
 Date: 2025-08-18
   Features:
     - Added per player setting for maximum favorite slots (*10, 20, or 30)
+    - Addressed error message when moving a tag - ownership transfer
 ---------------------------------------------------------------------------------------------------
 Version: 0.0.4
 Date: 2025-08-18

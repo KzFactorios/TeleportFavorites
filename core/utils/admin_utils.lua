@@ -53,10 +53,8 @@ function AdminUtils.can_edit_chart_tag(player, chart_tag)
   if not player_valid or not chart_tag or not chart_tag.valid then
     return false, false, false
   end
-  local is_owner = false
-  if chart_tag.last_user and type(chart_tag.last_user) == "string" then
-    is_owner = (player.name == chart_tag.last_user)
-  end
+  local last_user_name = get_chart_tag_last_user_name(chart_tag)
+  local is_owner = (last_user_name ~= "" and player.name == last_user_name)
   local is_admin = AdminUtils.is_admin(player)
   local can_edit = is_owner or is_admin
   local is_admin_override = (not is_owner) and is_admin
@@ -113,7 +111,8 @@ function AdminUtils.transfer_ownership_to_admin(chart_tag, admin_player)
   local is_admin = AdminUtils.is_admin(admin_player)
   local last_user = get_chart_tag_last_user_name(chart_tag)
   if is_admin and last_user == "" then
-    rawset(chart_tag, "last_user", admin_player.name)
+    -- Never use rawset on Factorio engine objects; assign via the public property (LuaPlayer).
+    chart_tag.last_user = admin_player
     ErrorHandler.debug_log("Admin ownership transferred", {
       admin_name = admin_player.name,
       chart_tag_position = chart_tag.position,
