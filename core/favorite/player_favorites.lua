@@ -94,8 +94,12 @@ function PlayerFavorites:add_favorite(gps)
     return false, "invalid_gps"
   end
   local favorites = self.favorites
-  if not favorites or #favorites < max_slots then
-    return false, "favorites_array_invalid"
+  if not favorites or #favorites ~= max_slots then
+    -- initialize the player's favorites array
+    local old_faves = favorites or {}
+    for i = 1, max_slots do
+      favorites[i] = old_faves[i] or FavoriteUtils.get_blank_favorite()
+    end
   end
   -- Check for duplicate
   for i = 1, max_slots do
