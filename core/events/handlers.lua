@@ -19,6 +19,19 @@ local fave_bar = require("gui.favorites_bar.fave_bar")
 local Enum = require("prototypes.enums.enum")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local ChartTagHelpers = require("core.events.chart_tag_helpers")
+local gui_observer = require("core.events.gui_observer")
+
+
+-- Helper functions for surface refresh and captions
+
+---@param surface_index number The surface index to refresh chart tags for
+local function refresh_surface_chart_tags(surface_index)
+  local safe_index = tonumber(surface_index) or 1
+  -- Just call ensure_surface_cache, which internally handles cache invalidation
+  Cache.ensure_surface_cache(safe_index)
+end
+
+-- Removed since we will set the caption directly
 
 --- Validate player and run handler logic with early return pattern
 ---@param player_index number Player index from event
@@ -36,7 +49,35 @@ end
 local handlers = {}
 
 local function register_gui_observers(player)
-  local ok, gui_observer = pcall(require, "core.pattern.gui_observer")
+  if not player or not player.valid then
+    ErrorHandler.warn_log("Attempted to register observers for invalid player")
+    return
+  end
+
+  ErrorHandler.debug_log("Starting GUI observer registration", {
+    player = player.name,
+    player_index = player.index
+  })
+
+  -- Initialize event bus
+  gui_observer.GuiEventBus.ensure_initialized()
+
+  -- Register player observers
+  local register_ok, err = pcall(function()
+    gui_observer.GuiEventBus.register_player_observers(player)
+  end)
+
+  if register_ok then
+    ErrorHandler.debug_log("Successfully registered GUI observers", {
+      player = player.name,
+      player_index = player.index
+    })
+  else
+    ErrorHandler.warn_log("Failed to register GUI observers", {
+      player = player.name,
+      error = err
+    })
+  end
 end
 
 function handlers.on_player_changed_surface(event)
@@ -51,41 +92,55 @@ function handlers.on_player_changed_surface(event)
 end
 
 function handlers.on_init()
+  -- Initialize the GUI event bus first
+  gui_observer.GuiEventBus.ensure_initialized()
+  ErrorHandler.debug_log("GUI Event Bus initialized during startup")
+
+  -- Initialize cache system
   Cache.init()
 
+  -- Set up each player
   for _, player in pairs(game.players) do
     if Cache.get_player_data(player) == nil then
       Cache.reset_transient_player_states(player)
-
-      -- TODO remove for release
-      storage.players[player.index].data_viewer_settings = nil
     end
 
+    -- Initialize GUI elements
     register_gui_observers(player)
     fave_bar.build(player, true) -- Force show during initialization
   end
-
-  -- Note: Label management no longer needed - static slot labels handled in fave_bar.lua
 end
 
 function handlers.on_load()
-  -- Re-initialize runtime-only structures if needed
-  -- Note: Label management no longer needed - static slot labels handled in fave_bar.lua
+  -- Re-initialize GUI event bus on game load
+  gui_observer.GuiEventBus.ensure_initialized()
+  ErrorHandler.debug_log("GUI Event Bus re-initialized on game load")
 end
 
 function handlers.on_player_created(event)
   with_valid_player(event.player_index, function(player)
+    -- Reset player state
     Cache.reset_transient_player_states(player)
-    fave_bar.build(player, true) -- Force show for new players
+    -- Set up GUI elements in order
     register_gui_observers(player)
-    -- Note: Label management no longer needed - static slot labels handled in fave_bar.lua
+    fave_bar.build(player, true)
   end)
 end
 
 function handlers.on_player_joined_game(event)
   with_valid_player(event.player_index, function(player)
-    fave_bar.build(player, true) -- Force show for joining players
-    -- Note: Label management no longer needed - static slot labels handled in fave_bar.lua
+    -- Reset transient states for rejoining player
+    ErrorHandler.debug_log("Resetting states for rejoining player", {
+      player = player.name,
+      player_index = player.index
+    })
+    Cache.reset_transient_player_states(player)
+
+    -- Clean up any existing observers first
+    gui_observer.GuiEventBus.cleanup_player_observers(player)
+    -- Register new observers and rebuild GUI
+    register_gui_observers(player)
+    fave_bar.build(player, true)
   end)
 end
 
@@ -126,7 +181,9 @@ function handlers.on_open_tag_editor_custom_input(event)
       tag_data.gps = gps
       tag_data.is_favorite = favorite_entry ~= nil
       tag_data.icon = icon
-      tag_data.text = chart_tag.text
+      -- Cast to string with nil safety
+      local chart_text = chart_tag.text
+      tag_data.text = type(chart_text) == "string" and chart_text or ""
     elseif tag_data.tag and tag_data.tag.gps and tag_data.tag.gps ~= "" then
       tag_data.gps = tag_data.tag.gps
     elseif cursor_position and cursor_position.x and cursor_position.y then
@@ -155,7 +212,7 @@ function handlers.on_chart_tag_added(event)
     end
   end
 
-  Cache.Lookups.invalidate_surface_chart_tags(player.surface.index)
+  refresh_surface_chart_tags(tonumber(player.surface.index) or 1)
 end
 
 function handlers.on_chart_tag_modified(event)
@@ -184,11 +241,12 @@ function handlers.on_chart_tag_modified(event)
     if tag_editor_frame and tag_editor_frame.valid then
       local teleport_btn = GuiValidation.find_child_by_name(tag_editor_frame, "tag_editor_teleport_button")
       if teleport_btn and teleport_btn.valid then
-        ---@diagnostic disable-next-line: assign-type-mismatch, param-type-mismatch
-        local coords_result = GPSUtils.coords_string_from_gps(new_gps)
-        local coords = coords_result or ""
+        local gps_string = new_gps --[[@as string]]
+        local coords = GPSUtils.coords_string_from_gps(gps_string) or ""
+        -- Set caption using make_teleport_caption helper
+        -- Set caption directly - Factorio API handles localization internally
         ---@diagnostic disable-next-line: assign-type-mismatch
-        teleport_btn.caption = { "tf-gui.teleport_to", coords }
+        teleport_btn.caption = {"tf-gui.teleport_to", coords}
       end
     end
   end
@@ -252,9 +310,7 @@ function handlers.on_chart_tag_removed(event)
           last_user = player
         }
       end
-      if Cache and Cache.Lookups and Cache.Lookups.invalidate_surface_chart_tags then
-        Cache.Lookups.invalidate_surface_chart_tags(player.surface.index)
-      end
+      refresh_surface_chart_tags(tonumber(player.surface.index) or 1)
       return
     end
 
@@ -266,7 +322,7 @@ function handlers.on_chart_tag_removed(event)
       tag_destroy_helper.destroy_tag_and_chart_tag(tag, chart_tag)
     end
 
-    Cache.Lookups.invalidate_surface_chart_tags(player.surface.index)
+    refresh_surface_chart_tags(tonumber(player.surface.index) or 1)
 
   end)
 end

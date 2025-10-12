@@ -209,10 +209,12 @@ function teleport_history_modal.update_history_list(player)
   local history_list = GuiValidation.find_child_by_name(modal_frame, "teleport_history_list")
   if not history_list or not history_list.valid then return end
 
-  -- Clear existing list items
-  for _, child in pairs(history_list.children) do
-    if child and child.valid then
-      child.destroy()
+  -- Clear existing list items in deterministic order
+  -- CRITICAL: Use deterministic iteration, not pairs() - prevents multiplayer desyncs
+  local children = history_list.children
+  for i = 1, #children do
+    if children[i] and children[i].valid then
+      children[i].destroy()
     end
   end
 

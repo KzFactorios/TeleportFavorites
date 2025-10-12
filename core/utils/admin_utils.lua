@@ -112,6 +112,8 @@ function AdminUtils.transfer_ownership_to_admin(chart_tag, admin_player)
   local last_user = get_chart_tag_last_user_name(chart_tag)
   if is_admin and last_user == "" then
     -- Never use rawset on Factorio engine objects; assign via the public property (LuaPlayer).
+    -- MULTIPLAYER WARNING: Direct property modification may cause desync
+    -- TODO: Replace with destroy-and-recreate pattern for full multiplayer safety
     chart_tag.last_user = admin_player
     ErrorHandler.debug_log("Admin ownership transferred", {
       admin_name = admin_player.name,

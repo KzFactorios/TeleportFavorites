@@ -140,8 +140,9 @@ function GuiBase.create_element(element_type, parent, opts)
 
     -- Defensive: ensure name is a string
     if params.name == nil or type(params.name) ~= "string" or params.name == "" then
-        -- Use deterministic naming based on element type and current tick for reproducibility
-        local fallback_id = (game and game.tick) or os.time() or 0
+        -- MULTIPLAYER FIX: Use only game.tick for naming - NEVER os.time() which varies per client!
+        -- game.tick is synchronized across all clients in multiplayer.
+        local fallback_id = (game and game.tick) or 0
         params.name = element_type .. "_unnamed_" .. tostring(fallback_id)
         ErrorHandler.debug_log("Unnamed element assigned name", {
             element_type = element_type,

@@ -3,8 +3,18 @@
 -- core/control/control_tag_editor.lua
 -- TeleportFavorites Factorio Mod
 -- Handles tag editor GUI events, modal dialogs, tag creation/editing/deletion, and multiplayer-safe tag management.
+--
+-- CRITICAL MULTIPLAYER SAFETY PATTERN:
+-- LuaChartTag objects CANNOT be directly modified in multiplayer without causing desynchronization.
+-- Direct property assignment (chart_tag.text = "foo", chart_tag.icon = {...}) works in single-player
+-- but causes CRC mismatches and desyncs in multiplayer because each client has independent state.
+--
+-- CORRECT PATTERN: Destroy and recreate chart tags instead of modifying them.
+-- This ensures all clients receive the same game actions and maintain synchronized state.
+-- See update_chart_tag_fields() for the implementation of this pattern.
 
 local tag_editor = require("gui.tag_editor.tag_editor")
+local fave_bar = require("gui.favorites_bar.fave_bar")
 local Cache = require("core.cache.cache")
 local GuiValidation = require("core.utils.gui_validation")
 local PlayerHelpers = require("core.utils.player_helpers")
@@ -86,40 +96,70 @@ local function update_chart_tag_fields(tag, tag_data, text, icon, player)
         new_icon = icon
       })
     end
-    -- Always set ownership to the confirming player
-    chart_tag.last_user = player.name
-    ErrorHandler.debug_log("Set chart tag ownership to player (always on confirm)", {
-      player_name = player.name,
-      chart_tag_position = chart_tag.position,
-      chart_tag_text = chart_tag.text or ""
-    })
-    -- Update existing chart tag properties
-    chart_tag.text = text or ""
-    -- Always set icon (can be nil for empty icons)
-    if ValidationUtils.has_valid_icon(icon) then
-      chart_tag.icon = icon
-    else
-      chart_tag.icon = nil
-    end
-    -- CRITICAL: Invalidate cache after modifying chart tag
+
+    -- MULTIPLAYER FIX: Destroy and recreate instead of direct modification
+    -- Direct property assignment on LuaChartTag causes desync in multiplayer
     local surface_index = chart_tag.surface and chart_tag.surface.index or player.surface.index
-    Cache.Lookups.invalidate_surface_chart_tags(surface_index)
-
-    -- Force immediate cache rebuild to ensure the modified chart tag is updated
-    local refreshed_cache = Cache.Lookups.get_chart_tag_cache(surface_index)
-    ErrorHandler.debug_log("Cache refreshed after chart tag modification", {
-      surface_index = surface_index,
-      chart_tags_in_cache = #refreshed_cache,
-      modified_chart_tag_gps = GPSUtils.gps_from_map_position(chart_tag.position, surface_index)
+    local force = chart_tag.force
+    local surface = chart_tag.surface
+    local position = chart_tag.position
+    
+    -- Store old chart tag data before destroying
+    local old_gps = GPSUtils.gps_from_map_position(position, surface_index)
+    
+    ErrorHandler.debug_log("Destroying chart tag for multiplayer-safe recreation", {
+      player_name = player.name,
+      position = position,
+      old_text = chart_tag.text or "",
+      old_icon = chart_tag.icon
     })
-
-    -- Refresh chart_tag reference from cache to ensure latest last_user is used
-    local gps = GPSUtils.gps_from_map_position(chart_tag.position, surface_index)
-    local refreshed_chart_tag = Cache.Lookups.get_chart_tag_by_gps(gps)
-    if refreshed_chart_tag and refreshed_chart_tag.valid then
-      tag.chart_tag = refreshed_chart_tag
-      tag_data.chart_tag = refreshed_chart_tag
-      tag_data.tag = tag
+    
+    -- Destroy the old chart tag
+    chart_tag.destroy()
+    
+    -- Invalidate cache after destroying
+    Cache.Lookups.invalidate_surface_chart_tags(surface_index)
+    
+    -- Create new chart tag with updated properties
+    local chart_tag_spec = ChartTagSpecBuilder.build(position, nil, player, text, true)
+    if ValidationUtils.has_valid_icon(icon) then
+      chart_tag_spec.icon = icon
+    else
+      chart_tag_spec.icon = nil
+    end
+    
+    local new_chart_tag = ChartTagUtils.safe_add_chart_tag(force, surface, chart_tag_spec, player)
+    if new_chart_tag and new_chart_tag.valid then
+      tag.chart_tag = new_chart_tag
+      tag_data.chart_tag = new_chart_tag
+      
+      -- Update cache after creation
+      Cache.Lookups.invalidate_surface_chart_tags(surface_index)
+      local refreshed_cache = Cache.Lookups.get_chart_tag_cache(surface_index)
+      
+      ErrorHandler.debug_log("Chart tag recreated for multiplayer safety", {
+        surface_index = surface_index,
+        chart_tags_in_cache = #refreshed_cache,
+        new_chart_tag_gps = GPSUtils.gps_from_map_position(new_chart_tag.position, surface_index),
+        new_last_user = new_chart_tag.last_user and new_chart_tag.last_user.name or ""
+      })
+      
+      -- Refresh chart_tag reference from cache
+      local gps = GPSUtils.gps_from_map_position(new_chart_tag.position, surface_index)
+      local refreshed_chart_tag = Cache.Lookups.get_chart_tag_by_gps(gps)
+      if refreshed_chart_tag and refreshed_chart_tag.valid then
+        tag.chart_tag = refreshed_chart_tag
+        tag_data.chart_tag = refreshed_chart_tag
+        tag_data.tag = tag
+      end
+    else
+      ErrorHandler.error_log("Failed to recreate chart tag after destruction", {
+        player_name = player.name,
+        position = position,
+        text = text,
+        icon = icon
+      })
+      return
     end
   else
     -- Create new chart tag using ChartTagUtils - set ownership for final chart tag
@@ -157,8 +197,15 @@ local function update_chart_tag_fields(tag, tag_data, text, icon, player)
     else
       ErrorHandler.warn_log("Failed to create chart tag", {
         gps = tag.gps,
-        text = text
+        text = text,
+        force_name = player.force and player.force.name or "unknown",
+        force_valid = player.force and player.force.valid or false,
+        surface_name = player.surface and player.surface.name or "unknown",
+        player_name = player.name
       })
+      -- Show error to player
+      return show_tag_editor_error(player, tag_data,
+        LocaleUtils.get_error_string(player, "chart_tag_creation_failed") or "Failed to create map tag. You may not have permission to create tags on this surface.")
     end
   end
 
@@ -263,11 +310,9 @@ local function handle_confirm_btn(player, element, tag_data)
   local sanitized_tag = Cache.sanitize_for_storage(refreshed_tag)
   tags[tag.gps] = sanitized_tag
 
-  -- Ensure tag_data.tag.chart_tag is the latest refreshed chart tag
-  if tag_data.tag and tag_data.chart_tag and tag_data.tag.chart_tag ~= tag_data.chart_tag then
-    tag_data.tag.chart_tag = tag_data.chart_tag
-    tags[tag.gps].chart_tag = tag_data.chart_tag
-  end
+  -- MULTIPLAYER SAFETY: DO NOT store chart_tag userdata in storage!
+  -- Chart tags are LuaObject references that are client-specific and cause desyncs
+  -- Use Cache.Lookups.get_chart_tag_by_gps() to retrieve chart tags at runtime
 
   -- Handle favorite operations only on confirm
   if is_favorite then
@@ -339,6 +384,12 @@ local function handle_confirm_btn(player, element, tag_data)
     player = player and player.name or "<nil>",
     gps = tag.gps
   })
+  
+  -- IMMEDIATE GUI REFRESH: Update favorites bar for acting player immediately
+  -- This provides instant visual feedback while deferred notifications handle other players
+  -- GUI updates are client-specific and safe to call directly for the acting player
+  fave_bar.build(player)
+  
   close_tag_editor(player)
 end
 

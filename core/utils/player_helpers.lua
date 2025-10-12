@@ -6,7 +6,6 @@
 -- Provides standardized methods for player messaging, settings access, and common validations.
 
 local BasicHelpers = require("core.utils.basic_helpers")
-local ErrorHandler = require("core.utils.error_handler")
 local ValidationUtils = require("core.utils.validation_utils")
 
 local PlayerHelpers = {}
@@ -16,28 +15,8 @@ local PlayerHelpers = {}
 ---@param message LocalisedString|string The message to send
 ---@param log_fallback boolean? Whether to log if player print fails (default: true)
 function PlayerHelpers.safe_player_print(player, message, log_fallback)
-    if log_fallback == nil then log_fallback = true end
-    
-    local valid = ValidationUtils.validate_player(player)
-    if valid then
-        ---@cast player LuaPlayer
-        local success = pcall(function() player.print(message) end)
-        if not success and log_fallback then
-            ErrorHandler.debug_log("Failed to print message to player", {
-                player_name = player.name or "unknown",
-                message_type = type(message)
-            })
-        end
-        return success
-    end
-    
-    if log_fallback then
-        ErrorHandler.debug_log("Player not available for messaging", {
-            player_valid = player and player.valid or false,
-            message_type = type(message)
-        })
-    end
-    return false
+    -- log_fallback is ignored; logging is not handled here to avoid circular dependency
+    return BasicHelpers.safe_player_print(player, message)
 end
 
 --- Send an error message to a player with standardized formatting
@@ -47,16 +26,7 @@ end
 function PlayerHelpers.error_message_to_player(player, error_key, context)
     local valid = ValidationUtils.validate_player(player)
     if not valid then return end
-    
-    -- Log the error
-    ErrorHandler.debug_log("Sending error message to player", {
-        player_name = player.name,
-        error_key = error_key,
-        context = context
-    })
-    
-    -- Send formatted error message as string
-    local message_text = "[TeleportFavorites] " .. error_key
+    local message_text = BasicHelpers.format_error_message(error_key)
     PlayerHelpers.safe_player_print(player, message_text)
 end
 

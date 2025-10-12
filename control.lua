@@ -26,7 +26,7 @@ ErrorHandler.debug_log("[CONTROL] control.lua loaded, logger active", { level = 
 
 
 local gui_observer = nil
-local did_run_fave_bar_startup = false
+
 
 -- Optional modules - load safely
 local success, module = pcall(require, "core.events.gui_observer")
@@ -82,18 +82,23 @@ end)
 -- Register all mod events through centralized dispatcher
 event_registration_dispatcher.register_all_events(script)
 
+
 -- Run-once startup handler for favorites bar initialization
+
 script.on_event(defines.events.on_tick, function(event)
-  if not did_run_fave_bar_startup then
-    did_run_fave_bar_startup = true
+  if global and not global.did_run_fave_bar_startup then
+    global.did_run_fave_bar_startup = true
     if gui_observer and gui_observer.GuiEventBus and gui_observer.GuiEventBus.register_player_observers then
       for _, player in pairs(game.players) do
         gui_observer.GuiEventBus.register_player_observers(player)
       end
     end
-    -- Remove this handler after first run
-    script.on_event(defines.events.on_tick, nil)
   end
+  -- After first run, this handler does nothing
 end)
 
-if script.active_mods["gvv"] then require("__gvv__.gvv")() end
+
+
+-- TURN THIS OFF BEFORE DEPLOYMENT TO AVOID - Cannot join. The following mod event handlers are not identical between you and the server. This indicates that the following mods are not multiplayer (save/load) safe. (See the log file for more details):
+
+--if script.active_mods["gvv"] then require("__gvv__.gvv")() end

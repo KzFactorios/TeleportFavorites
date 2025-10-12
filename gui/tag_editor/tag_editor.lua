@@ -47,7 +47,8 @@ local function setup_tag_editor_ui(refs, tag_data, player)
     -- Can delete if player is owner (we'll implement multi-player favorite checking later if needed)
     can_delete = is_owner
   else
-    is_owner = false
+    -- No existing tag means we're creating a new one - player is the owner
+    is_owner = true
     can_delete = false
   end
 

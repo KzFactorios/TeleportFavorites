@@ -262,7 +262,7 @@ local function init_player_data(player)
       .teleport_history or { stack = {}, pointer = 0 }
 
   player_data.player_name = player.name or "Unknown"
-  player_data.render_mode = player_data.render_mode or player.render_mode
+  -- MULTIPLAYER FIX: Removed player.render_mode from cache - it's client-specific state that should NEVER be persisted!
   player_data.tag_editor_data = player_data.tag_editor_data or Cache.create_tag_editor_data()
   player_data.fave_bar_slots_visible = player_data.fave_bar_slots_visible
   if player_data.fave_bar_slots_visible == nil then
@@ -631,11 +631,24 @@ function Cache.sanitize_for_storage(obj, exclude_fields)
   if type(obj) ~= "table" then return {} end
   local sanitized = {}
   exclude_fields = exclude_fields or {}
-  for k, v in pairs(obj) do
+  
+  -- MULTIPLAYER FIX: Sort keys for deterministic iteration order
+  -- pairs() iterates hash tables in non-deterministic order, causing desyncs
+  local keys = {}
+  for k in pairs(obj) do
+    table.insert(keys, k)
+  end
+  table.sort(keys, function(a, b)
+    return tostring(a) < tostring(b)
+  end)
+  
+  for _, k in ipairs(keys) do
+    local v = obj[k]
     if not exclude_fields[k] and type(v) ~= "userdata" then
       sanitized[k] = v
     end
   end
+  
   return sanitized
 end
 

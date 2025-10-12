@@ -75,9 +75,10 @@ function fave_bar.on_player_controller_changed(event)
 
   -- Restore teleport history modal if it was open before switching to map/chart view, regardless of pin state
   local modal_was_open = Cache.get_modal_dialog_type(player) == "teleport_history"
-  local is_chart_view = player.render_mode == defines.render_mode.chart or
-      player.render_mode == defines.render_mode.chart_zoomed_in
-  if (player.controller_type == defines.controllers.remote or is_chart_view) and modal_was_open then
+  -- CRITICAL: Do NOT use player.render_mode here - it's client-specific and causes desyncs!
+  -- The modal state is tracked in storage which is synchronized, so we can safely rebuild based on that.
+  local is_remote_controller = player.controller_type == defines.controllers.remote
+  if is_remote_controller and modal_was_open then
     -- Destroy modal (if present) but preserve state, then rebuild
     teleport_history_modal.destroy(player, true)
     teleport_history_modal.build(player)
@@ -180,15 +181,16 @@ function fave_bar.build(player, force_show)
       return
     end
 
-    local mode = player and player.render_mode
-    if not (mode == defines.render_mode.game or mode == defines.render_mode.chart or mode == defines.render_mode.chart_zoomed_in) then
-      -- Only skip for god, or spectator, not for chart view
-      if player.controller_type == defines.controllers.god or
-          player.controller_type == defines.controllers.spectator then
-        fave_bar.destroy()
-        return
+    -- CRITICAL: Do NOT use player.render_mode to decide whether to destroy the bar!
+    -- render_mode is client-specific and causes desyncs in multiplayer.
+    -- Only check controller_type which is synchronized game state.
+    if player.controller_type == defines.controllers.god or
+        player.controller_type == defines.controllers.spectator then
+      local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
+      if main_flow and main_flow.valid then
+        GuiValidation.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
       end
-      -- Otherwise, allow bar in chart view
+      return
     end
 
     -- Use shared vertical flow
@@ -390,8 +392,12 @@ function fave_bar.update_slot_row(player, parent_flow)
   local slots_frame = GuiValidation.find_child_by_name(parent_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW)
   if not slots_frame or not slots_frame.valid then return end
 
-  -- Remove all children
-  for _, child in pairs(slots_frame.children) do
+  -- Remove all children in deterministic order
+  -- CRITICAL: Use ipairs() not pairs() - pairs() iteration order is non-deterministic
+  -- and causes desyncs in multiplayer when destroying/creating GUI elements
+  local children = slots_frame.children
+  for i = 1, #children do
+    local child = children[i]
     if child and child.valid then
       child.destroy()
     end

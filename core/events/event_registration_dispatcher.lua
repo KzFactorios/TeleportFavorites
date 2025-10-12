@@ -4,6 +4,7 @@
 -- TeleportFavorites Factorio Mod
 -- Centralized event registration dispatcher for all mod events, with safe wrappers and unified API.
 
+
 local ErrorHandler = require("core.utils.error_handler")
 local Constants = require("constants")
 local icon_typing = require("core.cache.icon_typing")
@@ -19,6 +20,7 @@ local ModalInputBlocker = require("core.events.modal_input_blocker")
 local GuiValidation = require("core.utils.gui_validation")
 local Enum = require("prototypes.enums.enum")
 local ChartTagOwnershipManager = require("core.control.chart_tag_ownership_manager")
+
 local GuiObserver = require("core.events.gui_observer")
 
 ---@class EventRegistrationDispatcher
@@ -78,6 +80,12 @@ function EventRegistrationDispatcher.register_core_events(script)
       handlers.on_player_created(event)
       -- Also setup observers for new players
       local player = game.players[event.player_index]
+      if player and player.valid then
+        local reg_ok, reg_err = pcall(GuiObserver.GuiEventBus.register_player_observers, player)
+        if not reg_ok then
+          ErrorHandler.warn_log("Failed to register GUI observers for new player", { player = player.name, error = tostring(reg_err) })
+        end
+      end
     end,
     name = "on_player_created"
   }
@@ -114,10 +122,10 @@ function EventRegistrationDispatcher.register_core_events(script)
           player_index = player.index
         })
 
-        -- Import gui_observer safely
-        local success, gui_observer = pcall(require, "core.events.gui_observer")
-        if success and gui_observer.GuiEventBus and gui_observer.GuiEventBus.register_player_observers then
-          gui_observer.GuiEventBus.register_player_observers(player)
+        -- Import gui_observer safely and always register observers
+        local reg_ok, reg_err = pcall(GuiObserver.GuiEventBus.register_player_observers, player)
+        if not reg_ok then
+          ErrorHandler.warn_log("Failed to register GUI observers for joining player", { player = player.name, error = tostring(reg_err) })
         end
       end
     end,
@@ -259,18 +267,23 @@ function EventRegistrationDispatcher.register_core_events(script)
   -- Add scheduled GUI observer cleanup (every 5 minutes = 18000 ticks)
   local success, err = pcall(function()
     script.on_nth_tick(18000, function(event)
-      local gui_observer_success, gui_observer = pcall(require, "core.events.gui_observer")
-      if gui_observer_success and gui_observer.GuiEventBus and gui_observer.GuiEventBus.schedule_periodic_cleanup then
-        gui_observer.GuiEventBus.schedule_periodic_cleanup()
-      end
+      GuiObserver.GuiEventBus.schedule_periodic_cleanup()
     end)
-    -- Add scheduled icon_typing table reset (every 15 minutes = 54000 ticks)
-    script.on_nth_tick(54000, function(event)
-      icon_typing.reset_icon_type_lookup()
-      ErrorHandler.debug_log("icon_typing table reset (every 15 minutes)")
-    end)
-    -- Register on_gui_location_changed for modal position saving
-    script.on_event(defines.events.on_gui_location_changed, function(event)
+
+  -- Add scheduled icon_typing table reset (every 15 minutes = 54000 ticks)
+  script.on_nth_tick(54000, function(event)
+    icon_typing.reset_icon_type_lookup()
+    ErrorHandler.debug_log("icon_typing table reset (every 15 minutes)")
+  end)
+  
+  -- MULTIPLAYER FIX: Process deferred GUI notifications every tick
+  -- This ensures GUI updates happen separately from game logic events, preventing desyncs
+  script.on_event(defines.events.on_tick, function(event)
+    GuiObserver.GuiEventBus.process_deferred_notifications()
+  end)
+  
+  -- Register on_gui_location_changed for modal position saving
+  script.on_event(defines.events.on_gui_location_changed, function(event)
       local player = game.players[event.player_index]
       if not player or not player.valid then return end
       local element = event.element
@@ -415,52 +428,15 @@ function EventRegistrationDispatcher.register_observer_events(script)
   end
 
 
-  -- Register observer for favorite_added and favorite_removed events
-  local GuiEventBus = GuiObserver.GuiEventBus
-
-  local favorites_bar_observer = {
-    observer_type = "favorites_bar_observer",
-    is_valid = function(self)
-      return true
-    end,
-    update = function(self, event_data)
-      ErrorHandler.debug_log("[FAVORITES_BAR] Observer triggered (force rebuild)", {
-        event_data = event_data,
-        player = event_data.player and event_data.player.name or "nil"
-      })
-      local observer_success, observer_error = pcall(function()
-        if event_data.player and event_data.player.valid then
-          local build_success, build_error = pcall(function()
-            fave_bar.build(event_data.player, true) -- Force rebuild
-          end)
-          if not build_success then
-            ErrorHandler.warn_log("[FAVORITES_BAR] Failed to build favorites bar (force rebuild)", {
-              player = event_data.player.name,
-              error = tostring(build_error)
-            })
-          end
-        end
-      end)
-      if not observer_success then
-        local error_str = observer_error and tostring(observer_error) or "unknown error"
-        ErrorHandler.warn_log("[FAVORITES_BAR] Observer execution failed", {
-          player = event_data.player and event_data.player.name or "nil",
-          error = error_str
-        })
-        if event_data.player and event_data.player.valid then
-          event_data.player.print("[TeleportFavorites] Observer failed: " .. error_str)
-        end
-        return false
-      end
-      return true
-    end
-  }
-
-  ErrorHandler.debug_log("[OBSERVER] Registering favorite_added and favorite_removed observers")
-  GuiEventBus.subscribe("favorite_added", favorites_bar_observer)
-  GuiEventBus.subscribe("favorite_removed", favorites_bar_observer)
-  ErrorHandler.debug_log("[OBSERVER] favorite_added and favorite_removed observers registered successfully")
-  ErrorHandler.debug_log("Observer events registration complete")
+  -- REMOVED: Duplicate favorites_bar_observer subscription that was causing double rebuilds
+  -- The DataObserver in gui_observer.lua already handles favorite_added/favorite_removed
+  -- by rebuilding the favorites bar. Having two observers rebuild the same GUI creates
+  -- non-deterministic state and causes multiplayer desyncs.
+  -- 
+  -- The favorites bar is now rebuilt ONLY by DataObserver when favorite_added or
+  -- favorite_removed events are fired.
+  
+  ErrorHandler.debug_log("Observer events registration complete (using DataObserver only)")
 
   return true
 end

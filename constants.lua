@@ -27,6 +27,8 @@ local Constants = {
 
     -- GPS settings
     GPS_PAD_NUMBER = 3,              -- Min digits for GPS coordinate display
+
+    -- *** COPY TO Basic_Helpers.lua ***
     BLANK_GPS = "1000000.1000000.1", -- Default empty GPS string for initialization
 
     -- Feature toggles

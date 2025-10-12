@@ -13,9 +13,6 @@
 --   - No circular dependencies
 
 
-local Constants = require("constants")
-
-
 local basic_helpers = {}
 
 
@@ -73,7 +70,7 @@ function basic_helpers.is_locked_favorite(fav)
 end
 
 function basic_helpers.is_blank_favorite(fav)
-  return not fav or fav.gps == nil or fav.gps == "" or fav.gps == Constants.settings.BLANK_GPS
+  return not fav or fav.gps == nil or fav.gps == "" or fav.gps == "1000000.1000000.1" -- Constants.settings.BLANK_GPS
 end
 --- Truncates a string containing rich text tags, counting each tag as 3 display spaces
 --- @param text string
@@ -132,11 +129,9 @@ end
 function basic_helpers.should_hide_favorites_bar_for_space_platform(player)
   if not player or not player.valid then return false end
 
-  -- Never hide for chart/map view (chart or chart_zoomed_in render modes)
-  if player.render_mode == defines.render_mode.chart or player.render_mode == defines.render_mode.chart_zoomed_in then
-    return false
-  end
-
+  -- MULTIPLAYER FIX: Removed player.render_mode check - it's client-specific and causes desyncs!
+  -- The bar visibility should only depend on surface properties, not view mode.
+  
   local surface = player.surface
   if surface and surface.valid then
     -- Hide for any space platform surface in any mode (except chart views)
@@ -248,6 +243,28 @@ function basic_helpers.deep_copy(orig)
     copy[k] = (type(v) == 'table') and basic_helpers.deep_copy(v) or v
   end
   return copy
+end
+
+-- ===========================
+-- SAFE PLAYER PRINT & ERROR MESSAGE HELPERS
+-- ===========================
+
+--- Safely print a message to a player (no dependencies)
+---@param player LuaPlayer|nil The player to send message to
+---@param message LocalisedString|string The message to send
+---@return boolean success
+function basic_helpers.safe_player_print(player, message)
+  if not basic_helpers.is_valid_player(player) then return false end
+  if not player or type(player.print) ~= "function" then return false end
+  local success = pcall(function() player.print(message) end)
+  return success
+end
+
+--- Standardized error message formatting
+---@param error_key string Error localization key or raw message
+---@return string formatted_message
+function basic_helpers.format_error_message(error_key)
+  return "[TeleportFavorites] " .. tostring(error_key)
 end
 
 return basic_helpers

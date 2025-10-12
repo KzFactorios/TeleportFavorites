@@ -8,7 +8,7 @@ local GPSUtils = require("core.utils.gps_utils")
 local ErrorHandler = require("core.utils.error_handler")
 local LocaleUtils = require("core.utils.locale_utils")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
-local PlayerHelpers = require("core.utils.player_helpers")
+local BasicHelpers = require("core.utils.basic_helpers")
 local Cache = require("core.cache.cache")
 local Constants = require("constants")
 
@@ -114,7 +114,7 @@ function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history)
 
     if not non_collide_position or type(non_collide_position.x) ~= "number" or type(non_collide_position.y) ~= "number" then
   ErrorHandler.error_log("TeleportStrategy", "Safe teleport failed: No valid safe landing position", {}, "teleport_to_gps")
-      PlayerHelpers.safe_player_print(player, LocaleUtils.get_error_string(player, "no_safe_landing_position"))
+  BasicHelpers.safe_player_print(player, LocaleUtils.get_error_string(player, "no_safe_landing_position"))
       return false, "no_safe_landing_position"
     end
 
@@ -123,7 +123,7 @@ function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history)
 
   if not working_gps then
   ErrorHandler.error_log("TeleportStrategy", "Safe teleport failed: No valid safe landing position", {}, "teleport_to_gps")
-    PlayerHelpers.safe_player_print(player, LocaleUtils.get_error_string(player, "no_safe_landing_position"))
+  BasicHelpers.safe_player_print(player, LocaleUtils.get_error_string(player, "no_safe_landing_position"))
     return false, "no_safe_landing_position"
   end
 
@@ -131,7 +131,7 @@ function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history)
   local working_position = GPSUtils.map_position_from_gps(working_gps)
   if not working_position then
   ErrorHandler.error_log("TeleportStrategy", "Safe teleport failed: Invalid working position", {}, "teleport_to_gps")
-    PlayerHelpers.safe_player_print(player, LocaleUtils.get_error_string(player, "invalid_working_position"))
+  BasicHelpers.safe_player_print(player, LocaleUtils.get_error_string(player, "invalid_working_position"))
     return false, "invalid_working_position"
   end
 

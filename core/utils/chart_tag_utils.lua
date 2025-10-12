@@ -6,6 +6,11 @@
 -- Provides multiplayer-safe helpers for chart tag detection, cache management, and safe creation.
 -- Integrates with GPSUtils, ErrorHandler, and Cache for robust surface-aware operations.
 --
+-- CRITICAL MULTIPLAYER SAFETY:
+-- Chart tags MUST be created/destroyed via game actions, never directly modified.
+-- Direct property assignment (chart_tag.text = "foo") causes desync in multiplayer.
+-- This module uses destroy-and-recreate pattern for all chart tag updates.
+--
 -- API:
 --   ChartTagUtils.find_closest_chart_tag_to_position(player, cursor_position): Find chart tag at a position.
 --   ChartTagUtils.safe_add_chart_tag(force, surface, spec, player): Safely create or update a chart tag.
@@ -25,12 +30,14 @@ local last_clicked_chart_tags = {}
 --- Find chart tag at a specific position
 ---@param player LuaPlayer Player context
 ---@param cursor_position MapPosition Position to check
+---@param skip_render_mode_check boolean? If true, skips the render mode check (for multiplayer-safe collision detection)
 ---@return LuaCustomChartTag? chart_tag Found chart tag or nil
-function ChartTagUtils.find_closest_chart_tag_to_position(player, cursor_position)
+function ChartTagUtils.find_closest_chart_tag_to_position(player, cursor_position, skip_render_mode_check)
   if not BasicHelpers.is_valid_player(player) or not cursor_position then return nil end
 
-  -- Only detect clicks while in map mode
-  if player.render_mode ~= defines.render_mode.chart then
+  -- Only detect clicks while in map mode (unless explicitly skipped for collision detection)
+  if not skip_render_mode_check and player.render_mode ~= defines.render_mode.chart then
+    return nil
   end
   -- Get surface index from player's current surface
   local surface_index = player.surface and player.surface.index or nil
@@ -93,6 +100,14 @@ function ChartTagUtils.safe_add_chart_tag(force, surface, spec, player)
     return nil
   end
 
+  -- Validate force has valid state and can create chart tags
+  if not force.valid then
+    ErrorHandler.debug_log("Force is invalid, cannot create chart tag", {
+      player_name = player and player.name or "unknown"
+    })
+    return nil
+  end
+
   -- Validate position
   if not spec.position or type(spec.position.x) ~= "number" or type(spec.position.y) ~= "number" then
     ErrorHandler.debug_log("Invalid position in chart tag spec", {
@@ -103,18 +118,43 @@ function ChartTagUtils.safe_add_chart_tag(force, surface, spec, player)
   -- Natural position system: check for existing chart tag via cache
   local surface_index = tonumber(surface.index) or 1
   local gps = GPSUtils.gps_from_map_position(spec.position, surface_index)
+  
+  -- Log chart tag creation attempt for debugging
+  ErrorHandler.debug_log("Attempting to create chart tag", {
+    position = spec.position,
+    surface_name = surface.name,
+    surface_index = surface_index,
+    force_name = force.name,
+    player_name = player and player.name or "no player",
+    has_text = spec.text ~= nil and spec.text ~= "",
+    has_icon = spec.icon ~= nil
+  })
+  
   -- Use existing chart tag reuse system instead of collision detection
+  -- CRITICAL: Pass true to skip render_mode check for multiplayer determinism
+  -- The render_mode is client-specific and causes desyncs if used in game state logic
   local existing_chart_tag = nil
   if player and player.valid then
-    existing_chart_tag = ChartTagUtils.find_closest_chart_tag_to_position(player, spec.position)
+    existing_chart_tag = ChartTagUtils.find_closest_chart_tag_to_position(player, spec.position, true)
   end
 
   if existing_chart_tag and existing_chart_tag.valid then
-    -- Update existing chart tag instead of creating new one
-    if spec.text then existing_chart_tag.text = spec.text end
-    if spec.icon then existing_chart_tag.icon = spec.icon end
-    if spec.last_user then existing_chart_tag.last_user = spec.last_user end
-    return existing_chart_tag
+    -- MULTIPLAYER FIX: Destroy and recreate instead of direct modification
+    -- Direct property assignment causes desync in multiplayer
+    ErrorHandler.debug_log("Destroying existing chart tag for multiplayer-safe recreation", {
+      position = existing_chart_tag.position,
+      old_text = existing_chart_tag.text or "",
+      old_icon = existing_chart_tag.icon
+    })
+    
+    existing_chart_tag.destroy()
+    
+    -- Invalidate cache after destroying
+    local Lookups = require("core.cache.lookups")
+    Lookups.invalidate_surface_chart_tags(surface_index)
+    
+    -- Fall through to create new chart tag with updated properties
+    -- (the force.add_chart_tag call below will create it)
   end
 
   -- Use protected call to catch any errors
@@ -126,7 +166,12 @@ function ChartTagUtils.safe_add_chart_tag(force, surface, spec, player)
   if not success then
     ErrorHandler.debug_log("Chart tag creation failed with error", {
       error = result,
-      position = spec.position
+      position = spec.position,
+      force_name = force and force.name or "unknown",
+      force_valid = force and force.valid or false,
+      surface_name = surface and surface.name or "unknown",
+      surface_valid = surface and surface.valid or false,
+      player_name = player and player.name or "unknown"
     })
     return nil
   end

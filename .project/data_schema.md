@@ -55,7 +55,10 @@ storage = {
         icon = string,                 -- Icon signal name (empty string if none)
         text = string,                 -- Tag text content (empty string if none)
         tag = Tag|nil,                 -- Tag object being edited (may be nil)
-        chart_tag = LuaCustomChartTag|nil, -- Associated chart tag (may be nil)
+        -- MULTIPLAYER SAFETY: chart_tag is NEVER stored in persistent storage
+        -- LuaCustomChartTag is userdata and storing it causes desyncs
+        -- Use Cache.Lookups.get_chart_tag_by_gps(gps) to retrieve at runtime
+        chart_tag = nil,               -- NOT STORED - retrieve via runtime cache
         error_message = string,        -- Error message to display (empty string if none)
         move_mode = boolean|nil,       -- True if in move mode
         delete_confirmed = boolean|nil,-- True if delete confirmation is active

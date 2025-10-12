@@ -33,6 +33,8 @@ function ChartTagOwnershipManager.reset_ownership_for_player(player_name)
       local surface_cache = Cache.Lookups.get_chart_tag_cache(surface.index)
       for _, chart_tag in pairs(surface_cache) do
         if chart_tag and chart_tag.valid and chart_tag.last_user and chart_tag.last_user.name == player_name then
+          -- MULTIPLAYER WARNING: Direct property modification may cause desync
+          -- TODO: Replace with destroy-and-recreate pattern for full multiplayer safety
           chart_tag.last_user = nil
           reset_count = reset_count + 1
           affected_surfaces[surface.index] = true
