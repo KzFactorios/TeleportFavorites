@@ -16,8 +16,10 @@ AdminUtils.can_edit_chart_tag = function(player, tag)
     -- Admin can always edit
     if AdminUtils.is_admin(player) then return true end
     
-    -- Owner can edit their own tags
-    if tag.last_user == player.name then return true end
+    -- Owner can edit their own tags (using Tag.owner_name)
+    if not tag.owner_name or tag.owner_name == "" or tag.owner_name == player.name then
+        return true
+    end
     
     return false
 end

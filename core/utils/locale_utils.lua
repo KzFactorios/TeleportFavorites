@@ -157,4 +157,30 @@ function LocaleUtils.set_debug_mode(enabled)
     DEBUG_MISSING_TRANSLATIONS = enabled
 end
 
+--[[
+Format a tag position change notification for a player
+@param player - The player to notify
+@param chart_tag - The chart tag that was moved
+@param old_position - The old position {x, y}
+@param new_position - The new position {x, y}
+@return localized notification message
+]]
+function LocaleUtils.format_tag_position_change_notification(player, chart_tag, old_position, new_position)
+    if not BasicHelpers.is_valid_player(player) then
+        return "[LocaleUtils] Invalid player for notification"
+    end
+    
+    -- Extract tag text, fallback to empty string if no text
+    local tag_text = (chart_tag and chart_tag.text) or ""
+    
+    -- Get integer coordinates
+    local old_x = old_position and math.floor(old_position.x or 0) or 0
+    local old_y = old_position and math.floor(old_position.y or 0) or 0
+    local new_x = new_position and math.floor(new_position.x or 0) or 0
+    local new_y = new_position and math.floor(new_position.y or 0) or 0
+    
+    -- Return localized string with parameters
+    return LocaleUtils.get_gui_string(player, "tag_position_changed", {tag_text, old_x, old_y, new_x, new_y})
+end
+
 return LocaleUtils

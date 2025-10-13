@@ -42,9 +42,10 @@ local function setup_tag_editor_ui(refs, tag_data, player)
   local is_owner = false
   local can_delete = false
 
-  if tag and tag.chart_tag then
-    is_owner = tag.chart_tag.last_user and tag.chart_tag.last_user.name == player.name or false
-    -- Can delete if player is owner (we'll implement multi-player favorite checking later if needed)
+  if tag then
+    -- Use Tag.owner_name as source of truth for ownership
+    is_owner = (not tag.owner_name or tag.owner_name == "" or tag.owner_name == player.name)
+    -- Can delete if player is owner
     can_delete = is_owner
   else
     -- No existing tag means we're creating a new one - player is the owner
@@ -52,9 +53,10 @@ local function setup_tag_editor_ui(refs, tag_data, player)
     can_delete = false
   end
 
-  -- Admin trumps
+  -- Admin trumps - admins can always edit and delete
   if AdminUtils.is_admin(player) then
     is_owner = true
+    can_delete = true
   end
 
   -- Set button enablement using consolidated helper
@@ -234,12 +236,9 @@ function tag_editor.build(player)
     tag_data) -- Simple owner lookup logic as requested
 
   local owner_value = ""
-  -- First, if there is a tag, use the tag's chart_tag.last_user
-  if tag_data.tag and tag_data.tag.chart_tag and tag_data.tag.chart_tag.last_user then
-    owner_value = tag_data.tag.chart_tag.last_user.name
-    -- If still no last user, check if a chart_tag exists and use chart_tag's last_user
-  elseif tag_data.chart_tag and tag_data.chart_tag.last_user then
-    owner_value = tag_data.chart_tag.last_user.name
+  -- Use Tag.owner_name as the source of truth for ownership
+  if tag_data.tag and tag_data.tag.owner_name then
+    owner_value = tag_data.tag.owner_name
   end
   
   -- Set the owner label using proper localization

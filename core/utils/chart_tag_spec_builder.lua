@@ -4,18 +4,18 @@
 -- TeleportFavorites Factorio Mod
 -- Chart tag specification builder for Factorio API.
 -- Safely constructs chart tag spec tables for creation, update, and migration.
--- Handles text, ownership, and icon fields with robust validation and fallback logic.
+-- Handles text and icon fields with robust validation and fallback logic.
+-- NOTE: Ownership is tracked via Tag.owner_name, not chart_tag.last_user
 --
 -- API:
---   ChartTagSpecBuilder.build(position, source_chart_tag, player, text, set_ownership):
+--   ChartTagSpecBuilder.build(position, source_chart_tag, player, text):
 --     Returns a chart tag spec table for use with force.add_chart_tag or tag mutation.
 
 local ChartTagSpecBuilder = {}
 
 ---@param text string? Custom text override
----@param set_ownership boolean? Whether to set last_user (only for final tags, not temporary)
 ---@return table chart_tag_spec Chart tag specification ready for Factorio API
-function ChartTagSpecBuilder.build(position, source_chart_tag, player, text, set_ownership)
+function ChartTagSpecBuilder.build(position, source_chart_tag, player, text)
   local spec = { position = position }
 
   -- Text
@@ -30,31 +30,6 @@ function ChartTagSpecBuilder.build(position, source_chart_tag, player, text, set
     end
   else
     spec.text = ""
-  end
-
-  -- last_user
-  if set_ownership then
-    local last_user_name = nil
-    if source_chart_tag and (type(source_chart_tag) == "userdata" or type(source_chart_tag) == "table") then
-      local ok, last_user = pcall(function() return source_chart_tag.last_user end)
-      if ok and last_user then
-        if type(last_user) == "table" then
-          local ok2, name = pcall(function() return last_user.name end)
-          if ok2 and name and type(name) == "string" and name ~= "" then
-            last_user_name = name
-          end
-        elseif type(last_user) == "string" and last_user ~= "" then
-          last_user_name = last_user
-        end
-      end
-    end
-    if last_user_name ~= nil then
-      spec.last_user = last_user_name
-    elseif player and player.valid and player.name then
-      spec.last_user = player.name
-    else
-      spec.last_user = "System"
-    end
   end
 
   -- icon

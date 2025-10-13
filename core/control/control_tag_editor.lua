@@ -29,6 +29,7 @@ local ValidationUtils = require("core.utils.validation_utils")
 local AdminUtils = require("core.utils.admin_utils")
 local BasicHelpers = require("core.utils.basic_helpers")
 local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
+local ChartTagHelpers = require("core.events.chart_tag_helpers")
 local SharedUtils = require("core.control.control_shared_utils")
 local TeleportStrategy = require("core.utils.teleport_strategy")
 local Enum = require("prototypes.enums.enum")
@@ -67,7 +68,8 @@ end
 -- Change function signature to accept tag_data
 local function update_chart_tag_fields(tag, tag_data, text, icon, player)
   -- Get or create chart tag
-  local chart_tag = tag.chart_tag
+  -- CRITICAL FIX: Fetch fresh chart_tag from cache using GPS to avoid stale references
+  -- After destroy-and-recreate operations, both tag.chart_tag and tag_data.chart_tag can be stale
   local map_position = GPSUtils.map_position_from_gps(tag.gps)
 
   if not map_position then
@@ -76,20 +78,24 @@ local function update_chart_tag_fields(tag, tag_data, text, icon, player)
     })
     return
   end
+  
+  -- Fetch fresh chart_tag from cache using GPS lookup
+  local chart_tag = Cache.Lookups.get_chart_tag_by_gps(tag.gps) or tag_data.chart_tag or tag.chart_tag
+  
   if chart_tag and chart_tag.valid then
-    -- Check permissions using AdminUtils
-    local can_edit, is_owner, is_admin_override = AdminUtils.can_edit_chart_tag(player, chart_tag)
+    -- Check permissions using AdminUtils with Tag object (uses Tag.owner_name)
+    local can_edit, is_owner, is_admin_override = AdminUtils.can_edit_chart_tag(player, tag)
     if not can_edit then
       ErrorHandler.warn_log("Player cannot edit chart tag: insufficient permissions", {
         player_name = player.name,
-        chart_tag_last_user = chart_tag.last_user and chart_tag.last_user.name or "",
+        tag_owner = tag.owner_name or "",
         is_admin = AdminUtils.is_admin(player)
       })
       return
     end
     -- Log admin action if this is an admin override
     if is_admin_override then
-      AdminUtils.log_admin_action(player, "edit_chart_tag", chart_tag, {
+      AdminUtils.log_admin_action(player, "edit_chart_tag", tag, {
         old_text = chart_tag.text or "",
         new_text = text or "",
         old_icon = chart_tag.icon,
@@ -111,7 +117,8 @@ local function update_chart_tag_fields(tag, tag_data, text, icon, player)
       player_name = player.name,
       position = position,
       old_text = chart_tag.text or "",
-      old_icon = chart_tag.icon
+      old_icon = chart_tag.icon,
+      tag_owner = tag.owner_name or ""
     })
     
     -- Destroy the old chart tag
@@ -120,8 +127,8 @@ local function update_chart_tag_fields(tag, tag_data, text, icon, player)
     -- Invalidate cache after destroying
     Cache.Lookups.invalidate_surface_chart_tags(surface_index)
     
-    -- Create new chart tag with updated properties
-    local chart_tag_spec = ChartTagSpecBuilder.build(position, nil, player, text, true)
+    -- Create new chart tag with updated properties (ownership already in Tag.owner_name)
+    local chart_tag_spec = ChartTagSpecBuilder.build(position, nil, player, text)
     if ValidationUtils.has_valid_icon(icon) then
       chart_tag_spec.icon = icon
     else
@@ -141,7 +148,7 @@ local function update_chart_tag_fields(tag, tag_data, text, icon, player)
         surface_index = surface_index,
         chart_tags_in_cache = #refreshed_cache,
         new_chart_tag_gps = GPSUtils.gps_from_map_position(new_chart_tag.position, surface_index),
-        new_last_user = new_chart_tag.last_user and new_chart_tag.last_user.name or ""
+        tag_owner = tag.owner_name or ""
       })
       
       -- Refresh chart_tag reference from cache
@@ -152,6 +159,11 @@ local function update_chart_tag_fields(tag, tag_data, text, icon, player)
         tag_data.chart_tag = refreshed_chart_tag
         tag_data.tag = tag
       end
+      
+      -- CRITICAL MULTIPLAYER FIX: Update favorites bar for ALL players who have this tag favorited
+      -- The destroy-and-recreate pattern doesn't fire on_chart_tag_modified, so we need to manually
+      -- rebuild favorites bars for all affected players to show updated text/icon
+      ChartTagHelpers.update_tag_metadata(gps, new_chart_tag, player)
     else
       ErrorHandler.error_log("Failed to recreate chart tag after destruction", {
         player_name = player.name,
@@ -163,7 +175,7 @@ local function update_chart_tag_fields(tag, tag_data, text, icon, player)
     end
   else
     -- Create new chart tag using ChartTagUtils - set ownership for final chart tag
-    local chart_tag_spec = ChartTagSpecBuilder.build(map_position, nil, player, text, true)
+    local chart_tag_spec = ChartTagSpecBuilder.build(map_position, nil, player, text)
     -- Always set icon (can be nil for empty icons)
     if ValidationUtils.has_valid_icon(icon) then
       chart_tag_spec.icon = icon
@@ -186,7 +198,7 @@ local function update_chart_tag_fields(tag, tag_data, text, icon, player)
         chart_tags_in_cache = #refreshed_cache,
         new_chart_tag_gps = GPSUtils.gps_from_map_position(new_chart_tag.position, surface_index)
       })
-      -- Refresh chart_tag reference from cache to ensure latest last_user is used
+      -- Refresh chart_tag reference from cache
       local gps = GPSUtils.gps_from_map_position(new_chart_tag.position, surface_index)
       local refreshed_chart_tag = Cache.Lookups.get_chart_tag_by_gps(gps)
       if refreshed_chart_tag and refreshed_chart_tag.valid then
@@ -282,12 +294,24 @@ local function handle_confirm_btn(player, element, tag_data)
   -- Determine if this is a new tag based on whether we opened the editor on an existing tag or chart tag
   -- If tag_data.tag OR tag_data.chart_tag exists, we're editing; if neither, we're creating
   local is_new_tag = not tag_data.tag and not tag_data.chart_tag
+  
+  -- Set owner_name if this is a new tag or if owner_name is not set
+  if is_new_tag or not tag.owner_name then
+    tag.owner_name = player.name
+  end
 
   update_chart_tag_fields(tag, tag_data, text, icon, player)
 
-  -- After updating chart tag fields, re-fetch the tag object from cache to ensure latest chart_tag/last_user
+  -- After updating chart tag fields, re-fetch the tag object from cache to ensure latest chart_tag reference
   local refreshed_tag = tags[tag.gps] or tag
   refreshed_tag.faved_by_players = refreshed_tag.faved_by_players or {}
+  
+  -- CRITICAL FIX: update_chart_tag_fields() may have updated tag.chart_tag with new reference
+  -- We need to copy that updated chart_tag to refreshed_tag before saving to storage
+  if tag.chart_tag and tag.chart_tag.valid then
+    refreshed_tag.chart_tag = tag.chart_tag
+  end
+  
   tag_data.tag = refreshed_tag
 
   ErrorHandler.debug_log("[TAG_EDITOR] handle_confirm_btn: about to save tag to cache", {
@@ -438,8 +462,8 @@ local function handle_delete_confirm(player)
     return
   end
 
-  -- Use AdminUtils to validate deletion permissions
-  local can_delete, _is_owner, is_admin_override, reason = AdminUtils.can_delete_chart_tag(player, tag.chart_tag, tag)
+  -- Use AdminUtils to validate deletion permissions (uses Tag.owner_name)
+  local can_delete, _is_owner, is_admin_override, reason = AdminUtils.can_delete_chart_tag(player, tag)
 
   if not can_delete then
     GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
@@ -452,7 +476,7 @@ local function handle_delete_confirm(player)
 
   -- Log admin action if this is an admin override
   if is_admin_override then
-    AdminUtils.log_admin_action(player, "delete_chart_tag", tag.chart_tag, {
+    AdminUtils.log_admin_action(player, "delete_chart_tag", tag, {
       had_other_favorites = tag.faved_by_players and #tag.faved_by_players > 1,
       override_reason = "admin_privileges"
     })

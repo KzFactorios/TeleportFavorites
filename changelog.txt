@@ -1,8 +1,17 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.0.7
-Date: 2025-10-11
+Date: 2025-10-12
   Changes:
     - Removed conditional loading of gvv in control.lua. This should only be used for dev
+    - Fixed desync issues in multiplayer and immediate GUI refresh for favorites bar
+    - Added universal GUI conflict detection to prevent tag editor from opening when other mods' GUIs are active
+    - Removed all chart_tag.last_user usage - Tag.owner_name is now the single source of truth for ownership tracking
+  Bugfixes:
+    - Fixed multiplayer issue where tag position updates were not immediately reflected in other players' favorites bars
+    - Fixed issue where admin edits to another player's favorited tag were not updating that player's favorites bar - added ChartTagHelpers require and explicit update_tag_metadata() call
+    - Fixed crash when admin moves another player's tag - missing LocaleUtils.format_tag_position_change_notification() function has been implemented, and locale string 'tag_position_changed' added for player notifications
+    - Fixed issue where admin moving another player's tag would steal ownership - implemented persistent owner tracking in Tag storage to preserve original own
+    - Added validation to prevent moving chart tags into uncharted territory - tag position is reverted and "cannot build" sound plays when attempting to move a tag to an uncharted area
 ---------------------------------------------------------------------------------------------------
 Version: 0.0.6
 Date: 2025-08-26

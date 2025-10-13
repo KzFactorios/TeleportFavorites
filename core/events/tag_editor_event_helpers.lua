@@ -30,7 +30,22 @@ function TagEditorEventHelpers.validate_tag_editor_opening(player)
     return false, "Wrong render mode"
   end
 
-  -- Prevent tag editor from opening if any modal dialog is active
+  -- UNIVERSAL GUI CONFLICT DETECTION: Check if ANY GUI is open (from any mod)
+  -- player.opened is set by Factorio when a GUI/modal/entity is opened
+  if player.opened ~= nil then
+    -- Determine what type of GUI is open for better error messaging
+    local opened_type = "unknown"
+    if type(player.opened) == "table" then
+      if player.opened.object_name == "LuaGuiElement" then
+        opened_type = "GUI: " .. (player.opened.name or "unnamed")
+      elseif player.opened.object_name then
+        opened_type = player.opened.object_name
+      end
+    end
+    return false, "Another GUI is open: " .. opened_type
+  end
+
+  -- Prevent tag editor from opening if any modal dialog is active (our mod's modals)
   if Cache.is_modal_dialog_active and Cache.is_modal_dialog_active(player) then
     local modal_type = Cache.get_modal_dialog_type and Cache.get_modal_dialog_type(player)
     return false, "Modal dialog active: " .. (modal_type or "unknown")
@@ -86,7 +101,7 @@ end
 ---@param surface_index number Surface index
 ---@return string gps GPS string for the position
 function TagEditorEventHelpers.create_temp_tag_gps(normalized_pos, player, surface_index)
-  local temp_spec = ChartTagSpecBuilder.build(normalized_pos, nil, player, nil, false)
+  local temp_spec = ChartTagSpecBuilder.build(normalized_pos, nil, player, nil)
   local tmp_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, player.surface, temp_spec, player)
   
   if tmp_chart_tag and tmp_chart_tag.valid then
@@ -115,8 +130,7 @@ function TagEditorEventHelpers.normalize_and_replace_chart_tag(chart_tag, player
       position_pair.new,
       chart_tag,
       player,
-      nil,
-      true
+      nil
     )
     
     local surface_index = chart_tag.surface and chart_tag.surface.index or 1

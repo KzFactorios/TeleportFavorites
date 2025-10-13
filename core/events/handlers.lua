@@ -5,6 +5,7 @@
 -- Centralized event handler implementations for TeleportFavorites.
 -- Handles Factorio events, multiplayer/surface-aware updates, helpers, error handling, validation, and API for all event types.
 
+local AdminUtils = require("core.utils.admin_utils")
 local BasicHelpers = require("core.utils.basic_helpers")
 local Cache = require("core.cache.cache")
 local PositionUtils = require("core.utils.position_utils")
@@ -170,14 +171,24 @@ function handlers.on_open_tag_editor_custom_input(event)
       local favorite_entry = player_favorites:get_favorite_by_gps(gps)
       local icon = chart_tag.icon
 
+      -- Try to get the full Tag object from cache (includes owner_name)
+      local tag = Cache.get_tag_by_gps(player, gps)
+      
       tag_data.chart_tag = chart_tag
-      tag_data.tag = {
-        chart_tag = chart_tag,
-        gps = gps,
-        icon = icon,
-        text = chart_tag.text,
-        last_user = chart_tag.last_user,
-      }
+      -- Use full Tag object if available, otherwise create minimal object
+      if tag then
+        tag_data.tag = tag
+      else
+        -- Create minimal Tag-like object for new/unknown tags
+        tag_data.tag = {
+          chart_tag = chart_tag,
+          gps = gps,
+          icon = icon,
+          text = chart_tag.text,
+          owner_name = nil,  -- New tag, no owner yet
+          faved_by_players = {},  -- Empty array for new tags
+        }
+      end
       tag_data.gps = gps
       tag_data.is_favorite = favorite_entry ~= nil
       tag_data.icon = icon
@@ -213,12 +224,69 @@ function handlers.on_chart_tag_added(event)
   end
 
   refresh_surface_chart_tags(tonumber(player.surface.index) or 1)
+  
+  -- OWNERSHIP TRACKING: Store the creator's name in the Tag storage
+  -- This is necessary because event.old_player_index is not reliable when admins move tags
+  if chart_tag and chart_tag.valid then
+    local gps = GPSUtils.gps_from_map_position(chart_tag.position, tonumber(player.surface.index) or 1)
+    if gps then
+      local tag = Cache.get_tag_by_gps(player, gps)
+      if tag and type(tag) == "table" then
+        tag.owner_name = player.name
+        ErrorHandler.debug_log("Stored tag owner on creation", {
+          gps = gps,
+          owner_name = player.name
+        })
+      end
+    end
+  end
 end
 
 function handlers.on_chart_tag_modified(event)
   if not event or not event.old_position then return end
   local player = game.players[event.player_index]
   if not player or not player.valid then return end
+  
+  -- OWNERSHIP PRESERVATION: Get the original owner from our Tag storage
+  -- event.old_player_index is unreliable (often nil), so we track ownership in Tag.owner_name
+  local original_owner = nil
+  local original_owner_name = nil
+  
+  -- Try to get owner from our stored Tag object first
+  local old_gps, new_gps = ChartTagHelpers.extract_gps(event, player)
+  if old_gps then
+    local old_tag = Cache.get_tag_by_gps(player, old_gps)
+    if old_tag and type(old_tag) == "table" and old_tag.owner_name then
+      original_owner_name = old_tag.owner_name
+      -- Find the player object by name
+      for _, p in pairs(game.players) do
+        if p.name == original_owner_name then
+          original_owner = p
+          break
+        end
+      end
+      ErrorHandler.debug_log("Retrieved original owner from Tag storage", {
+        player_who_moved = player.name,
+        original_owner_name = original_owner_name,
+        has_player_object = (original_owner ~= nil),
+        old_gps = old_gps
+      })
+    end
+  end
+  
+  -- Fallback to event.old_player_index if available
+  if not original_owner_name and event.old_player_index then
+    original_owner = game.players[event.old_player_index]
+    if original_owner and original_owner.valid then
+      original_owner_name = original_owner.name
+    end
+    ErrorHandler.debug_log("Retrieved original owner from event.old_player_index (fallback)", {
+      player_who_moved = player.name,
+      old_player_index = event.old_player_index,
+      original_owner_name = original_owner_name
+    })
+  end
+  
   if not ChartTagHelpers.is_valid_tag_modification(event, player) then
     ErrorHandler.debug_log("Chart tag modification validation failed", {
       player_name = player.name
@@ -226,7 +294,39 @@ function handlers.on_chart_tag_modified(event)
     return
   end
   
+  -- CHARTED TERRITORY VALIDATION: Prevent moving tags into uncharted areas
+  local chart_tag = event.tag
+  if chart_tag and chart_tag.valid and chart_tag.position then
+    local surface = chart_tag.surface or player.surface
+    local force = chart_tag.force or player.force
+    
+    -- Check if the new position is charted
+    if surface and surface.valid and force and force.valid then
+      -- Convert world position to chunk position for is_chunk_charted check
+      local chunk_x = math.floor(chart_tag.position.x / 32)
+      local chunk_y = math.floor(chart_tag.position.y / 32)
+      local is_charted = force.is_chunk_charted(surface, {chunk_x, chunk_y})
+      
+      if not is_charted then
+        -- Position is not charted - revert the tag to old position and play error sound
+        chart_tag.position = event.old_position
+        player.play_sound({path = "utility/cannot_build"})
+        
+        ErrorHandler.debug_log("Prevented tag move to uncharted territory", {
+          player_name = player.name,
+          attempted_position = chart_tag.position,
+          attempted_chunk = {chunk_x, chunk_y},
+          old_position = event.old_position,
+          surface_name = surface.name
+        })
+        
+        return
+      end
+    end
+  end
+  
   local new_gps, old_gps = ChartTagHelpers.extract_gps(event, player)
+  
   -- Check if this tag is currently open in the tag editor and update it
   local tag_editor_data = Cache.get_tag_editor_data(player)
   if tag_editor_data and tag_editor_data.gps == old_gps then
@@ -252,6 +352,8 @@ function handlers.on_chart_tag_modified(event)
   end
   local chart_tag = event.tag
   if chart_tag and chart_tag.valid and chart_tag.position then
+    local position_changed = old_gps and new_gps and old_gps ~= new_gps
+    
     if PositionUtils.needs_normalization(chart_tag.position) then
       ErrorHandler.debug_log("Chart tag has fractional coordinates, normalizing", {
         player_name = player.name,
@@ -273,20 +375,28 @@ function handlers.on_chart_tag_modified(event)
             old_position = event.old_position,
             player_index = event.player_index
           }
-          ChartTagHelpers.update_tag_and_cleanup(old_gps, normalized_gps, normalized_event, player)
+          ChartTagHelpers.update_tag_and_cleanup(old_gps, normalized_gps, normalized_event, player, original_owner_name)
           ChartTagHelpers.update_favorites_gps(old_gps, normalized_gps, player)
         end
       end
       if old_gps and new_gps and old_gps ~= new_gps then
         -- Update tag data and cache using the original chart tag
-        ChartTagHelpers.update_tag_and_cleanup(old_gps, new_gps, event, player)
+        ChartTagHelpers.update_tag_and_cleanup(old_gps, new_gps, event, player, original_owner_name)
         ChartTagHelpers.update_favorites_gps(old_gps, new_gps, player)
       end
-    elseif old_gps and new_gps and old_gps ~= new_gps then
+    elseif position_changed then
       -- If position changed but no normalization needed, still update tag and favorites
-      ChartTagHelpers.update_tag_and_cleanup(old_gps, new_gps, event, player)
+      ChartTagHelpers.update_tag_and_cleanup(old_gps, new_gps, event, player, original_owner_name)
       ChartTagHelpers.update_favorites_gps(old_gps, new_gps, player)
+    else
+      -- METADATA-ONLY CHANGE: Position unchanged, but text/icon may have changed
+      -- Update tag metadata and refresh favorites bar for all affected players
+      if new_gps then
+        ChartTagHelpers.update_tag_metadata(new_gps, chart_tag, player)
+      end
     end
+    
+    -- Ownership is preserved via Tag.owner_name field (no need to restore chart_tag.last_user)
   end
 end
 
@@ -295,9 +405,15 @@ function handlers.on_chart_tag_removed(event)
     local chart_tag = event.tag
     if not chart_tag or not chart_tag.valid then return end
 
-    -- Only allow removal if player is admin or owner
+    -- Get GPS and Tag object to check ownership via Tag.owner_name
+    local gps = GPSUtils.gps_from_map_position(chart_tag.position,
+      chart_tag.surface and chart_tag.surface.index or player.surface.index)
+    local tag = Cache.get_tag_by_gps(player, gps)
+    
+    -- Only allow removal if player is admin or owner (using Tag.owner_name)
     local is_admin = player.admin
-    local is_owner = (chart_tag.last_user and chart_tag.last_user.name == player.name)
+    local is_owner = tag and (not tag.owner_name or tag.owner_name == "" or tag.owner_name == player.name)
+    
     if not is_admin and not is_owner then
       -- Restore the tag at its original location (Factorio will have already removed it, so recreate)
       if chart_tag.position and chart_tag.surface then
@@ -306,8 +422,7 @@ function handlers.on_chart_tag_removed(event)
           position = chart_tag.position,
           force = player.force,
           text = chart_tag.text or "",
-          icon = chart_tag.icon,
-          last_user = player
+          icon = chart_tag.icon
         }
       end
       refresh_surface_chart_tags(tonumber(player.surface.index) or 1)
@@ -315,9 +430,6 @@ function handlers.on_chart_tag_removed(event)
     end
 
     -- Remove/update associated tags, favorites, etc.
-    local gps = GPSUtils.gps_from_map_position(chart_tag.position,
-      chart_tag.surface and chart_tag.surface.index or player.surface.index)
-    local tag = Cache.get_tag_by_gps(player, gps)
     if tag then
       tag_destroy_helper.destroy_tag_and_chart_tag(tag, chart_tag)
     end

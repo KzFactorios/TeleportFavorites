@@ -49,13 +49,18 @@ function ChartTagHelpers.is_valid_tag_modification(event, player)
     return false
   end
 
-  -- Check permissions using AdminUtils
-  local can_edit, _is_owner, is_admin_override = AdminUtils.can_edit_chart_tag(player, event.tag)
+  -- Get the Tag object from storage to check permissions using Tag.owner_name
+  local surface_index = event.tag.surface and event.tag.surface.index or (player and player.valid and player.surface.index) or 1
+  local old_gps = GPSUtils.gps_from_map_position(event.old_position, surface_index)
+  local tag = old_gps and Cache.get_tag_by_gps(player, old_gps) or nil
+  
+  -- Check permissions using AdminUtils with Tag object (uses Tag.owner_name)
+  local can_edit, _is_owner, is_admin_override = AdminUtils.can_edit_chart_tag(player, tag)
 
   if not can_edit then
     ErrorHandler.debug_log("Chart tag modification rejected: insufficient permissions", {
-  player_name = player and player.name or nil,
-      chart_tag_last_user = event.tag.last_user and event.tag.last_user.name or "",
+      player_name = player and player.name or nil,
+      tag_owner = tag and tag.owner_name or "",
       is_admin = AdminUtils.is_admin(player)
     })
     return false
@@ -63,11 +68,8 @@ function ChartTagHelpers.is_valid_tag_modification(event, player)
 
   -- Log admin action if this is an admin override
   if is_admin_override then
-    AdminUtils.log_admin_action(player, "modify_chart_tag", event.tag, {})
+    AdminUtils.log_admin_action(player, "modify_chart_tag", tag, {})
   end
-
-  -- Transfer ownership to admin if last_user is unspecified
-  AdminUtils.transfer_ownership_to_admin(event.tag, player)
 
   return true
 end
@@ -106,7 +108,8 @@ end
 ---@param new_gps string|nil New GPS coordinate string
 ---@param event table Chart tag modification event
 ---@param player LuaPlayer|nil Player context
-function ChartTagHelpers.update_tag_and_cleanup(old_gps, new_gps, event, player)
+---@param preserve_owner_name string|nil Optional: explicitly preserve this owner name during the move
+function ChartTagHelpers.update_tag_and_cleanup(old_gps, new_gps, event, player, preserve_owner_name)
   if not old_gps or not new_gps then return end
 
   if not player or not player.valid then
@@ -121,8 +124,8 @@ function ChartTagHelpers.update_tag_and_cleanup(old_gps, new_gps, event, player)
     Cache.Lookups.invalidate_surface_chart_tags(surface_index)
   end
 
-  -- Use new shared helper for tag mutation and surface mapping
-  Tag.update_gps_and_surface_mapping(old_gps, new_gps, modified_chart_tag, player)
+  -- Use new shared helper for tag mutation and surface mapping, preserving ownership
+  Tag.update_gps_and_surface_mapping(old_gps, new_gps, modified_chart_tag, player, preserve_owner_name)
 end
 
 --- Update all player favorites that reference the old GPS to use new GPS and notify affected players
@@ -152,8 +155,14 @@ function ChartTagHelpers.update_favorites_gps(old_gps, new_gps, acting_player)
     -- Invalidate chart tag lookups for the surface
     local surface_index = GPSUtils.get_surface_index_from_gps(new_gps)
     Cache.Lookups.invalidate_surface_chart_tags(tonumber(surface_index))
-    -- Rebuild favorites bar for affected player
-    fave_bar.build(acting_player)
+  end
+
+  -- MULTIPLAYER FIX: Rebuild favorites bar for ALL affected players
+  -- This ensures immediate GUI updates across all clients without requiring clicks
+  for _, affected_player in ipairs(all_affected_players) do
+    if affected_player and affected_player.valid then
+      fave_bar.build(affected_player)
+    end
   end
 
   -- Notify all affected players (excluding the acting player from notifications)
@@ -177,6 +186,46 @@ function ChartTagHelpers.update_favorites_gps(old_gps, new_gps, acting_player)
       end
     end
   end
+end
+
+--- Update tag metadata (text/icon) for all players who have favorited this tag
+--- Called when tag metadata changes but position remains the same
+---@param gps string GPS coordinate string
+---@param chart_tag LuaCustomChartTag The modified chart tag
+---@param player LuaPlayer Player who made the change
+function ChartTagHelpers.update_tag_metadata(gps, chart_tag, player)
+  if not gps or not chart_tag or not chart_tag.valid then return end
+  if not player or not player.valid then return end
+
+  -- Invalidate chart tag cache for the surface
+  local surface_index = chart_tag.surface and chart_tag.surface.index or player.surface.index
+  Cache.Lookups.invalidate_surface_chart_tags(tonumber(surface_index))
+
+  -- Find all players who have this tag favorited
+  local affected_players = {}
+  for player_index, game_player in pairs(game.players) do
+    if game_player and game_player.valid then
+      local player_favorites = PlayerFavorites.new(game_player)
+      local favorite_entry = player_favorites:get_favorite_by_gps(gps)
+      if favorite_entry then
+        table.insert(affected_players, game_player)
+      end
+    end
+  end
+
+  -- Rebuild favorites bar for all affected players to show updated text/icon
+  for _, affected_player in ipairs(affected_players) do
+    if affected_player and affected_player.valid then
+      fave_bar.build(affected_player)
+    end
+  end
+
+  ErrorHandler.debug_log("Updated tag metadata for all affected players", {
+    gps = gps,
+    affected_player_count = #affected_players,
+    new_text = chart_tag.text or "",
+    acting_player = player.name
+  })
 end
 
 ChartTagHelpers.ChartTagRemovalHelpers = ChartTagHelpers
