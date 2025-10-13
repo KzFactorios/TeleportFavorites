@@ -37,7 +37,7 @@ function ErrorHandler.initialize(log_level)
 end
 
 function ErrorHandler.debug_log(message, context)
-  --if not ErrorHandler.is_debug() then return end
+  if not ErrorHandler.is_debug() then return end
   if _in_error_handler then return end
   _in_error_handler = true
   local prefix = "[TeleFaves][DEBUG] "

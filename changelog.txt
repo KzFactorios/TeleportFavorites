@@ -7,6 +7,8 @@ Date: 2025-10-12
     - Added universal GUI conflict detection to prevent tag editor from opening when other mods' GUIs are active
     - Removed all chart_tag.last_user usage - Tag.owner_name is now the single source of truth for ownership tracking
   Bugfixes:
+    - Added /tf_log_level command to change log level during gameplay without restarting (accepts: production, warn, error, debug)
+    - Log level changes sync both ErrorHandler and DebugConfig systems for consistent logging behavior across all mod components
     - Fixed multiplayer issue where tag position updates were not immediately reflected in other players' favorites bars
     - Fixed issue where admin edits to another player's favorited tag were not updating that player's favorites bar - added ChartTagHelpers require and explicit update_tag_metadata() call
     - Fixed crash when admin moves another player's tag - missing LocaleUtils.format_tag_position_change_notification() function has been implemented, and locale string 'tag_position_changed' added for player notifications

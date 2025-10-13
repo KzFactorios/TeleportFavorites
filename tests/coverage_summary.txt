@@ -1,4 +1,4 @@
 TeleportFavorites Test Coverage Report
 ========================================
-Generated: 2025-10-13 13:54:25
+Generated: 2025-10-13 14:24:34
 Overall Coverage: 0/0 lines (No data available)

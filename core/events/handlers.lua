@@ -223,12 +223,13 @@ function handlers.on_chart_tag_added(event)
     end
   end
 
-  refresh_surface_chart_tags(tonumber(player.surface.index) or 1)
+  local surface_index = player.surface and player.surface.valid and player.surface.index or 1
+  refresh_surface_chart_tags(tonumber(surface_index) or 1)
   
   -- OWNERSHIP TRACKING: Store the creator's name in the Tag storage
   -- This is necessary because event.old_player_index is not reliable when admins move tags
   if chart_tag and chart_tag.valid then
-    local gps = GPSUtils.gps_from_map_position(chart_tag.position, tonumber(player.surface.index) or 1)
+    local gps = GPSUtils.gps_from_map_position(chart_tag.position, tonumber(surface_index) or 1)
     if gps then
       local tag = Cache.get_tag_by_gps(player, gps)
       if tag and type(tag) == "table" then

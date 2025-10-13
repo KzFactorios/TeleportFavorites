@@ -93,6 +93,47 @@ local function tf_debug_debug_handler(deps, command)
   PlayerHelpers.safe_player_print(player, "Debug mode enabled (debug level: " .. DebugConfig.get_level_name() .. ")")
 end
 
+-- Handler for /tf_log_level command - changes log level during gameplay
+local function tf_log_level_handler(deps, command)
+  local Logger = deps.Logger
+  local DebugConfig = deps.DebugConfig
+  local PlayerHelpers = deps.PlayerHelpers
+  local player = game.players[command.player_index]
+  if not player then return end
+  
+  local level = command.parameter
+  if not level or level == "" then
+    -- Show current log level and available options
+    PlayerHelpers.safe_player_print(player, "Usage: /tf_log_level <level>")
+    PlayerHelpers.safe_player_print(player, "Available levels: production, warn, error, debug")
+    PlayerHelpers.safe_player_print(player, "Current log level: " .. Logger._log_level)
+    return
+  end
+  
+  -- Validate and set log level
+  if level == "production" or level == "warn" or level == "error" or level == "debug" then
+    -- Update ErrorHandler log level
+    Logger.set_log_level(level)
+    
+    -- Sync DebugConfig numeric level
+    local numeric_level_map = {
+      production = DebugConfig.LEVELS.WARN,
+      warn = DebugConfig.LEVELS.WARN,
+      error = DebugConfig.LEVELS.ERROR,
+      debug = DebugConfig.LEVELS.DEBUG
+    }
+    if numeric_level_map[level] then
+      DebugConfig.set_level(numeric_level_map[level])
+    end
+    
+    PlayerHelpers.safe_player_print(player, "Log level changed to: " .. level)
+    Logger.debug_log("Log level changed by player " .. player.name, { level = level })
+  else
+    PlayerHelpers.safe_player_print(player, "Invalid log level: " .. level)
+    PlayerHelpers.safe_player_print(player, "Available levels: production, warn, error, debug")
+  end
+end
+
 local function tf_test_controller_handler(deps, command)
   local PlayerHelpers = deps.PlayerHelpers
   local FaveBar = deps.FaveBar
@@ -308,6 +349,7 @@ DebugCommands.tf_debug_level_handler = function(cmd) return tf_debug_level_handl
 DebugCommands.tf_debug_info_handler = function(cmd) return tf_debug_info_handler(DebugCommands._deps, cmd) end
 DebugCommands.tf_debug_production_handler = function(cmd) return tf_debug_production_handler(DebugCommands._deps, cmd) end
 DebugCommands.tf_debug_debug_handler = function(cmd) return tf_debug_debug_handler(DebugCommands._deps, cmd) end
+DebugCommands.tf_log_level_handler = function(cmd) return tf_log_level_handler(DebugCommands._deps, cmd) end
 DebugCommands.tf_test_controller_handler = function(cmd) return tf_test_controller_handler(DebugCommands._deps, cmd) end
 DebugCommands.tf_force_build_bar_handler = function(cmd) return tf_force_build_bar_handler(DebugCommands._deps, cmd) end
 DebugCommands.tf_test_settings_handler = function(cmd) return tf_test_settings_handler(DebugCommands._deps, cmd) end
@@ -320,6 +362,7 @@ function DebugCommands.register_commands()
   { "tf_debug_info",        "Show current debug configuration",          "tf_debug_info_handler" },
   { "tf_debug_production",  "Enable production mode (minimal logging)",  "tf_debug_production_handler" },
   { "tf_debug_debug",       "Enable debug mode (verbose logging)",       "tf_debug_debug_handler" },
+    { "tf_log_level",         "Change log level (production/warn/error/debug)", "tf_log_level_handler" },
     { "tf_test_controller",   "Print controller test info",                "tf_test_controller_handler" },
     { "tf_force_build_bar",   "Force build favorites bar",                 "tf_force_build_bar_handler" },
     { "tf_test_settings",     "Test settings system functionality",        "tf_test_settings_handler" },

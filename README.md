@@ -101,6 +101,24 @@ Look at the top of your screen for the favorites bar—your gateway to teleporta
 - Please report any missing keys, or invalid translations in the mod portal discussions
 
 
+## 🐛 Debug Commands
+
+For troubleshooting or development, TeleportFavorites includes console commands to control logging:
+
+- **/tf_log_level [level]** - Change log level during gameplay (production/warn/error/debug)
+- **/tf_debug_production** - Quick switch to production mode (minimal logging)
+- **/tf_debug_debug** - Quick switch to debug mode (verbose logging)
+- **/tf_debug_info** - Show current debug configuration
+
+**Usage examples:**
+```
+/tf_log_level debug      -- Enable verbose debug logging
+/tf_log_level production -- Disable debug logs (default)
+/tf_log_level            -- Show current level and available options
+```
+
+These commands are particularly useful for reporting bugs or investigating issues without restarting your game.
+
 ## ❓ Frequently Asked Questions
 
 **"Help! I can't teleport to my favorite!"**
@@ -114,7 +132,7 @@ Look at the top of your screen for the favorites bar—your gateway to teleporta
 - Only the tag creator (or admin) can edit or move a tag
 
 **"How many favorites can I have?"**
-- You can choose 10, 20, or 30 slots per player in Mod Settings (Runtime-per-user) under “Max Slots.” Note: lowering this value deletes any favorites beyond the new maximum, even if those slots were locked.
+- You can choose 10, 20, or 30 slots per player in Mod Settings (Runtime-per-user) under "Max Slots." Note: lowering this value deletes any favorites beyond the new maximum, even if those slots were locked.
 
 ## 🐞 Found a Bug?
 
