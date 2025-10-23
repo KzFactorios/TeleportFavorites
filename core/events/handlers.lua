@@ -207,7 +207,12 @@ function handlers.on_open_tag_editor_custom_input(event)
 end
 
 function handlers.on_chart_tag_added(event)
-  -- Get the player object from the event.player_index
+  -- Get the player object from the event.player_index (can be nil if added by script)
+  if not event.player_index then
+    ErrorHandler.debug_log("Chart tag added without player_index (added by script or other mod)")
+    return
+  end
+  
   local player = game.players[event.player_index]
   if not player or not player.valid then return end
 
@@ -245,6 +250,13 @@ end
 
 function handlers.on_chart_tag_modified(event)
   if not event or not event.old_position then return end
+  
+  -- Check for valid player_index (can be nil if modified by script)
+  if not event.player_index then
+    ErrorHandler.debug_log("Chart tag modified without player_index (modified by script or other mod)")
+    return
+  end
+  
   local player = game.players[event.player_index]
   if not player or not player.valid then return end
   

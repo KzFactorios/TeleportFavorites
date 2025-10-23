@@ -1,14 +1,21 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.0.8
+Date: 2025-10-23
+  Bugfixes:
+    - Fixed crash when chart tags are added/modified by scripts or other mods (nil player_index) - added proper validation checks in on_chart_tag_added and on_chart_tag_modified handlers
+    - Fixed favorites bar not updating after deleting a tag from tag editor - on_tick handler was being overwritten, preventing deferred GUI notifications from being processed. Merged startup initialization into the deferred notification handler.
+---------------------------------------------------------------------------------------------------
 Version: 0.0.7
 Date: 2025-10-12
+  Features:
+    - Added /tf_log_level command to change log level during gameplay without restarting (accepts: production, warn, error, debug)
+    - Log level changes sync both ErrorHandler and DebugConfig systems for consistent logging behavior across all mod components
   Changes:
     - Removed conditional loading of gvv in control.lua. This should only be used for dev
     - Fixed desync issues in multiplayer and immediate GUI refresh for favorites bar
     - Added universal GUI conflict detection to prevent tag editor from opening when other mods' GUIs are active
     - Removed all chart_tag.last_user usage - Tag.owner_name is now the single source of truth for ownership tracking
   Bugfixes:
-    - Added /tf_log_level command to change log level during gameplay without restarting (accepts: production, warn, error, debug)
-    - Log level changes sync both ErrorHandler and DebugConfig systems for consistent logging behavior across all mod components
     - Fixed multiplayer issue where tag position updates were not immediately reflected in other players' favorites bars
     - Fixed issue where admin edits to another player's favorited tag were not updating that player's favorites bar - added ChartTagHelpers require and explicit update_tag_metadata() call
     - Fixed crash when admin moves another player's tag - missing LocaleUtils.format_tag_position_change_notification() function has been implemented, and locale string 'tag_position_changed' added for player notifications

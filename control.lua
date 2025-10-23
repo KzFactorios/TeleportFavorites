@@ -82,20 +82,9 @@ end)
 -- Register all mod events through centralized dispatcher
 event_registration_dispatcher.register_all_events(script)
 
-
--- Run-once startup handler for favorites bar initialization
-
-script.on_event(defines.events.on_tick, function(event)
-  if global and not global.did_run_fave_bar_startup then
-    global.did_run_fave_bar_startup = true
-    if gui_observer and gui_observer.GuiEventBus and gui_observer.GuiEventBus.register_player_observers then
-      for _, player in pairs(game.players) do
-        gui_observer.GuiEventBus.register_player_observers(player)
-      end
-    end
-  end
-  -- After first run, this handler does nothing
-end)
+-- NOTE: on_tick handler is registered inside event_registration_dispatcher.register_core_events
+-- It handles BOTH deferred GUI notifications AND run-once startup initialization
+-- DO NOT register another on_tick handler here as it would overwrite the deferred notification processing!
 
 
 

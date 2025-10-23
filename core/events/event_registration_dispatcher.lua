@@ -278,7 +278,19 @@ function EventRegistrationDispatcher.register_core_events(script)
   
   -- MULTIPLAYER FIX: Process deferred GUI notifications every tick
   -- This ensures GUI updates happen separately from game logic events, preventing desyncs
+  -- ALSO handles run-once startup initialization for favorites bar
   script.on_event(defines.events.on_tick, function(event)
+    -- Run-once startup handler for favorites bar initialization
+    if global and not global.did_run_fave_bar_startup then
+      global.did_run_fave_bar_startup = true
+      if GuiObserver and GuiObserver.GuiEventBus and GuiObserver.GuiEventBus.register_player_observers then
+        for _, player in pairs(game.players) do
+          GuiObserver.GuiEventBus.register_player_observers(player)
+        end
+      end
+    end
+    
+    -- Process deferred GUI notifications every tick
     GuiObserver.GuiEventBus.process_deferred_notifications()
   end)
   
