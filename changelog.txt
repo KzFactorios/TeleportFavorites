@@ -4,6 +4,7 @@ Date: 2025-10-23
   Bugfixes:
     - Fixed crash when chart tags are added/modified by scripts or other mods (nil player_index) - added proper validation checks in on_chart_tag_added and on_chart_tag_modified handlers
     - Fixed favorites bar not updating after deleting a tag from tag editor - on_tick handler was being overwritten, preventing deferred GUI notifications from being processed. Merged startup initialization into the deferred notification handler.
+    - Fixed tag editor opening when right-clicking on Factorio built-in GUIs (blueprint library, logistic GUI, etc.) - added opened_gui_type check to detect all Factorio native GUI types and prevent tag editor from opening over them
 ---------------------------------------------------------------------------------------------------
 Version: 0.0.7
 Date: 2025-10-12

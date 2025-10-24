@@ -44,6 +44,31 @@ function TagEditorEventHelpers.validate_tag_editor_opening(player)
     end
     return false, "Another GUI is open: " .. opened_type
   end
+  
+  -- Additional check: Factorio's opened_gui_type for built-in GUIs
+  -- This catches blueprint library, logistic GUI, etc. that might not set player.opened
+  if player.opened_gui_type and player.opened_gui_type ~= defines.gui_type.none then
+    local gui_type_name = "unknown"
+    -- Map common GUI types to readable names (only using universally available types)
+    local gui_type_names = {
+      [defines.gui_type.entity] = "entity",
+      [defines.gui_type.blueprint_library] = "blueprint_library",
+      [defines.gui_type.bonus] = "bonus",
+      [defines.gui_type.trains] = "trains",
+      [defines.gui_type.achievement] = "achievement",
+      [defines.gui_type.item] = "item",
+      [defines.gui_type.logistic] = "logistic",
+      [defines.gui_type.other_player] = "other_player",
+      [defines.gui_type.permissions] = "permissions",
+      [defines.gui_type.custom] = "custom",
+      [defines.gui_type.server_management] = "server_management",
+      [defines.gui_type.player_management] = "player_management",
+      [defines.gui_type.tile] = "tile",
+      [defines.gui_type.controller] = "controller",
+    }
+    gui_type_name = gui_type_names[player.opened_gui_type] or tostring(player.opened_gui_type)
+    return false, "Factorio GUI open: " .. gui_type_name
+  end
 
   -- Prevent tag editor from opening if any modal dialog is active (our mod's modals)
   if Cache.is_modal_dialog_active and Cache.is_modal_dialog_active(player) then
