@@ -29,6 +29,12 @@
 --   }
 -- }
 
+-- Runtime cache for rehydrated favorites (Performance optimization)
+-- Caches rehydrated favorites for 1 second (60 ticks at 60 UPS)
+-- Invalidated on tag changes to ensure freshness
+local rehydrated_favorites_cache = {}
+-- Structure: [player_index .. "_" .. surface_index] = { favorites = {...}, tick = number }
+
 local BasicHelpers = require("core.utils.basic_helpers")
 local Constants = require("constants")
 local FavoriteUtils = require("core.favorite.favorite_utils")
@@ -382,6 +388,80 @@ function Cache.get_player_favorites(player, surface_index)
   end
   local favorites = player_data.surfaces[idx].favorites or {}
   return favorites
+end
+
+--- Get rehydrated favorites with 1-second caching (Performance optimization)
+--- Caches rehydrated favorites to avoid expensive rehydration on every rebuild (10-30 lookups per rebuild)
+--- Cache TTL: 1 second (60 ticks at 60 UPS) - balances freshness vs performance
+--- Invalidated automatically by cache_invalidate_rehydrated_favorites on tag changes
+---@param player LuaPlayer
+---@param surface_index integer
+---@return table Rehydrated favorites array
+function Cache.get_rehydrated_favorites(player, surface_index)
+  local FavoriteRehydration = require("core.favorite.favorite_rehydration")
+  local FavoriteUtils = require("core.favorite.favorite_utils")
+  
+  if not player or not player.valid then
+    return {}
+  end
+  
+  local idx = surface_index or (player.surface and player.surface.index)
+  if not idx then
+    return {}
+  end
+  
+  local cache_key = player.index .. "_" .. idx
+  local cached = rehydrated_favorites_cache[cache_key]
+  local current_tick = game and game.tick or 0
+  
+  -- Return cached favorites if cache is valid (less than 1 second old)
+  if cached and (current_tick - cached.tick) < 60 then
+    return cached.favorites
+  end
+  
+  -- Cache miss or expired: rehydrate and cache
+  local pfaves = Cache.get_player_favorites(player, idx) or {}
+  local rehydrated = {}
+  
+  for i, fav in ipairs(pfaves) do
+    local success, result = pcall(FavoriteRehydration.rehydrate_favorite_at_runtime, player, fav)
+    if success and result then
+      rehydrated[i] = result
+    else
+      -- Rehydration failed, use blank favorite
+      rehydrated[i] = FavoriteUtils.get_blank_favorite()
+    end
+  end
+  
+  -- Store in cache with current tick
+  rehydrated_favorites_cache[cache_key] = {
+    favorites = rehydrated,
+    tick = current_tick
+  }
+  
+  return rehydrated
+end
+
+--- Invalidate rehydrated favorites cache (called on tag changes)
+--- Forces next get_rehydrated_favorites to rebuild cache
+---@param player LuaPlayer|nil If nil, invalidates all players
+---@param surface_index integer|nil If nil, invalidates all surfaces
+function Cache.invalidate_rehydrated_favorites(player, surface_index)
+  if player and surface_index then
+    -- Invalidate specific player-surface combination
+    local cache_key = player.index .. "_" .. surface_index
+    rehydrated_favorites_cache[cache_key] = nil
+  elseif player then
+    -- Invalidate all surfaces for specific player
+    for key in pairs(rehydrated_favorites_cache) do
+      if key:match("^" .. player.index .. "_") then
+        rehydrated_favorites_cache[key] = nil
+      end
+    end
+  else
+    -- Invalidate entire cache
+    rehydrated_favorites_cache = {}
+  end
 end
 
 --- Initialize and retrieve persistent surface data for a given surface index.

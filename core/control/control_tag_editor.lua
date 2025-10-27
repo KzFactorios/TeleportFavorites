@@ -359,6 +359,8 @@ local function handle_confirm_btn(player, element, tag_data)
       gps = refreshed_tag.gps,
       tag = refreshed_tag
     })
+    -- Invalidate rehydrated favorites cache for this player-surface
+    Cache.invalidate_rehydrated_favorites(player, player.surface.index)
   else
     local player_favorites = PlayerFavorites.new(player)
     player_favorites:remove_favorite(refreshed_tag.gps)
@@ -373,6 +375,8 @@ local function handle_confirm_btn(player, element, tag_data)
       gps = refreshed_tag.gps,
       tag = refreshed_tag
     })
+    -- Invalidate rehydrated favorites cache for this player-surface
+    Cache.invalidate_rehydrated_favorites(player, player.surface.index)
   end
 
   -- After updating faved_by_players, re-sanitize and persist the tag
@@ -409,10 +413,8 @@ local function handle_confirm_btn(player, element, tag_data)
     gps = tag.gps
   })
   
-  -- IMMEDIATE GUI REFRESH: Update favorites bar for acting player immediately
-  -- This provides instant visual feedback while deferred notifications handle other players
-  -- GUI updates are client-specific and safe to call directly for the acting player
-  fave_bar.build(player)
+  -- GUI refresh handled by deferred notification on next tick (multiplayer-safe)
+  -- Build throttle prevents double-builds, 1-tick delay (16.67ms at 60 UPS) is imperceptible
   
   close_tag_editor(player)
 end
@@ -508,6 +510,10 @@ local function handle_delete_confirm(player)
     gps = tag_gps,
     tag = tag
   })
+
+  -- Invalidate rehydrated favorites cache for all players on this surface
+  -- Tag deletion may affect multiple players' favorites
+  Cache.invalidate_rehydrated_favorites(nil, player.surface.index)
 
   -- Close both dialogs
   GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)

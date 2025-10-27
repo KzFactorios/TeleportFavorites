@@ -282,23 +282,12 @@ end
 function fave_bar.build_favorite_buttons_row(parent, player, pfaves)
   local max_slots = Cache.Settings.get_player_max_favorite_slots(player) or 10
 
-  -- Always fetch the latest favorites from storage for this surface
+  -- Use cached rehydrated favorites for performance (avoids 10-30 rehydrations per rebuild)
   local surface_index = player.surface.index
-  local pfaves_surface = Cache.get_player_favorites(player, surface_index) or {}
+  local rehydrated_pfaves = Cache.get_rehydrated_favorites(player, surface_index)
 
   local function get_slot_btn_props(i, fav)
-    -- Safely rehydrate favorite, catch any errors and return blank favorite
-    local rehydrated_fav = nil
-    local rehydrate_success = pcall(function()
-      rehydrated_fav = FavoriteRehydration.rehydrate_favorite_at_runtime(player, fav)
-    end)
-
-    if not rehydrate_success or not rehydrated_fav then
-      -- Rehydration failed, treat as blank favorite
-      rehydrated_fav = FavoriteUtils.get_blank_favorite()
-    end
-
-    fav = rehydrated_fav
+    -- Favorite already rehydrated from cache, no need for expensive rehydration here
 
     if fav and not FavoriteUtils.is_blank_favorite(fav) then
       -- Icon comes from chart_tag.icon only (tags do not have icon property)
@@ -406,7 +395,7 @@ function fave_bar.update_slot_row(player, parent_flow)
   local surface_index = player.surface.index
   local pfaves = Cache.get_player_favorites(player, surface_index)
 
-  -- Rebuild only the slot buttons
+  -- Rebuild only the slot buttons (using cached rehydrated favorites internally)
   fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves)
 
   return slots_frame

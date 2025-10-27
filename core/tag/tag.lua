@@ -107,6 +107,10 @@ function Tag.update_gps_and_surface_mapping(old_gps, new_gps, chart_tag, player,
     else
       Cache.Lookups.invalidate_surface_chart_tags(uint_surface_index)
     end
+    
+    -- Invalidate rehydrated favorites cache for all players on this surface
+    -- Tag GPS change affects all favorites pointing to this tag
+    Cache.invalidate_rehydrated_favorites(nil, uint_surface_index)
   end
 end
 

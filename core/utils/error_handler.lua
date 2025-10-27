@@ -20,6 +20,10 @@ function ErrorHandler.is_debug()
   return ErrorHandler._log_level == "debug"
 end
 
+function ErrorHandler.should_log_debug()
+  return ErrorHandler._log_level == "debug"
+end
+
 function ErrorHandler.set_log_level(level)
   if level and (level == "debug" or level == "production" or level == "warn" or level == "error") then
     ErrorHandler._log_level = level

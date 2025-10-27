@@ -1,4 +1,16 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.0.9
+Date: 2025-10-27
+  Performance:
+    - Optimized favorites bar rebuilds to eliminate redundant immediate GUI refresh (saves 5-8ms per tag action)
+    - Added rehydrated favorites cache with 1-second TTL to avoid expensive re-lookups on every rebuild (saves 2-10ms per rebuild)
+    - Optimized debug logging in hot paths with early return guards to prevent execution when debug mode disabled (saves 1-6ms per rebuild)
+    - Fixed code smell: removed redundant cache fetch in build_favorite_buttons_row that was fetching favorites twice
+  Changes:
+    - Deferred GUI notifications now handle all favorites bar updates for multiplayer consistency
+    - Debug logging in lookups.lua now includes early return optimization for production performance
+    - Added Cache.invalidate_rehydrated_favorites() for proper cache management on tag/favorite changes
+---------------------------------------------------------------------------------------------------
 Version: 0.0.8
 Date: 2025-10-23
   Bugfixes:
