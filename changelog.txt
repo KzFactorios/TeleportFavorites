@@ -10,6 +10,15 @@ Date: 2025-10-27
     - Deferred GUI notifications now handle all favorites bar updates for multiplayer consistency
     - Debug logging in lookups.lua now includes early return optimization for production performance
     - Added Cache.invalidate_rehydrated_favorites() for proper cache management on tag/favorite changes
+    - Added defensive validation and debug logging in build_favorite_buttons_row to diagnose rendering issues
+    - Improved default slot visibility handling to ensure new players see slots by default
+  Bugfixes:
+    - Fixed favorites bar slots not rendering after performance optimization - corrected variable name reference in slot iteration loop
+    - Fixed cache condition type safety checks in get_rehydrated_favorites to properly handle game.tick comparisons
+    - Fixed debug commands not being registered - added DebugCommands.register_commands() call to event registration dispatcher
+    - Fixed missing TRACE level constant in DebugConfig.LEVELS causing comparison error on debug level changes
+    - Fixed DebugConfig module trying to require ErrorHandler inside function instead of at module load time (control.lua parsing restriction)
+    - Fixed Cache module circular dependency by inlining rehydration logic directly into get_rehydrated_favorites (eliminates FavoriteRehydration dependency and "Require can't be used outside of control.lua parsing" error)
 ---------------------------------------------------------------------------------------------------
 Version: 0.0.8
 Date: 2025-10-23

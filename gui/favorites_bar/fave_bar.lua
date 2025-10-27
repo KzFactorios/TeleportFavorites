@@ -251,7 +251,11 @@ function fave_bar.build(player, force_show)
       if slots_frame and slots_frame.valid then
         local player_data = Cache.get_player_data(player)
         local slots_visible = player_data.fave_bar_slots_visible
-        if slots_visible == nil then slots_visible = true end -- Default for new players
+        -- Default to true for new players or when preference not set
+        if slots_visible == nil then 
+          slots_visible = true
+          player_data.fave_bar_slots_visible = true -- Save the default
+        end
         slots_frame.visible = slots_visible
       end
 
@@ -280,11 +284,27 @@ end
 
 -- Build a row of favorite slot buttons for the favorites bar
 function fave_bar.build_favorite_buttons_row(parent, player, pfaves)
+  if not parent or not parent.valid then
+    ErrorHandler.warn_log("[FAVE_BAR] build_favorite_buttons_row called with invalid parent", {
+      parent_exists = parent ~= nil,
+      player = player and player.name
+    })
+    return parent
+  end
+  
   local max_slots = Cache.Settings.get_player_max_favorite_slots(player) or 10
 
   -- Use cached rehydrated favorites for performance (avoids 10-30 rehydrations per rebuild)
   local surface_index = player.surface.index
   local rehydrated_pfaves = Cache.get_rehydrated_favorites(player, surface_index)
+  
+  ErrorHandler.debug_log("[FAVE_BAR] Building favorite buttons row", {
+    player = player.name,
+    max_slots = max_slots,
+    rehydrated_count = #rehydrated_pfaves,
+    parent_name = parent.name,
+    parent_type = parent.type
+  })
 
   local function get_slot_btn_props(i, fav)
     -- Favorite already rehydrated from cache, no need for expensive rehydration here
@@ -348,7 +368,7 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves)
   end
 
   for i = 1, max_slots do
-    local fav = pfaves_surface[i]
+    local fav = rehydrated_pfaves[i]
     local btn_icon, tooltip, style, locked = get_slot_btn_props(i, fav)
     local btn = GuiHelpers.create_slot_button(parent, "fave_bar_slot_" .. i, tostring(btn_icon), tooltip,
       { style = style })
@@ -369,6 +389,13 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves)
       ErrorHandler.warn_log("[FAVE_BAR] Failed to create slot button", { slot = i, icon = btn_icon })
     end
   end
+  
+  ErrorHandler.debug_log("[FAVE_BAR] Finished building favorite buttons", {
+    player = player.name,
+    slots_created = max_slots,
+    parent_children_count = #parent.children
+  })
+  
   return parent
 end
 

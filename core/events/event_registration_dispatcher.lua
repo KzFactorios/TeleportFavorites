@@ -22,6 +22,7 @@ local Enum = require("prototypes.enums.enum")
 local ChartTagOwnershipManager = require("core.control.chart_tag_ownership_manager")
 
 local GuiObserver = require("core.events.gui_observer")
+local DebugCommands = require("core.commands.debug_commands")
 
 ---@class EventRegistrationDispatcher
 local EventRegistrationDispatcher = {}
@@ -479,6 +480,13 @@ function EventRegistrationDispatcher.register_all_events(script)
   results.custom_input = EventRegistrationDispatcher.register_custom_input_events(script)
   results.observer = EventRegistrationDispatcher.register_observer_events(script)
   results.modal_input_blocker = ModalInputBlocker.register_handlers(script)
+  
+  -- Register debug commands
+  local debug_cmd_success, debug_cmd_err = pcall(DebugCommands.register_commands)
+  results.debug_commands = debug_cmd_success
+  if not debug_cmd_success then
+    ErrorHandler.warn_log("Failed to register debug commands", { error = tostring(debug_cmd_err) })
+  end
 
   -- Check overall success
   for category, success in pairs(results) do

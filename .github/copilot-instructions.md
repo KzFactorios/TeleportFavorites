@@ -6,6 +6,95 @@
 - Always declare helper functions and handler tables at the top of the file, before any code that uses them.
 - This is different from JavaScript, where function declarations are hoisted.
 
+# 🚨 CRITICAL: FACTORIO REQUIRE STATEMENT RULES
+
+**Factorio's runtime STRICTLY PROHIBITS `require()` calls inside functions or after module load time.**
+
+When you see the error: `"Require can't be used outside of control.lua parsing"` - this means you placed a `require()` call inside a function, event handler, or anywhere other than the top-level module scope.
+
+## ✅ CORRECT Pattern (Module-Level Requires):
+```lua
+-- ✅ ALL requires at the very top, before any logic
+local Cache = require("core.cache.cache")
+local PlayerHelpers = require("core.utils.player_helpers")
+local ErrorHandler = require("core.utils.error_handler")
+
+---@class MyModule
+local MyModule = {}
+
+function MyModule.some_function()
+  -- Use already-loaded modules here
+  ErrorHandler.debug_log("Message")
+  local data = Cache.get_something()
+end
+
+return MyModule
+```
+
+## ❌ FORBIDDEN Pattern (Runtime Requires):
+```lua
+-- ❌ NEVER EVER DO THIS - Will cause "Require can't be used outside of control.lua parsing"
+function MyModule.some_function()
+  local ErrorHandler = require("core.utils.error_handler")  -- FORBIDDEN!
+  ErrorHandler.debug_log("Message")
+end
+
+function MyModule.log(level, message, data)
+  local ErrorHandler = require("core.utils.error_handler")  -- FORBIDDEN!
+end
+```
+
+## 🔄 Circular Dependency Exception (Lazy Loading):
+**ONLY use this pattern when you have a genuine circular dependency that cannot be refactored:**
+
+```lua
+-- Declare as nil at module level
+local CircularModule = nil
+
+local OtherModule = require("some.other.module")
+
+---@class MyModule
+local MyModule = {}
+
+function MyModule.function_that_needs_circular()
+  -- Lazy-load ONLY on first call to break circular dependency
+  if not CircularModule then
+    CircularModule = require("module.that.requires.me")
+  end
+  
+  CircularModule.do_something()
+end
+
+return MyModule
+```
+
+**When to use lazy loading:**
+- ✅ Genuine circular dependency (A requires B, B requires A)
+- ✅ Module is only used in runtime functions (never in module initialization)
+- ✅ You've verified refactoring into a third module is not viable
+
+**When NOT to use lazy loading:**
+- ❌ "Convenience" - just because a module is only used in one function
+- ❌ To avoid thinking about module organization
+- ❌ Any non-circular dependency scenario
+
+## 🔍 How to Detect Your Mistake:
+
+**If you see this error:**
+```
+__ModName__/path/to/file.lua:XX: Require can't be used outside of control.lua parsing.
+```
+
+**Check the line number - you will find:**
+1. A `require()` call inside a function body
+2. A `require()` call inside an if statement or loop
+3. A `require()` call anywhere other than the top-level of the file
+
+**Fix by:**
+1. Move the `require()` to the top of the file (line 1-10, before any logic)
+2. Order alphabetically with other requires
+3. If you get a circular dependency error, use the lazy loading pattern above
+
 # IMPORTANT: All code, API usage, and modding guidance in this project MUST target Factorio v2.0+ and above. Do not use deprecated or legacy patterns from earlier versions. Always verify compatibility and reference the v2.0+ documentation for all features, prototypes, and runtime logic.
 # TeleportFavorites Factorio Mod — AI Agent Instructions
 
@@ -39,19 +128,19 @@ tests/              # Custom test framework with smoke testing
 - All persistent data flows through `core/cache/cache.lua`
 - Surface-aware data management for multiplayer compatibility
 
-
-### 1. Require Statement Policy
-```lua
--- ✅ ALWAYS at file top
 ## 🛡️ CODING STANDARDS & BEST PRACTICES (STRICT)
 
 ### EmmyLua Annotation Requirements
 - All classes, fields, and methods must be annotated for strictness and IDE support. Use `---@class`, `---@field`, `---@param`, and `---@return` for documentation and static analysis. See `core/types/factorio.emmy.lua` for Factorio runtime types and type aliases.
 
 ### Helper/Module Structure & Circular Dependency Policy
-- All require statements must be at the very top of each file, ordered alphabetically, before any logic or function definitions. Never place require statements inside functions, event handlers, or at the end of files.
-- If a circular dependency is detected, refactor shared logic into minimal, dependency-free helper modules (see `core/utils/basic_helpers.lua`). Never use require-at-end or require-in-function patterns.
+- **CRITICAL**: All require statements must be at the very top of each file (lines 1-10), ordered alphabetically, before any logic or function definitions.
+- **FACTORIO RESTRICTION**: `require()` can ONLY be used at module load time (top-level scope). NEVER place require statements inside functions, event handlers, conditionals, loops, or at the end of files. This will cause "Require can't be used outside of control.lua parsing" error.
+- **Circular Dependencies**: If you encounter a circular dependency (Module A requires Module B, which requires Module A), you have TWO options:
+  1. **PREFERRED**: Refactor shared logic into a third, dependency-free helper module (see `core/utils/basic_helpers.lua`)
+  2. **ONLY IF REFACTORING IS NOT VIABLE**: Use lazy-loading pattern (declare as `nil` at module level, load on first function call - see examples in copilot-instructions.md)
 - Helper modules must not depend on higher-level modules. If a helper is needed in multiple places, move it to a lower-level, dependency-free module.
+- **Before moving ANY require() call**: Ask yourself: "Is this being called at module load time (top-level) or at runtime (inside a function)?" If runtime, you will break Factorio's require restrictions.
 
 ### GUI Element Naming Convention
 - All interactive and structural GUI element names (buttons, labels, textfields, frames, flows, etc.) must be prefixed with their GUI/module context, using the format `{gui_context}_{purpose}_{type}`. Example: `tag_editor_move_button`, `fave_bar_slot_button_1`.

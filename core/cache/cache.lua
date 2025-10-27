@@ -389,7 +389,9 @@ function Cache.get_player_favorites(player, surface_index)
   local favorites = player_data.surfaces[idx].favorites or {}
   return favorites
 end
-
+--- Get rehydrated favorites with 1-second caching (Performance optimization)
+--- Caches rehydrated favorites to avoid expensive rehydration on every rebuild (10-30 lookups per rebuild)
+--- Cache TTL: 1 second (60 ticks at 60 UPS) - balances freshness vs performance
 --- Get rehydrated favorites with 1-second caching (Performance optimization)
 --- Caches rehydrated favorites to avoid expensive rehydration on every rebuild (10-30 lookups per rebuild)
 --- Cache TTL: 1 second (60 ticks at 60 UPS) - balances freshness vs performance
@@ -398,9 +400,6 @@ end
 ---@param surface_index integer
 ---@return table Rehydrated favorites array
 function Cache.get_rehydrated_favorites(player, surface_index)
-  local FavoriteRehydration = require("core.favorite.favorite_rehydration")
-  local FavoriteUtils = require("core.favorite.favorite_utils")
-  
   if not player or not player.valid then
     return {}
   end
@@ -412,28 +411,59 @@ function Cache.get_rehydrated_favorites(player, surface_index)
   
   local cache_key = player.index .. "_" .. idx
   local cached = rehydrated_favorites_cache[cache_key]
-  local current_tick = game and game.tick or 0
   
   -- Return cached favorites if cache is valid (less than 1 second old)
-  if cached and (current_tick - cached.tick) < 60 then
-    return cached.favorites
+  -- Use game.tick for cache expiry check (synchronized across multiplayer)
+  if cached and cached.favorites then
+    local current_tick = game and game.tick
+    local cached_tick = cached.tick
+    -- Cache TTL: 60 ticks (1 second at 60 UPS)
+    if current_tick and cached_tick and type(current_tick) == "number" and type(cached_tick) == "number" then
+      if (current_tick - cached_tick) < 60 then
+        return cached.favorites
+      end
+    end
   end
   
-  -- Cache miss or expired: rehydrate and cache
+  -- Cache miss or expired: rehydrate favorites inline (avoids circular dependency)
   local pfaves = Cache.get_player_favorites(player, idx) or {}
   local rehydrated = {}
   
   for i, fav in ipairs(pfaves) do
-    local success, result = pcall(FavoriteRehydration.rehydrate_favorite_at_runtime, player, fav)
-    if success and result then
-      rehydrated[i] = result
-    else
-      -- Rehydration failed, use blank favorite
-      rehydrated[i] = FavoriteUtils.get_blank_favorite()
+    -- Inline rehydration logic (from FavoriteRehydration.rehydrate_favorite_at_runtime)
+    local rehydrated_fav = FavoriteUtils.get_blank_favorite()
+    
+    if fav and type(fav) == "table" and fav.gps and fav.gps ~= "" and not FavoriteUtils.is_blank_favorite(fav) then
+      -- Safely get tag
+      local tag = nil
+      local tag_success, tag_error = pcall(function()
+        tag = Cache.get_tag_by_gps(player, fav.gps)
+      end)
+      
+      if tag_success and tag then
+        local locked = fav.locked or false
+        rehydrated_fav = FavoriteUtils.new(fav.gps, locked, tag)
+        
+        -- If we have a tag but no chart_tag, try to get one safely
+        if tag and not tag.chart_tag then
+          local chart_tag_success, chart_tag_error = pcall(function()
+            local chart_tag = Cache.Lookups.get_chart_tag_by_gps(fav.gps)
+            if chart_tag then
+              local valid_check_success, is_valid = pcall(function() return chart_tag.valid end)
+              if valid_check_success and is_valid then
+                tag.chart_tag = chart_tag
+              end
+            end
+          end)
+        end
+      end
     end
+    
+    rehydrated[i] = rehydrated_fav
   end
   
   -- Store in cache with current tick
+  local current_tick = game and game.tick or 0
   rehydrated_favorites_cache[cache_key] = {
     favorites = rehydrated,
     tick = current_tick

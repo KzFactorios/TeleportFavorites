@@ -5,6 +5,9 @@
 -- Centralized debug level management for logging verbosity and debug features.
 -- Detects environment, allows runtime adjustment, integrates with ErrorHandler.
 
+-- Import ErrorHandler at module load time (not inside functions)
+local ErrorHandler = require("core.utils.error_handler")
+
 ---@class DebugConfig
 local DebugConfig = {}
 
@@ -13,7 +16,8 @@ DebugConfig.LEVELS = {
   ERROR = 1,
   WARN = 2,
   INFO = 3,
-  DEBUG = 4
+  DEBUG = 4,
+  TRACE = 5
 }
 
 -- Default debug level based on environment detection
@@ -68,9 +72,7 @@ function DebugConfig.log(level, message, data)
     return
   end
   
-  -- Use existing ErrorHandler infrastructure for actual logging
-  local ErrorHandler = require("core.utils.error_handler")
-  
+  -- ErrorHandler already imported at module level
   local level_names = {
     [DebugConfig.LEVELS.ERROR] = "ERROR",
     [DebugConfig.LEVELS.WARN] = "WARN", 
