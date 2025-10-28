@@ -35,6 +35,15 @@ local fave_bar = {}
 
 local last_build_tick = {}
 
+-- DEBUG: Log module load time
+if ErrorHandler and ErrorHandler.debug_log then
+  ErrorHandler.debug_log("[FAVE_BAR] Module loaded", {
+    tick = game and game.tick or 0,
+    game_exists = game ~= nil,
+    debug_enabled = ErrorHandler.is_debug()
+  })
+end
+
 --- Function to get the favorites bar frame for a player
 ---@param player LuaPlayer Player to get favorites bar frame for
 ---@return LuaGuiElement? fave_bar_frame The favorites bar frame or nil if not found
@@ -135,7 +144,10 @@ local function get_fave_bar_gui_refs(player)
 end
 
 function fave_bar.build(player, force_show)
-  if not ValidationUtils.validate_player(player) then return end
+  
+  if not ValidationUtils.validate_player(player) then 
+    return 
+  end
 
   -- Hide favorites bar when editing or viewing space platforms (including remote view)
   -- Allow force_show to override all checks for initialization
@@ -196,14 +208,43 @@ function fave_bar.build(player, force_show)
     -- Use shared vertical flow
     local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
 
-    GuiValidation.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
+    -- PERFORMANCE: Only destroy and recreate if GUI structure needs to change
+    -- Check if existing frame is valid AND has child elements
+    local existing_frame = main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
+    local has_valid_structure = false
+    if existing_frame and existing_frame.valid then
+      -- Check if the frame has the expected child structure
+      local bar_flow = GuiValidation.find_child_by_name(existing_frame, Enum.GuiEnum.FAVE_BAR_ELEMENT.BAR_FLOW)
+      has_valid_structure = bar_flow and bar_flow.valid and #bar_flow.children > 0
+    end
+    local needs_rebuild = not has_valid_structure
+    -- Only destroy if we actually need to rebuild
+    if needs_rebuild then
+      GuiValidation.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
+    end
 
-    -- add the fave bar frame
-    -- Outer frame for the bar (matches quickbar background)
-    local fave_bar_frame = GuiBase.create_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR, "horizontal",
-      "tf_fave_bar_frame")
-    local _bar_flow, slots_frame, _toggle_button, _toggle_container, _history_toggle_button = fave_bar
-        .build_quickbar_style(player, fave_bar_frame)
+    -- Create frame only if needed, otherwise reuse existing
+    local fave_bar_frame
+    if needs_rebuild then
+      -- Outer frame for the bar (matches quickbar background)
+      fave_bar_frame = GuiBase.create_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR, "horizontal",
+        "tf_fave_bar_frame")
+    else
+      fave_bar_frame = existing_frame
+    end
+    -- Build or retrieve GUI structure
+    local _bar_flow, slots_frame, _toggle_button, _toggle_container, _history_toggle_button
+    if needs_rebuild then
+      _bar_flow, slots_frame, _toggle_button, _toggle_container, _history_toggle_button = fave_bar
+          .build_quickbar_style(player, fave_bar_frame)
+    else
+      -- Retrieve existing GUI elements instead of rebuilding
+      _bar_flow = GuiValidation.find_child_by_name(fave_bar_frame, Enum.GuiEnum.FAVE_BAR_ELEMENT.BAR_FLOW)
+      slots_frame = _bar_flow and GuiValidation.find_child_by_name(_bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW)
+      _toggle_container = _bar_flow and GuiValidation.find_child_by_name(_bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER)
+      _toggle_button = _toggle_container and GuiValidation.find_child_by_name(_toggle_container, Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_BUTTON)
+      _history_toggle_button = _toggle_container and GuiValidation.find_child_by_name(_toggle_container, Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_TOGGLE_BUTTON)
+    end
 
     -- Handle visibility based on settings
     local favorites_enabled = player_settings.favorites_on
@@ -282,8 +323,10 @@ function fave_bar.build(player, force_show)
   return result
 end
 
--- Build a row of favorite slot buttons for the favorites bar
-function fave_bar.build_favorite_buttons_row(parent, player, pfaves)
+
+
+
+local function build_favorite_buttons_row(parent, player, pfaves)
   if not parent or not parent.valid then
     ErrorHandler.warn_log("[FAVE_BAR] build_favorite_buttons_row called with invalid parent", {
       parent_exists = parent ~= nil,
@@ -291,77 +334,40 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves)
     })
     return parent
   end
-  
+
   local max_slots = Cache.Settings.get_player_max_favorite_slots(player) or 10
 
-  -- Use cached rehydrated favorites for performance (avoids 10-30 rehydrations per rebuild)
-  local surface_index = player.surface.index
-  local rehydrated_pfaves = Cache.get_rehydrated_favorites(player, surface_index)
-  
-  ErrorHandler.debug_log("[FAVE_BAR] Building favorite buttons row", {
-    player = player.name,
-    max_slots = max_slots,
-    rehydrated_count = #rehydrated_pfaves,
-    parent_name = parent.name,
-    parent_type = parent.type
-  })
+  -- Use actual pfaves from cache
+  local rehydrated_pfaves = pfaves or {}
 
   local function get_slot_btn_props(i, fav)
-    -- Favorite already rehydrated from cache, no need for expensive rehydration here
-
     if fav and not FavoriteUtils.is_blank_favorite(fav) then
-      -- Icon comes from chart_tag.icon only (tags do not have icon property)
-      -- Safely check chart_tag validity before accessing its properties
       local icon = nil
       if fav.tag and fav.tag.chart_tag then
         local valid_check_success, is_valid = pcall(function() return fav.tag.chart_tag.valid end)
         if valid_check_success and is_valid then
           icon = fav.tag.chart_tag.icon
         else
-          -- Chart tag is invalid, treat this favorite as blank
           return nil, { "tf-gui.favorite_slot_empty" }, "slot_button", false
         end
       end
-      -- Normalize icon type for virtual signals before any debug or sprite logic
       local norm_icon = icon
       if type(icon) == "table" and icon.type == "virtual" then
         norm_icon = {}
         for k, v in pairs(icon) do norm_icon[k] = v end
         norm_icon.type = "virtual_signal"
       end
-      -- Patch: For sprite path, use 'virtual-signal' (hyphen) for Factorio GUI
       local sprite_icon = norm_icon
       if type(norm_icon) == "table" and norm_icon.type == "virtual_signal" then
         sprite_icon = {}
         for k, v in pairs(norm_icon) do sprite_icon[k] = v end
-        sprite_icon.type = "virtual-signal" -- hyphen for sprite path
+        sprite_icon.type = "virtual-signal"
       end
-
-      -- Debug logging to see what icon we're trying to process
-      ErrorHandler.debug_log("Favorites bar icon processing", {
-        slot = i,
-        fav_gps = fav.gps,
-        original_icon = icon,
-        normalized_icon = norm_icon,
-        sprite_icon = sprite_icon,
-        icon_type = norm_icon and norm_icon.type,
-        icon_name = norm_icon and norm_icon.name
-      })
-
       local btn_icon = GuiValidation.get_validated_sprite_path(sprite_icon,
         { fallback = Enum.SpriteEnum.PIN, log_context = { slot = i, fav_gps = fav.gps, fav_tag = fav.tag } })
-
-      -- Debug logging to see the result
-      ErrorHandler.debug_log("Favorites bar sprite path result", {
-        slot = i,
-        btn_icon = btn_icon,
-        used_fallback = btn_icon == Enum.SpriteEnum.PIN
-      })
-
       local style = fav.locked and "tf_slot_button_locked" or "tf_slot_button_smallfont"
       if btn_icon == "tf_tag_in_map_view_small" then style = "tf_slot_button_smallfont_map_pin" end
-      return btn_icon, GuiHelpers.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }, style,
-          fav.locked
+      return btn_icon, GuiHelpers.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }, style, fav.locked
     else
       return "", { "tf-gui.favorite_slot_empty" }, "tf_slot_button_smallfont", false
     end
@@ -370,12 +376,10 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves)
   for i = 1, max_slots do
     local fav = rehydrated_pfaves[i]
     local btn_icon, tooltip, style, locked = get_slot_btn_props(i, fav)
-    local btn = GuiHelpers.create_slot_button(parent, "fave_bar_slot_" .. i, tostring(btn_icon), tooltip,
-      { style = style })
+    local btn = GuiHelpers.create_slot_button(parent, "fave_bar_slot_" .. i, tostring(btn_icon), tooltip, { style = style })
     if btn and btn.valid then
       local label_style = locked and "tf_fave_bar_locked_slot_number" or "tf_fave_bar_slot_number"
-      -- slot #10 shuold show as 0
-      local slot_num = i -- no longer compensating for this (i == 10) and 0 or i
+      local slot_num = i
       GuiBase.create_label(btn, "tf_fave_bar_slot_number_" .. tostring(i), tostring(slot_num), label_style)
       if locked then
         btn.add {
@@ -389,15 +393,12 @@ function fave_bar.build_favorite_buttons_row(parent, player, pfaves)
       ErrorHandler.warn_log("[FAVE_BAR] Failed to create slot button", { slot = i, icon = btn_icon })
     end
   end
-  
-  ErrorHandler.debug_log("[FAVE_BAR] Finished building favorite buttons", {
-    player = player.name,
-    slots_created = max_slots,
-    parent_children_count = #parent.children
-  })
-  
+
   return parent
 end
+
+-- Export the function on the fave_bar table (in case it was not attached)
+fave_bar.build_favorite_buttons_row = build_favorite_buttons_row
 
 -- Update only the slots row without rebuilding the entire bar
 -- parent: the bar_flow container (parent of fave_bar_slots_flow)
@@ -529,6 +530,16 @@ function fave_bar.update_toggle_state(player, slots_visible)
   if slots_frame then
     slots_frame.visible = slots_visible
   end
+end
+
+
+
+
+-- DEBUG: Log all keys in fave_bar at module load time
+if ErrorHandler and ErrorHandler.debug_log then
+  local keys = {}
+  for k, v in pairs(fave_bar) do table.insert(keys, tostring(k)) end
+  ErrorHandler.debug_log("[FAVE_BAR] Exported keys at module load", { keys = table.concat(keys, ", ") })
 end
 
 return fave_bar

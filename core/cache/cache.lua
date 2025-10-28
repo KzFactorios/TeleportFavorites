@@ -125,8 +125,12 @@ end
 
 --- Initialize the persistent cache table if not already present.
 function Cache.init()
-  if ErrorHandler and ErrorHandler.debug_log then
-    ErrorHandler.debug_log("[CACHE] init called", {})
+  if log and type(log) == "function" then
+    log("[TeleFaves][DEBUG] Cache.init() called (forced log)")
+  end
+  local tick_start = game and game.tick or 0
+  if log and type(log) == "function" then
+    log("[CACHE] init called | tick=" .. tostring(tick_start))
   end
   if not storage then
     if ErrorHandler and ErrorHandler.error_log then
@@ -137,6 +141,7 @@ function Cache.init()
   storage.players = storage.players or {}
   storage.surfaces = storage.surfaces or {}
 
+  local t0 = game and game.tick or 0
   -- Version comparison for migration detection
   local current_mod_version = get_mod_version()
   local stored_version = storage.mod_version
@@ -147,7 +152,11 @@ function Cache.init()
   --   run_migrations(stored_version, current_mod_version)
   -- end
 
+  local t1 = game and game.tick or 0
   -- Legacy stack migration: convert raw GPS strings to HistoryItem objects
+  if log and type(log) == "function" then
+    log("[CACHE] legacy stack migration start | tick=" .. tostring(t1))
+  end
   for player_index, player_data in pairs(storage.players) do
     if player_data.surfaces then
       for surface_index, surface_data in pairs(player_data.surfaces) do
@@ -164,20 +173,41 @@ function Cache.init()
       end
     end
   end
+  local t2 = game and game.tick or 0
+  if log and type(log) == "function" then
+    log("[CACHE] legacy stack migration end | tick=" .. tostring(t2) .. " | duration=" .. tostring(t2 - t1))
+  end
 
   -- Update stored version only after migrations would complete
   storage.mod_version = current_mod_version
 
+  local t3 = game and game.tick or 0
+  if log and type(log) == "function" then
+    log("[CACHE] Lookups.init start | tick=" .. tostring(t3))
+  end
   Lookups.init()
   Cache.Lookups = Lookups
+  local t4 = game and game.tick or 0
+  if log and type(log) == "function" then
+    log("[CACHE] Lookups.init end | tick=" .. tostring(t4) .. " | duration=" .. tostring(t4 - t3))
+  end
 
   -- Initialize settings cache
+  local t5 = game and game.tick or 0
+  if log and type(log) == "function" then
+    log("[CACHE] SettingsCache init start | tick=" .. tostring(t5))
+  end
   Cache.Settings = SettingsCache
-
+  local t6 = game and game.tick or 0
+  if log and type(log) == "function" then
+    log("[CACHE] SettingsCache init end | tick=" .. tostring(t6) .. " | duration=" .. tostring(t6 - t5))
+    log("[CACHE] init complete | tick=" .. tostring(t6) .. " | total_duration=" .. tostring(t6 - tick_start))
+  end
   return storage
 end
 
 local function init_player_favorites(player)
+  local t0 = game and game.tick or 0
   if not player or not player.valid then return {} end
 
   local pfaves = storage.players[player.index].surfaces[player.surface.index].favorites or {}
@@ -192,6 +222,10 @@ local function init_player_favorites(player)
   end
 
   storage.players[player.index].surfaces[player.surface.index].favorites = pfaves or {}
+  local t1 = game and game.tick or 0
+  if ErrorHandler and ErrorHandler.debug_log then
+    ErrorHandler.debug_log("[CACHE] init_player_favorites", { tick = t1, duration = t1 - t0, player = player.name })
+  end
   return storage.players[player.index].surfaces[player.surface.index].favorites
 end
 
@@ -398,8 +432,9 @@ end
 --- Invalidated automatically by cache_invalidate_rehydrated_favorites on tag changes
 ---@param player LuaPlayer
 ---@param surface_index integer
+---@param max_rehydrate integer|nil Maximum number of favorites to rehydrate (for lazy loading)
 ---@return table Rehydrated favorites array
-function Cache.get_rehydrated_favorites(player, surface_index)
+function Cache.get_rehydrated_favorites(player, surface_index, max_rehydrate)
   if not player or not player.valid then
     return {}
   end
@@ -427,34 +462,55 @@ function Cache.get_rehydrated_favorites(player, surface_index)
   
   -- Cache miss or expired: rehydrate favorites inline (avoids circular dependency)
   local pfaves = Cache.get_player_favorites(player, idx) or {}
+  
+  -- STARTUP OPTIMIZATION: If no favorites exist, return empty array immediately
+  -- Avoids expensive rehydration logic on first startup when players have no tags yet
+  if #pfaves == 0 then
+    local empty_result = {}
+    rehydrated_favorites_cache[cache_key] = {
+      favorites = empty_result,
+      tick = game and game.tick or 0
+    }
+    return empty_result
+  end
+  
+  -- LAZY REHYDRATION: Only rehydrate up to max_rehydrate favorites
+  -- Remaining favorites are returned as blanks - defers expensive work
+  local rehydrate_count = max_rehydrate or #pfaves
+  if rehydrate_count > #pfaves then
+    rehydrate_count = #pfaves
+  end
+  
   local rehydrated = {}
   
   for i, fav in ipairs(pfaves) do
-    -- Inline rehydration logic (from FavoriteRehydration.rehydrate_favorite_at_runtime)
     local rehydrated_fav = FavoriteUtils.get_blank_favorite()
     
-    if fav and type(fav) == "table" and fav.gps and fav.gps ~= "" and not FavoriteUtils.is_blank_favorite(fav) then
-      -- Safely get tag
-      local tag = nil
-      local tag_success, tag_error = pcall(function()
-        tag = Cache.get_tag_by_gps(player, fav.gps)
-      end)
-      
-      if tag_success and tag then
-        local locked = fav.locked or false
-        rehydrated_fav = FavoriteUtils.new(fav.gps, locked, tag)
+    -- Only rehydrate up to the limit (for lazy loading optimization)
+    if i <= rehydrate_count then
+      if fav and type(fav) == "table" and fav.gps and fav.gps ~= "" and not FavoriteUtils.is_blank_favorite(fav) then
+        -- Safely get tag
+        local tag = nil
+        local tag_success, tag_error = pcall(function()
+          tag = Cache.get_tag_by_gps(player, fav.gps)
+        end)
         
-        -- If we have a tag but no chart_tag, try to get one safely
-        if tag and not tag.chart_tag then
-          local chart_tag_success, chart_tag_error = pcall(function()
-            local chart_tag = Cache.Lookups.get_chart_tag_by_gps(fav.gps)
-            if chart_tag then
-              local valid_check_success, is_valid = pcall(function() return chart_tag.valid end)
-              if valid_check_success and is_valid then
-                tag.chart_tag = chart_tag
+        if tag_success and tag then
+          local locked = fav.locked or false
+          rehydrated_fav = FavoriteUtils.new(fav.gps, locked, tag)
+          
+          -- If we have a tag but no chart_tag, try to get one safely
+          if tag and not tag.chart_tag then
+            local chart_tag_success, chart_tag_error = pcall(function()
+              local chart_tag = Cache.Lookups.get_chart_tag_by_gps(fav.gps)
+              if chart_tag then
+                local valid_check_success, is_valid = pcall(function() return chart_tag.valid end)
+                if valid_check_success and is_valid then
+                  tag.chart_tag = chart_tag
+                end
               end
-            end
-          end)
+            end)
+          end
         end
       end
     end
@@ -462,12 +518,15 @@ function Cache.get_rehydrated_favorites(player, surface_index)
     rehydrated[i] = rehydrated_fav
   end
   
-  -- Store in cache with current tick
-  local current_tick = game and game.tick or 0
-  rehydrated_favorites_cache[cache_key] = {
-    favorites = rehydrated,
-    tick = current_tick
-  }
+  -- Store in cache with current tick (but only if we did full rehydration)
+  -- Partial rehydration should not be cached to avoid serving stale data
+  if not max_rehydrate or max_rehydrate >= #pfaves then
+    local current_tick = game and game.tick or 0
+    rehydrated_favorites_cache[cache_key] = {
+      favorites = rehydrated,
+      tick = current_tick
+    }
+  end
   
   return rehydrated
 end
@@ -498,11 +557,16 @@ end
 ---@param surface_index integer
 ---@return table Surface data table (persistent)
 local function init_surface_data(surface_index)
+  local t0 = game and game.tick or 0
   Cache.init()
   storage.surfaces = storage.surfaces or {}
   storage.surfaces[surface_index] = storage.surfaces[surface_index] or {}
   local surface_data = storage.surfaces[surface_index]
   surface_data.tags = surface_data.tags or {}
+  local t1 = game and game.tick or 0
+  if ErrorHandler and ErrorHandler.debug_log then
+    ErrorHandler.debug_log("[CACHE] init_surface_data", { tick = t1, duration = t1 - t0, surface_index = surface_index })
+  end
   return surface_data
 end
 

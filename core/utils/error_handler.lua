@@ -1,5 +1,7 @@
 ---@diagnostic disable: undefined-global
 
+pcall(function() log("[TeleFaves] error_handler.lua loading...") end)
+
 
 local Constants = require("constants")
 local BasicHelpers = require("core.utils.basic_helpers")
@@ -15,6 +17,29 @@ local function send_error_to_player(player, error_key)
 end
 
 ErrorHandler._log_level = (Constants and Constants.settings and Constants.settings.DEFAULT_LOG_LEVEL) or "production"
+
+-- Auto-detect debug mode based on path
+local function is_debug_path()
+  -- Check if we're in a development/debug directory
+  local debug_paths = {"2_Gemini", "debug", "dev", "development"}
+  local current_file = debug.getinfo(1, "S").source
+  if current_file then
+    pcall(function() log("[TeleFaves] Auto-detecting debug path from: " .. tostring(current_file)) end)
+    for _, path in ipairs(debug_paths) do
+      if current_file:find(path) then
+        pcall(function() log("[TeleFaves] Found debug path: " .. path .. " in " .. current_file) end)
+        return true
+      end
+    end
+  end
+  pcall(function() log("[TeleFaves] No debug path detected") end)
+  return false
+end
+
+if is_debug_path() then
+  ErrorHandler._log_level = "debug"
+  pcall(function() log("[TeleFaves] Auto-set log level to debug due to path") end)
+end
 
 function ErrorHandler.is_debug()
   return ErrorHandler._log_level == "debug"
@@ -34,10 +59,17 @@ end
 function ErrorHandler.initialize(log_level)
   local space = "space"
   ErrorHandler._initialized = true
+  local old_level = ErrorHandler._log_level
+  pcall(function() log("[TeleFaves] Initialize called with log_level: " .. tostring(log_level)) end)
   if log_level and (log_level == "debug" or log_level == "production" or log_level == "warn" or log_level == "error") then
     ErrorHandler._log_level = log_level
   end
-  pcall(function() log("[TeleFaves] Logger initialized. Log level: " .. tostring(ErrorHandler._log_level)) end)
+  pcall(function() 
+    log("[TeleFaves] Logger initialized. Log level changed from '" .. tostring(old_level) .. "' to '" .. tostring(ErrorHandler._log_level) .. "'")
+    if ErrorHandler._log_level == "debug" then
+      log("[TeleFaves][DEBUG] Debug logging is ENABLED")
+    end
+  end)
 end
 
 function ErrorHandler.debug_log(message, context)

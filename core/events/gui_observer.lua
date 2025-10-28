@@ -1,5 +1,5 @@
 
----@diagnostic disable: undefined-global
+
 
 -- Dependencies must be required first, with strict order based on dependencies
 local ErrorHandler = require("core.utils.error_handler")
@@ -9,12 +9,9 @@ local GuiHelpers = require("core.utils.gui_helpers")
 local Enum = require("prototypes.enums.enum")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 
+
 -- Initialize error handler first
 ErrorHandler.initialize("debug") -- Set to debug mode for maximum visibility
-
-if log and type(log) == "function" then -- Check if Factorio's log function exists
-  log("[TeleportFavorites][DIAGNOSTIC] gui_observer.lua loaded (first line reached)")
-end
 
 ---@class GuiEventBus
 ---@field _observers table<string, table[]>
@@ -598,12 +595,9 @@ function GuiEventBus.register_player_observers(player)
     events = {"cache_updated", "favorite_added", "favorite_removed", "favorite_updated"}
   })
 
-  -- Ensure the favorites bar is visible on startup (only if not already present)
-  local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
-  local bar_frame = main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
-  if not (bar_frame and bar_frame.valid) then
-    fave_bar.build(player)
-  end
+  -- PERFORMANCE: Don't build GUI here - let on_player_created handle deferred build
+  -- This prevents double-building (immediate + deferred) which caused 25ms spikes
+  -- The favorites bar will be built via the deferred 3-tick handler in on_player_created
 
   -- Register NotificationObserver for invalid_chart_tag events
   local notification_observer = NotificationObserver:new(player)

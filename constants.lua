@@ -9,7 +9,7 @@ local Constants = {
   PREFIX = "tf_",
   settings = {
     -- Logging
-    DEFAULT_LOG_LEVEL = "production", -- One place to set runtime log level: "production" | "warn" | "error" | "debug"
+    DEFAULT_LOG_LEVEL = "debug", -- One place to set runtime log level: "production" | "warn" | "error" | "debug"
     -- Chart tag settings
     CHART_TAG_CLICK_RADIUS = 10,      -- Radius in tiles for detecting chart tag clicks on the map
     CHART_TAG_TEXT_MAX_LENGTH = 1024, -- Maximum length for chart tag text (1024 chars)

@@ -1,24 +1,18 @@
 ---@diagnostic disable: undefined-global, need-check-nil, assign-type-mismatch, param-type-mismatch, undefined-field
 
--- control.lua
--- TeleportFavorites Factorio Mod
--- Main event handler and public API entry point for the mod.
--- Centralizes event registration, GUI wiring, and lifecycle management for multiplayer-safe operation.
--- All persistent data access is via the Cache module for consistency and safety.
--- Integrates favorites bar, tag editor, teleport history, debug commands, and GUI observers.
--- All new/changed features are documented inline and in .project/ as appropriate.
-
--- Import controllers for various mod components
 
 local control_tag_editor = require("core.control.control_tag_editor")
 local control_fave_bar = require("core.control.control_fave_bar")
-
-
 local event_registration_dispatcher = require("core.events.event_registration_dispatcher")
 local Constants = require("constants")
 local ErrorHandler = require("core.utils.error_handler")
 local handlers = require("core.events.handlers")
 local TeleportHistory = require("core.teleport.teleport_history")
+
+-- TEST: Log entry to verify log() output in factorio-current.log
+if log and type(log) == "function" then
+  log("[TeleFaves][TEST] Test log entry from control.lua (should appear in factorio-current.log)")
+end
 
 -- Initialize logging immediately using single source of truth
 ErrorHandler.initialize(Constants.settings.DEFAULT_LOG_LEVEL)
@@ -79,10 +73,9 @@ end)
 --end)
 
 
--- Register all mod events through centralized dispatcher
+ErrorHandler.debug_log("[CONTROL] Registering all mod events through centralized dispatcher", {})
 event_registration_dispatcher.register_all_events(script)
 
--- NOTE: on_tick handler is registered inside event_registration_dispatcher.register_core_events
 -- It handles BOTH deferred GUI notifications AND run-once startup initialization
 -- DO NOT register another on_tick handler here as it would overwrite the deferred notification processing!
 

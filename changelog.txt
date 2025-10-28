@@ -2,23 +2,7 @@
 Version: 0.0.9
 Date: 2025-10-27
   Performance:
-    - Optimized favorites bar rebuilds to eliminate redundant immediate GUI refresh (saves 5-8ms per tag action)
-    - Added rehydrated favorites cache with 1-second TTL to avoid expensive re-lookups on every rebuild (saves 2-10ms per rebuild)
-    - Optimized debug logging in hot paths with early return guards to prevent execution when debug mode disabled (saves 1-6ms per rebuild)
-    - Fixed code smell: removed redundant cache fetch in build_favorite_buttons_row that was fetching favorites twice
-  Changes:
-    - Deferred GUI notifications now handle all favorites bar updates for multiplayer consistency
-    - Debug logging in lookups.lua now includes early return optimization for production performance
-    - Added Cache.invalidate_rehydrated_favorites() for proper cache management on tag/favorite changes
-    - Added defensive validation and debug logging in build_favorite_buttons_row to diagnose rendering issues
-    - Improved default slot visibility handling to ensure new players see slots by default
-  Bugfixes:
-    - Fixed favorites bar slots not rendering after performance optimization - corrected variable name reference in slot iteration loop
-    - Fixed cache condition type safety checks in get_rehydrated_favorites to properly handle game.tick comparisons
-    - Fixed debug commands not being registered - added DebugCommands.register_commands() call to event registration dispatcher
-    - Fixed missing TRACE level constant in DebugConfig.LEVELS causing comparison error on debug level changes
-    - Fixed DebugConfig module trying to require ErrorHandler inside function instead of at module load time (control.lua parsing restriction)
-    - Fixed Cache module circular dependency by inlining rehydration logic directly into get_rehydrated_favorites (eliminates FavoriteRehydration dependency and "Require can't be used outside of control.lua parsing" error)
+    - performance optimizations
 ---------------------------------------------------------------------------------------------------
 Version: 0.0.8
 Date: 2025-10-23

@@ -93,6 +93,9 @@ function handlers.on_player_changed_surface(event)
 end
 
 function handlers.on_init()
+  if log and type(log) == "function" then
+    log("[TeleFaves][DEBUG] handlers.on_init() called (forced log)")
+  end
   -- Initialize the GUI event bus first
   gui_observer.GuiEventBus.ensure_initialized()
   ErrorHandler.debug_log("GUI Event Bus initialized during startup")
@@ -100,16 +103,18 @@ function handlers.on_init()
   -- Initialize cache system
   Cache.init()
 
-  -- Set up each player
+  -- Set up each player - defer GUI build to reduce startup UPS spike
   for _, player in pairs(game.players) do
     if Cache.get_player_data(player) == nil then
       Cache.reset_transient_player_states(player)
     end
 
-    -- Initialize GUI elements
+    -- Register observers but defer GUI build until player joins
     register_gui_observers(player)
-    fave_bar.build(player, true) -- Force show during initialization
+    -- Note: fave_bar.build() will be called when player joins via on_player_joined_game
   end
+  
+  ErrorHandler.debug_log("[INIT] Startup initialization complete - GUI build deferred to player join")
 end
 
 function handlers.on_load()
@@ -120,28 +125,49 @@ end
 
 function handlers.on_player_created(event)
   with_valid_player(event.player_index, function(player)
-    -- Reset player state
-    Cache.reset_transient_player_states(player)
-    -- Set up GUI elements in order
-    register_gui_observers(player)
-    fave_bar.build(player, true)
+    -- PERFORMANCE: Defer ALL initialization by 60 ticks to eliminate startup UPS spike
+    -- This includes cache initialization, observer registration, and GUI build
+    local player_index = player.index
+    script.on_nth_tick(60, function(event)
+      local deferred_player = game.players[player_index]
+      if deferred_player and deferred_player.valid then
+        -- Reset player state
+        Cache.reset_transient_player_states(deferred_player)
+        -- Set up GUI observers
+        register_gui_observers(deferred_player)
+        -- Build GUI
+        fave_bar.build(deferred_player, true)
+      end
+      -- Unregister this one-time handler
+      script.on_nth_tick(60, nil)
+    end)
   end)
 end
 
 function handlers.on_player_joined_game(event)
   with_valid_player(event.player_index, function(player)
-    -- Reset transient states for rejoining player
-    ErrorHandler.debug_log("Resetting states for rejoining player", {
+    -- PERFORMANCE: Defer ALL initialization by 60 ticks to eliminate startup UPS spike
+    -- This includes cache reset, observer cleanup/registration, and GUI build
+    ErrorHandler.debug_log("Deferring initialization for rejoining player", {
       player = player.name,
       player_index = player.index
     })
-    Cache.reset_transient_player_states(player)
-
-    -- Clean up any existing observers first
-    gui_observer.GuiEventBus.cleanup_player_observers(player)
-    -- Register new observers and rebuild GUI
-    register_gui_observers(player)
-    fave_bar.build(player, true)
+    
+    local player_index = player.index
+    script.on_nth_tick(60, function(event)
+      local deferred_player = game.players[player_index]
+      if deferred_player and deferred_player.valid then
+        -- Reset transient states
+        Cache.reset_transient_player_states(deferred_player)
+        -- Clean up and re-register observers
+        gui_observer.GuiEventBus.cleanup_player_observers(deferred_player)
+        register_gui_observers(deferred_player)
+        -- Build GUI
+        fave_bar.build(deferred_player, true)
+      end
+      -- Unregister this one-time handler
+      script.on_nth_tick(60, nil)
+    end)
   end)
 end
 

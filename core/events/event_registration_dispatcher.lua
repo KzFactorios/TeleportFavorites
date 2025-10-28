@@ -265,9 +265,10 @@ function EventRegistrationDispatcher.register_core_events(script)
     name = "on_chart_tag_removed"
   }
 
-  -- Add scheduled GUI observer cleanup (every 5 minutes = 18000 ticks)
+  -- Add scheduled GUI observer cleanup (every 30 minutes = 108000 ticks instead of 5 minutes)
+  -- OPTIMIZATION: Reduced frequency to minimize UPS spikes - observers are relatively stable
   local success, err = pcall(function()
-    script.on_nth_tick(18000, function(event)
+    script.on_nth_tick(108000, function(event)
       GuiObserver.GuiEventBus.schedule_periodic_cleanup()
     end)
 
@@ -279,16 +280,29 @@ function EventRegistrationDispatcher.register_core_events(script)
   
   -- MULTIPLAYER FIX: Process deferred GUI notifications every tick
   -- This ensures GUI updates happen separately from game logic events, preventing desyncs
-  -- ALSO handles run-once startup initialization for favorites bar
   script.on_event(defines.events.on_tick, function(event)
-    -- Run-once startup handler for favorites bar initialization
-    if global and not global.did_run_fave_bar_startup then
-      global.did_run_fave_bar_startup = true
+    -- DEBUG: Commented out startup handler to prove it's causing the spike
+    -- This code was registering observers on first tick, which may have been triggering GUI build
+    --[[ if storage and not storage.did_run_fave_bar_startup then
+      storage.did_run_fave_bar_startup = true
       if GuiObserver and GuiObserver.GuiEventBus and GuiObserver.GuiEventBus.register_player_observers then
         for _, player in pairs(game.players) do
           GuiObserver.GuiEventBus.register_player_observers(player)
         end
       end
+    end ]]
+    
+    -- PERFORMANCE OPTIMIZATION: Progressive rehydration disabled
+    -- Lazy loading (first 5 seconds) + natural cache expiration is sufficient
+    -- The previous progressive rehydration system caused 25ms spikes at tick 300
+    -- with zero performance benefit for players with 0-5 favorites
+    
+    -- Mark rehydration as "complete" immediately to skip the system entirely
+    if event.tick == 300 and not storage.did_run_full_rehydration then
+      storage.did_run_full_rehydration = true
+      ErrorHandler.debug_log("Progressive rehydration disabled (using lazy loading only)", {
+        tick = event.tick
+      })
     end
     
     -- Process deferred GUI notifications every tick
