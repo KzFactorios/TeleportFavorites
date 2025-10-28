@@ -337,8 +337,23 @@ local function build_favorite_buttons_row(parent, player, pfaves)
 
   local max_slots = Cache.Settings.get_player_max_favorite_slots(player) or 10
 
-  -- Use actual pfaves from cache
-  local rehydrated_pfaves = pfaves or {}
+  -- Rehydrate all favorites for correct icon and tag references
+  local rehydrated_pfaves = {}
+  for i = 1, max_slots do
+    local fav = pfaves and pfaves[i] or nil
+    if fav then
+      local ok, rehydrated = pcall(function()
+        return FavoriteRehydration.rehydrate_favorite_at_runtime(player, fav)
+      end)
+      if ok and rehydrated then
+        rehydrated_pfaves[i] = rehydrated
+      else
+        rehydrated_pfaves[i] = FavoriteUtils.get_blank_favorite()
+      end
+    else
+      rehydrated_pfaves[i] = FavoriteUtils.get_blank_favorite()
+    end
+  end
 
   local function get_slot_btn_props(i, fav)
     if fav and not FavoriteUtils.is_blank_favorite(fav) then
