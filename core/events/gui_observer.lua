@@ -103,9 +103,11 @@ function GuiEventBus.notify(event_type, event_data, defer_to_tick)
     GuiEventBus._deferred_queue = GuiEventBus._deferred_queue or {}
     table.insert(GuiEventBus._deferred_queue, notification)
     
-    ErrorHandler.debug_log("[NOTIFY] Deferred notification to next tick", {
+    ErrorHandler.debug_log("[GUI_OBSERVER] *** NOTIFICATION DEFERRED TO NEXT TICK ***", {
       event_type = event_type,
-      deferred_queue_size = #GuiEventBus._deferred_queue
+      deferred_queue_size = #GuiEventBus._deferred_queue,
+      current_tick = game.tick,
+      will_process_on_tick = game.tick + 1
     })
   else
     -- Queue for immediate processing (non-GUI events)
@@ -144,19 +146,35 @@ function GuiEventBus.process_deferred_notifications()
   local processed_count = 0
   local error_count = 0
   
-  ErrorHandler.debug_log("[DEFERRED] Processing deferred notifications", {
-    queue_size = #GuiEventBus._deferred_queue
+  ErrorHandler.debug_log("[DEFERRED] *** PROCESSING DEFERRED NOTIFICATIONS ***", {
+    queue_size = #GuiEventBus._deferred_queue,
+    current_tick = game.tick
   })
   
   while #GuiEventBus._deferred_queue > 0 do
     local notification = table.remove(GuiEventBus._deferred_queue, 1)
     local observers = GuiEventBus._observers[notification.type] or {}
     
+    ErrorHandler.debug_log("[GUI_OBSERVER] *** PROCESSING DEFERRED NOTIFICATION ***", {
+      event_type = notification.type,
+      observer_count = #observers,
+      tick = game.tick,
+      all_observer_types = GuiEventBus._observers
+    })
+    
     for _, observer in ipairs(observers) do
       if observer and observer.update then
+        ErrorHandler.debug_log("[GUI_OBSERVER] *** CALLING OBSERVER UPDATE ***", {
+          observer_type = observer.observer_type,
+          player = observer.player and observer.player.name or "<no player>",
+          player_valid = observer.player and observer.player.valid or false
+        })
         local success, err = pcall(observer.update, observer, notification.data)
         if success then
           processed_count = processed_count + 1
+          ErrorHandler.debug_log("[DEFERRED] Observer update succeeded", {
+            observer_type = observer.observer_type
+          })
         else
           error_count = error_count + 1
           ErrorHandler.warn_log("Deferred observer update failed", {
@@ -543,26 +561,47 @@ end
 --- Handle data-related events (favorites bar only)
 ---@param event_data table
 function DataObserver:update(event_data)
-  if not self:is_valid() then return end
+  ErrorHandler.debug_log("[DATA OBSERVER] *** UPDATE CALLED ***", {
+    player = self.player and self.player.name or "<no player>",
+    player_valid = self:is_valid(),
+    event_data_type = event_data and event_data.type or "<no type>",
+    tick = game.tick
+  })
+  
+  if not self:is_valid() then 
+    ErrorHandler.debug_log("[DATA OBSERVER] Skipped - observer not valid")
+    return 
+  end
   
   -- Check if conditions are right for building the bar
   local player = self.player
   
   -- Use shared space platform detection logic
   if BasicHelpers.should_hide_favorites_bar_for_space_platform(player) then
+    ErrorHandler.debug_log("[DATA OBSERVER] Skipped - space platform")
     return
   end
   
   -- Skip for god mode and spectator mode
   if player.controller_type == defines.controllers.god or 
      player.controller_type == defines.controllers.spectator then
+    ErrorHandler.debug_log("[DATA OBSERVER] Skipped - god/spectator mode")
     return
   end
+  
+  ErrorHandler.debug_log("[DATA OBSERVER] Calling fave_bar.build", {
+    player = player.name
+  })
   
   -- Use the standard build function which has all the proper validation checks
   local success, err = pcall(function()
     fave_bar.build(player)
   end)
+  
+  ErrorHandler.debug_log("[DATA OBSERVER] fave_bar.build completed", {
+    success = success,
+    error = err or "<none>"
+  })
   
   if not success then
     ErrorHandler.warn_log("[DATA OBSERVER] Failed to refresh favorites bar", {

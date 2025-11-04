@@ -350,14 +350,19 @@ local function handle_confirm_btn(player, element, tag_data)
 
     refreshed_tag.faved_by_players[player.index] = player.index
     -- Notify favorites bar to update after adding favorite
-    ErrorHandler.debug_log("[TAG_EDITOR] Sending favorite_added notification", {
+    ErrorHandler.debug_log("[TAG_EDITOR] ========== FAVORITE ADDED START ==========", {
       player = player.name,
-      gps = refreshed_tag.gps
+      player_index = player.index,
+      gps = refreshed_tag.gps,
+      tick = game.tick
     })
     SharedUtils.notify_observer("favorite_added", {
       player = player,
       gps = refreshed_tag.gps,
       tag = refreshed_tag
+    })
+    ErrorHandler.debug_log("[TAG_EDITOR] favorite_added notification sent, should be deferred to next tick", {
+      current_tick = game.tick
     })
     -- Invalidate rehydrated favorites cache for this player-surface
     Cache.invalidate_rehydrated_favorites(player, player.surface.index)

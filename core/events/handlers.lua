@@ -8,6 +8,7 @@
 local AdminUtils = require("core.utils.admin_utils")
 local BasicHelpers = require("core.utils.basic_helpers")
 local Cache = require("core.cache.cache")
+local Constants = require("constants")
 local PositionUtils = require("core.utils.position_utils")
 local GPSUtils = require("core.utils.gps_utils")
 local ErrorHandler = require("core.utils.error_handler")
@@ -101,11 +102,17 @@ function handlers.on_init()
   ErrorHandler.debug_log("GUI Event Bus initialized during startup")
 
   -- Initialize cache system
+  if Constants.settings.DEFAULT_LOG_LEVEL == "debug" then
+    ErrorHandler.debug_log("[Cache] Cache.init() called during on_init")
+  end
   Cache.init()
 
   -- Set up each player - defer GUI build to reduce startup UPS spike
   for _, player in pairs(game.players) do
     if Cache.get_player_data(player) == nil then
+      if Constants.settings.DEFAULT_LOG_LEVEL == "debug" then
+        ErrorHandler.debug_log("[Cache] Cache.reset_transient_player_states() for player", {player=player.name})
+      end
       Cache.reset_transient_player_states(player)
     end
 
@@ -113,14 +120,35 @@ function handlers.on_init()
     register_gui_observers(player)
     -- Note: fave_bar.build() will be called when player joins via on_player_joined_game
   end
-  
-  ErrorHandler.debug_log("[INIT] Startup initialization complete - GUI build deferred to player join")
+
+  if Constants.settings.DEFAULT_LOG_LEVEL == "debug" then
+    ErrorHandler.debug_log("[INIT] Startup initialization complete - GUI build deferred to player join")
+  end
 end
+
+-- Session-level flag (NOT in storage, safe for on_load)
+-- This gets reset every time the mod is loaded
+local observers_registered_this_session = false
 
 function handlers.on_load()
   -- Re-initialize GUI event bus on game load
   gui_observer.GuiEventBus.ensure_initialized()
   ErrorHandler.debug_log("GUI Event Bus re-initialized on game load")
+  
+  -- CRITICAL: Reset the session flag so observers get registered on tick 1
+  -- Using global variable instead of storage (can't modify storage in on_load)
+  observers_registered_this_session = false
+  ErrorHandler.debug_log("[ON_LOAD] Reset observer registration flag", {
+    flag_value = observers_registered_this_session
+  })
+end
+
+function handlers.get_observers_registered_flag()
+  return observers_registered_this_session
+end
+
+function handlers.set_observers_registered_flag(value)
+  observers_registered_this_session = value
 end
 
 function handlers.on_player_created(event)

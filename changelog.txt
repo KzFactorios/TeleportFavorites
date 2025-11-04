@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.0.91
+Date: 2025-11-03
+  Bugfixes:
+    - Favorites bar now updates immediately after adding or removing a favorite (no more delay or manual refresh needed)
+    - Removed verbose log msgs
+---------------------------------------------------------------------------------------------------
 Version: 0.0.9
 Date: 2025-10-27
   Performance:

@@ -272,37 +272,46 @@ function EventRegistrationDispatcher.register_core_events(script)
       GuiObserver.GuiEventBus.schedule_periodic_cleanup()
     end)
 
-  -- Add scheduled icon_typing table reset (every 15 minutes = 54000 ticks)
-  script.on_nth_tick(54000, function(event)
-    icon_typing.reset_icon_type_lookup()
-    ErrorHandler.debug_log("icon_typing table reset (every 15 minutes)")
+    -- Add scheduled icon_typing table reset (every 15 minutes = 54000 ticks)
+    script.on_nth_tick(54000, function(event)
+      icon_typing.reset_icon_type_lookup()
+      ErrorHandler.debug_log("icon_typing table reset (every 15 minutes)")
+    end)
   end)
+
+  if not success then
+    ErrorHandler.warn_log(
+      "Failed to register periodic GUI observer cleanup or icon_typing reset",
+      { error = err })
+  else
+    ErrorHandler.debug_log(
+      "Registered periodic GUI observer cleanup (every 30 minutes) and icon_typing reset (every 15 minutes)")
+  end
   
   -- MULTIPLAYER FIX: Process deferred GUI notifications every tick
   -- This ensures GUI updates happen separately from game logic events, preventing desyncs
+  ErrorHandler.debug_log("[EVENT_REG] Registering on_tick handler")
   script.on_event(defines.events.on_tick, function(event)
-    -- DEBUG: Commented out startup handler to prove it's causing the spike
-    -- This code was registering observers on first tick, which may have been triggering GUI build
-    --[[ if storage and not storage.did_run_fave_bar_startup then
-      storage.did_run_fave_bar_startup = true
-      if GuiObserver and GuiObserver.GuiEventBus and GuiObserver.GuiEventBus.register_player_observers then
-        for _, player in pairs(game.players) do
-          GuiObserver.GuiEventBus.register_player_observers(player)
-        end
-      end
-    end ]]
-    
-    -- PERFORMANCE OPTIMIZATION: Progressive rehydration disabled
-    -- Lazy loading (first 5 seconds) + natural cache expiration is sufficient
-    -- The previous progressive rehydration system caused 25ms spikes at tick 300
-    -- with zero performance benefit for players with 0-5 favorites
-    
-    -- Mark rehydration as "complete" immediately to skip the system entirely
-    if event.tick == 300 and not storage.did_run_full_rehydration then
-      storage.did_run_full_rehydration = true
-      ErrorHandler.debug_log("Progressive rehydration disabled (using lazy loading only)", {
+    -- CRITICAL: Register observers on FIRST tick after load (not tick 1, but first execution)
+    -- This works for both new games and loaded saves
+    if not handlers.get_observers_registered_flag() then
+      handlers.set_observers_registered_flag(true)
+      ErrorHandler.debug_log("[TICK] *** REGISTERING GUI OBSERVERS *** (first tick after load)", {
         tick = event.tick
       })
+      
+      -- Register observers for all existing players
+      for _, player in pairs(game.players) do
+        if player and player.valid then
+          GuiObserver.GuiEventBus.register_player_observers(player)
+          ErrorHandler.debug_log("[TICK] Registered observers for player", {
+            player = player.name,
+            player_index = player.index,
+            tick = event.tick
+          })
+        end
+      end
+      ErrorHandler.debug_log("[TICK] GUI observers registered for all players", { tick = event.tick })
     end
     
     -- Process deferred GUI notifications every tick
@@ -311,26 +320,16 @@ function EventRegistrationDispatcher.register_core_events(script)
   
   -- Register on_gui_location_changed for modal position saving
   script.on_event(defines.events.on_gui_location_changed, function(event)
-      local player = game.players[event.player_index]
-      if not player or not player.valid then return end
-      local element = event.element
-      if element and element.valid and element.name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL then
-        local loc = element.location
-        if loc and type(loc.x) == "number" and type(loc.y) == "number" then
-          Cache.set_history_modal_position(player, { x = loc.x, y = loc.y })
-        end
+    local player = game.players[event.player_index]
+    if not player or not player.valid then return end
+    local element = event.element
+    if element and element.valid and element.name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL then
+      local loc = element.location
+      if loc and type(loc.x) == "number" and type(loc.y) == "number" then
+        Cache.set_history_modal_position(player, { x = loc.x, y = loc.y })
       end
-    end)
+    end
   end)
-
-  if not success then
-    ErrorHandler.warn_log(
-      "Failed to register periodic GUI observer cleanup, icon_typing reset, or modal drag position handler",
-      { error = err })
-  else
-    ErrorHandler.debug_log(
-      "Registered periodic GUI observer cleanup (every 5 minutes), icon_typing reset (every 15 minutes), and modal drag position handler")
-  end
 
   -- Register each core event with safety wrapper
   for event_type, event_config in pairs(core_events) do

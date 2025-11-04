@@ -145,7 +145,14 @@ end
 
 function fave_bar.build(player, force_show)
   
+  ErrorHandler.debug_log("[FAVE_BAR] ========== BUILD CALLED ==========", {
+    player = player and player.name or "<no player>",
+    force_show = force_show or false,
+    tick = game.tick
+  })
+  
   if not ValidationUtils.validate_player(player) then 
+    ErrorHandler.debug_log("[FAVE_BAR] Build skipped - invalid player")
     return 
   end
 
@@ -154,6 +161,7 @@ function fave_bar.build(player, force_show)
   if not force_show then
     local should_hide = BasicHelpers.should_hide_favorites_bar_for_space_platform(player)
     if should_hide then
+      ErrorHandler.debug_log("[FAVE_BAR] Build skipped - space platform")
       fave_bar.destroy()
       return
     end
@@ -161,10 +169,15 @@ function fave_bar.build(player, force_show)
     -- Also skip for god mode and spectator mode
     if player.controller_type == defines.controllers.god or
         player.controller_type == defines.controllers.spectator then
+      ErrorHandler.debug_log("[FAVE_BAR] Build skipped - god/spectator mode")
       fave_bar.destroy()
       return
     end
   end
+  
+  ErrorHandler.debug_log("[FAVE_BAR] Proceeding with bar build", {
+    player = player.name
+  })
 
   local tick = game and game.tick or 0
   local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)

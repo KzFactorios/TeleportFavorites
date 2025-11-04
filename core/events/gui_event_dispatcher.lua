@@ -52,7 +52,7 @@ function M.register_gui_handlers(script)
         element_name = event and event.element and event.element.name or "<none>",
         player_index = event and event.player_index or "<none>"
       })
-    Cache.init()
+    -- Cache.init() removed - should only be called from handlers.on_init, not on every click
     
     -- Ignore these clicks everywhere EXCEPT on a fave bar slot button
     if event.button == defines.mouse_button_type.right and event.shift then return end

@@ -11,8 +11,7 @@
   "Lua.workspace.checkThirdParty": "ApplyInMemory",
   "chat.agent.enabled": true,
   "Lua.workspace.library": [
-    "${workspaceFolder}/core/types",
-    "v:\\Fac2orios\\2_Gemini\\data"
+    "${workspaceFolder}/core/types"
   ],
   "github.copilot.advanced": {
         "debug.useNodeFetcher": true

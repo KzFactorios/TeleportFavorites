@@ -79,6 +79,11 @@ function PlayerFavorites:remove_favorite(gps)
     if fav and fav.gps == gps then
       favorites[i] = FavoriteUtils.get_blank_favorite()
       Cache.set_player_favorites(self.player, favorites)
+      -- Notify GUI observer for immediate bar update
+      GuiObserver.GuiEventBus.notify("favorite_removed", {
+        player_index = self.player_index,
+        gps = gps
+      })
       return true
     end
   end
@@ -116,6 +121,11 @@ function PlayerFavorites:add_favorite(gps)
       favorites[i].gps = gps
       favorites[i].locked = false
       Cache.set_player_favorites(self.player, favorites)
+      -- Notify GUI observer for immediate bar update
+      GuiObserver.GuiEventBus.notify("favorite_added", {
+        player_index = self.player_index,
+        gps = gps
+      })
       return true
     end
   end

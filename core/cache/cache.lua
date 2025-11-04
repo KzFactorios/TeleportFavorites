@@ -54,11 +54,11 @@ Cache.__index = Cache
 
 --- Lookup tables for chart tags and other runtime data.
 ---@type Lookups
-Cache.Lookups = nil
+Cache.Lookups = Lookups
 
 --- Settings cache and access layer for all mod settings.
 ---@type Settings
-Cache.Settings = nil
+Cache.Settings = SettingsCache
 
 -- Ensure storage is always available for persistence (Factorio 2.0+)
 if not storage then
@@ -125,11 +125,18 @@ end
 
 --- Initialize the persistent cache table if not already present.
 function Cache.init()
-  if log and type(log) == "function" then
-    log("[TeleFaves][DEBUG] Cache.init() called (forced log)")
+  -- Guard against recursive initialization
+  if storage and storage._cache_initialized then
+    return
+  end
+  
+  local is_debug = Constants.settings.DEFAULT_LOG_LEVEL == "debug"
+  
+  if is_debug and log and type(log) == "function" then
+    log("[TeleFaves][DEBUG] Cache.init() called")
   end
   local tick_start = game and game.tick or 0
-  if log and type(log) == "function" then
+  if is_debug and log and type(log) == "function" then
     log("[CACHE] init called | tick=" .. tostring(tick_start))
   end
   if not storage then
@@ -138,6 +145,10 @@ function Cache.init()
     end
     error("Storage table not available - this mod requires Factorio 2.0+")
   end
+  
+  -- Mark as initializing to prevent recursion
+  storage._cache_initializing = true
+  
   storage.players = storage.players or {}
   storage.surfaces = storage.surfaces or {}
 
@@ -154,7 +165,7 @@ function Cache.init()
 
   local t1 = game and game.tick or 0
   -- Legacy stack migration: convert raw GPS strings to HistoryItem objects
-  if log and type(log) == "function" then
+  if is_debug and log and type(log) == "function" then
     log("[CACHE] legacy stack migration start | tick=" .. tostring(t1))
   end
   for player_index, player_data in pairs(storage.players) do
@@ -174,7 +185,7 @@ function Cache.init()
     end
   end
   local t2 = game and game.tick or 0
-  if log and type(log) == "function" then
+  if is_debug and log and type(log) == "function" then
     log("[CACHE] legacy stack migration end | tick=" .. tostring(t2) .. " | duration=" .. tostring(t2 - t1))
   end
 
@@ -182,27 +193,32 @@ function Cache.init()
   storage.mod_version = current_mod_version
 
   local t3 = game and game.tick or 0
-  if log and type(log) == "function" then
+  if is_debug and log and type(log) == "function" then
     log("[CACHE] Lookups.init start | tick=" .. tostring(t3))
   end
   Lookups.init()
   Cache.Lookups = Lookups
   local t4 = game and game.tick or 0
-  if log and type(log) == "function" then
+  if is_debug and log and type(log) == "function" then
     log("[CACHE] Lookups.init end | tick=" .. tostring(t4) .. " | duration=" .. tostring(t4 - t3))
   end
 
   -- Initialize settings cache
   local t5 = game and game.tick or 0
-  if log and type(log) == "function" then
+  if is_debug and log and type(log) == "function" then
     log("[CACHE] SettingsCache init start | tick=" .. tostring(t5))
   end
   Cache.Settings = SettingsCache
   local t6 = game and game.tick or 0
-  if log and type(log) == "function" then
+  if is_debug and log and type(log) == "function" then
     log("[CACHE] SettingsCache init end | tick=" .. tostring(t6) .. " | duration=" .. tostring(t6 - t5))
     log("[CACHE] init complete | tick=" .. tostring(t6) .. " | total_duration=" .. tostring(t6 - tick_start))
   end
+  
+  -- Mark initialization complete and clear initializing flag
+  storage._cache_initialized = true
+  storage._cache_initializing = nil
+  
   return storage
 end
 
@@ -290,7 +306,7 @@ end
 local function init_player_data(player)
   if not player or not player.valid then return {} end
 
-  Cache.init()
+  -- Cache.init() removed - should be called externally, not recursively
   storage.players = storage.players or {}
   storage.players[player.index] = storage.players[player.index] or {}
   storage.players[player.index].surfaces = storage.players[player.index].surfaces or {}
@@ -384,7 +400,7 @@ end
 ---@return any|nil
 function Cache.get(key)
   if not key or key == "" then return nil end
-  Cache.init()
+  -- Cache.init() removed - should be called externally, not recursively
   return storage[key]
 end
 
@@ -558,7 +574,7 @@ end
 ---@return table Surface data table (persistent)
 local function init_surface_data(surface_index)
   local t0 = game and game.tick or 0
-  Cache.init()
+  -- Cache.init() removed - should be called externally, not recursively
   storage.surfaces = storage.surfaces or {}
   storage.surfaces[surface_index] = storage.surfaces[surface_index] or {}
   local surface_data = storage.surfaces[surface_index]
@@ -598,7 +614,7 @@ function Cache.remove_stored_tag(gps)
   if not tag_cache or not tag_cache[gps] then return end
   tag_cache[gps] = nil
 
-  Cache.init()
+  -- Cache.init() removed - should be called externally, not recursively
   ---@diagnostic disable-next-line: undefined-field, need-check-nil
   Cache.Lookups.remove_chart_tag_from_cache_by_gps(gps)
 end
@@ -831,7 +847,7 @@ end
 ---@return table teleport_history
 function Cache.get_player_teleport_history(player, surface_index)
   if not player or not player.valid then return { stack = {}, pointer = 0 } end
-  Cache.init()
+  -- Cache.init() removed - should be called externally, not recursively
   local player_data = Cache.get_player_data(player)
   player_data.surfaces = player_data.surfaces or {}
   player_data.surfaces[surface_index] = player_data.surfaces[surface_index] or {}
@@ -841,7 +857,7 @@ function Cache.get_player_teleport_history(player, surface_index)
 end
 
 function Cache.ensure_surface_cache(surface_index)
-  Cache.init() -- Ensure Lookups is initialized
+  -- Cache.init() removed - should be called externally, not recursively
   ---@diagnostic disable-next-line: undefined-field
   if not Cache.Lookups or not Cache.Lookups.ensure_surface_cache then
     error("Lookups.ensure_surface_cache not available")
