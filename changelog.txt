@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.0.92
+Date: 2025-11-04
+  Bugfixes:
+    - Critical fix to prevent permanent GUI observers (data, favorite, notification, tag_editor) from being removed during cleanup - only temporary observers are now subject to age-based removal
+---------------------------------------------------------------------------------------------------
 Version: 0.0.91
 Date: 2025-11-03
   Bugfixes:

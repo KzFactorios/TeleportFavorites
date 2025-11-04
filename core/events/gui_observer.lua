@@ -332,8 +332,16 @@ function GuiEventBus.cleanup_old_observers(max_age_ticks)
         if not observer:is_valid() then
           should_remove = true
         
-        -- Remove if observer is too old and has a valid creation tick
-        elseif observer.created_tick and observer.created_tick > 0 and 
+        -- CRITICAL FIX: Do NOT remove permanent observers (data, favorite, notification, tag_editor)
+        -- These observers should persist as long as the player is valid
+        -- Only remove temporary observers based on age (if we ever add them)
+        elseif observer.observer_type and 
+               observer.observer_type ~= "data" and 
+               observer.observer_type ~= "favorite" and
+               observer.observer_type ~= "notification" and
+               observer.observer_type ~= "tag_editor" and
+               observer.created_tick and 
+               observer.created_tick > 0 and 
                (current_tick - observer.created_tick) > max_age_ticks then
           should_remove = true
         
@@ -345,6 +353,14 @@ function GuiEventBus.cleanup_old_observers(max_age_ticks)
         if should_remove then
           table.remove(observers, i)
           cleaned_count = cleaned_count + 1
+          
+          -- Log what type of observer was removed for debugging
+          ErrorHandler.debug_log("Observer removed during cleanup", {
+            event_type = event_type,
+            observer_type = observer.observer_type or "unknown",
+            reason = not observer:is_valid() and "invalid" or "age_limit",
+            observer_age_ticks = observer.created_tick and (current_tick - observer.created_tick) or "unknown"
+          })
         end
       end
     end
