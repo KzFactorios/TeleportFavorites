@@ -162,7 +162,10 @@ function fave_bar.build(player, force_show)
     local should_hide = BasicHelpers.should_hide_favorites_bar_for_space_platform(player)
     if should_hide then
       ErrorHandler.debug_log("[FAVE_BAR] Build skipped - space platform")
-      fave_bar.destroy()
+      local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
+      if main_flow and main_flow.valid then
+        GuiValidation.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
+      end
       return
     end
 
@@ -170,7 +173,10 @@ function fave_bar.build(player, force_show)
     if player.controller_type == defines.controllers.god or
         player.controller_type == defines.controllers.spectator then
       ErrorHandler.debug_log("[FAVE_BAR] Build skipped - god/spectator mode")
-      fave_bar.destroy()
+      local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
+      if main_flow and main_flow.valid then
+        GuiValidation.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
+      end
       return
     end
   end

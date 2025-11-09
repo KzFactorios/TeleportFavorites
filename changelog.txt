@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.0.93
+Date: 2025-11-09
+  Bugfixes:
+    - Fixed crash when switching to god/spectator mode or viewing space platforms - replaced non-existent fave_bar.destroy() calls with proper GuiValidation.safe_destroy_frame() cleanup
+---------------------------------------------------------------------------------------------------
 Version: 0.0.92
 Date: 2025-11-04
   Bugfixes:
