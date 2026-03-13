@@ -526,8 +526,6 @@ local function handle_delete_confirm(player)
   close_tag_editor(player)
  
   Cache.reset_tag_editor_delete_mode(player)
-
-  -- PlayerHelpers.safe_player_print(player, { "tf-gui.tag_deleted" })
 end
 
 -- User cancelled deletion - close confirmation dialog and return to tag editor

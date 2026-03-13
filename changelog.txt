@@ -1,4 +1,18 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.0.95
+Date: 2026-03-11
+  Proposals:
+    - Fixed bug where deleting a fave from the vanilla tag editor does not properly cascade through this mod's delete sequence
+    - Is it possible to delete a "locked" tag? favorite_locked_cant_delete key created but not fully localised
+    - Conflict with factorissmo - when exiting a factorissmo factory does not update the UI
+    - allow the tag editor to open when certain modals are open (eg: tba) 
+    - Update readme to make drag/drop more apparent
+---------------------------------------------------------------------------------------------------
+Version: 0.0.94
+Date: 2025-11-11
+  Changes:
+    - Reduced startup log noise - removed verbose initialization messages and debug path detection logs (only shown in debug mode now)
+---------------------------------------------------------------------------------------------------
 Version: 0.0.93
 Date: 2025-11-09
   Bugfixes:

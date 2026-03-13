@@ -9,11 +9,6 @@ local ErrorHandler = require("core.utils.error_handler")
 local handlers = require("core.events.handlers")
 local TeleportHistory = require("core.teleport.teleport_history")
 
--- TEST: Log entry to verify log() output in factorio-current.log
-if log and type(log) == "function" then
-  log("[TeleFaves][TEST] Test log entry from control.lua (should appear in factorio-current.log)")
-end
-
 -- Initialize logging immediately using single source of truth
 ErrorHandler.initialize(Constants.settings.DEFAULT_LOG_LEVEL)
 ErrorHandler.debug_log("[CONTROL] control.lua loaded, logger active", { level = Constants.settings.DEFAULT_LOG_LEVEL })
@@ -81,6 +76,8 @@ event_registration_dispatcher.register_all_events(script)
 
 
 
--- TURN THIS OFF BEFORE DEPLOYMENT TO AVOID - Cannot join. The following mod event handlers are not identical between you and the server. This indicates that the following mods are not multiplayer (save/load) safe. (See the log file for more details):
+-- TURN THIS OFF BEFORE DEPLOYMENT TO AVOID - Cannot join. The following mod event handlers are not identical between you and the server. 
+-- This indicates that the following mods are not multiplayer (save/load) safe. (See the log file for more details):
 
---if script.active_mods["gvv"] then require("__gvv__.gvv")() end
+-- TODO TODO TODO TODO TODO
+if script.active_mods["gvv"] then require("__gvv__.gvv")() end

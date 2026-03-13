@@ -36,7 +36,7 @@ end
 ---@param tag table Tag object with GPS coordinate
 ---@return number cleaned_count Number of favorites cleaned up
 local function cleanup_player_favorites(tag)
-  if not tag or not _G.game or type(_G.game.players) ~= "table" then 
+  if not tag or not _G.game or ((type(_G.game.players) ~= "userdata") and (type(_G.game.players) ~= "table")) then 
     return 0 
   end
   
@@ -45,7 +45,8 @@ local function cleanup_player_favorites(tag)
     local pfaves = Cache.get_player_favorites(player)
     for _, fave in pairs(pfaves) do
       if fave.gps == tag.gps then
-        fave.gps = ""
+        -- TODO: reference a constant
+        fave.gps = "1000000.1000000.1"
         fave.locked = false
         cleaned_count = cleaned_count + 1
       end
@@ -58,7 +59,7 @@ end
 --- Clean up faved_by_players array for the tag
 ---@param tag table Tag object with faved_by_players array
 local function cleanup_faved_by_players(tag)
-  if not tag.faved_by_players or type(tag.faved_by_players) ~= "table" then 
+  if not tag.faved_by_players or (( type(_G.game.players) ~= "userdata") and (type(tag.faved_by_players) ~= "table")) then 
     ErrorHandler.debug_log("No faved_by_players to cleanup")
     return 
   end
