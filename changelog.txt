@@ -3,9 +3,10 @@ Version: 0.0.95
 Date: 2026-03-11
   Proposals:
     - Fixed bug where deleting a fave from the vanilla tag editor does not properly cascade through this mod's delete sequence
-    - Is it possible to delete a "locked" tag? favorite_locked_cant_delete key created but not fully localised
+    - Locked tags are handled properly when deleting from vanilla tag editor
     - Conflict with factorissmo - when exiting a factorissmo factory does not update the UI
     - allow the tag editor to open when certain modals are open (eg: tba) 
+    - ex polling to close vanilla tag editor?
     - Update readme to make drag/drop more apparent
 ---------------------------------------------------------------------------------------------------
 Version: 0.0.94
