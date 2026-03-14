@@ -481,23 +481,23 @@ function handlers.on_chart_tag_removed(event)
     local is_admin = player.admin
     local is_owner = tag and (not tag.owner_name or tag.owner_name == "" or tag.owner_name == player.name)
 
-    -- if tag.locked and tag.locked == true then
-    --  fave_bar.build(player)
-    -- end
-
     -- Overrides to vanilla behavior, giving us a way to "put the tag back" if a vanilla deletion breaks the mod's rules
     if not is_admin and not is_owner then
-      -- Restore the tag at its original location (Factorio will have already removed it, so recreate)
+      -- Restore the tag at its original location (Factorio will have already removed it, so recreate)`
       if chart_tag.position and chart_tag.surface then
-        player.force.add_chart_tag (
-            player.surface,
-            {
-              position = chart_tag.position,
-              text = chart_tag.text or "",
-              icon = chart_tag.icon,
-              last_user = chart_tag.last_user
-            }
-          )
+        local new_chart_tag = player.force.add_chart_tag(
+          player.surface,
+          {
+            position = chart_tag.position,
+            text = chart_tag.text or "",
+            icon = chart_tag.icon,
+            last_user = chart_tag.last_user
+          }
+        )
+        if tag then 
+          -- Update our Tag storage with the new chart tag reference
+          tag.chart_tag = new_chart_tag
+        end
       end
       refresh_surface_chart_tags(tonumber(player.surface.index) or 1)
       fave_bar.build(player)
@@ -506,32 +506,45 @@ function handlers.on_chart_tag_removed(event)
 
 
     local player_favorites = Cache.get_player_favorites(player, chart_tag.surface.index) or {}
+    local is_locked = false
+
     for _, v in ipairs(player_favorites) do
       if v.gps and v.gps == gps and v.locked == true then
         -- Reject the change due to locked status
-
-        -- Notify player that favorite is locked
-        GameHelpers.player_print(player, { "tf-gui.favorite_locked_cant_delete" })
-
-        -- Re-insert the chart_tag
-        if chart_tag.position and chart_tag.surface then
-          player.force.add_chart_tag (
-            player.surface,
-            {
-              position = chart_tag.position,
-              text = chart_tag.text or "",
-              icon = chart_tag.icon,
-              last_user = chart_tag.last_user
-            }
-          )
-        end
-        refresh_surface_chart_tags(tonumber(player.surface.index) or 1)
-        fave_bar.build(player)
-        return
+        is_locked = true
+        break
       end
     end
 
+    if is_locked == true then
+      -- Notify player that favorite is locked
+      GameHelpers.player_print(player, { "tf-gui.favorite_locked_cant_delete" })
+
+      -- Re-insert the chart_tag
+      if chart_tag.position and chart_tag.surface then
+        local new_chart_tag = player.force.add_chart_tag(
+          player.surface,
+          {
+            position = chart_tag.position,
+            text = chart_tag.text or "",
+            icon = chart_tag.icon,
+            last_user = chart_tag.last_user
+          }
+        )
+        if tag then 
+          -- Update our Tag storage with the new chart tag reference
+          tag.chart_tag = new_chart_tag
+        end
+      end
+      refresh_surface_chart_tags(tonumber(player.surface.index) or 1)
+      fave_bar.build(player)
+      return
+    end
+
     -- Remove/update associated tags, favorites, etc.
+    if not tag then
+      tag = { gps = gps }
+    end
     if tag then
       tag_destroy_helper.destroy_tag_and_chart_tag(tag, chart_tag)
     end
