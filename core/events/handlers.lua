@@ -7,6 +7,7 @@
 
 local AdminUtils = require("core.utils.admin_utils")
 local BasicHelpers = require("core.utils.basic_helpers")
+local ControlTagEditor = require("core.control.control_tag_editor")
 local GameHelpers = require("core.utils.game_helpers")
 local Cache = require("core.cache.cache")
 local Constants = require("constants")
@@ -85,10 +86,118 @@ end
 
 function handlers.on_player_changed_surface(event)
   with_valid_player(event.player_index, function(player)
-    if player.surface and player.surface.valid and player.surface.index ~= event.surface_index then
-      Cache.ensure_surface_cache(event.surface_index)
+    if player.surface and player.surface.valid then
+      -- Close tag editor if open (tag belongs to old surface)
+      ControlTagEditor.close_tag_editor(player)
 
-      -- TODO build fave bar and optionally history modal
+      -- Comprehensive surface change logging
+      local surface = player.surface
+      
+      local planet_name = "None"
+      local planet_valid = false
+      if surface.planet and surface.planet.valid then
+        planet_name = surface.planet.name or "unnamed_planet"
+        planet_valid = true
+      end
+      
+      local platform_info = "None"
+      if surface.platform then
+        platform_info = tostring(surface.platform)
+      end
+      
+      local surface_name_lower = (surface.name or ""):lower()
+      local is_mod_surface = surface_name_lower:find("factory") or surface_name_lower:find("interior") or surface_name_lower:find("segment")
+
+      -- Player info
+      local controller_name = "unknown"
+      for k, v in pairs(defines.controllers) do
+        if v == player.controller_type then controller_name = k break end
+      end
+      local char_info = player.character and ("entity=" .. player.character.name .. " pos=" .. player.character.position.x .. "," .. player.character.position.y) or "None"
+
+      -- Surface dimensions / tile counts
+      -- NOTE: get_chunks() iterates ALL generated chunks - O(n) per call.
+      -- Cheap on small mod surfaces (factory interiors). Potentially slow on large explored planets (Nauvis).
+      -- Capped at 500 to avoid UPS spikes on debug builds with huge maps.
+      local chunk_count = 0
+      local chunk_cap = 500
+      local chunk_capped = false
+      for _ in surface.get_chunks() do
+        chunk_count = chunk_count + 1
+        if chunk_count >= chunk_cap then
+          chunk_capped = true
+          break
+        end
+      end
+      local chunk_count_str = chunk_capped and (chunk_cap .. "+") or tostring(chunk_count)
+      local daytime = surface.daytime ~= nil and string.format("%.4f", surface.daytime) or "n/a"
+      local darkness = surface.darkness ~= nil and string.format("%.4f", surface.darkness) or "n/a"
+      local freeze_daytime = tostring(surface.freeze_daytime)
+      local ticks_per_day = tostring(surface.ticks_per_day)
+      local wind_speed = surface.wind_speed ~= nil and string.format("%.4f", surface.wind_speed) or "n/a"
+      local wind_orientation = surface.wind_orientation ~= nil and string.format("%.4f", surface.wind_orientation) or "n/a"
+      local wind_orientation_change = surface.wind_orientation_change ~= nil and string.format("%.4f", surface.wind_orientation_change) or "n/a"
+      local always_day = tostring(surface.always_day)
+      local peaceful_mode = tostring(surface.peaceful_mode)
+      local show_clouds = tostring(surface.show_clouds)
+      local generate_with_lab_tiles = tostring(surface.generate_with_lab_tiles)
+
+      -- Map gen settings (bounded dimensions are a strong indicator of mod-created surfaces)
+      local mgs = surface.map_gen_settings
+      local mgs_width = mgs and tostring(mgs.width) or "n/a"
+      local mgs_height = mgs and tostring(mgs.height) or "n/a"
+      local mgs_seed = mgs and tostring(mgs.seed) or "n/a"
+      local mgs_terrain_preset = mgs and tostring(mgs.terrain_segmentation) or "n/a"
+      local mgs_cliff_enabled = mgs and mgs.cliff_settings and tostring(mgs.cliff_settings.cliff_elevation_0) or "n/a"
+      local mgs_has_autoplace = mgs and mgs.autoplace_controls and next(mgs.autoplace_controls) ~= nil
+
+      -- Pollution (factory interiors almost always have zero pollution)
+      local total_pollution = string.format("%.4f", surface.get_total_pollution())
+
+      -- Planet type detail (planet can still be non-nil on mod surfaces if they inherit it)
+      local planet_type = "n/a"
+      if surface.planet and surface.planet.valid then
+        planet_type = surface.planet.object_name or "unknown"
+      end
+
+      ErrorHandler.debug_log(
+        "[on_player_changed_surface] Comprehensive Surface Change Log\n" ..
+        "  === PLAYER & TRANSITION ===\n" ..
+        "  Player: " .. player.name .. "\n" ..
+        "  Controller: " .. controller_name .. "\n" ..
+        "  Character: " .. char_info .. "\n" ..
+        "  Old Surface Index: " .. event.surface_index .. "\n" ..
+        "  New Surface Index: " .. surface.index .. "\n" ..
+        "  New Surface Name: " .. surface.name .. "\n" ..
+        "  === PLANETARY ASSOCIATION ===\n" ..
+        "  Planet: " .. planet_name .. " (valid: " .. tostring(planet_valid) .. ")\n" ..
+        "  Planet property nil?: " .. tostring(surface.planet == nil) .. "\n" ..
+        "  Platform: " .. platform_info .. "\n" ..
+        "  Platform property nil?: " .. tostring(surface.platform == nil) .. "\n" ..
+        "  === SURFACE PROPERTIES ===\n" ..
+        "  Chunks generated: " .. chunk_count_str .. "\n" ..
+        "  Daytime: " .. daytime .. "  Darkness: " .. darkness .. "\n" ..
+        "  Always day: " .. always_day .. "  Freeze daytime: " .. freeze_daytime .. "  Ticks/day: " .. ticks_per_day .. "\n" ..
+        "  Wind speed: " .. wind_speed .. "  Wind orientation: " .. wind_orientation .. "  Wind change rate: " .. wind_orientation_change .. "\n" ..
+        "  Peaceful mode: " .. peaceful_mode .. "  Show clouds: " .. show_clouds .. "  Lab tiles: " .. generate_with_lab_tiles .. "\n" ..
+        "  Total pollution: " .. total_pollution .. "\n" ..
+        "  === MAP GEN SETTINGS ===\n" ..
+        "  Width: " .. mgs_width .. "  Height: " .. mgs_height .. "  (0 = infinite/real planet)\n" ..
+        "  Seed: " .. mgs_seed .. "  Terrain segmentation: " .. mgs_terrain_preset .. "\n" ..
+        "  Cliffs elevation_0: " .. mgs_cliff_enabled .. "  Has autoplace controls: " .. tostring(mgs_has_autoplace) .. "\n" ..
+        "  === PLANET OBJECT DETAIL ===\n" ..
+        "  Planet object_name: " .. planet_type .. "\n" ..
+        "  === MOD DETECTION ===\n" ..
+        "  Likely mod surface (by name): " .. tostring(is_mod_surface) .. "\n" ..
+        "  === DECISION ===\n" ..
+        "  is_planet_surface() will return: " .. tostring(surface.planet ~= nil and surface.platform == nil and not is_mod_surface)
+      )
+
+      Cache.ensure_surface_cache(player.surface.index)
+
+      fave_bar.build(player)
+      -- Ensure visibility is updated for the new surface
+      fave_bar.update_fave_bar_visibility(player)
     end
   end)
 end

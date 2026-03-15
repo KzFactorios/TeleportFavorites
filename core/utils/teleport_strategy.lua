@@ -167,8 +167,6 @@ function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history)
         end
       end)
 
-      -- TODO remove
-      local bebop = 'baloobah'
     end
     return true, working_gps
   end

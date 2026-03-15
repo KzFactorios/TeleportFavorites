@@ -69,7 +69,7 @@ function teleport_history_modal.build(player)
   if not BasicHelpers.is_valid_player(player) then return end
 
   -- Hide modal based on shared helper (space platform/editor logic)
-  local should_hide = BasicHelpers.should_hide_favorites_bar_for_space_platform(player)
+  local should_hide = not BasicHelpers.is_planet_surface(player.surface)
   if should_hide then
     ErrorHandler.debug_log("[MODAL] not shown due to space platform/editor logic",
       { player = player and player.name or "<nil>" })

@@ -227,7 +227,8 @@ local function init_player_favorites(player)
   if not player or not player.valid then return {} end
 
   local pfaves = storage.players[player.index].surfaces[player.surface.index].favorites or {}
-  local seed_max = tonumber(Constants.settings.DEFAULT_MAX_FAVORITE_SLOTS) or 10
+  -- Use the player's actual max slot setting instead of hardcoded default
+  local seed_max = SettingsCache.get_player_max_favorite_slots(player)
   for i = 1, seed_max do
     if not pfaves[i] or type(pfaves[i]) ~= "table" then
       pfaves[i] = FavoriteUtils.get_blank_favorite()

@@ -80,4 +80,4 @@ event_registration_dispatcher.register_all_events(script)
 -- This indicates that the following mods are not multiplayer (save/load) safe. (See the log file for more details):
 
 -- TODO TODO TODO TODO TODO
-if script.active_mods["gvv"] then require("__gvv__.gvv")() end
+--if script.active_mods["gvv"] then require("__gvv__.gvv")() end

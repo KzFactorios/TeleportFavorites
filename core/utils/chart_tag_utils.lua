@@ -150,8 +150,7 @@ function ChartTagUtils.safe_add_chart_tag(force, surface, spec, player)
     existing_chart_tag.destroy()
     
     -- Invalidate cache after destroying
-    local Lookups = require("core.cache.lookups")
-    Lookups.invalidate_surface_chart_tags(surface_index)
+    Cache.Lookups.invalidate_surface_chart_tags(surface_index)
     
     -- Fall through to create new chart tag with updated properties
     -- (the force.add_chart_tag call below will create it)

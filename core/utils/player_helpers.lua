@@ -38,8 +38,8 @@ function PlayerHelpers.should_hide_favorites_bar(player)
     if not valid then return true end
     ---@cast player LuaPlayer
     
-    -- Check space platform (use existing logic)
-    if BasicHelpers.should_hide_favorites_bar_for_space_platform(player) then
+    -- Check space platform (non-planet surfaces should hide the bar)
+    if not BasicHelpers.is_planet_surface(player.surface) then
         return true
     end
     

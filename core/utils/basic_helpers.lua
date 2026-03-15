@@ -120,33 +120,23 @@ function basic_helpers.update_state(update_fn, player, state)
 end
 
 -- ===========================
--- SPACE PLATFORM DETECTION
+-- SURFACE AND VISIBILITY DETECTION
 -- ===========================
 
---- Check if player should have favorites bar hidden due to remote view of a space platform (Factorio 2.0+)
----@param player LuaPlayer The player to check
----@return boolean should_hide_bar True if the bar should be hidden
-function basic_helpers.should_hide_favorites_bar_for_space_platform(player)
-  if not player or not player.valid then return false end
+--- Check if a surface is a natural planet (not a space platform or factory interior)
+---@param surface LuaSurface? The surface to check
+---@return boolean is_planet True if the surface is a natural planet
+function basic_helpers.is_planet_surface(surface)
+  if not surface or not surface.valid then return false end
+  return surface.planet ~= nil and surface.platform == nil
+end
 
-  -- MULTIPLAYER FIX: Removed player.render_mode check - it's client-specific and causes desyncs!
-  -- The bar visibility should only depend on surface properties, not view mode.
-  
-  local surface = player.surface
-  if surface and surface.valid then
-    -- Hide for any space platform surface in any mode (except chart views)
-    if surface.platform ~= nil then
-      return true
-    end
-    -- Hide in editor mode if surface name contains 'space' or 'platform'
-    if player.controller_type == defines.controllers.editor then
-      local surface_name = surface.name or ""
-      if surface_name:lower():find("space") or surface_name:lower():find("platform") then
-        return true
-      end
-    end
-  end
-  return false
+--- Check if a surface is a space platform
+---@param surface LuaSurface? The surface to check
+---@return boolean is_space_platform True if the surface is a space platform
+function basic_helpers.is_space_platform_surface(surface)
+  if not surface or not surface.valid then return false end
+  return surface.platform ~= nil
 end
 
 -- ===========================

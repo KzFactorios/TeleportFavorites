@@ -592,8 +592,8 @@ function DataObserver:update(event_data)
   -- Check if conditions are right for building the bar
   local player = self.player
   
-  -- Use shared space platform detection logic
-  if BasicHelpers.should_hide_favorites_bar_for_space_platform(player) then
+  -- Hide on non-planet surfaces (space platforms, factory interiors, etc.)
+  if not BasicHelpers.is_planet_surface(player.surface) then
     ErrorHandler.debug_log("[DATA OBSERVER] Skipped - space platform")
     return
   end

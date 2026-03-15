@@ -54,7 +54,7 @@ local function _get_fave_bar_frame(player)
   return GuiValidation.find_child_by_name(main_flow, "fave_bar_frame")
 end
 
---- Function to show/hide the entire favorites bar based on controller type
+--- Function to show/hide the entire favorites bar based on surface type and controller
 ---@param player LuaPlayer Player whose favorites bar visibility should be updated
 function fave_bar.update_fave_bar_visibility(player)
   if not ValidationUtils.validate_player(player) then return end
@@ -62,16 +62,22 @@ function fave_bar.update_fave_bar_visibility(player)
   local fave_bar_frame = _get_fave_bar_frame(player)
   if not fave_bar_frame or not fave_bar_frame.valid then return end
 
-  -- Use shared space platform and remote view detection logic
-  local should_hide = BasicHelpers.should_hide_favorites_bar_for_space_platform(player)
-
-  -- Also hide for god mode and spectator mode
-  if player.controller_type == defines.controllers.god or
-      player.controller_type == defines.controllers.spectator then
-    should_hide = true
+  local surface = player.surface
+  if not surface or not surface.valid then
+    fave_bar_frame.visible = false
+    return
   end
 
-  fave_bar_frame.visible = not should_hide
+  -- Show bar only on planet surfaces (not space platforms) in appropriate controller modes
+  -- Hide for: god mode, spectator mode, space platforms, or unsupported controllers
+  local is_planet = BasicHelpers.is_planet_surface(surface)
+  local is_supported_mode = player.controller_type == defines.controllers.character or
+                             player.controller_type == defines.controllers.remote or
+                             player.controller_type == defines.controllers.cutscene
+  local is_restricted_mode = player.controller_type == defines.controllers.god or
+                              player.controller_type == defines.controllers.spectator
+
+  fave_bar_frame.visible = is_planet and is_supported_mode and not is_restricted_mode
 end
 
 --- Event handler for controller changes
@@ -96,10 +102,10 @@ function fave_bar.on_player_controller_changed(event)
   -- Update favorites bar visibility based on new controller type
   fave_bar.update_fave_bar_visibility(player)
 
-  -- If switching to character or cutscene mode, rebuild the bar and initialize labels
-  if player.controller_type == defines.controllers.character or player.controller_type == defines.controllers.cutscene then
+  -- Build bar when switching to character, cutscene, or remote mode (for planet view)
+  if player.controller_type == defines.controllers.character or player.controller_type == defines.controllers.cutscene or player.controller_type == defines.controllers.remote then
     fave_bar.build(player)
-    -- Note: Label management no longer needed - static slot labels handled in fave_bar.lua
+    
   end
 end
 
@@ -159,7 +165,7 @@ function fave_bar.build(player, force_show)
   -- Hide favorites bar when editing or viewing space platforms (including remote view)
   -- Allow force_show to override all checks for initialization
   if not force_show then
-    local should_hide = BasicHelpers.should_hide_favorites_bar_for_space_platform(player)
+    local should_hide = not BasicHelpers.is_planet_surface(player.surface)
     if should_hide then
       ErrorHandler.debug_log("[FAVE_BAR] Build skipped - space platform")
       local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
