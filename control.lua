@@ -71,8 +71,8 @@ end)
 ErrorHandler.debug_log("[CONTROL] Registering all mod events through centralized dispatcher", {})
 event_registration_dispatcher.register_all_events(script)
 
--- It handles BOTH deferred GUI notifications AND run-once startup initialization
--- DO NOT register another on_tick handler here as it would overwrite the deferred notification processing!
+-- The dispatcher uses on_tick for first-tick observer setup, then switches to on_nth_tick(2)
+-- for deferred GUI notification processing. DO NOT register conflicting on_tick or on_nth_tick(2) handlers!
 
 
 

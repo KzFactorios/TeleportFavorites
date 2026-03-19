@@ -37,8 +37,7 @@ local function create_safe_event_handler(handler, handler_name)
     ErrorHandler.debug_log("Event received", {
       handler_name = handler_name,
       player_index = event.player_index,
-      event_type = event.name,
-      event_context = event
+      event_type = event.name
     })
 
     local success, err = xpcall(function() handler(event) end, debug.traceback)
@@ -47,8 +46,7 @@ local function create_safe_event_handler(handler, handler_name)
         handler_name = handler_name,
         error = tostring(err),
         stack_trace = debug.traceback(),
-        player_index = event.player_index,
-        event_context = event
+        player_index = event.player_index
       })
 
       if event.player_index then
@@ -288,9 +286,10 @@ function EventRegistrationDispatcher.register_core_events(script)
       "Registered periodic GUI observer cleanup (every 30 minutes) and icon_typing reset (every 15 minutes)")
   end
   
-  -- MULTIPLAYER FIX: Process deferred GUI notifications every tick
-  -- This ensures GUI updates happen separately from game logic events, preventing desyncs
-  ErrorHandler.debug_log("[EVENT_REG] Registering on_tick handler")
+  -- MULTIPLAYER FIX: Process deferred GUI notifications on a regular interval
+  -- Uses on_tick for first-tick observer registration only, then switches to on_nth_tick(2)
+  -- for deferred notification processing (~30 calls/sec instead of 60, still highly responsive)
+  ErrorHandler.debug_log("[EVENT_REG] Registering on_tick handler for first-tick setup")
   script.on_event(defines.events.on_tick, function(event)
     -- CRITICAL: Register observers on FIRST tick after load (not tick 1, but first execution)
     -- This works for both new games and loaded saves
@@ -314,7 +313,14 @@ function EventRegistrationDispatcher.register_core_events(script)
       ErrorHandler.debug_log("[TICK] GUI observers registered for all players", { tick = event.tick })
     end
     
-    -- Process deferred GUI notifications every tick
+    -- After first-tick setup, replace on_tick with on_nth_tick(2) for deferred processing
+    -- This halves the per-tick overhead while keeping <33ms worst-case GUI update latency
+    script.on_event(defines.events.on_tick, nil)
+    script.on_nth_tick(2, function()
+      GuiObserver.GuiEventBus.process_deferred_notifications()
+    end)
+    
+    -- Process any deferred notifications queued during this first tick
     GuiObserver.GuiEventBus.process_deferred_notifications()
   end)
   

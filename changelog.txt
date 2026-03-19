@@ -5,6 +5,7 @@ Date: 2026-03-11
     - Fixed bug where deleting a fave from the vanilla tag editor does not properly cascade through this mod's delete sequence
     - Locked tags are handled properly when deleting from vanilla tag editor
     - Retooled criteria for determining surface properties
+    - ups optimizations
 ---------------------------------------------------------------------------------------------------
 Version: 0.0.94
 Date: 2025-11-11
