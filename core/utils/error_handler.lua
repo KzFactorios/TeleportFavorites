@@ -15,25 +15,6 @@ end
 
 ErrorHandler._log_level = (Constants and Constants.settings and Constants.settings.DEFAULT_LOG_LEVEL) or "production"
 
--- Auto-detect debug mode based on path (silent detection)
-local function is_debug_path()
-  -- Check if we're in a development/debug directory
-  local debug_paths = {"2_Gemini", "debug", "dev", "development"}
-  local current_file = debug.getinfo(1, "S").source
-  if current_file then
-    for _, path in ipairs(debug_paths) do
-      if current_file:find(path) then
-        return true
-      end
-    end
-  end
-  return false
-end
-
-if is_debug_path() then
-  ErrorHandler._log_level = "debug"
-end
-
 function ErrorHandler.is_debug()
   return ErrorHandler._log_level == "debug"
 end

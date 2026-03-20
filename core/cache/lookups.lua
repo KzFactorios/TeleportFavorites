@@ -15,7 +15,6 @@
 ---@diagnostic disable: undefined-global
 
 local basic_helpers = require("core.utils.basic_helpers")
-local PositionUtils = require("core.utils.position_utils")
 local GPSUtils = require("core.utils.gps_utils")
 local ErrorHandler = require("core.utils.error_handler")
 local BasicHelpers = require("core.utils.basic_helpers")
@@ -149,14 +148,6 @@ local function get_chart_tag_by_gps(gps)
   local valid_check_success, is_valid = pcall(function() return match_chart_tag.valid end)
   if not valid_check_success or not is_valid then
     return nil
-  end
-  
-  -- Optional walkability check with debug logging
-  if match_chart_tag.position then
-    local walkable = PositionUtils.is_walkable_position(surface, match_chart_tag.position)
-    if not walkable then
-      ErrorHandler.debug_log("Chart tag at GPS is not walkable", {gps = gps, position = match_chart_tag.position})
-    end
   end
   
   return match_chart_tag

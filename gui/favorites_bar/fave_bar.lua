@@ -239,7 +239,7 @@ function fave_bar.build(player, force_show)
     local has_valid_structure = false
     if existing_frame and existing_frame.valid then
       -- Check if the frame has the expected child structure
-      local bar_flow = GuiValidation.find_child_by_name(existing_frame, Enum.GuiEnum.FAVE_BAR_ELEMENT.BAR_FLOW)
+      local bar_flow = existing_frame[Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW]
       has_valid_structure = bar_flow and bar_flow.valid and #bar_flow.children > 0
     end
     local needs_rebuild = not has_valid_structure
@@ -263,12 +263,12 @@ function fave_bar.build(player, force_show)
       _bar_flow, slots_frame, _toggle_button, _toggle_container, _history_toggle_button = fave_bar
           .build_quickbar_style(player, fave_bar_frame)
     else
-      -- Retrieve existing GUI elements instead of rebuilding
-      _bar_flow = GuiValidation.find_child_by_name(fave_bar_frame, Enum.GuiEnum.FAVE_BAR_ELEMENT.BAR_FLOW)
-      slots_frame = _bar_flow and GuiValidation.find_child_by_name(_bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW)
-      _toggle_container = _bar_flow and GuiValidation.find_child_by_name(_bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER)
-      _toggle_button = _toggle_container and GuiValidation.find_child_by_name(_toggle_container, Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_BUTTON)
-      _history_toggle_button = _toggle_container and GuiValidation.find_child_by_name(_toggle_container, Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_TOGGLE_BUTTON)
+      -- Retrieve existing GUI elements via direct indexing instead of recursive search
+      _bar_flow = fave_bar_frame[Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW]
+      slots_frame = _bar_flow and _bar_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW]
+      _toggle_container = _bar_flow and _bar_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER]
+      _toggle_button = _toggle_container and _toggle_container[Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_BUTTON]
+      _history_toggle_button = _toggle_container and _toggle_container[Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_TOGGLE_BUTTON]
     end
 
     -- Handle visibility based on settings
@@ -282,15 +282,9 @@ function fave_bar.build(player, force_show)
 
     -- Hide/show toggle container and slots based on favorites setting
     if not favorites_enabled then
-      -- Find and hide only the visibility toggle button, not the entire container
-      local toggle_container = GuiValidation.find_child_by_name(_bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT
-        .TOGGLE_CONTAINER)
-      if toggle_container and toggle_container.valid then
-        local visibility_toggle_button = GuiValidation.find_child_by_name(toggle_container,
-          Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_BUTTON)
-        if visibility_toggle_button and visibility_toggle_button.valid then
-          visibility_toggle_button.visible = false
-        end
+      -- Hide the visibility toggle button
+      if _toggle_button and _toggle_button.valid then
+        _toggle_button.visible = false
       end
 
       -- Hide slots frame
@@ -303,14 +297,8 @@ function fave_bar.build(player, force_show)
       local pfaves = Cache.get_player_favorites(player, surface_index)
 
       -- Show the visibility toggle button
-      local toggle_container = GuiValidation.find_child_by_name(_bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT
-        .TOGGLE_CONTAINER)
-      if toggle_container and toggle_container.valid then
-        local visibility_toggle_button = GuiValidation.find_child_by_name(toggle_container,
-          Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_BUTTON)
-        if visibility_toggle_button and visibility_toggle_button.valid then
-          visibility_toggle_button.visible = true
-        end
+      if _toggle_button and _toggle_button.valid then
+        _toggle_button.visible = true
       end
 
       -- Set slots visibility based on player's saved preference
@@ -367,14 +355,8 @@ local function build_favorite_buttons_row(parent, player, pfaves)
   for i = 1, max_slots do
     local fav = pfaves and pfaves[i] or nil
     if fav then
-      local ok, rehydrated = pcall(function()
-        return FavoriteRehydration.rehydrate_favorite_at_runtime(player, fav)
-      end)
-      if ok and rehydrated then
-        rehydrated_pfaves[i] = rehydrated
-      else
-        rehydrated_pfaves[i] = FavoriteUtils.get_blank_favorite()
-      end
+      local rehydrated = FavoriteRehydration.rehydrate_favorite_at_runtime(player, fav)
+      rehydrated_pfaves[i] = rehydrated or FavoriteUtils.get_blank_favorite()
     else
       rehydrated_pfaves[i] = FavoriteUtils.get_blank_favorite()
     end
@@ -384,8 +366,7 @@ local function build_favorite_buttons_row(parent, player, pfaves)
     if fav and not FavoriteUtils.is_blank_favorite(fav) then
       local icon = nil
       if fav.tag and fav.tag.chart_tag then
-        local valid_check_success, is_valid = pcall(function() return fav.tag.chart_tag.valid end)
-        if valid_check_success and is_valid then
+        if fav.tag.chart_tag.valid then
           icon = fav.tag.chart_tag.icon
         else
           return nil, { "tf-gui.favorite_slot_empty" }, "slot_button", false
@@ -440,6 +421,20 @@ end
 -- Export the function on the fave_bar table (in case it was not attached)
 fave_bar.build_favorite_buttons_row = build_favorite_buttons_row
 
+--- Refresh only the slot buttons if the bar exists, otherwise do a full build.
+--- This is the preferred entry point for observer-driven updates.
+---@param player LuaPlayer
+function fave_bar.refresh_slots(player)
+  if not ValidationUtils.validate_player(player) then return end
+  local _, _, bar_flow, slots_frame = get_fave_bar_gui_refs(player)
+  if bar_flow and bar_flow.valid and slots_frame and slots_frame.valid then
+    fave_bar.update_slot_row(player, bar_flow)
+  else
+    -- Bar structure missing — fall back to full build
+    fave_bar.build(player)
+  end
+end
+
 -- Update only the slots row without rebuilding the entire bar
 -- parent: the bar_flow container (parent of fave_bar_slots_flow)
 function fave_bar.update_slot_row(player, parent_flow)
@@ -484,17 +479,12 @@ function fave_bar.update_single_slot(player, slot_index)
   if not pfaves then return end -- Safety check for nil pfaves
   local fav = pfaves[slot_index]
 
-  -- Safely rehydrate favorite, catch any errors and return blank favorite
-  local rehydrated_fav = nil
-  local rehydrate_success = pcall(function()
-    -- Only attempt rehydration if fav exists
-    if fav then
-      rehydrated_fav = FavoriteRehydration.rehydrate_favorite_at_runtime(player, fav)
-    end
-  end)
-
-  if not rehydrate_success or not rehydrated_fav then
-    -- Rehydration failed, treat as blank favorite
+  -- Rehydrate favorite for correct icon and tag references
+  local rehydrated_fav
+  if fav then
+    rehydrated_fav = FavoriteRehydration.rehydrate_favorite_at_runtime(player, fav)
+  end
+  if not rehydrated_fav then
     rehydrated_fav = FavoriteUtils.get_blank_favorite()
   end
 
@@ -505,8 +495,7 @@ function fave_bar.update_single_slot(player, slot_index)
     -- Safely check chart_tag validity before accessing its properties
     local icon = nil
     if fav.tag and fav.tag.chart_tag then
-      local valid_check_success, is_valid = pcall(function() return fav.tag.chart_tag.valid end)
-      if valid_check_success and is_valid then
+      if fav.tag.chart_tag.valid then
         icon = fav.tag.chart_tag.icon
       else
         -- Chart tag is invalid, treat as blank favorite

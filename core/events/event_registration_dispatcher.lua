@@ -313,12 +313,10 @@ function EventRegistrationDispatcher.register_core_events(script)
       ErrorHandler.debug_log("[TICK] GUI observers registered for all players", { tick = event.tick })
     end
     
-    -- After first-tick setup, replace on_tick with on_nth_tick(2) for deferred processing
-    -- This halves the per-tick overhead while keeping <33ms worst-case GUI update latency
+    -- After first-tick setup, remove on_tick handler
+    -- Deferred notification processing is now demand-driven:
+    -- on_nth_tick(2) is registered/unregistered dynamically by GuiEventBus.notify/process
     script.on_event(defines.events.on_tick, nil)
-    script.on_nth_tick(2, function()
-      GuiObserver.GuiEventBus.process_deferred_notifications()
-    end)
     
     -- Process any deferred notifications queued during this first tick
     GuiObserver.GuiEventBus.process_deferred_notifications()

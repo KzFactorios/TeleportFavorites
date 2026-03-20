@@ -111,6 +111,7 @@ describe("GuiObserver", function()
         GuiEventBus._observers = {}
         GuiEventBus._notification_queue = {}
         GuiEventBus._deferred_queue = {}
+        GuiEventBus._deferred_tick_registered = false
         GuiEventBus._initialized = false
 
         -- Enable debug logging

@@ -506,28 +506,12 @@ function Cache.get_rehydrated_favorites(player, surface_index, max_rehydrate)
     -- Only rehydrate up to the limit (for lazy loading optimization)
     if i <= rehydrate_count then
       if fav and type(fav) == "table" and fav.gps and fav.gps ~= "" and not FavoriteUtils.is_blank_favorite(fav) then
-        -- Safely get tag
-        local tag = nil
-        local tag_success, tag_error = pcall(function()
-          tag = Cache.get_tag_by_gps(player, fav.gps)
-        end)
+        -- Get tag (get_tag_by_gps already handles chart_tag rehydration)
+        local tag = Cache.get_tag_by_gps(player, fav.gps)
         
-        if tag_success and tag then
+        if tag then
           local locked = fav.locked or false
           rehydrated_fav = FavoriteUtils.new(fav.gps, locked, tag)
-          
-          -- If we have a tag but no chart_tag, try to get one safely
-          if tag and not tag.chart_tag then
-            local chart_tag_success, chart_tag_error = pcall(function()
-              local chart_tag = Cache.Lookups.get_chart_tag_by_gps(fav.gps)
-              if chart_tag then
-                local valid_check_success, is_valid = pcall(function() return chart_tag.valid end)
-                if valid_check_success and is_valid then
-                  tag.chart_tag = chart_tag
-                end
-              end
-            end)
-          end
         end
       end
     end
@@ -631,53 +615,33 @@ function Cache.get_tag_by_gps(player, gps)
   local tag_cache = Cache.get_surface_tags(surface_index --[[@as integer]])
   if not tag_cache then return nil end
 
-  local cache_keys = {}
-  for k, _ in pairs(tag_cache) do
-    table.insert(cache_keys, k)
+  local match_tag = tag_cache[gps]
+  if not match_tag then
+    Cache.notify_observers_safe("invalid_chart_tag", { player = player, gps = gps })
+    return nil
   end
 
-  local match_tag = tag_cache[gps] or nil
-
   -- Ensure chart_tag is present and valid
-  if match_tag and match_tag.chart_tag then
-    -- Safely check if chart_tag is valid and has position
-    local chart_tag_valid, chart_tag_has_position = pcall(function()
-      return match_tag.chart_tag.valid and match_tag.chart_tag.position ~= nil
-    end)
-
-    if not chart_tag_valid or not chart_tag_has_position then
+  if match_tag.chart_tag then
+    if not match_tag.chart_tag.valid or not match_tag.chart_tag.position then
       -- Chart tag is invalid or missing position, try to get a fresh one
       local chart_tag_lookup = Cache.Lookups.get_chart_tag_by_gps(gps)
-      if chart_tag_lookup then
-        local lookup_valid = pcall(function() return chart_tag_lookup.valid end)
-        if lookup_valid then
-          match_tag.chart_tag = chart_tag_lookup
-        else
-          match_tag.chart_tag = nil
-        end
+      if chart_tag_lookup and chart_tag_lookup.valid then
+        match_tag.chart_tag = chart_tag_lookup
       else
         match_tag.chart_tag = nil
       end
     end
-  elseif match_tag and not match_tag.chart_tag then
+  else
     -- No chart_tag reference, try to get one
     local chart_tag_lookup = Cache.Lookups.get_chart_tag_by_gps(gps)
-    if chart_tag_lookup then
-      local lookup_valid = pcall(function() return chart_tag_lookup.valid end)
-      if lookup_valid then
-        match_tag.chart_tag = chart_tag_lookup
-      end
+    if chart_tag_lookup and chart_tag_lookup.valid then
+      match_tag.chart_tag = chart_tag_lookup
     end
   end
 
-  -- Safely check if we have a valid chart_tag
-  local valid_chart_tag = false
-  if match_tag and match_tag.chart_tag then
-    local chart_tag_check_success, is_valid = pcall(function() return match_tag.chart_tag.valid end)
-    valid_chart_tag = chart_tag_check_success and is_valid == true
-  end
-
-  if valid_chart_tag and match_tag then
+  -- Check if we have a valid chart_tag
+  if match_tag.chart_tag and match_tag.chart_tag.valid then
     return match_tag
   end
 

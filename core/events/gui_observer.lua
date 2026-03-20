@@ -10,8 +10,16 @@ local Enum = require("prototypes.enums.enum")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 
 
--- Initialize error handler first
-ErrorHandler.initialize("debug") -- Set to debug mode for maximum visibility
+--- Event types that should be deferred to next tick for multiplayer safety
+local GUI_EVENT_TYPES = {
+  cache_updated = true,
+  favorite_added = true,
+  favorite_removed = true,
+  favorite_updated = true,
+  tag_modified = true,
+  tag_created = true,
+  tag_deleted = true
+}
 
 ---@class GuiEventBus
 ---@field _observers table<string, table[]>
@@ -21,6 +29,7 @@ local GuiEventBus = {
   _observers = {}, -- Map of event_type to array of observers
   _notification_queue = {}, -- Queue of pending notifications (processed immediately)
   _deferred_queue = {}, -- Queue of deferred GUI notifications (processed on next tick)
+  _deferred_tick_registered = false, -- Whether on_nth_tick(2) is currently active
   _initialized = false -- Track initialization state
 }
 
@@ -77,20 +86,8 @@ end
 ---@param event_data table
 ---@param defer_to_tick boolean|nil If true, defer processing to next tick (for GUI updates during game logic)
 function GuiEventBus.notify(event_type, event_data, defer_to_tick)
-  -- MULTIPLAYER FIX: Defer GUI-related notifications to next tick to prevent desyncs
-  -- GUI updates must never happen during game logic events (on_chart_tag_added, etc.)
-  local gui_event_types = {
-    cache_updated = true,
-    favorite_added = true,
-    favorite_removed = true,
-    favorite_updated = true,
-    tag_modified = true,
-    tag_created = true,
-    tag_deleted = true
-  }
-  
   -- Auto-defer GUI events or respect explicit defer flag
-  local should_defer = defer_to_tick or gui_event_types[event_type]
+  local should_defer = defer_to_tick or GUI_EVENT_TYPES[event_type]
   
   local notification = {
     type = event_type,
@@ -103,12 +100,13 @@ function GuiEventBus.notify(event_type, event_data, defer_to_tick)
     GuiEventBus._deferred_queue = GuiEventBus._deferred_queue or {}
     table.insert(GuiEventBus._deferred_queue, notification)
     
-    ErrorHandler.debug_log("[GUI_OBSERVER] *** NOTIFICATION DEFERRED TO NEXT TICK ***", {
-      event_type = event_type,
-      deferred_queue_size = #GuiEventBus._deferred_queue,
-      current_tick = game.tick,
-      will_process_on_tick = game.tick + 1
-    })
+    -- Demand-driven: register on_nth_tick(2) only when queue has items
+    if not GuiEventBus._deferred_tick_registered and script and script.on_nth_tick then
+      GuiEventBus._deferred_tick_registered = true
+      script.on_nth_tick(2, function()
+        GuiEventBus.process_deferred_notifications()
+      end)
+    end
   else
     -- Queue for immediate processing (non-GUI events)
     table.insert(GuiEventBus._notification_queue, notification)
@@ -116,19 +114,9 @@ function GuiEventBus.notify(event_type, event_data, defer_to_tick)
     -- Ensure processing flag is initialized
     GuiEventBus._processing = GuiEventBus._processing or false
     
-    ErrorHandler.debug_log("[NOTIFY] Queued notification for immediate processing", {
-      event_type = event_type,
-      queue_size = #GuiEventBus._notification_queue,
-      processing_flag = GuiEventBus._processing
-    })
-    
     -- Process immediately if not already processing
     if not GuiEventBus._processing then
       GuiEventBus.process_notifications()
-    else
-      ErrorHandler.debug_log("[NOTIFY] Skipping process_notifications - already processing", {
-        event_type = event_type
-      })
     end
   end
 end
@@ -139,43 +127,25 @@ function GuiEventBus.process_deferred_notifications()
   GuiEventBus._deferred_queue = GuiEventBus._deferred_queue or {}
   
   if #GuiEventBus._deferred_queue == 0 then
+    -- Unregister on_nth_tick(2) when queue is empty to avoid idle overhead
+    if GuiEventBus._deferred_tick_registered and script and script.on_nth_tick then
+      GuiEventBus._deferred_tick_registered = false
+      script.on_nth_tick(2, nil)
+    end
     return
   end
   
   -- Process all deferred notifications
-  local processed_count = 0
   local error_count = 0
-  
-  ErrorHandler.debug_log("[DEFERRED] *** PROCESSING DEFERRED NOTIFICATIONS ***", {
-    queue_size = #GuiEventBus._deferred_queue,
-    current_tick = game.tick
-  })
   
   while #GuiEventBus._deferred_queue > 0 do
     local notification = table.remove(GuiEventBus._deferred_queue, 1)
     local observers = GuiEventBus._observers[notification.type] or {}
     
-    ErrorHandler.debug_log("[GUI_OBSERVER] *** PROCESSING DEFERRED NOTIFICATION ***", {
-      event_type = notification.type,
-      observer_count = #observers,
-      tick = game.tick,
-      all_observer_types = GuiEventBus._observers
-    })
-    
     for _, observer in ipairs(observers) do
       if observer and observer.update then
-        ErrorHandler.debug_log("[GUI_OBSERVER] *** CALLING OBSERVER UPDATE ***", {
-          observer_type = observer.observer_type,
-          player = observer.player and observer.player.name or "<no player>",
-          player_valid = observer.player and observer.player.valid or false
-        })
         local success, err = pcall(observer.update, observer, notification.data)
-        if success then
-          processed_count = processed_count + 1
-          ErrorHandler.debug_log("[DEFERRED] Observer update succeeded", {
-            observer_type = observer.observer_type
-          })
-        else
+        if not success then
           error_count = error_count + 1
           ErrorHandler.warn_log("Deferred observer update failed", {
             event_type = notification.type,
@@ -187,11 +157,10 @@ function GuiEventBus.process_deferred_notifications()
     end
   end
   
-  if processed_count > 0 or error_count > 0 then
-    ErrorHandler.debug_log("[DEFERRED] Deferred notification batch processed", {
-      processed = processed_count,
-      errors = error_count
-    })
+  -- Queue is now drained — unregister the tick handler immediately
+  if GuiEventBus._deferred_tick_registered and script and script.on_nth_tick then
+    GuiEventBus._deferred_tick_registered = false
+    script.on_nth_tick(2, nil)
   end
 end
 
@@ -205,31 +174,16 @@ function GuiEventBus.process_notifications()
   -- multiple notify() calls happen in sequence (e.g., favorite_added, tag_modified, cache_updated)
   GuiEventBus._processing = true
   
-  local processed_count = 0
   local error_count = 0
-  
-  -- DO NOT perform any cleanup during notification processing - it can cause desyncs
-  -- Cleanup must happen at deterministic times only (on_tick, on_load, etc.)
-  
-  -- Log start of processing
-  ErrorHandler.debug_log("Starting notification processing", {
-    queue_size = #GuiEventBus._notification_queue
-  })
   
   while #GuiEventBus._notification_queue > 0 do
     local notification = table.remove(GuiEventBus._notification_queue, 1)
     local observers = GuiEventBus._observers[notification.type] or {}
     
-    -- DO NOT clean up observers during notification processing - it uses player.connected
-    -- which is client-specific and causes desyncs in multiplayer!
-    -- Cleanup happens during scheduled cleanup (on_tick) which is deterministic.
-    
     for _, observer in ipairs(observers) do
       if observer and observer.update then
         local success, err = pcall(observer.update, observer, notification.data)
-        if success then
-          processed_count = processed_count + 1
-        else
+        if not success then
           error_count = error_count + 1
           ErrorHandler.warn_log("Observer update failed", {
             event_type = notification.type,
@@ -242,13 +196,6 @@ function GuiEventBus.process_notifications()
   end
   
   GuiEventBus._processing = false
-  
-  if processed_count > 0 or error_count > 0 then
-    ErrorHandler.debug_log("Notification batch processed", {
-      processed = processed_count,
-      errors = error_count
-    })
-  end
 end
 
 --- Remove invalid observers for event type
@@ -577,47 +524,27 @@ end
 --- Handle data-related events (favorites bar only)
 ---@param event_data table
 function DataObserver:update(event_data)
-  ErrorHandler.debug_log("[DATA OBSERVER] *** UPDATE CALLED ***", {
-    player = self.player and self.player.name or "<no player>",
-    player_valid = self:is_valid(),
-    event_data_type = event_data and event_data.type or "<no type>",
-    tick = game.tick
-  })
-  
-  if not self:is_valid() then 
-    ErrorHandler.debug_log("[DATA OBSERVER] Skipped - observer not valid")
-    return 
-  end
+  if not self:is_valid() then return end
   
   -- Check if conditions are right for building the bar
   local player = self.player
   
   -- Hide on non-planet surfaces (space platforms, factory interiors, etc.)
   if not BasicHelpers.is_planet_surface(player.surface) then
-    ErrorHandler.debug_log("[DATA OBSERVER] Skipped - space platform")
     return
   end
   
   -- Skip for god mode and spectator mode
   if player.controller_type == defines.controllers.god or 
      player.controller_type == defines.controllers.spectator then
-    ErrorHandler.debug_log("[DATA OBSERVER] Skipped - god/spectator mode")
     return
   end
   
-  ErrorHandler.debug_log("[DATA OBSERVER] Calling fave_bar.build", {
-    player = player.name
-  })
-  
-  -- Use the standard build function which has all the proper validation checks
+  -- PERFORMANCE: Use targeted slot refresh when bar already exists,
+  -- fall back to full build only when the bar structure is missing
   local success, err = pcall(function()
-    fave_bar.build(player)
+    fave_bar.refresh_slots(player)
   end)
-  
-  ErrorHandler.debug_log("[DATA OBSERVER] fave_bar.build completed", {
-    success = success,
-    error = err or "<none>"
-  })
   
   if not success then
     ErrorHandler.warn_log("[DATA OBSERVER] Failed to refresh favorites bar", {
@@ -630,10 +557,6 @@ end
 --- Register observers for a player
 ---@param player LuaPlayer
 function GuiEventBus.register_player_observers(player)
-  ErrorHandler.debug_log("[GUI_OBSERVER] register_player_observers called", {
-    player = player and player.name or "<nil>",
-    player_index = player and player.index or "<nil>"
-  })
   if not player or not player.valid then return end
 
   -- Only register DataObserver for cache_updated events (favorites bar only)
