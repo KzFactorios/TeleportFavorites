@@ -242,10 +242,10 @@ local function close_tag_editor(player)
     if BasicHelpers.is_valid_player(player) then
       player.clear_cursor()
     end
-    if script and script.on_event then
-      script.on_event(defines.events.on_player_selected_area, nil)
-      script.on_event(defines.events.on_player_alt_selected_area, nil)
-    end
+    -- MULTIPLAYER FIX: Do NOT deregister on_player_selected_area / on_player_alt_selected_area here.
+    -- These events are permanently registered by ModalInputBlocker at load time.
+    -- Deregistering them at runtime causes script-event-mismatch when clients join multiplayer.
+    -- The ModalInputBlocker handler already checks move_mode state and ignores irrelevant events.
   end
   Cache.set_tag_editor_data(player, {})
   GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)

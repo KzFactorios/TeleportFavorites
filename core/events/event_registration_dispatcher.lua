@@ -286,9 +286,22 @@ function EventRegistrationDispatcher.register_core_events(script)
       "Registered periodic GUI observer cleanup (every 30 minutes) and icon_typing reset (every 15 minutes)")
   end
   
-  -- MULTIPLAYER FIX: Process deferred GUI notifications on a regular interval
-  -- Uses on_tick for first-tick observer registration only, then switches to on_nth_tick(2)
-  -- for deferred notification processing (~30 calls/sec instead of 60, still highly responsive)
+  -- MULTIPLAYER FIX: All on_nth_tick and on_tick handlers are registered permanently.
+  -- Dynamic registration/deregistration at runtime causes script-event-mismatch when clients join.
+  -- Each handler uses a flag guard to no-op when inactive (negligible UPS cost).
+  
+  -- Permanent on_nth_tick(2): Processes deferred GUI notifications when queue has items
+  script.on_nth_tick(2, function()
+    if GuiObserver.GuiEventBus._deferred_tick_active then
+      GuiObserver.GuiEventBus.process_deferred_notifications()
+    end
+  end)
+  
+  -- Permanent on_nth_tick(60): Processes deferred player initialization queue
+  script.on_nth_tick(60, function()
+    handlers.process_deferred_init_queue()
+  end)
+  
   ErrorHandler.debug_log("[EVENT_REG] Registering on_tick handler for first-tick setup")
   script.on_event(defines.events.on_tick, function(event)
     -- CRITICAL: Register observers on FIRST tick after load (not tick 1, but first execution)
@@ -311,15 +324,14 @@ function EventRegistrationDispatcher.register_core_events(script)
         end
       end
       ErrorHandler.debug_log("[TICK] GUI observers registered for all players", { tick = event.tick })
+      
+      -- Process any deferred notifications queued during this first tick
+      GuiObserver.GuiEventBus.process_deferred_notifications()
     end
-    
-    -- After first-tick setup, remove on_tick handler
-    -- Deferred notification processing is now demand-driven:
-    -- on_nth_tick(2) is registered/unregistered dynamically by GuiEventBus.notify/process
-    script.on_event(defines.events.on_tick, nil)
-    
-    -- Process any deferred notifications queued during this first tick
-    GuiObserver.GuiEventBus.process_deferred_notifications()
+    -- MULTIPLAYER FIX: Do NOT de-register on_tick here.
+    -- Removing on_tick after the first tick causes a script-event-mismatch when a client
+    -- joins a multiplayer game (saved map has no on_tick, but freshly-loaded mod registers it).
+    -- The flag check above makes subsequent ticks essentially free (single boolean test).
   end)
   
   -- Register on_gui_location_changed for modal position saving

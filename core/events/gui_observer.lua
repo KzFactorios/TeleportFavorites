@@ -29,7 +29,7 @@ local GuiEventBus = {
   _observers = {}, -- Map of event_type to array of observers
   _notification_queue = {}, -- Queue of pending notifications (processed immediately)
   _deferred_queue = {}, -- Queue of deferred GUI notifications (processed on next tick)
-  _deferred_tick_registered = false, -- Whether on_nth_tick(2) is currently active
+  _deferred_tick_active = false, -- Whether deferred queue has items to process (on_nth_tick(2) is always registered)
   _initialized = false -- Track initialization state
 }
 
@@ -100,13 +100,9 @@ function GuiEventBus.notify(event_type, event_data, defer_to_tick)
     GuiEventBus._deferred_queue = GuiEventBus._deferred_queue or {}
     table.insert(GuiEventBus._deferred_queue, notification)
     
-    -- Demand-driven: register on_nth_tick(2) only when queue has items
-    if not GuiEventBus._deferred_tick_registered and script and script.on_nth_tick then
-      GuiEventBus._deferred_tick_registered = true
-      script.on_nth_tick(2, function()
-        GuiEventBus.process_deferred_notifications()
-      end)
-    end
+    -- Flag that deferred queue has items to process
+    -- on_nth_tick(2) is permanently registered at load time; it checks this flag to no-op when idle
+    GuiEventBus._deferred_tick_active = true
   else
     -- Queue for immediate processing (non-GUI events)
     table.insert(GuiEventBus._notification_queue, notification)
@@ -127,11 +123,8 @@ function GuiEventBus.process_deferred_notifications()
   GuiEventBus._deferred_queue = GuiEventBus._deferred_queue or {}
   
   if #GuiEventBus._deferred_queue == 0 then
-    -- Unregister on_nth_tick(2) when queue is empty to avoid idle overhead
-    if GuiEventBus._deferred_tick_registered and script and script.on_nth_tick then
-      GuiEventBus._deferred_tick_registered = false
-      script.on_nth_tick(2, nil)
-    end
+    -- Mark deferred tick as inactive (handler remains registered for multiplayer safety)
+    GuiEventBus._deferred_tick_active = false
     return
   end
   
@@ -157,11 +150,8 @@ function GuiEventBus.process_deferred_notifications()
     end
   end
   
-  -- Queue is now drained — unregister the tick handler immediately
-  if GuiEventBus._deferred_tick_registered and script and script.on_nth_tick then
-    GuiEventBus._deferred_tick_registered = false
-    script.on_nth_tick(2, nil)
-  end
+  -- Queue is now drained — mark inactive (handler stays registered for multiplayer safety)
+  GuiEventBus._deferred_tick_active = false
 end
 
 --- Process queued notifications

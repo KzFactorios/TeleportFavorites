@@ -168,13 +168,14 @@ function handlers.set_observers_registered_flag(value)
   observers_registered_this_session = value
 end
 
--- Queue for deferred player initialization (avoids on_nth_tick(60) collisions)
+-- Queue for deferred player initialization
 -- Each entry: { player_index = N, is_rejoin = bool }
 local _deferred_init_queue = {}
-local _deferred_init_registered = false
 
---- Process all queued player initializations and unregister the tick handler
-local function process_deferred_init_queue()
+--- Process all queued player initializations
+--- on_nth_tick(60) stays permanently registered for multiplayer safety; it no-ops when queue is empty
+function handlers.process_deferred_init_queue()
+  if #_deferred_init_queue == 0 then return end
   for _, entry in ipairs(_deferred_init_queue) do
     local deferred_player = game.players[entry.player_index]
     if deferred_player and deferred_player.valid then
@@ -189,21 +190,14 @@ local function process_deferred_init_queue()
     end
   end
   _deferred_init_queue = {}
-  _deferred_init_registered = false
-  script.on_nth_tick(60, nil)
 end
 
---- Enqueue a player for deferred initialization (shared single on_nth_tick handler)
+--- Enqueue a player for deferred initialization
+--- on_nth_tick(60) is permanently registered at load time; it processes whatever is in the queue
 ---@param player_index uint
 ---@param is_rejoin boolean
 local function enqueue_deferred_init(player_index, is_rejoin)
   table.insert(_deferred_init_queue, { player_index = player_index, is_rejoin = is_rejoin })
-  if not _deferred_init_registered then
-    _deferred_init_registered = true
-    script.on_nth_tick(60, function()
-      process_deferred_init_queue()
-    end)
-  end
 end
 
 function handlers.on_player_created(event)

@@ -71,8 +71,9 @@ end)
 ErrorHandler.debug_log("[CONTROL] Registering all mod events through centralized dispatcher", {})
 event_registration_dispatcher.register_all_events(script)
 
--- The dispatcher uses on_tick for first-tick observer setup, then switches to on_nth_tick(2)
--- for deferred GUI notification processing. DO NOT register conflicting on_tick or on_nth_tick(2) handlers!
+-- The dispatcher registers on_tick permanently (no-op after first tick) for observer setup.
+-- on_nth_tick(2) is registered/unregistered dynamically for deferred GUI notification processing.
+-- DO NOT register conflicting on_tick or on_nth_tick(2) handlers!
 
 
 

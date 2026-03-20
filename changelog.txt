@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.0.96
+Date: 2026-03-20
+  Bugfixes:
+    - Fixed multiplayer script-event-mismatch error preventing clients from joining games - on_tick handler is now kept permanently registered (no-op after first tick) instead of being de-registered, which caused saved map event state to diverge from freshly-loaded mod state
+    - Fixed multiplayer desync: on_player_selected_area and on_player_alt_selected_area are no longer deregistered at runtime when closing the tag editor move mode - ModalInputBlocker handles these permanently
+    - Fixed multiplayer desync: on_nth_tick(2) for deferred GUI notifications and on_nth_tick(60) for deferred player initialization are now permanently registered with flag guards instead of being dynamically toggled at runtime
+    - Removed unnecessary conditional event registration in ModalInputBlocker - all events exist in Factorio v2.0+
+---------------------------------------------------------------------------------------------------
 Version: 0.0.95
 Date: 2026-03-11
   Bugfixes:

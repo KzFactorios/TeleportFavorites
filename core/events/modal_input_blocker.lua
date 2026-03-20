@@ -145,22 +145,11 @@ function ModalInputBlocker.register_handlers(script)
     {defines.events.on_player_configured_blueprint, ModalInputBlocker.on_player_configured_blueprint}
   }
 
-  -- Conditionally register events that might not exist in all versions
-  if defines.events.on_pre_build then
-    table.insert(events_to_register, {defines.events.on_pre_build, ModalInputBlocker.on_pre_build})
-  end
-  
-  if defines.events.on_player_cursor_stack_changed then
-    table.insert(events_to_register, {defines.events.on_player_cursor_stack_changed, ModalInputBlocker.on_player_cursor_stack_changed})
-  end
-  
-  if defines.events.on_player_main_inventory_changed then
-    table.insert(events_to_register, {defines.events.on_player_main_inventory_changed, ModalInputBlocker.on_player_main_inventory_changed})
-  end
-  
-  if defines.events.on_player_deconstructed_area then
-    table.insert(events_to_register, {defines.events.on_player_deconstructed_area, ModalInputBlocker.on_player_deconstructed_area})
-  end
+  -- All events below exist in Factorio v2.0+ (no conditional checks needed)
+  table.insert(events_to_register, {defines.events.on_pre_build, ModalInputBlocker.on_pre_build})
+  table.insert(events_to_register, {defines.events.on_player_cursor_stack_changed, ModalInputBlocker.on_player_cursor_stack_changed})
+  table.insert(events_to_register, {defines.events.on_player_main_inventory_changed, ModalInputBlocker.on_player_main_inventory_changed})
+  table.insert(events_to_register, {defines.events.on_player_deconstructed_area, ModalInputBlocker.on_player_deconstructed_area})
 
   -- Register all events
   for _, event_data in ipairs(events_to_register) do
