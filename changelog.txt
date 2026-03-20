@@ -2,10 +2,11 @@
 Version: 0.0.95
 Date: 2026-03-11
   Bugfixes:
-    - Fixed bug where deleting a fave from the vanilla tag editor does not properly cascade through this mod's delete sequence
+    - Fixed bug where deleting a fave from the vanilla tag editor does not properly cascade
     - Locked tags are handled properly when deleting from vanilla tag editor
     - Retooled criteria for determining surface properties
     - ups optimizations
+    - ensure all mod gui's are properly destroyed when a player leaves the game to prevent orphaned GUIs and memory leaks
 ---------------------------------------------------------------------------------------------------
 Version: 0.0.94
 Date: 2025-11-11

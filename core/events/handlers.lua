@@ -28,6 +28,17 @@ local gui_observer = require("core.events.gui_observer")
 
 -- Helper functions for surface refresh and captions
 
+--- Close all mod screen-level GUIs for a player (tag editor, modals, history)
+--- Called during save/load and player (re)join to prevent stale/orphaned GUI frames
+---@param player LuaPlayer
+local function close_all_mod_screens(player)
+  if not player or not player.valid then return end
+  ControlTagEditor.close_tag_editor(player)
+  GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
+  GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL)
+  GuiValidation.safe_destroy_frame(player.gui.screen, Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_FRAME)
+end
+
 ---@param surface_index number The surface index to refresh chart tags for
 local function refresh_surface_chart_tags(surface_index)
   local safe_index = tonumber(surface_index) or 1
@@ -168,6 +179,8 @@ local function process_deferred_init_queue()
     local deferred_player = game.players[entry.player_index]
     if deferred_player and deferred_player.valid then
       Cache.reset_transient_player_states(deferred_player)
+      -- Close any stale mod GUIs from previous session (tag editor, modals, etc.)
+      close_all_mod_screens(deferred_player)
       if entry.is_rejoin then
         gui_observer.GuiEventBus.cleanup_player_observers(deferred_player)
       end
