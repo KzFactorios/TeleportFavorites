@@ -325,78 +325,30 @@ function GuiEventBus.cleanup_old_observers(max_age_ticks)
   return total_cleaned
 end
 
---- Periodic cleanup that runs during notification processing
-function GuiEventBus.periodic_cleanup()
-  -- Clean up invalid observers more frequently
-  for event_type in pairs(GuiEventBus._observers) do
-    GuiEventBus.cleanup_observers(event_type)
-  end
-  
-  -- Clean up old observers more aggressively (1+ hours)
-  GuiEventBus.cleanup_old_observers(216000) -- 1 hour
-  
-  -- Clear excessive notification queue if it gets too large
-  if #GuiEventBus._notification_queue > 100 then
-    ErrorHandler.warn_log("Notification queue too large, clearing old notifications", {
-      queue_size = #GuiEventBus._notification_queue
-    })
-    -- Keep only the most recent 50 notifications
-    local recent_notifications = {}
-    for i = math.max(1, #GuiEventBus._notification_queue - 49), #GuiEventBus._notification_queue do
-      table.insert(recent_notifications, GuiEventBus._notification_queue[i])
-    end
-    GuiEventBus._notification_queue = recent_notifications
-  end
-  
-  -- Additional memory optimization: remove empty observer arrays
-  for event_type, observers in pairs(GuiEventBus._observers) do
-    if #observers == 0 then
-      GuiEventBus._observers[event_type] = nil
-    end
-  end
-end
-
 --- Schedule regular periodic cleanup (independent of notification processing)
 --- This ensures memory cleanup even during quiet periods
+--- Called via on_nth_tick(108000) — runs every 30 minutes
 function GuiEventBus.schedule_periodic_cleanup()
   -- Ensure game exists and has valid tick counter
   if not (game and type(game.tick) == "number") then
-    ErrorHandler.debug_log("Skipping periodic cleanup - invalid game state")
     return
   end
 
-  -- Always call ensure_initialized, but don't check return value
   GuiEventBus.ensure_initialized()
 
-  -- Use local value to avoid multiple accesses
-  local current_tick = game.tick
-  
-  -- Schedule cleanup every 5 minutes (18000 ticks)
-  local should_do_regular_cleanup = current_tick % 18000 == 0
-  if should_do_regular_cleanup then
-    local cleaned_count = GuiEventBus.cleanup_old_observers(108000) -- Clean up observers older than 30 minutes
-    
-    -- Additional aggressive cleanup every 15 minutes
-    local should_do_aggressive_cleanup = current_tick % 54000 == 0
-    if should_do_aggressive_cleanup then
-      -- MULTIPLAYER FIX: Clean up only observers with INVALID players, not disconnected ones
-      -- player.connected is client-specific and causes desyncs!
-      for event_type, observers in pairs(GuiEventBus._observers) do
-        local cleaned_count = 0
-        for i = #observers, 1, -1 do
-          local observer = observers[i]
-          if observer and observer.player and not observer.player.valid then
-            table.remove(observers, i)
-            cleaned_count = cleaned_count + 1
-          end
-        end
-        if cleaned_count > 0 then
-          ErrorHandler.debug_log("Scheduled cleanup removed disconnected observers", {
-            event_type = event_type,
-            cleaned_count = cleaned_count
-          })
-        end
+  -- Single pass: clean up invalid observers and empty event types
+  for event_type, observers in pairs(GuiEventBus._observers) do
+    for i = #observers, 1, -1 do
+      local observer = observers[i]
+      if not observer
+        or not observer.is_valid
+        or not observer:is_valid()
+        or (observer.player and not observer.player.valid) then
+        table.remove(observers, i)
       end
+    end
+    if #observers == 0 then
+      GuiEventBus._observers[event_type] = nil
     end
   end
 end
