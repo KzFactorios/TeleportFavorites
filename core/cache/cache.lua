@@ -74,10 +74,9 @@ end
 ---@param surface_index integer
 ---@return table[]
 Cache.get_player_history_stack = function(player, surface_index)
-  if not player or not player.valid or not surface_index then return {} end
-  local player_data = Cache.get_player_data(player)
-  if not player_data.surfaces or not player_data.surfaces[surface_index] then return {} end
-  local history = player_data.surfaces[surface_index].teleport_history
+  local surface_data = Cache.ensure_player_surface_data(player, surface_index)
+  if not surface_data then return {} end
+  local history = surface_data.teleport_history
   return (history and history.stack) or {}
 end
 
@@ -426,19 +425,9 @@ end
 ---@param surface_index integer|nil
 ---@return table[]|nil
 function Cache.get_player_favorites(player, surface_index)
-  if not player or not player.valid then
-    return nil
-  end
-  local idx = surface_index or (player.surface and player.surface.index)
-  if not idx then
-    return nil
-  end
-  local player_data = Cache.get_player_data(player)
-  if not player_data.surfaces or not player_data.surfaces[idx] then
-    return nil
-  end
-  local favorites = player_data.surfaces[idx].favorites or {}
-  return favorites
+  local surface_data = Cache.ensure_player_surface_data(player, surface_index)
+  if not surface_data then return nil end
+  return surface_data.favorites or {}
 end
 --- Get rehydrated favorites with 1-second caching (Performance optimization)
 --- Caches rehydrated favorites to avoid expensive rehydration on every rebuild (10-30 lookups per rebuild)
@@ -621,28 +610,26 @@ function Cache.get_tag_by_gps(player, gps)
     return nil
   end
 
-  -- Ensure chart_tag is present and valid
-  if match_tag.chart_tag then
-    if not match_tag.chart_tag.valid or not match_tag.chart_tag.position then
-      -- Chart tag is invalid or missing position, try to get a fresh one
-      local chart_tag_lookup = Cache.Lookups.get_chart_tag_by_gps(gps)
-      if chart_tag_lookup and chart_tag_lookup.valid then
-        match_tag.chart_tag = chart_tag_lookup
-      else
-        match_tag.chart_tag = nil
-      end
-    end
-  else
-    -- No chart_tag reference, try to get one
-    local chart_tag_lookup = Cache.Lookups.get_chart_tag_by_gps(gps)
-    if chart_tag_lookup and chart_tag_lookup.valid then
-      match_tag.chart_tag = chart_tag_lookup
+  -- MULTIPLAYER SAFETY: Create a shallow copy so we can attach chart_tag (userdata)
+  -- without polluting the storage-backed table. Userdata in storage causes desyncs.
+  local result = {}
+  for k, v in pairs(match_tag) do
+    if type(v) ~= "userdata" then
+      result[k] = v
     end
   end
 
+  -- Attach chart_tag reference transiently (not stored in persistent storage)
+  local chart_tag_ref = Cache.Lookups.get_chart_tag_by_gps(gps)
+  if chart_tag_ref and chart_tag_ref.valid and chart_tag_ref.position then
+    result.chart_tag = chart_tag_ref
+  else
+    result.chart_tag = nil
+  end
+
   -- Check if we have a valid chart_tag
-  if match_tag.chart_tag and match_tag.chart_tag.valid then
-    return match_tag
+  if result.chart_tag and result.chart_tag.valid then
+    return result
   end
 
   -- Notify player if chart_tag is invalid
@@ -807,18 +794,31 @@ function Cache.sanitize_for_storage(obj, exclude_fields)
   return sanitized
 end
 
+--- Ensure the player's surface data structure exists and return it.
+--- Reduces boilerplate for surface-aware getters/setters.
+---@param player LuaPlayer
+---@param surface_index integer|nil Falls back to player.surface.index
+---@return table|nil surface_data The player's surface data table, or nil if invalid
+---@return table|nil player_data The player's root data table
+function Cache.ensure_player_surface_data(player, surface_index)
+  if not player or not player.valid then return nil, nil end
+  local idx = surface_index or (player.surface and player.surface.index)
+  if not idx then return nil, nil end
+  local player_data = Cache.get_player_data(player)
+  if not player_data then return nil, nil end
+  player_data.surfaces = player_data.surfaces or {}
+  player_data.surfaces[idx] = player_data.surfaces[idx] or {}
+  return player_data.surfaces[idx], player_data
+end
+
 ---@param player LuaPlayer
 ---@param surface_index integer
 ---@return table teleport_history
 function Cache.get_player_teleport_history(player, surface_index)
-  if not player or not player.valid then return { stack = {}, pointer = 0 } end
-  -- Cache.init() removed - should be called externally, not recursively
-  local player_data = Cache.get_player_data(player)
-  player_data.surfaces = player_data.surfaces or {}
-  player_data.surfaces[surface_index] = player_data.surfaces[surface_index] or {}
-  player_data.surfaces[surface_index].teleport_history = player_data.surfaces[surface_index].teleport_history or
-      { stack = {}, pointer = 0 }
-  return player_data.surfaces[surface_index].teleport_history
+  local surface_data = Cache.ensure_player_surface_data(player, surface_index)
+  if not surface_data then return { stack = {}, pointer = 0 } end
+  surface_data.teleport_history = surface_data.teleport_history or { stack = {}, pointer = 0 }
+  return surface_data.teleport_history
 end
 
 function Cache.ensure_surface_cache(surface_index)
@@ -834,18 +834,9 @@ end
 ---@param player LuaPlayer
 ---@param favorites table[]
 function Cache.set_player_favorites(player, favorites)
-  if not player or not player.valid or not player.surface or not player.surface.index then
-    return false
-  end
-  local player_data = Cache.get_player_data(player)
-  if not player_data then return false end
-
-  -- Ensure surface data structure exists
-  player_data.surfaces = player_data.surfaces or {}
-  player_data.surfaces[player.surface.index] = player_data.surfaces[player.surface.index] or {}
-
-  -- Set the favorites
-  player_data.surfaces[player.surface.index].favorites = favorites or {}
+  local surface_data = Cache.ensure_player_surface_data(player)
+  if not surface_data then return false end
+  surface_data.favorites = favorites or {}
   return true
 end
 

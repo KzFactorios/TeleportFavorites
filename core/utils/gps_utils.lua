@@ -96,6 +96,22 @@ function GPSUtils.validate_map_position(map_position)
   return true
 end
 
+--- Get surface index from a chart tag, player, or fallback value
+--- Consolidates the repeated pattern: tag.surface.index or player.surface.index or 1
+---@param tag_or_event_tag LuaCustomChartTag|nil Chart tag object (may have .surface)
+---@param player LuaPlayer|nil Player for fallback surface
+---@param fallback integer|nil Fallback value (defaults to 1)
+---@return integer surface_index
+function GPSUtils.get_context_surface_index(tag_or_event_tag, player, fallback)
+  if tag_or_event_tag and tag_or_event_tag.surface and tag_or_event_tag.surface.valid then
+    return tag_or_event_tag.surface.index
+  end
+  if player and player.valid and player.surface and player.surface.valid then
+    return player.surface.index
+  end
+  return fallback or 1
+end
+
 --- Check if a position can be tagged by validating player, chunk charted status, and walkability
 ---@param player LuaPlayer
 ---@param map_position MapPosition

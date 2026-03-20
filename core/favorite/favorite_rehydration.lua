@@ -18,18 +18,10 @@ function FavoriteRehydration.rehydrate_favorite_at_runtime(player, fav)
   end
 
   local tag = Cache.get_tag_by_gps(player, fav.gps)
-  
   local locked = fav.locked or false
   local new_fav = FavoriteUtils.new(fav.gps, locked, tag)
-  
-  -- If we have a tag but no chart_tag, try to get one from runtime cache
-  if tag and not tag.chart_tag then
-    local chart_tag = Cache.Lookups and Cache.Lookups.get_chart_tag_by_gps(fav.gps)
-    if chart_tag and chart_tag.valid then
-      tag.chart_tag = chart_tag
-    end
-  end
-
+  -- chart_tag is already attached transiently by Cache.get_tag_by_gps()
+  -- Do NOT write chart_tag userdata back to storage-backed tag objects (causes multiplayer desyncs)
   return new_fav
 end
 

@@ -83,6 +83,31 @@ local function handle_teleport_to_favorite_slot(event, slot_number)
   })
 end
 
+--- Navigate teleport history: get player, validate, set pointer, teleport
+---@param event table Factorio event
+---@param calc_new_pointer fun(hist: table): number Function to compute the new pointer value
+local function navigate_history(event, calc_new_pointer)
+  local player = game.get_player(event.player_index)
+  if not player or not player.valid then return end
+  local surface_index = player.surface.index
+  local hist = Cache.get_player_teleport_history(player, surface_index)
+  if not hist or not hist.stack or #hist.stack == 0 then return end
+  local new_pointer = calc_new_pointer(hist)
+  TeleportHistory.set_pointer(player, surface_index, new_pointer)
+  local pointer = math.max(1, math.min(hist.pointer, #hist.stack))
+  local entry = hist.stack[pointer]
+  if entry and type(entry) == "table" and entry.gps then
+    TeleportStrategy.teleport_to_gps(player, entry.gps, false)
+  else
+    ErrorHandler.debug_log("History navigation: invalid entry or empty stack", {
+      pointer = pointer,
+      stack_size = #hist.stack,
+      entry_type = type(entry),
+      entry_gps = entry and entry.gps or nil
+    })
+  end
+end
+
 local default_custom_input_handlers = {
   ["teleport_history-toggle"] = function(event)
     local player = game.get_player(event.player_index)
@@ -112,94 +137,16 @@ local default_custom_input_handlers = {
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "9"] = function(event) handle_teleport_to_favorite_slot(event, 9) end,
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "10"] = function(event) handle_teleport_to_favorite_slot(event, 10) end,
   ["teleport_history-prev"] = function(event)
-    local player = game.get_player(event.player_index)
-    if player and player.valid then
-      local surface_index = player.surface.index
-      local hist = Cache.get_player_teleport_history(player, surface_index)
-      if hist and hist.stack and #hist.stack > 0 then
-        local new_pointer = math.max(1, hist.pointer - 1)
-        TeleportHistory.set_pointer(player, surface_index, new_pointer)
-        local pointer = math.max(1, math.min(hist.pointer, #hist.stack))
-        local entry = hist.stack[pointer]
-        if entry and type(entry) == "table" and entry.gps then
-          TeleportStrategy.teleport_to_gps(player, entry.gps, false)
-        else
-          ErrorHandler.debug_log("History navigation: invalid entry or empty stack", {
-            pointer = pointer,
-            stack_size = #hist.stack,
-            entry_type = type(entry),
-            entry_gps = entry and entry.gps or nil
-          })
-        end
-      end
-    end
+    navigate_history(event, function(hist) return math.max(1, hist.pointer - 1) end)
   end,
   ["teleport_history-next"] = function(event)
-    local player = game.get_player(event.player_index)
-    if player and player.valid then
-      local surface_index = player.surface.index
-      local hist = Cache.get_player_teleport_history(player, surface_index)
-      if hist and hist.stack and #hist.stack > 0 then
-        local new_pointer = math.min(#hist.stack, hist.pointer + 1)
-        TeleportHistory.set_pointer(player, surface_index, new_pointer)
-        local pointer = math.max(1, math.min(hist.pointer, #hist.stack))
-        local entry = hist.stack[pointer]
-        if entry and type(entry) == "table" and entry.gps then
-          TeleportStrategy.teleport_to_gps(player, entry.gps, false)
-        else
-          ErrorHandler.debug_log("History navigation: invalid entry or empty stack", {
-            pointer = pointer,
-            stack_size = #hist.stack,
-            entry_type = type(entry),
-            entry_gps = entry and entry.gps or nil
-          })
-        end
-      end
-    end
+    navigate_history(event, function(hist) return math.min(#hist.stack, hist.pointer + 1) end)
   end,
   ["teleport_history-first"] = function(event)
-    local player = game.get_player(event.player_index)
-    if player and player.valid then
-      local surface_index = player.surface.index
-      local hist = Cache.get_player_teleport_history(player, surface_index)
-      if hist and hist.stack and #hist.stack > 0 then
-        TeleportHistory.set_pointer(player, surface_index, 1)
-        local pointer = math.max(1, math.min(hist.pointer, #hist.stack))
-        local entry = hist.stack[pointer]
-        if entry and type(entry) == "table" and entry.gps then
-          TeleportStrategy.teleport_to_gps(player, entry.gps, false)
-        else
-          ErrorHandler.debug_log("History navigation: invalid entry or empty stack", {
-            pointer = pointer,
-            stack_size = #hist.stack,
-            entry_type = type(entry),
-            entry_gps = entry and entry.gps or nil
-          })
-        end
-      end
-    end
+    navigate_history(event, function() return 1 end)
   end,
   ["teleport_history-last"] = function(event)
-    local player = game.get_player(event.player_index)
-    if player and player.valid then
-      local surface_index = player.surface.index
-      local hist = Cache.get_player_teleport_history(player, surface_index)
-      if hist and hist.stack and #hist.stack > 0 then
-        TeleportHistory.set_pointer(player, surface_index, #hist.stack)
-        local pointer = math.max(1, math.min(hist.pointer, #hist.stack))
-        local entry = hist.stack[pointer]
-        if entry and type(entry) == "table" and entry.gps then
-          TeleportStrategy.teleport_to_gps(player, entry.gps, false)
-        else
-          ErrorHandler.debug_log("History navigation: invalid entry or empty stack", {
-            pointer = pointer,
-            stack_size = #hist.stack,
-            entry_type = type(entry),
-            entry_gps = entry and entry.gps or nil
-          })
-        end
-      end
-    end
+    navigate_history(event, function(hist) return #hist.stack end)
   end,
   ["teleport_history-clear"] = function(event)
     local player = game.get_player(event.player_index)

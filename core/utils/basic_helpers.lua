@@ -140,6 +140,28 @@ function basic_helpers.is_space_platform_surface(surface)
 end
 
 -- ===========================
+-- CONTROLLER TYPE HELPERS
+-- ===========================
+
+--- Check if a player's controller type supports GUI display (character, remote, cutscene)
+---@param player LuaPlayer
+---@return boolean is_supported True if the controller type supports GUI
+function basic_helpers.is_supported_controller(player)
+  if not player or not player.valid then return false end
+  local ct = player.controller_type
+  return ct == defines.controllers.character or ct == defines.controllers.remote or ct == defines.controllers.cutscene
+end
+
+--- Check if a player's controller type is restricted (god, spectator)
+---@param player LuaPlayer
+---@return boolean is_restricted True if the controller type is restricted
+function basic_helpers.is_restricted_controller(player)
+  if not player or not player.valid then return false end
+  local ct = player.controller_type
+  return ct == defines.controllers.god or ct == defines.controllers.spectator
+end
+
+-- ===========================
 -- SAFE VALIDATION HELPERS (from safe_helpers.lua)
 -- ===========================
 

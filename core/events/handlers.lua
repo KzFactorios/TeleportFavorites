@@ -46,6 +46,29 @@ local function refresh_surface_chart_tags(surface_index)
   Cache.ensure_surface_cache(safe_index)
 end
 
+--- Restore a chart tag that was removed and refresh caches/UI
+---@param player LuaPlayer The player
+---@param chart_tag LuaCustomChartTag The removed chart tag (still valid during event)
+---@param tag table? The mod's Tag object
+local function restore_chart_tag_and_refresh(player, chart_tag, tag)
+  if chart_tag.position and chart_tag.surface then
+    local new_chart_tag = player.force.add_chart_tag(
+      player.surface,
+      {
+        position = chart_tag.position,
+        text = chart_tag.text or "",
+        icon = chart_tag.icon,
+        last_user = chart_tag.last_user
+      }
+    )
+    if tag then
+      tag.chart_tag = new_chart_tag
+    end
+  end
+  refresh_surface_chart_tags(tonumber(player.surface.index) or 1)
+  fave_bar.build(player)
+end
+
 -- Removed since we will set the caption directly
 
 --- Validate player and run handler logic with early return pattern
@@ -237,7 +260,7 @@ function handlers.on_open_tag_editor_custom_input(event)
 
     if chart_tag and chart_tag.valid then
       local gps = GPSUtils.gps_from_map_position(chart_tag.position,
-        tonumber(chart_tag.surface and chart_tag.surface.index or player.surface.index) or 1)
+        tonumber(GPSUtils.get_context_surface_index(chart_tag, player)) or 1)
       local player_favorites = PlayerFavorites.new(player)
       local favorite_entry = player_favorites:get_favorite_by_gps(gps)
       local icon = chart_tag.icon
@@ -449,7 +472,7 @@ function handlers.on_chart_tag_modified(event)
       local new_chart_tag, position_pair = TagEditorEventHelpers.normalize_and_replace_chart_tag(chart_tag, player)
       if new_chart_tag then
         -- After normalization, recalculate GPS coordinates for the new chart tag
-        local surface_index = new_chart_tag.surface and new_chart_tag.surface.index or 1
+        local surface_index = GPSUtils.get_context_surface_index(new_chart_tag, player)
         local normalized_gps = GPSUtils.gps_from_map_position(new_chart_tag.position, tonumber(surface_index) or 1)
         -- Update using the normalized GPS as the final new GPS
         if old_gps and normalized_gps and old_gps ~= normalized_gps then
@@ -491,7 +514,7 @@ function handlers.on_chart_tag_removed(event)
 
     -- Get GPS and Tag object to check ownership via Tag.owner_name
     local gps = GPSUtils.gps_from_map_position(chart_tag.position,
-      chart_tag.surface and chart_tag.surface.index or player.surface.index)
+      GPSUtils.get_context_surface_index(chart_tag, player))
     local tag = Cache.get_tag_by_gps(player, gps)
 
     -- Only allow removal if player is admin or owner (using Tag.owner_name)
@@ -500,24 +523,7 @@ function handlers.on_chart_tag_removed(event)
 
     -- Overrides to vanilla behavior, giving us a way to "put the tag back" if a vanilla deletion breaks the mod's rules
     if not is_admin and not is_owner then
-      -- Restore the tag at its original location (Factorio will have already removed it, so recreate)`
-      if chart_tag.position and chart_tag.surface then
-        local new_chart_tag = player.force.add_chart_tag(
-          player.surface,
-          {
-            position = chart_tag.position,
-            text = chart_tag.text or "",
-            icon = chart_tag.icon,
-            last_user = chart_tag.last_user
-          }
-        )
-        if tag then 
-          -- Update our Tag storage with the new chart tag reference
-          tag.chart_tag = new_chart_tag
-        end
-      end
-      refresh_surface_chart_tags(tonumber(player.surface.index) or 1)
-      fave_bar.build(player)
+      restore_chart_tag_and_refresh(player, chart_tag, tag)
       return
     end
 
@@ -536,25 +542,7 @@ function handlers.on_chart_tag_removed(event)
     if is_locked == true then
       -- Notify player that favorite is locked
       GameHelpers.player_print(player, { "tf-gui.favorite_locked_cant_delete" })
-
-      -- Re-insert the chart_tag
-      if chart_tag.position and chart_tag.surface then
-        local new_chart_tag = player.force.add_chart_tag(
-          player.surface,
-          {
-            position = chart_tag.position,
-            text = chart_tag.text or "",
-            icon = chart_tag.icon,
-            last_user = chart_tag.last_user
-          }
-        )
-        if tag then 
-          -- Update our Tag storage with the new chart tag reference
-          tag.chart_tag = new_chart_tag
-        end
-      end
-      refresh_surface_chart_tags(tonumber(player.surface.index) or 1)
-      fave_bar.build(player)
+      restore_chart_tag_and_refresh(player, chart_tag, tag)
       return
     end
 

@@ -239,38 +239,25 @@ function M.register_gui_handlers(script)
   end
   script.on_event(defines.events.on_gui_click, shared_on_gui_click)
 
-  -- Register text change handler for immediate storage saving
-  local function shared_on_gui_text_changed(event)
+  -- Route tag editor GUI events: validate player/element, check parent frame, dispatch to handler
+  local function dispatch_tag_editor_event(event, handler_fn)
     if not event or not event.element then return end
-
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end
-
-    -- Allow text changes in tag editor even when modal dialog is active
-    -- (since user might be editing while confirmation dialog is open)
-    local element = event.element
-    local parent_gui = GuiValidation.get_gui_frame_by_element(element)
+    local parent_gui = GuiValidation.get_gui_frame_by_element(event.element)
     if parent_gui and parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
-      control_tag_editor.on_tag_editor_gui_text_changed(event)
+      handler_fn(event)
     end
   end
-  script.on_event(defines.events.on_gui_text_changed, shared_on_gui_text_changed) -- Register elem changed handler for immediate storage saving (for icon picker)
 
-  local function shared_on_gui_elem_changed(event)
-    if not event or not event.element then return end
-
-    local player = game.get_player(event.player_index)
-    if not player or not player.valid then return end
-
-    -- Allow elem changes in tag editor even when modal dialog is active
-    -- (since user might be changing icon while confirmation dialog is open)
-    local element = event.element
-    local parent_gui = GuiValidation.get_gui_frame_by_element(element)
-    if parent_gui and parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
-      control_tag_editor.on_tag_editor_gui_elem_changed(event)
-    end
-  end
-  script.on_event(defines.events.on_gui_elem_changed, shared_on_gui_elem_changed)
+  -- Register text/elem change handlers for immediate storage saving
+  -- Allow changes even when modal dialog is active (user may edit while confirmation is open)
+  script.on_event(defines.events.on_gui_text_changed, function(event)
+    dispatch_tag_editor_event(event, control_tag_editor.on_tag_editor_gui_text_changed)
+  end)
+  script.on_event(defines.events.on_gui_elem_changed, function(event)
+    dispatch_tag_editor_event(event, control_tag_editor.on_tag_editor_gui_elem_changed)
+  end)
 
   -- Register GUI confirmed handler for modal dialogs
   local function shared_on_gui_confirmed(event)

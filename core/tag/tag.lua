@@ -53,7 +53,9 @@ function Tag.update_gps_and_surface_mapping(old_gps, new_gps, chart_tag, player,
   -- Only update if old_tag is a table
   if type(old_tag) == "table" then
     old_tag.gps = new_gps or ""
-    old_tag.chart_tag = chart_tag or nil
+    -- Do NOT store chart_tag (userdata) in persistent storage - causes multiplayer desyncs.
+    -- Chart tag lookups are handled at runtime by Cache.Lookups.get_chart_tag_by_gps()
+    old_tag.chart_tag = nil
     -- OWNERSHIP PRESERVATION: Explicitly preserve owner_name if provided
     if preserve_owner_name then
       old_tag.owner_name = preserve_owner_name

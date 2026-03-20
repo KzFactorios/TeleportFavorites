@@ -446,13 +446,19 @@ local function handle_favorite_btn(player, tag_data)
   BasicHelpers.update_state(tag_editor.update_favorite_state, player, tag_data.is_favorite)
 end
 
+--- Close and clean up the delete confirmation dialog
+---@param player LuaPlayer
+local function _dismiss_delete_confirm(player)
+  GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
+  Cache.set_modal_dialog_state(player, nil)
+end
+
 local function handle_delete_confirm(player)
   -- Get the tag data from the tag_editor_data cache
   local tag_data = Cache.get_tag_editor_data(player)
   if not tag_data then
     -- No cached data, just close the dialogs
-    GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
-    Cache.set_modal_dialog_state(player, nil) -- Clear modal state
+    _dismiss_delete_confirm(player)
     close_tag_editor(player)
     return
   end
@@ -461,10 +467,8 @@ local function handle_delete_confirm(player)
   local tag = tag_data.tag
   if not tag then
     -- Close both confirmation dialog and tag editor
-    GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
-    Cache.set_modal_dialog_state(player, nil) -- Clear modal state
+    _dismiss_delete_confirm(player)
     close_tag_editor(player)
-    -- Reset delete mode
     Cache.reset_tag_editor_delete_mode(player)
     return
   end
@@ -473,10 +477,8 @@ local function handle_delete_confirm(player)
   local can_delete, _is_owner, is_admin_override, reason = AdminUtils.can_delete_chart_tag(player, tag)
 
   if not can_delete then
-    GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
-    Cache.set_modal_dialog_state(player, nil) -- Clear modal state
+    _dismiss_delete_confirm(player)
     show_tag_editor_error(player, tag_data, reason or LocaleUtils.get_error_string(player, "tag_deletion_forbidden"))
-    -- Reset delete mode
     Cache.reset_tag_editor_delete_mode(player)
     return
   end
@@ -521,8 +523,7 @@ local function handle_delete_confirm(player)
   Cache.invalidate_rehydrated_favorites(nil, player.surface.index)
 
   -- Close both dialogs
-  GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
-  Cache.set_modal_dialog_state(player, nil) -- Clear modal state
+  _dismiss_delete_confirm(player)
   close_tag_editor(player)
  
   Cache.reset_tag_editor_delete_mode(player)
@@ -530,8 +531,7 @@ end
 
 -- User cancelled deletion - close confirmation dialog and return to tag editor
 local function handle_delete_cancel(player)
-  GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
-  Cache.set_modal_dialog_state(player, nil) -- Clear modal state
+  _dismiss_delete_confirm(player)
   player.opened = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
   Cache.reset_tag_editor_delete_mode(player)
 end

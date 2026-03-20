@@ -50,7 +50,7 @@ function ChartTagHelpers.is_valid_tag_modification(event, player)
   end
 
   -- Get the Tag object from storage to check permissions using Tag.owner_name
-  local surface_index = event.tag.surface and event.tag.surface.index or (player and player.valid and player.surface.index) or 1
+  local surface_index = GPSUtils.get_context_surface_index(event.tag, player)
   local old_gps = GPSUtils.gps_from_map_position(event.old_position, surface_index)
   local tag = old_gps and Cache.get_tag_by_gps(player, old_gps) or nil
   
@@ -85,13 +85,13 @@ function ChartTagHelpers.extract_gps(event, player)
 
   -- Extract new GPS from event tag position
   if event.tag and event.tag.valid then
-    local surface_index = event.tag.surface and event.tag.surface.index or (player and player.valid and player.surface.index) or 1
+    local surface_index = GPSUtils.get_context_surface_index(event.tag, player)
     new_gps = GPSUtils.gps_from_map_position(event.tag.position, surface_index)
   end
 
   -- Extract old GPS from event if provided
   if event.old_position then
-    local surface_index = event.tag and event.tag.surface and event.tag.surface.index or (player and player.valid and player.surface.index) or 1
+    local surface_index = GPSUtils.get_context_surface_index(event.tag, player)
     old_gps = GPSUtils.gps_from_map_position(event.old_position, surface_index)
   else
     ErrorHandler.debug_log("WARNING: No old_position provided in chart tag modification event", {
@@ -120,7 +120,7 @@ function ChartTagHelpers.update_tag_and_cleanup(old_gps, new_gps, event, player,
   local modified_chart_tag = event.tag
 
   if modified_chart_tag and modified_chart_tag.valid then
-    local surface_index = modified_chart_tag.surface and modified_chart_tag.surface.index or player.surface.index
+    local surface_index = GPSUtils.get_context_surface_index(modified_chart_tag, player)
     Cache.Lookups.invalidate_surface_chart_tags(surface_index)
   end
 
@@ -198,7 +198,7 @@ function ChartTagHelpers.update_tag_metadata(gps, chart_tag, player)
   if not player or not player.valid then return end
 
   -- Invalidate chart tag cache for the surface
-  local surface_index = chart_tag.surface and chart_tag.surface.index or player.surface.index
+  local surface_index = GPSUtils.get_context_surface_index(chart_tag, player)
   Cache.Lookups.invalidate_surface_chart_tags(tonumber(surface_index))
 
   -- Find all players who have this tag favorited
