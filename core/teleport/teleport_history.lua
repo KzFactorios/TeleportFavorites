@@ -53,9 +53,8 @@ end
 
 --- Add a GPS location to the teleport history stack
 ---@param player LuaPlayer
----@param gps string Destination GPS
----@param from_gps string|nil Departure GPS (only set when sequential history mode is enabled)
-function TeleportHistory.add_gps(player, gps, from_gps)
+---@param gps string Departure GPS (where the player was before teleporting)
+function TeleportHistory.add_gps(player, gps)
 	local valid = ValidationUtils.validate_player(player)
 	if not valid or not gps then return end
 
@@ -71,9 +70,8 @@ function TeleportHistory.add_gps(player, gps, from_gps)
 
 	local top = stack[#stack]
 	local top_gps = top and top.gps or nil
-	local top_from_gps = top and top.from_gps or nil
-	-- Deduplicate: skip if both gps and from_gps match the top entry
-	if top_gps == gps and top_from_gps == from_gps then
+	-- Deduplicate: skip if gps matches the top entry
+	if top_gps == gps then
 		hist.pointer = #stack
 		TeleportHistory.notify_observers(player)
 		return
@@ -81,7 +79,7 @@ function TeleportHistory.add_gps(player, gps, from_gps)
 	if #stack >= HISTORY_STACK_SIZE then
 		table.remove(stack, 1)
 	end
-	local item = HistoryItem.new(gps, from_gps)
+	local item = HistoryItem.new(gps)
 	table.insert(stack, item)
 	hist.pointer = #stack
 	TeleportHistory.notify_observers(player)
@@ -114,10 +112,10 @@ end
 function TeleportHistory.register_remote_interface()
 	if not remote.interfaces["TeleportFavorites_History"] then
 		remote.add_interface("TeleportFavorites_History", {
-			add_to_history = function(player_index, gps, from_gps)
+			add_to_history = function(player_index, gps)
 				local player = game.players[player_index]
 				if not player or not player.valid then return end
-				TeleportHistory.add_gps(player, gps, from_gps)
+				TeleportHistory.add_gps(player, gps)
 			end
 		})
 	end

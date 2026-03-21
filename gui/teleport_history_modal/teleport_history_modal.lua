@@ -246,8 +246,6 @@ function teleport_history_modal.update_history_list(player)
       local coords_string = GPSUtils.coords_string_from_gps(entry.gps)
       local chart_tag = Lookups.get_chart_tag_by_gps(entry.gps)
       local tag_icon = chart_tag and chart_tag.icon
-      local is_sequential_entry = entry.from_gps and type(entry.from_gps) == "string" and entry.from_gps ~= ""
-      local from_coords_string = is_sequential_entry and GPSUtils.coords_string_from_gps(entry.from_gps) or nil
 
       -- Create horizontal flow for this row
 
@@ -272,12 +270,7 @@ function teleport_history_modal.update_history_list(player)
       local button_name = "teleport_history_item_" .. tostring(i)
       local chart_tag_text = chart_tag and chart_tag.text or ""
       local truncated_text = truncate_tag_text(chart_tag_text, Constants.settings.TELEPORT_HISTORY_LABEL_MAX_DISPLAY)
-      local display_text
-      if is_sequential_entry then
-        display_text = truncated_text .. "   " .. (from_coords_string or "") .. " → " .. coords_string
-      else
-        display_text = truncated_text .. "   " .. coords_string or entry.gps or "Invalid GPS" -- 3 spaces
-      end
+      local display_text = truncated_text .. "   " .. coords_string or entry.gps or "Invalid GPS" -- 3 spaces
 
       local success_button, item_button = pcall(function()
         return GuiBase.create_button(
@@ -290,14 +283,7 @@ function teleport_history_modal.update_history_list(player)
       if success_button and item_button and item_button.valid then
         local tooltip_success = pcall(function()
           local coords_str = tostring(coords_string or entry.gps or "")
-          ---@type any
-          local tip
-          if is_sequential_entry then
-            tip = { "tf-gui.teleport_history_sequential_item_tooltip", tostring(from_coords_string or ""), coords_str }
-          else
-            tip = { "tf-gui.teleport_history_item_tooltip", coords_str }
-          end
-          item_button.tooltip = tip
+          item_button.tooltip = { "tf-gui.teleport_history_item_tooltip", coords_str }
         end)
         if not tooltip_success then
           ErrorHandler.debug_log("Failed to set teleport history button tooltip", {
