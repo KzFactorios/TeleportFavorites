@@ -1,24 +1,36 @@
 ---@diagnostic disable: undefined-global
 
 ---@class HistoryItem
----@field gps string GPS string for the teleport location (required, not nil)
+---@field gps string GPS string for the teleport destination (required, not nil)
 ---@field timestamp integer Tick timestamp of the teleport event (required, not nil)
+---@field from_gps string|nil GPS string for the departure location (nil when sequential mode is off)
 --- HistoryItem class for teleport history stack entries
 local HistoryItem = {}
 HistoryItem.__index = HistoryItem
 
 
 --- Create a new HistoryItem
----@param gps string
+---@param gps string Destination GPS
+---@param from_gps string|nil Departure GPS (only set when sequential history mode is enabled)
 ---@return HistoryItem|nil
-function HistoryItem.new(gps)
+function HistoryItem.new(gps, from_gps)
     if type(gps) ~= "string" or gps == "" then
         return nil
     end
     local self = setmetatable({}, HistoryItem)
     self.gps = gps
     self.timestamp = game and game.tick or 0
+    if type(from_gps) == "string" and from_gps ~= "" then
+        self.from_gps = from_gps
+    end
     return self
+end
+
+--- Check if a HistoryItem was recorded in sequential mode (has departure GPS)
+---@param item HistoryItem
+---@return boolean
+function HistoryItem.is_sequential(item)
+    return item and type(item.from_gps) == "string" and item.from_gps ~= ""
 end
 
 --- Validate that a HistoryItem is well-formed

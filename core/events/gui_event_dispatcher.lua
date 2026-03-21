@@ -160,7 +160,7 @@ function M.register_gui_handlers(script)
         return
       end
 
-      if element.name == "fave_bar_visibility_toggle" or element.name == "fave_bar_history_toggle" or is_fave_bar_slot_button(element) then
+      if element.name == "fave_bar_visibility_toggle" or element.name == "fave_bar_history_toggle" or element.name == "fave_bar_history_mode_toggle" or is_fave_bar_slot_button(element) then
         control_fave_bar.on_fave_bar_gui_click(event)
         return true
       end

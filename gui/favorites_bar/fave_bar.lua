@@ -9,12 +9,13 @@
 -- └─ fave_bar_flow (flow, horizontal)
 --    ├─ fave_bar_toggle_container (frame, vertical)
 --    │  ├─ fave_bar_history_toggle (sprite-button)
+--    │  ├─ fave_bar_history_mode_toggle (sprite-button)
 --    │  └─ fave_bar_visibility_toggle (sprite-button)
 --    └─ fave_bar_slots_flow (frame, horizontal)
---       ├─ fave_bar_slot_1 (sprite-button)
---       ├─ fave_bar_slot_2 (sprite-button)
---       ├─ ...
---       └─ fave_bar_slot_N (sprite-button)
+--       ├─ [mode=off] fave_bar_slot_1 (sprite-button) ... fave_bar_slot_N
+--       └─ [mode=short/long] fave_bar_slot_wrapper_1 (flow, vertical)
+--          ├─ fave_bar_slot_1 (sprite-button)
+--          └─ fave_bar_slot_label_1 (label)
 
 local GuiBase = require("gui.gui_base")
 local GuiElementBuilders = require("core.utils.gui_element_builders")
@@ -132,9 +133,21 @@ function fave_bar.build_quickbar_style(player, parent) -- Add a horizontal flow 
     "tf_fave_history_toggle_button"
   )
 
+  -- Add history mode toggle button (standard vs sequential)
+  local player_data = Cache.get_player_data(player)
+  local is_sequential = player_data.sequential_history_mode or false
+  local mode_sprite = is_sequential and Enum.SpriteEnum.SEQUENTIAL_HISTORY_MODE or Enum.SpriteEnum.STD_HISTORY_MODE
+  local mode_tooltip = is_sequential and { "tf-gui.history_mode_sequential_tooltip" } or { "tf-gui.history_mode_std_tooltip" }
+  local history_mode_toggle = GuiBase.create_sprite_button(
+    toggle_container,
+    Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_MODE_TOGGLE_BUTTON,
+    mode_sprite,
+    mode_tooltip,
+    "tf_fave_history_toggle_button"
+  )
+
   ---@type LocalisedString
   local toggle_tooltip = { "tf-gui.toggle_fave_bar" }
-  local player_data = Cache.get_player_data(player)
   local slots_visible = player_data.fave_bar_slots_visible
   if slots_visible == nil then slots_visible = true end -- Additional safety default
 
@@ -144,7 +157,7 @@ function fave_bar.build_quickbar_style(player, parent) -- Add a horizontal flow 
   -- Add slots frame to the same flow for proper layout
   local slots_frame = GuiBase.create_frame(bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW, "horizontal",
     "tf_fave_slots_row")
-  return bar_flow, slots_frame, toggle_visibility_button, toggle_container, history_toggle_button
+  return bar_flow, slots_frame, toggle_visibility_button, toggle_container, history_toggle_button, history_mode_toggle
 end
 
 local function get_fave_bar_gui_refs(player)
@@ -244,9 +257,9 @@ function fave_bar.build(player, force_show)
       fave_bar_frame = existing_frame
     end
     -- Build or retrieve GUI structure
-    local _bar_flow, slots_frame, _toggle_button, _toggle_container, _history_toggle_button
+    local _bar_flow, slots_frame, _toggle_button, _toggle_container, _history_toggle_button, _history_mode_toggle
     if needs_rebuild then
-      _bar_flow, slots_frame, _toggle_button, _toggle_container, _history_toggle_button = fave_bar
+      _bar_flow, slots_frame, _toggle_button, _toggle_container, _history_toggle_button, _history_mode_toggle = fave_bar
           .build_quickbar_style(player, fave_bar_frame)
     else
       -- Retrieve existing GUI elements via direct indexing instead of recursive search
@@ -255,6 +268,7 @@ function fave_bar.build(player, force_show)
       _toggle_container = _bar_flow and _bar_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER]
       _toggle_button = _toggle_container and _toggle_container[Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_BUTTON]
       _history_toggle_button = _toggle_container and _toggle_container[Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_TOGGLE_BUTTON]
+      _history_mode_toggle = _toggle_container and _toggle_container[Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_MODE_TOGGLE_BUTTON]
     end
 
     -- Handle visibility based on settings
@@ -264,6 +278,9 @@ function fave_bar.build(player, force_show)
     -- Hide/show history toggle button based on settings
     if _history_toggle_button and _history_toggle_button.valid then
       _history_toggle_button.visible = history_enabled
+    end
+    if _history_mode_toggle and _history_mode_toggle.valid then
+      _history_mode_toggle.visible = history_enabled
     end
 
     -- Hide/show toggle container and slots based on favorites setting
@@ -299,7 +316,16 @@ function fave_bar.build(player, force_show)
         slots_frame.visible = slots_visible
       end
 
-      -- Build slot buttons
+      -- Build slot buttons (destroy existing ones first for non-rebuild path)
+      if slots_frame and slots_frame.valid then
+        local children = slots_frame.children
+        for i = #children, 1, -1 do
+          local child = children[i]
+          if child and child.valid then
+            child.destroy()
+          end
+        end
+      end
       fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves)
 
       -- Do NOT update toggle state in pdata here! Only the event handler should do that.
@@ -323,6 +349,30 @@ function fave_bar.build(player, force_show)
 end
 
 
+
+
+--- Get truncated label text for a slot based on the label mode setting
+---@param fav table|nil Rehydrated favorite object
+---@param mode string "off", "short", or "long"
+---@return string label_text Truncated text or empty string
+local function get_slot_label_text(fav, mode)
+  if mode == "off" then return "" end
+  if not fav or FavoriteUtils.is_blank_favorite(fav) then return "" end
+  local text = ""
+  if fav.tag and fav.tag.chart_tag and fav.tag.chart_tag.valid then
+    text = fav.tag.chart_tag.text or ""
+  end
+  if text == "" then return "" end
+  if mode == "short" then
+    return string.sub(text, 1, 5)
+  elseif mode == "long" then
+    if #text > 64 then
+      return string.sub(text, 1, 64) .. "..."
+    end
+    return text
+  end
+  return ""
+end
 
 
 local function build_favorite_buttons_row(parent, player, pfaves)
@@ -380,14 +430,30 @@ local function build_favorite_buttons_row(parent, player, pfaves)
     end
   end
 
+  local label_mode = Cache.Settings.get_player_slot_label_mode(player)
+  local use_labels = label_mode ~= "off"
+
   for i = 1, max_slots do
     local fav = rehydrated_pfaves[i]
     local btn_icon, tooltip, style, locked = get_slot_btn_props(i, fav)
-    local btn = GuiHelpers.create_slot_button(parent, "fave_bar_slot_" .. i, tostring(btn_icon), tooltip, { style = style })
+
+    -- When labels are enabled, wrap button + label in a vertical flow
+    local btn_parent = parent
+    if use_labels then
+      local wrapper = parent.add {
+        type = "flow",
+        name = "fave_bar_slot_wrapper_" .. i,
+        direction = "vertical",
+        style = "tf_fave_bar_slot_wrapper"
+      }
+      btn_parent = wrapper
+    end
+
+    local btn = GuiHelpers.create_slot_button(btn_parent, "fave_bar_slot_" .. i, tostring(btn_icon), tooltip, { style = style })
     if btn and btn.valid then
-      local label_style = locked and "tf_fave_bar_locked_slot_number" or "tf_fave_bar_slot_number"
+      local number_label_style = locked and "tf_fave_bar_locked_slot_number" or "tf_fave_bar_slot_number"
       local slot_num = i
-      GuiBase.create_label(btn, "tf_fave_bar_slot_number_" .. tostring(i), tostring(slot_num), label_style)
+      GuiBase.create_label(btn, "tf_fave_bar_slot_number_" .. tostring(i), tostring(slot_num), number_label_style)
       if locked then
         btn.add {
           type = "sprite",
@@ -395,6 +461,11 @@ local function build_favorite_buttons_row(parent, player, pfaves)
           sprite = Enum.SpriteEnum.LOCK,
           style = "tf_fave_bar_slot_lock_sprite"
         }
+      end
+      -- Add text label below button when labels are enabled
+      if use_labels then
+        local label_text = get_slot_label_text(fav, label_mode)
+        GuiBase.create_label(btn_parent, "fave_bar_slot_label_" .. i, label_text, "tf_fave_bar_slot_label")
       end
     else
       ErrorHandler.warn_log("[FAVE_BAR] Failed to create slot button", { slot = i, icon = btn_icon })
@@ -457,7 +528,15 @@ function fave_bar.update_single_slot(player, slot_index)
   if not ValidationUtils.validate_player(player) then return end
   local _, _, _, slots_frame = get_fave_bar_gui_refs(player)
   if not slots_frame then return end
-  local slot_button = GuiValidation.find_child_by_name(slots_frame, "fave_bar_slot_" .. slot_index)
+
+  -- Find the slot button — may be directly in slots_frame or inside a wrapper flow
+  local wrapper = GuiValidation.find_child_by_name(slots_frame, "fave_bar_slot_wrapper_" .. slot_index)
+  local slot_button
+  if wrapper and wrapper.valid then
+    slot_button = GuiValidation.find_child_by_name(wrapper, "fave_bar_slot_" .. slot_index)
+  else
+    slot_button = GuiValidation.find_child_by_name(slots_frame, "fave_bar_slot_" .. slot_index)
+  end
   if not slot_button then return end
 
   local surface_index = player.surface.index
@@ -512,6 +591,15 @@ function fave_bar.update_single_slot(player, slot_index)
     slot_button.sprite = ""
     ---@diagnostic disable-next-line: assign-type-mismatch
     slot_button.tooltip = { "tf-gui.favorite_slot_empty" }
+  end
+
+  -- Update slot label text if wrapper exists
+  if wrapper and wrapper.valid then
+    local label_mode = Cache.Settings.get_player_slot_label_mode(player)
+    local slot_label = GuiValidation.find_child_by_name(wrapper, "fave_bar_slot_label_" .. slot_index)
+    if slot_label and slot_label.valid then
+      slot_label.caption = get_slot_label_text(fav, label_mode)
+    end
   end
 end
 

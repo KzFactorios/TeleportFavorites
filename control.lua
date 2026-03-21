@@ -58,6 +58,10 @@ script.on_load(function()
   custom_on_load()
 end)
 
+script.on_configuration_changed(function(data)
+  handlers.on_configuration_changed(data)
+end)
+
 -- KEEP THIS CODE for development (disabled in production)
 -- Instantly skip any cutscene (including intro) for all players
 --script.on_event(defines.events.on_cutscene_started, function(event)

@@ -31,6 +31,8 @@ local Constants = {
     MAX_FAVORITE_SLOTS_SETTING = "max-favorite-slots",   -- Setting name for per-player max slots
     FAVE_BAR_SLOT_PREFIX = "fave_bar_slot_",             -- Prefix for favorite bar slot element names
     TELEPORT_HISTORY_LABEL_MAX_DISPLAY = 27,             -- Teleport history label max display length
+    DEFAULT_SLOT_LABEL_MODE = "off",                      -- Default slot label mode (off/short/long)
+    SLOT_LABEL_MODE_SETTING = "slot-label-mode",          -- Setting name for slot label display mode
     
     -- ========================================
     -- Update Intervals (in ticks)

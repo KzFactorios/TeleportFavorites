@@ -240,6 +240,18 @@ function EventRegistrationDispatcher.register_core_events(script)
         return
       end
 
+      -- Handle slot label mode change — rebuild fave bar to add/remove labels
+      if event.setting == Constants.settings.SLOT_LABEL_MODE_SETTING then
+        ErrorHandler.debug_log("[SETTINGS] Processing slot-label-mode change")
+        local player = (event.player_index and game.players[event.player_index]) or nil
+        if player and player.valid then
+          Cache.Settings.invalidate_player_cache(player)
+          fave_bar.build(player, true)
+          ErrorHandler.debug_log("[SETTINGS] Rebuilt favorites bar for slot-label-mode change for player " .. player.name)
+        end
+        return
+      end
+
       -- Destination message setting has been removed - messages always shown
       ErrorHandler.debug_log("[SETTINGS] Unknown setting changed: " .. tostring(event.setting))
     end,

@@ -90,6 +90,8 @@ UIEnums.Sprites = {
   HISTORY = "tf_history", 
   TIME_MACHINE = "utility/time-machine",
   SCROLL_HISTORY = "tf_scroll_history",
+  STD_HISTORY_MODE = "tf_std_history_mode",
+  SEQUENTIAL_HISTORY_MODE = "tf_sequential_history_mode",
 
   -- Special symbols
   HEART = "virtual-signal/signal-heart",
@@ -127,6 +129,7 @@ UIEnums.GUI.FaveBar = {
 
   -- History elements
   HISTORY_TOGGLE_BUTTON = "fave_bar_history_toggle",
+  HISTORY_MODE_TOGGLE_BUTTON = "fave_bar_history_mode_toggle",
 
   -- Buttons
   TOGGLE_BUTTON = "fave_bar_visibility_toggle",

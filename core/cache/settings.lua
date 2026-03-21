@@ -184,4 +184,23 @@ function Settings:getPlayerSettings(player)
   return Settings.get_player_settings(player)
 end
 
+--- Get per-player slot label mode ("off", "short", or "long")
+--- @param player LuaPlayer|nil
+--- @return string mode "off", "short", or "long"
+function Settings.get_player_slot_label_mode(player)
+  local default_mode = Constants.settings.DEFAULT_SLOT_LABEL_MODE or "off"
+  local setting_key = Constants.settings.SLOT_LABEL_MODE_SETTING
+  if not setting_key then return default_mode end
+
+  local global_settings = get_global_settings(player)
+  if not global_settings then return default_mode end
+
+  local s = global_settings[setting_key]
+  local value = s and s.value or nil
+  if value == "short" or value == "long" then
+    return value
+  end
+  return default_mode
+end
+
 return Settings

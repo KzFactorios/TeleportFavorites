@@ -307,4 +307,21 @@ data:extend({
     height = 32,
     flags = { "gui-icon" }
   },
+  {
+    type = "sprite",
+    name = "tf_std_history_mode",
+    filename = "__TeleportFavorites__/graphics/icons8-finger-pointing-right-40.png",
+    width = 40,
+    height = 40,
+    scale = 0.85,
+    flags = { "gui-icon" }
+  },
+  {
+    type = "sprite",
+    name = "tf_sequential_history_mode",
+    filename = "__TeleportFavorites__/graphics/icons8-numbered-list-40.png",
+    width = 40,
+    height = 40,
+    flags = { "gui-icon" }
+  },
 })

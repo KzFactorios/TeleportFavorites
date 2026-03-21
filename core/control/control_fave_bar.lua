@@ -207,6 +207,26 @@ local function handle_history_toggle_button_click(event, player)
   end
 end
 
+--- Handle history mode toggle button click (switches between standard and sequential history)
+---@param event table The GUI click event
+---@param player LuaPlayer The player
+local function handle_history_mode_toggle_click(event, player)
+  local player_data = Cache.get_player_data(player)
+  player_data.sequential_history_mode = not (player_data.sequential_history_mode or false)
+  local is_sequential = player_data.sequential_history_mode
+
+  -- Update button icon and tooltip in-place
+  local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
+  local bar_frame = main_flow and GuiValidation.find_child_by_name(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
+  local bar_flow = bar_frame and GuiValidation.find_child_by_name(bar_frame, Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW)
+  local toggle_container = bar_flow and bar_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER]
+  local mode_btn = toggle_container and toggle_container[Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_MODE_TOGGLE_BUTTON]
+  if mode_btn and mode_btn.valid then
+    mode_btn.sprite = is_sequential and Enum.SpriteEnum.SEQUENTIAL_HISTORY_MODE or Enum.SpriteEnum.STD_HISTORY_MODE
+    mode_btn.tooltip = is_sequential and { "tf-gui.history_mode_sequential_tooltip" } or { "tf-gui.history_mode_std_tooltip" }
+  end
+end
+
 --- Handle teleport history modal GUI clicks
 ---@param event table The GUI click event
 local function on_teleport_history_modal_gui_click(event)
@@ -380,6 +400,8 @@ local function on_fave_bar_gui_click(event)
     handle_toggle_button_click(event, player)
   elseif element.name == "fave_bar_history_toggle" then
     handle_history_toggle_button_click(event, player)
+  elseif element.name == "fave_bar_history_mode_toggle" then
+    handle_history_mode_toggle_click(event, player)
   end
 end
 

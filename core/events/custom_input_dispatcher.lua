@@ -9,6 +9,7 @@ local Cache = require("core.cache.cache")
 local FavoriteUtils = require("core.favorite.favorite_utils")
 local TeleportHistory = require("core.teleport.teleport_history")
 local BasicHelpers = require("core.utils.basic_helpers")
+local GPSUtils = require("core.utils.gps_utils")
 local GuiElementBuilders = require("core.utils.gui_element_builders")
 local GuiValidation = require("core.utils.gui_validation")
 local ErrorHandler = require("core.utils.error_handler")
@@ -86,7 +87,8 @@ end
 --- Navigate teleport history: get player, validate, set pointer, teleport
 ---@param event table Factorio event
 ---@param calc_new_pointer fun(hist: table): number Function to compute the new pointer value
-local function navigate_history(event, calc_new_pointer)
+---@param use_from_gps boolean|nil If true, teleport to entry.from_gps when available (for "prev" in sequential mode)
+local function navigate_history(event, calc_new_pointer, use_from_gps)
   local player = game.get_player(event.player_index)
   if not player or not player.valid then return end
   local surface_index = player.surface.index
@@ -97,7 +99,25 @@ local function navigate_history(event, calc_new_pointer)
   local pointer = math.max(1, math.min(hist.pointer, #hist.stack))
   local entry = hist.stack[pointer]
   if entry and type(entry) == "table" and entry.gps then
-    TeleportStrategy.teleport_to_gps(player, entry.gps, false)
+    -- Safety: verify entry.gps is on the current surface (short-circuit if cross-surface)
+    local entry_surface = GPSUtils.get_surface_index_from_gps(entry.gps)
+    if entry_surface and math.floor(entry_surface) ~= surface_index then
+      ErrorHandler.debug_log("History navigation: short-circuit, entry is on different surface", {
+        entry_surface = entry_surface,
+        current_surface = surface_index
+      })
+      return
+    end
+    -- In sequential mode, "prev" teleports to departure location (from_gps) if available
+    -- but ONLY if from_gps is on the same surface (never cross-surface via history navigation)
+    local target_gps = entry.gps
+    if use_from_gps and entry.from_gps and type(entry.from_gps) == "string" and entry.from_gps ~= "" then
+      local from_surface = GPSUtils.get_surface_index_from_gps(entry.from_gps)
+      if from_surface and math.floor(from_surface) == surface_index then
+        target_gps = entry.from_gps
+      end
+    end
+    TeleportStrategy.teleport_to_gps(player, target_gps, false)
   else
     ErrorHandler.debug_log("History navigation: invalid entry or empty stack", {
       pointer = pointer,
@@ -137,7 +157,7 @@ local default_custom_input_handlers = {
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "9"] = function(event) handle_teleport_to_favorite_slot(event, 9) end,
   [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "10"] = function(event) handle_teleport_to_favorite_slot(event, 10) end,
   ["teleport_history-prev"] = function(event)
-    navigate_history(event, function(hist) return math.max(1, hist.pointer - 1) end)
+    navigate_history(event, function(hist) return math.max(1, hist.pointer - 1) end, true)
   end,
   ["teleport_history-next"] = function(event)
     navigate_history(event, function(hist) return math.min(#hist.stack, hist.pointer + 1) end)

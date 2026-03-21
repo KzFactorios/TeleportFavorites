@@ -22,6 +22,7 @@ local GuiValidation = require("core.utils.gui_validation")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local Enum = require("prototypes.enums.enum")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
+local teleport_history_modal = require("gui.teleport_history_modal.teleport_history_modal")
 local ChartTagHelpers = require("core.events.chart_tag_helpers")
 local gui_observer = require("core.events.gui_observer")
 
@@ -126,9 +127,15 @@ function handlers.on_player_changed_surface(event)
 
       Cache.ensure_surface_cache(player.surface.index)
 
-      fave_bar.build(player)
+      -- Force rebuild to show the new surface's favorites (skips tick debounce)
+      fave_bar.build(player, true)
       -- Ensure visibility is updated for the new surface
       fave_bar.update_fave_bar_visibility(player)
+
+      -- Refresh teleport history modal if open (show new surface's history)
+      if teleport_history_modal.is_open(player) then
+        teleport_history_modal.update_history_list(player)
+      end
     end
   end)
 end
@@ -181,6 +188,24 @@ function handlers.on_load()
   ErrorHandler.debug_log("[ON_LOAD] Reset observer registration flag", {
     flag_value = observers_registered_this_session
   })
+end
+
+--- Handle mod configuration changes (mod update, added/removed mods)
+--- Destroys and rebuilds all fave bars to ensure new GUI elements are created
+function handlers.on_configuration_changed(data)
+  ErrorHandler.debug_log("[CONFIG_CHANGED] Configuration changed, rebuilding all fave bars")
+  for _, player in pairs(game.players) do
+    if player.valid then
+      -- Ensure player data is initialized (get_player_data calls init internally)
+      Cache.get_player_data(player)
+      -- Destroy existing fave bar so it gets fully rebuilt with new elements
+      local main_flow = player.gui.top[Enum.UIEnums.GUI.Shared.MAIN_GUI_FLOW]
+      if main_flow and main_flow.valid then
+        GuiValidation.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
+      end
+      fave_bar.build(player, true)
+    end
+  end
 end
 
 function handlers.get_observers_registered_flag()

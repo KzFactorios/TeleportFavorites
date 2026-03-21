@@ -43,7 +43,7 @@ gui_style.tf_fave_slots_row = {
 gui_style.tf_fave_history_toggle_button = {
     type = "button_style",
     parent = "tf_slot_button",
-    padding = 0,
+    padding = 4,
     right_margin = -4,
     left_margin = 0,
 }
@@ -128,6 +128,26 @@ gui_style.tf_fave_bar_slot_lock_sprite = {
     type = "image_style",
     top_padding = -3,
     left_padding = -5
+}
+
+gui_style.tf_fave_bar_slot_wrapper = {
+    type = "vertical_flow_style",
+    width = 40,
+    horizontal_align = "center",
+    vertical_spacing = 0,
+    top_padding = 0,
+    bottom_padding = 0,
+}
+
+gui_style.tf_fave_bar_slot_label = {
+    type = "label_style",
+    font = "tf_font_7",
+    font_color = { r = 0.7, g = 0.7, b = 0.7, a = 0.9 },
+    horizontal_align = "center",
+    width = 40,
+    single_line = true,
+    top_padding = 0,
+    bottom_padding = 0,
 }
 
 return true

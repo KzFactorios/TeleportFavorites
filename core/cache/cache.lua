@@ -9,6 +9,7 @@
 --       render_mode = string,
 --       tag_editor_data = table,
 --       fave_bar_slots_visible = bool,
+--       sequential_history_mode = bool,
 --       drag_favorite = table,
 --       modal_dialog = table,
 --       surfaces = {
@@ -323,6 +324,10 @@ local function init_player_data(player)
   player_data.fave_bar_slots_visible = player_data.fave_bar_slots_visible
   if player_data.fave_bar_slots_visible == nil then
     player_data.fave_bar_slots_visible = true -- Default: slots are visible, show EYELASH icon
+  end
+
+  if player_data.sequential_history_mode == nil then
+    player_data.sequential_history_mode = false
   end
 
   player_data.drag_favorite = player_data.drag_favorite or {
