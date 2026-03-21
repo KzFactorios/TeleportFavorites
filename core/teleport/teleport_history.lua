@@ -70,7 +70,7 @@ function TeleportHistory.add_gps(player, gps)
 
 	local top = stack[#stack]
 	local top_gps = top and top.gps or nil
-	-- Deduplicate: skip if gps matches the top entry
+	-- Deduplicate: skip if gps matches the top entry (no consecutive duplicates)
 	if top_gps == gps then
 		hist.pointer = #stack
 		TeleportHistory.notify_observers(player)
