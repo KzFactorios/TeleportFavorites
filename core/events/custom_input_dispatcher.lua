@@ -87,15 +87,38 @@ end
 --- Navigate teleport history: get player, validate, set pointer, teleport
 ---@param event table Factorio event
 ---@param calc_new_pointer fun(hist: table): number Function to compute the new pointer value
----@param use_from_gps boolean|nil If true, teleport to entry.from_gps when available (for "prev" in sequential mode)
+---@param use_from_gps boolean|nil If true, teleport to from_gps of the CURRENT entry (for "prev" in sequential mode)
 local function navigate_history(event, calc_new_pointer, use_from_gps)
   local player = game.get_player(event.player_index)
   if not player or not player.valid then return end
   local surface_index = player.surface.index
   local hist = Cache.get_player_teleport_history(player, surface_index)
   if not hist or not hist.stack or #hist.stack == 0 then return end
+
+  -- In sequential mode, "prev" must teleport to the from_gps of the CURRENT entry (before the
+  -- pointer moves), not the from_gps of the entry we are navigating to.
+  local sequential_target_gps = nil
+  if use_from_gps and hist.pointer >= 1 and hist.pointer <= #hist.stack then
+    local current_entry = hist.stack[hist.pointer]
+    if current_entry and type(current_entry) == "table"
+        and type(current_entry.from_gps) == "string" and current_entry.from_gps ~= "" then
+      local from_surface = GPSUtils.get_surface_index_from_gps(current_entry.from_gps)
+      if from_surface and math.floor(from_surface) == surface_index then
+        sequential_target_gps = current_entry.from_gps
+      end
+    end
+  end
+
   local new_pointer = calc_new_pointer(hist)
   TeleportHistory.set_pointer(player, surface_index, new_pointer)
+
+  if sequential_target_gps then
+    -- Sequential mode "prev": teleport to the departure location of the entry we just left
+    TeleportStrategy.teleport_to_gps(player, sequential_target_gps, false)
+    return
+  end
+
+  -- Non-sequential or no from_gps available: teleport to the destination of the new pointer entry
   local pointer = math.max(1, math.min(hist.pointer, #hist.stack))
   local entry = hist.stack[pointer]
   if entry and type(entry) == "table" and entry.gps then
@@ -108,16 +131,7 @@ local function navigate_history(event, calc_new_pointer, use_from_gps)
       })
       return
     end
-    -- In sequential mode, "prev" teleports to departure location (from_gps) if available
-    -- but ONLY if from_gps is on the same surface (never cross-surface via history navigation)
-    local target_gps = entry.gps
-    if use_from_gps and entry.from_gps and type(entry.from_gps) == "string" and entry.from_gps ~= "" then
-      local from_surface = GPSUtils.get_surface_index_from_gps(entry.from_gps)
-      if from_surface and math.floor(from_surface) == surface_index then
-        target_gps = entry.from_gps
-      end
-    end
-    TeleportStrategy.teleport_to_gps(player, target_gps, false)
+    TeleportStrategy.teleport_to_gps(player, entry.gps, false)
   else
     ErrorHandler.debug_log("History navigation: invalid entry or empty stack", {
       pointer = pointer,

@@ -136,7 +136,7 @@ function fave_bar.build_quickbar_style(player, parent) -- Add a horizontal flow 
   -- Add history mode toggle button (standard vs sequential)
   local player_data = Cache.get_player_data(player)
   local is_sequential = player_data.sequential_history_mode or false
-  local mode_sprite = is_sequential and Enum.SpriteEnum.SEQUENTIAL_HISTORY_MODE or Enum.SpriteEnum.STD_HISTORY_MODE
+  local mode_sprite = is_sequential and Enum.SpriteEnum.STD_HISTORY_MODE or Enum.SpriteEnum.SEQUENTIAL_HISTORY_MODE
   local mode_tooltip = is_sequential and { "tf-gui.history_mode_sequential_tooltip" } or { "tf-gui.history_mode_std_tooltip" }
   local history_mode_toggle = GuiBase.create_sprite_button(
     toggle_container,

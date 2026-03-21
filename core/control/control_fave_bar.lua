@@ -222,7 +222,7 @@ local function handle_history_mode_toggle_click(event, player)
   local toggle_container = bar_flow and bar_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER]
   local mode_btn = toggle_container and toggle_container[Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_MODE_TOGGLE_BUTTON]
   if mode_btn and mode_btn.valid then
-    mode_btn.sprite = is_sequential and Enum.SpriteEnum.SEQUENTIAL_HISTORY_MODE or Enum.SpriteEnum.STD_HISTORY_MODE
+    mode_btn.sprite = is_sequential and Enum.SpriteEnum.STD_HISTORY_MODE or Enum.SpriteEnum.SEQUENTIAL_HISTORY_MODE
     mode_btn.tooltip = is_sequential and { "tf-gui.history_mode_sequential_tooltip" } or { "tf-gui.history_mode_std_tooltip" }
   end
 end
