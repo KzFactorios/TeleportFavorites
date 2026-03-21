@@ -12,6 +12,7 @@ local ErrorHandler = require("core.utils.error_handler")
 
 
 local HISTORY_STACK_SIZE = 128 -- Only 128 allowed for now (TBA for future options)
+local HISTORY_RESOLUTION_TILES = 20 -- Locations within this many tiles are considered the same
 local TeleportHistory = {}
 
 
@@ -70,11 +71,28 @@ function TeleportHistory.add_gps(player, gps)
 
 	local top = stack[#stack]
 	local top_gps = top and top.gps or nil
-	-- Deduplicate: skip if gps matches the top entry (no consecutive duplicates)
-	if top_gps == gps then
-		hist.pointer = #stack
-		TeleportHistory.notify_observers(player)
-		return
+	-- Deduplicate: skip if the new location is within HISTORY_RESOLUTION_TILES of the top entry
+	-- (same surface required; different surfaces always count as distinct)
+	if top_gps then
+		local top_surface = GPSUtils.get_surface_index_from_gps(top_gps)
+		if top_surface and math.floor(top_surface) == surface_index then
+			if top_gps == gps then
+				hist.pointer = #stack
+				TeleportHistory.notify_observers(player)
+				return
+			end
+			local top_pos = GPSUtils.map_position_from_gps(top_gps)
+			local new_pos = GPSUtils.map_position_from_gps(gps)
+			if top_pos and new_pos then
+				local dx = top_pos.x - new_pos.x
+				local dy = top_pos.y - new_pos.y
+				if (dx * dx + dy * dy) <= (HISTORY_RESOLUTION_TILES * HISTORY_RESOLUTION_TILES) then
+					hist.pointer = #stack
+					TeleportHistory.notify_observers(player)
+					return
+				end
+			end
+		end
 	end
 	if #stack >= HISTORY_STACK_SIZE then
 		table.remove(stack, 1)

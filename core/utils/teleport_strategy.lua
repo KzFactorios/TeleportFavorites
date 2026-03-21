@@ -153,17 +153,22 @@ function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history)
       player.exit_remote_view()
     end
 
-    if add_to_history and player_gps then
+    if add_to_history then
       local ok, result = pcall(function()
-        ErrorHandler.debug_log("[DEBUG] Attempting to add to history", {
-          player_index = player.index,
-          player_gps = player_gps,
-          remote_available = remote.interfaces["TeleportFavorites_History"] ~= nil
-        })
         if remote.interfaces["TeleportFavorites_History"] and
             remote.interfaces["TeleportFavorites_History"].add_to_history then
-          -- Record where the player was before teleporting
-          remote.call("TeleportFavorites_History", "add_to_history", player.index, player_gps)
+          local player_data = Cache.get_player_data(player)
+          local is_sequential = player_data and player_data.sequential_history_mode
+          if is_sequential then
+            -- Sequential mode: record departure then destination
+            if player_gps then
+              remote.call("TeleportFavorites_History", "add_to_history", player.index, player_gps)
+            end
+            remote.call("TeleportFavorites_History", "add_to_history", player.index, working_gps)
+          else
+            -- Standard mode: record destination only
+            remote.call("TeleportFavorites_History", "add_to_history", player.index, working_gps)
+          end
         end
       end)
     end
