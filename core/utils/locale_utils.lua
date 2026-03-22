@@ -19,7 +19,7 @@ local LOCALE_PREFIXES = {
 }
 
 -- Debug flag for missing translation warnings
-local DEBUG_MISSING_TRANSLATIONS = true
+local DEBUG_MISSING_TRANSLATIONS = false
 
 -- Get a localized string from the GUI category
 -- @param player - The player object for localization context

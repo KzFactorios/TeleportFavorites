@@ -43,7 +43,7 @@ gui_style.tf_fave_slots_row = {
 gui_style.tf_fave_history_toggle_button = {
     type = "button_style",
     parent = "tf_slot_button",
-    padding = 8,
+    padding = 5,
     right_margin = -4,
     left_margin = 0,
 }
