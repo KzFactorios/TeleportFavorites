@@ -377,6 +377,22 @@ local function init_player_data(player)
 
 end
 
+--- Get sequential history mode for a player (true = sequential, false = standard).
+---@param player LuaPlayer
+---@return boolean
+function Cache.get_sequential_history_mode(player)
+  local player_data = Cache.get_player_data(player)
+  return player_data.sequential_history_mode or false
+end
+
+--- Set sequential history mode for a player.
+---@param player LuaPlayer
+---@param value boolean
+function Cache.set_sequential_history_mode(player, value)
+  local player_data = Cache.get_player_data(player)
+  player_data.sequential_history_mode = value == true
+end
+
 --- Get persistent position and size for teleport history modal
 ---@param player LuaPlayer
 ---@return table|nil

@@ -12,8 +12,30 @@ local ErrorHandler = require("core.utils.error_handler")
 
 
 local HISTORY_STACK_SIZE = 128 -- Only 128 allowed for now (TBA for future options)
-local HISTORY_RESOLUTION_TILES = 20 -- Locations within this many tiles are considered the same
+local STD_RESOLUTION_TILES = 20  -- Standard mode: consecutive locations within this distance are collapsed
+local SEQ_RESOLUTION_TILES = 32  -- Sequential mode: FROM→TO hops shorter than this are not recorded
+
 local TeleportHistory = {}
+
+--- Check if two GPS strings are within a given tile resolution of each other (same surface only).
+---@param gps_a string|nil
+---@param gps_b string|nil
+---@param resolution number Tile distance threshold
+---@return boolean
+local function gps_within_resolution(gps_a, gps_b, resolution)
+	if not gps_a or not gps_b then return false end
+	local surface_a = GPSUtils.get_surface_index_from_gps(gps_a)
+	local surface_b = GPSUtils.get_surface_index_from_gps(gps_b)
+	if not surface_a or not surface_b then return false end
+	if math.floor(surface_a) ~= math.floor(surface_b) then return false end
+	if gps_a == gps_b then return true end
+	local pos_a = GPSUtils.map_position_from_gps(gps_a)
+	local pos_b = GPSUtils.map_position_from_gps(gps_b)
+	if not pos_a or not pos_b then return false end
+	local dx = pos_a.x - pos_b.x
+	local dy = pos_a.y - pos_b.y
+	return (dx * dx + dy * dy) <= (resolution * resolution)
+end
 
 
 --- Remove a history item at a specific index
@@ -52,9 +74,11 @@ function TeleportHistory.notify_observers(player)
 	end
 end
 
---- Add a GPS location to the teleport history stack
+--- Add a GPS location to the teleport history stack.
+--- Applies the consecutive-duplicate rule: if the new location is within
+--- STD_RESOLUTION_TILES of the current stack top it is silently dropped.
 ---@param player LuaPlayer
----@param gps string Departure GPS (where the player was before teleporting)
+---@param gps string GPS location to record
 function TeleportHistory.add_gps(player, gps)
 	local valid = ValidationUtils.validate_player(player)
 	if not valid or not gps then return end
@@ -69,26 +93,9 @@ function TeleportHistory.add_gps(player, gps)
 	local hist = Cache.get_player_teleport_history(player, surface_index)
 	local stack = hist.stack
 
-	-- Helper: returns true if candidate_gps is within resolution distance of ref_gps on this surface
-	local function is_near(ref_gps, candidate_gps)
-		if not ref_gps then return false end
-		local ref_surface = GPSUtils.get_surface_index_from_gps(ref_gps)
-		if not ref_surface or math.floor(ref_surface) ~= surface_index then return false end
-		if ref_gps == candidate_gps then return true end
-		local ref_pos = GPSUtils.map_position_from_gps(ref_gps)
-		local new_pos = GPSUtils.map_position_from_gps(candidate_gps)
-		if not ref_pos or not new_pos then return false end
-		local dx = ref_pos.x - new_pos.x
-		local dy = ref_pos.y - new_pos.y
-		return (dx * dx + dy * dy) <= (HISTORY_RESOLUTION_TILES * HISTORY_RESOLUTION_TILES)
-	end
-
-	local top     = stack[#stack]
-	local prev    = stack[#stack - 1]
-	-- Skip if the new location is within resolution of the top OR the entry before it.
-	-- This collapses A→B→A→B oscillation into [A, B] without preventing genuinely new
-	-- locations (A→B→C) from being appended.
-	if is_near(top and top.gps, gps) or is_near(prev and prev.gps, gps) then
+	-- Rule C: no consecutive duplicate locations — skip if within resolution of the top entry
+	local top = stack[#stack]
+	if gps_within_resolution(top and top.gps, gps, STD_RESOLUTION_TILES) then
 		hist.pointer = #stack
 		TeleportHistory.notify_observers(player)
 		return
@@ -100,6 +107,41 @@ function TeleportHistory.add_gps(player, gps)
 	table.insert(stack, item)
 	hist.pointer = #stack
 	TeleportHistory.notify_observers(player)
+end
+
+--- Record a teleport in history, applying mode-specific deduplication logic.
+--- Standard mode: records only the destination.
+--- Sequential mode: records both FROM and TO with two deduplication rules:
+---   Rule B — FROM within SEQ_RESOLUTION_TILES of TO (trivial hop) → nothing recorded.
+---   Rule A — FROM within STD_RESOLUTION_TILES of the stack top → FROM silently skipped by add_gps.
+---@param player LuaPlayer
+---@param from_gps string|nil GPS where the player departed from (may be nil if unknown)
+---@param to_gps string GPS where the player teleported to
+function TeleportHistory.add_teleport(player, from_gps, to_gps)
+	if not ValidationUtils.validate_player(player) then return end
+	if not to_gps then return end
+
+	local is_sequential = Cache.get_sequential_history_mode(player)
+
+	if not is_sequential then
+		-- Standard mode: record destination only
+		TeleportHistory.add_gps(player, to_gps)
+		return
+	end
+
+	-- Sequential mode
+	-- Rule B: trivial hop — FROM is within SEQ_RESOLUTION_TILES of TO, record nothing
+	if from_gps and gps_within_resolution(from_gps, to_gps, SEQ_RESOLUTION_TILES) then
+		return
+	end
+
+	-- Record FROM first (add_gps top-check handles Rule A implicitly)
+	if from_gps then
+		TeleportHistory.add_gps(player, from_gps)
+	end
+
+	-- Record TO (add_gps consecutive-duplicate check prevents dup when TO ≈ FROM)
+	TeleportHistory.add_gps(player, to_gps)
 end
 
 -- Set pointer to specific index (for teleport history modal navigation)
@@ -133,7 +175,12 @@ function TeleportHistory.register_remote_interface()
 				local player = game.players[player_index]
 				if not player or not player.valid then return end
 				TeleportHistory.add_gps(player, gps)
-			end
+			end,
+			add_teleport = function(player_index, from_gps, to_gps)
+				local player = game.players[player_index]
+				if not player or not player.valid then return end
+				TeleportHistory.add_teleport(player, from_gps, to_gps)
+			end,
 		})
 	end
 end

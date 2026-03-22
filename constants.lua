@@ -46,7 +46,12 @@ local Constants = {
     -- ========================================
     GPS_PAD_NUMBER = 3,              -- Min digits for GPS coordinate display
     BLANK_GPS = "1000000.1000000.1", -- Default empty GPS string for initialization
-    
+
+    -- ========================================
+    -- Teleport History
+    -- ========================================
+    SEQUENTIAL_HISTORY_RESOLUTION = 32, -- Sequential mode: FROM→TO hops within this many tiles are not recorded
+
     -- ========================================
     -- Feature Toggles
     -- ========================================

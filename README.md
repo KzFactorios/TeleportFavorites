@@ -102,27 +102,35 @@ TeleportFavorites records your teleport destinations so you can revisit them lat
 
 **Problem:** You teleport to a favorite, run around building for a while, then teleport somewhere else. When you press "Previous," you land at the original teleport destination — not where you were actually standing when you left.
 
-**Solution:** Sequential History Mode records **both** your departure location and your destination for each teleport.
+**Solution:** Sequential History Mode records **both** your departure location and your destination as separate entries in the history stack.
+
+### How it works
+
+When you teleport in sequential mode, two entries are pushed onto the stack: first your departure position, then the destination. Pressing "Previous" once takes you back to where you were standing before the teleport. Pressing it again continues backward through earlier entries.
+
+**Smart filtering** keeps the history clean:
+- **Trivial hops** — if your departure and destination are within 32 tiles of each other, nothing is recorded
+- **Consecutive duplicates** — if a new location is within 20 tiles of the most recent entry, it is silently collapsed
 
 ### How it changes navigation
 
 | Navigation | Standard Mode | Sequential Mode |
 |---|---|---|
-| Previous (Ctrl+Minus) | Goes to the previous destination | Goes to where you **departed from** |
-| Next (Ctrl+Equals) | Goes to the next destination | Goes to the next destination |
-| History modal display | Shows destination coordinates | Shows `departure → destination` |
+| Previous (Ctrl+Minus) | Goes to the previous destination | Goes one step back (first press = your departure point) |
+| Next (Ctrl+Equals) | Goes to the next destination | Goes one step forward |
+| History modal display | Shows each destination | Shows each entry (departures and destinations interleaved) |
 
-### How to enable
+### How to toggle
 
-1. **Settings** → **Mod Settings** → **Per Player**
-2. Check **"Sequential History Mode (Experimental)"**
-3. New teleports will record departure locations going forward
+Click the **history mode button** on the favorites bar (next to the history scroll button). The icon reflects the current mode:
+- **Finger pointer** = Standard mode (destinations only)
+- **Numbered list** = Sequential mode (departures + destinations)
 
 ### Notes
 
 - **Experimental** — behavior may change in future updates
-- Existing history entries without departure data continue to work normally
-- Toggling the mode on or off does not delete any history
+- Existing history entries continue to work normally when switching modes
+- Toggling the mode does not delete any history
 - Each player controls their own setting independently in multiplayer
 
 ---

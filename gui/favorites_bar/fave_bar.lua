@@ -134,9 +134,8 @@ function fave_bar.build_quickbar_style(player, parent) -- Add a horizontal flow 
   )
 
   -- Add history mode toggle button (standard vs sequential)
-  local player_data = Cache.get_player_data(player)
-  local is_sequential = player_data.sequential_history_mode or false
-  local mode_sprite = is_sequential and Enum.SpriteEnum.STD_HISTORY_MODE or Enum.SpriteEnum.SEQUENTIAL_HISTORY_MODE
+  local is_sequential = Cache.get_sequential_history_mode(player)
+  local mode_sprite = is_sequential and Enum.SpriteEnum.SEQUENTIAL_HISTORY_MODE or Enum.SpriteEnum.STD_HISTORY_MODE
   local mode_tooltip = is_sequential and { "tf-gui.history_mode_sequential_tooltip" } or { "tf-gui.history_mode_std_tooltip" }
   local history_mode_toggle = GuiBase.create_sprite_button(
     toggle_container,
@@ -148,7 +147,8 @@ function fave_bar.build_quickbar_style(player, parent) -- Add a horizontal flow 
 
   ---@type LocalisedString
   local toggle_tooltip = { "tf-gui.toggle_fave_bar" }
-  local slots_visible = player_data.fave_bar_slots_visible
+  local player_data = Cache.get_player_data(player)
+  local slots_visible = player_data and player_data.fave_bar_slots_visible
   if slots_visible == nil then slots_visible = true end -- Additional safety default
 
   local toggle_visibility_button = GuiElementBuilders.create_visibility_toggle_button(
@@ -281,6 +281,10 @@ function fave_bar.build(player, force_show)
     end
     if _history_mode_toggle and _history_mode_toggle.valid then
       _history_mode_toggle.visible = history_enabled
+      -- Always refresh sprite/tooltip to reflect current mode state
+      local is_sequential = Cache.get_sequential_history_mode(player)
+      _history_mode_toggle.sprite = is_sequential and Enum.SpriteEnum.SEQUENTIAL_HISTORY_MODE or Enum.SpriteEnum.STD_HISTORY_MODE
+      _history_mode_toggle.tooltip = is_sequential and { "tf-gui.history_mode_sequential_tooltip" } or { "tf-gui.history_mode_std_tooltip" }
     end
 
     -- Hide/show toggle container and slots based on favorites setting

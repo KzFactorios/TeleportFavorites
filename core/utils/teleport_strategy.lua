@@ -156,19 +156,8 @@ function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history)
     if add_to_history then
       local ok, result = pcall(function()
         if remote.interfaces["TeleportFavorites_History"] and
-            remote.interfaces["TeleportFavorites_History"].add_to_history then
-          local player_data = Cache.get_player_data(player)
-          local is_sequential = player_data and player_data.sequential_history_mode
-          if is_sequential then
-            -- Sequential mode: record departure then destination
-            if player_gps then
-              remote.call("TeleportFavorites_History", "add_to_history", player.index, player_gps)
-            end
-            remote.call("TeleportFavorites_History", "add_to_history", player.index, working_gps)
-          else
-            -- Standard mode: record destination only
-            remote.call("TeleportFavorites_History", "add_to_history", player.index, working_gps)
-          end
+            remote.interfaces["TeleportFavorites_History"].add_teleport then
+          remote.call("TeleportFavorites_History", "add_teleport", player.index, player_gps, working_gps)
         end
       end)
     end
