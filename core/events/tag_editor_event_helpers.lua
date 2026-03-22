@@ -26,9 +26,13 @@ function TagEditorEventHelpers.validate_tag_editor_opening(player)
     return false, "Invalid player"
   end
 
-  -- MULTIPLAYER FIX: render_mode is client-specific and causes desyncs.
-  -- Removed render_mode check. The custom input context and GUI conflict
-  -- detection below are sufficient to validate tag editor opening.
+  -- Only allow tag editor to open in map/chart view (not normal game view)
+  -- This is safe to check here because this function only gates UI creation
+  -- (per-player GUI), not game-state changes. render_mode is client-specific
+  -- but custom input handlers run per-player, so the check is consistent.
+  if player.render_mode == defines.render_mode.game then
+    return false, "Not in map view"
+  end
 
   -- UNIVERSAL GUI CONFLICT DETECTION: Check if ANY GUI is open (from any mod)
   -- player.opened is set by Factorio when a GUI/modal/entity is opened
