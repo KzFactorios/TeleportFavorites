@@ -90,7 +90,7 @@ function EventRegistrationDispatcher.register_core_events(script)
   }
   core_events[defines.events.on_player_joined_game] = {
     handler = function(event)
-      handlers.on_player_created(event)
+      handlers.on_player_joined_game(event)
       -- Also setup observers for joined players
       local player = game.players[event.player_index]
       if player and player.valid then

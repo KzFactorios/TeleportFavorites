@@ -53,7 +53,21 @@ function GuiEventBus.subscribe(event_type, observer)
   if not GuiEventBus._observers[event_type] then
     GuiEventBus._observers[event_type] = {}
   end
-  
+
+  -- Dedup: skip if an observer for the same player already exists for this event type
+  if observer.player_index then
+    for _, existing in ipairs(GuiEventBus._observers[event_type]) do
+      if existing.player_index == observer.player_index and existing.observer_type == observer.observer_type then
+        ErrorHandler.debug_log("Observer subscribe skipped (duplicate)", {
+          event_type = event_type,
+          observer_type = observer.observer_type or "unknown",
+          player_index = observer.player_index
+        })
+        return
+      end
+    end
+  end
+
   table.insert(GuiEventBus._observers[event_type], observer)
   
   ErrorHandler.debug_log("Observer subscribed", {

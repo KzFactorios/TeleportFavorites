@@ -1,0 +1,159 @@
+   0.000 2026-03-22 12:13:08; Factorio 2.0.76 (build 84451, win64, full, space-age)
+   0.000 Operating system: Windows 11 (build 26200) 
+   0.000 Program arguments: "V:\Fac2orios\2_Febrizzi\bin\x64\factorio.exe" 
+   0.000 Config path: V:/Fac2orios/2_Febrizzi/config/config.ini
+   0.000 Read data path: V:/Fac2orios/2_Febrizzi/data
+   0.000 Write data path: V:/Fac2orios/2_Febrizzi [1166173/3815429MB]
+   0.000 Binaries path: V:/Fac2orios/2_Febrizzi/bin
+   0.006 System info: [CPU: AMD Ryzen 9 7900 12-Core Processor, 24 cores, RAM: 17891/64628 MB, page: 21767/68724 MB, virtual: 4288/134217727 MB, extended virtual: 0 MB]
+   0.017 Memory info:
+   0.017  [0]: G.SKILL F5-5600J3636D32G 32768 MB 4800 MHz 1.1 v 64|64
+   0.018  [1]: G.SKILL F5-5600J3636D32G 32768 MB 4800 MHz 1.1 v 64|64
+   0.020 Display options: [FullScreen: true] [VSync: true] [UIScale: manual-display-points (100.0%)] [Native DPI: true] [Screen: 255] [Special: lmw] [Lang: en]
+   0.153 Video driver: windows
+   0.153 Available displays: 2
+   0.153  [0]: \\.\DISPLAY1 - AMD Radeon RX 9070 XT {0x05, [0,0], 3840x2160, 32bit, 120Hz}
+   0.153  [1]: \\.\DISPLAY2 - AMD Radeon RX 9070 XT {0x01, [-3840,0], 3840x2160, 32bit, 120Hz}
+   0.192 [Direct3D11] Display: 0, Output: 0, DisplayAdapter: 0, RenderingAdapter: -1; d3dcompiler_47.dll
+   0.311 Initialised Direct3D[0]: AMD Radeon RX 9070 XT; id: 1002-7550; driver: atidx9loader64.dll 32.0.23033.1002
+   0.311   D3D Feature Level: 11.1, DXGI 1.5+, SwapChain: 3,flip-discard,-,-,-,none
+   0.311   [Local Video Memory] Budget: 15428MB, CurrentUsage: 11MB, Reservation: 0/7842MB
+   0.311   [Non-Local Vid.Mem.] Budget: 31546MB, CurrentUsage: 1MB, Reservation: 0/15901MB
+   0.311   Tiled resources: Tier 2
+   0.311   Unified Memory Architecture: No
+   0.311   BGR 565 Supported: Yes
+   0.311   MaximumFrameLatency: 3, GPUThreadPriority: 0
+   0.311 Graphics settings preset: very-high
+   0.311   Dedicated video memory size 16200 MB
+   0.333 Desktop composition is active.
+   0.333 Graphics options: [Graphics quality: high] [Video memory usage: all] [DXT: high-quality]
+   0.333                   [Max threads (load/render): 32/24] [Max texture size: 0] [Tex.Stream.: false] [Rotation quality: normal] [Other: STDCWTl] [B:0,C:0,S:110]
+   0.357 [Audio] Driver:wasapi, Device:Default device, Depth:16, Frequency:44100, Channels:2, Interpolation:linear
+   0.434 Info ModManager.cpp:449: FeatureFlag expansion-shaders = true
+   0.434 Info ModManager.cpp:449: FeatureFlag freezing = true
+   0.434 Info ModManager.cpp:449: FeatureFlag quality = true
+   0.434 Info ModManager.cpp:449: FeatureFlag rail-bridges = true
+   0.434 Info ModManager.cpp:449: FeatureFlag segmented-units = true
+   0.434 Info ModManager.cpp:449: FeatureFlag space-travel = true
+   0.434 Info ModManager.cpp:449: FeatureFlag spoiling = true
+   0.435 Loading mod settings TeleportFavorites 0.0.96 (settings.lua)
+   0.437 Loading mod core 0.0.0 (data.lua)
+   0.450 Loading mod base 2.0.76 (data.lua)
+   0.573 Loading mod elevated-rails 2.0.76 (data.lua)
+   0.594 Loading mod quality 2.0.76 (data.lua)
+   0.606 Loading mod TeleportFavorites 0.0.96 (data.lua)
+   0.612 Loading mod space-age 2.0.76 (data.lua)
+   0.833 Loading mod base 2.0.76 (data-updates.lua)
+   0.843 Loading mod quality 2.0.76 (data-updates.lua)
+   0.857 Loading mod space-age 2.0.76 (data-updates.lua)
+   0.935 Checksum for core: 4187927925
+   0.935 Checksum of base: 1879415942
+   0.935 Checksum of elevated-rails: 70351106
+   0.935 Checksum of quality: 1142589254
+   0.935 Checksum of TeleportFavorites: 1875050183
+   0.935 Checksum of space-age: 1510664043
+   1.177 Prototype list checksum: 1455341011
+   1.232 Loading sounds...
+   1.526 Info PlayerData.cpp:64: Local player-data.json available, timestamp 1774202500
+   1.526 Info PlayerData.cpp:71: Cloud player-data.json unavailable
+   1.528 Post-data load graphics options: [Light occlusion: YES]
+   1.760 Initial atlas bitmap size is 16384
+   1.769 Created an atlas bitmap (size 16384x16364) [none]
+   1.780 Created an atlas bitmap (size 16384x16384) [none]
+   1.796 Created an atlas bitmap (size 16384x16372) [none]
+   1.796 Created an atlas bitmap (size 16384x15084) [none]
+   1.799 Created an atlas bitmap (size 16384x16384) [low-object]
+   1.799 Created an atlas bitmap (size 4096x2496) [low-object]
+   1.801 Created an atlas bitmap (size 16384x16324) [corpse-decay]
+   1.801 Created an atlas bitmap (size 4096x2804) [corpse-decay]
+   1.801 Created an atlas bitmap (size 16384x9268) [decal]
+   1.802 Created an atlas bitmap (size 16384x5596) [none]
+   1.802 Created an atlas bitmap (size 1676x79) [not-compressed]
+   1.803 Created an atlas bitmap (size 16384x4240) [mipmap, linear-minification, linear-magnification, linear-mip-level]
+   1.803 Created an atlas bitmap (size 4096x3040) [smoke, mipmap, linear-minification, linear-magnification]
+   1.806 Created an atlas bitmap (size 16384x16352) [terrain, mipmap, linear-minification, linear-mip-level]
+   1.807 Created an atlas bitmap (size 16384x4944) [terrain, mipmap, linear-minification, linear-mip-level]
+   1.807 Created an atlas bitmap (size 8192x5728) [terrain-effect-map, mipmap, linear-minification, linear-mip-level]
+   1.807 Created an atlas bitmap (size 8192x2608) [mipmap]
+   1.807 Created an atlas bitmap (size 3504x768) [mipmap]
+   1.807 Created an atlas bitmap (size 4096x3152) [mipmap]
+   1.807 Created an atlas bitmap (size 4096x3152) [mipmap]
+   1.807 Created an atlas bitmap (size 4096x3152) [mipmap]
+   1.807 Created an atlas bitmap (size 8192x3904) [icon, not-compressed, mipmap, linear-minification, linear-magnification, linear-mip-level]
+   1.808 Created an atlas bitmap (size 16384x6120) [alpha-mask]
+   1.821 Created an atlas bitmap (size 16384x16384) [shadow, linear-magnification, alpha-mask]
+   1.823 Created an atlas bitmap (size 16384x16384) [shadow, linear-magnification, alpha-mask]
+   1.824 Created an atlas bitmap (size 16384x3840) [shadow, linear-magnification, alpha-mask]
+   1.824 Created an atlas bitmap (size 8192x4000) [shadow, mipmap, linear-magnification, alpha-mask]
+   1.824 Created an atlas bitmap (size 4096x336) [icon-background, not-compressed, mipmap, linear-minification, linear-magnification, linear-mip-level, ]
+   1.824 Loading 3D bitmaps.
+   1.832 Texture processor created (4096). GPU accelerated compression Supported: yes, Enabled: yes/yes. Test passed. YCoCgDXT PSNR: 35.83, BC3 PSNR: 33.82
+   1.864 Parallel sprite loader initialized (threads: 23, bitmaps: 8411)
+  11.008 Sprites loaded
+  11.020 Generated mipmaps (4) for atlas [4] of size 16384x16384   
+  11.030 Generated mipmaps (4) for atlas [5] of size 4096x2496   
+  11.041 Generated mipmaps (3) for atlas [11] of size 16384x4240   
+  11.052 Generated mipmaps (3) for atlas [12] of size 4096x3040   
+  11.063 Generated mipmaps (3) for atlas [13] of size 16384x16352   
+  11.075 Generated mipmaps (3) for atlas [14] of size 16384x4944   
+  11.086 Generated mipmaps (3) for atlas [15] of size 8192x5728   
+  11.124 Generated mipmaps (3) for atlas [16] of size 8192x2608   
+  11.135 Generated mipmaps (3) for atlas [17] of size 3504x768   
+  11.146 Generated mipmaps (3) for atlas [18] of size 4096x3152   
+  11.172 Generated mipmaps (3) for atlas [19] of size 4096x3152   
+  11.183 Generated mipmaps (3) for atlas [20] of size 4096x3152   
+  11.193 Generated mipmaps (5) for atlas [21] of size 8192x3904   
+  11.205 Generated mipmaps (3) for atlas [26] of size 8192x4000   
+  11.207 Custom mipmaps uploaded (3493)
+  11.231 Video memory usage: 3653.76 MB (Atlases: 3523.46 MB, Textures: 130.30 MB)
+  11.233 Custom inputs active: 17
+  11.379 Factorio initialised
+  15.822 Info UDPSocket.cpp:38: Opening socket at (IP ADDR:({0.0.0.0:34196}))
+  15.822 Info UDPSocket.cpp:38: Opening socket at (IP ADDR:({0.0.0.0:0}))
+  17.426 Info UDPSocket.cpp:238: Closing socket
+  17.426 Info UDPSocket.cpp:268: Socket closed
+  17.426 Info UDPSocket.cpp:238: Closing socket
+  17.523 Info UDPSocket.cpp:238: Closing socket
+  17.523 Info UDPSocket.cpp:268: Socket closed
+  17.523 Info UDPSocket.cpp:238: Closing socket
+  17.523 Joining game IP ADDR:({192.168.0.249:34197})
+  17.523 Info UDPSocket.cpp:44: Opening socket
+  17.525 Info ClientMultiplayerManager.cpp:608: UpdateTick(18446744073709551615) changing state from(Ready) to(Connecting)
+  17.551 Info ClientSynchronizer.cpp:27: Initialized Synchronizer local peer(1) latency(32).
+  17.552 Info ClientMultiplayerManager.cpp:608: UpdateTick(18446744073709551615) changing state from(Connecting) to(ConnectedWaitingForMap)
+  17.552 Info ClientRouter.cpp:228: ConnectionAccepted
+  17.717 Info ClientMultiplayerManager.cpp:747: Received mapReadyForDownload
+  17.717 Downloading file V:\Fac2orios\2_Febrizzi\temp\mp-download.zip (661101 B, auxiliary 113 B, 1316 blocks)
+  17.720 Info ClientMultiplayerManager.cpp:608: UpdateTick(18446744073709551615) changing state from(ConnectedWaitingForMap) to(ConnectedDownloadingMap)
+  17.770 Finished download (0 s, 661 kB, 12.7 MB/s)
+  17.795 Info ClientMultiplayerManager.cpp:727: updateTick(18446744073709551615) map download finished creating scenario
+  17.801 Info ClientMultiplayerManager.cpp:608: UpdateTick(18446744073709551615) changing state from(ConnectedDownloadingMap) to(ConnectedLoadingMap)
+  17.801 Loading map V:\Fac2orios\2_Febrizzi\temp\mp-download.zip: 661101 bytes.
+  17.826 Loading level.dat: 875952 bytes.
+  17.826 Info Scenario.cpp:154: Map version 2.0.76-0
+  17.844 Loading script.dat: 2251 bytes.
+  17.847 Checksum for script __level__/control.lua: 2722821277
+  17.857 Checksum for script __TeleportFavorites__/control.lua: 746607131
+  17.868 Info ClientMultiplayerManager.cpp:608: UpdateTick(1296) changing state from(ConnectedLoadingMap) to(TryingToCatchUp)
+  17.900 Info ClientMultiplayerManager.cpp:608: UpdateTick(1308) changing state from(TryingToCatchUp) to(WaitingForCommandToStartSendingTickClosures)
+  17.967 Info ClientMultiplayerManager.cpp:608: UpdateTick(1308) changing state from(WaitingForCommandToStartSendingTickClosures) to(InGame)
+  17.999 Info GameActionHandler.cpp:4560: UpdateTick (1310) processed PlayerJoinGame peerID(1) playerIndex(1) mode(create) 
+  26.116 Info ClientSynchronizer.cpp:319: Latency changed to (7)
+  28.233 Error GameActionHandler.cpp:2808: Multiplayer desynchronisation: crc test (heuristic) failed for crcTick(1923) serverCRC(3613638385) localCRC(684531131)
+  28.233 Info ClientMultiplayerManager.cpp:608: UpdateTick(1924) changing state from(InGame) to(DesyncedWaitingForMap)
+  28.283 Info ClientMultiplayerManager.cpp:741: updateTick(1925) received player (1) desynced
+  28.384 Info ClientMultiplayerManager.cpp:747: Received mapReadyForDownload
+  28.384 Info ClientMultiplayerManager.cpp:608: UpdateTick(1925) changing state from(DesyncedWaitingForMap) to(DesyncedCatchingUpWithMapReadyForDownload)
+  28.384 Error GameActionHandler.cpp:2808: Multiplayer desynchronisation: crc test (heuristic) failed for crcTick(1924) serverCRC(2721690915) localCRC(1570182761)
+  28.385 Error GameActionHandler.cpp:2808: Multiplayer desynchronisation: crc test (heuristic) failed for crcTick(1925) serverCRC(3627813245) localCRC(663923255)
+  28.401 Error GameActionHandler.cpp:2808: Multiplayer desynchronisation: crc test (heuristic) failed for crcTick(1926) serverCRC(4141047918) localCRC(159236900)
+  28.416 Error GameActionHandler.cpp:2808: Multiplayer desynchronisation: crc test (heuristic) failed for crcTick(1927) serverCRC(3279961113) localCRC(1009688403)
+  28.433 Error GameActionHandler.cpp:2808: Multiplayer desynchronisation: crc test (heuristic) failed for crcTick(1928) serverCRC(2990129919) localCRC(1301766581)
+  28.451 Info ClientMultiplayerManager.cpp:1255: Transferring ownership of scenario to ParallelScenarioSaver (global = true).
+  28.452 Info ClientMultiplayerManager.cpp:608: UpdateTick(18446744073709551615) changing state from(DesyncedCatchingUpWithMapReadyForDownload) to(DesyncedSavingLocalVariantOfMap)
+  28.534 Info ParallelScenarioSaver.cpp:49: Deleting active scenario (global = false).
+  28.554 Downloading file V:\Fac2orios\2_Febrizzi\temp\mp-download.zip (1339139 B, auxiliary 113 B, 2664 blocks)
+  28.555 Info ClientMultiplayerManager.cpp:608: UpdateTick(18446744073709551615) changing state from(DesyncedSavingLocalVariantOfMap) to(DesyncedDownloadingMap)
+  28.627 Finished download (0 s, 1.3 MB, 18.6 MB/s)
+  28.646 Info ClientMultiplayerManager.cpp:727: updateTick(18446744073709551615) map download finished creating scenario
+  28.646 Info ClientMultiplayerManager.cpp:608: UpdateTick(18446744073709551615) changing state from(DesyncedDownloadingMap) to(DesyncedCreatingReport)
