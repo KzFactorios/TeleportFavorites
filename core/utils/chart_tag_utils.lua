@@ -30,15 +30,13 @@ local last_clicked_chart_tags = {}
 --- Find chart tag at a specific position
 ---@param player LuaPlayer Player context
 ---@param cursor_position MapPosition Position to check
----@param skip_render_mode_check boolean? If true, skips the render mode check (for multiplayer-safe collision detection)
 ---@return LuaCustomChartTag? chart_tag Found chart tag or nil
-function ChartTagUtils.find_closest_chart_tag_to_position(player, cursor_position, skip_render_mode_check)
+function ChartTagUtils.find_closest_chart_tag_to_position(player, cursor_position)
   if not BasicHelpers.is_valid_player(player) or not cursor_position then return nil end
 
-  -- Only detect clicks while in map mode (unless explicitly skipped for collision detection)
-  if not skip_render_mode_check and player.render_mode ~= defines.render_mode.chart then
-    return nil
-  end
+  -- MULTIPLAYER FIX: render_mode is client-specific and causes desyncs.
+  -- Removed render_mode gate from this data lookup function.
+  -- Caller is responsible for context validation (event handlers, UI layer).
   -- Get surface index from player's current surface
   local surface_index = player.surface and player.surface.index or nil
   if not surface_index then return nil end
@@ -131,11 +129,9 @@ function ChartTagUtils.safe_add_chart_tag(force, surface, spec, player)
   })
   
   -- Use existing chart tag reuse system instead of collision detection
-  -- CRITICAL: Pass true to skip render_mode check for multiplayer determinism
-  -- The render_mode is client-specific and causes desyncs if used in game state logic
   local existing_chart_tag = nil
   if player and player.valid then
-    existing_chart_tag = ChartTagUtils.find_closest_chart_tag_to_position(player, spec.position, true)
+    existing_chart_tag = ChartTagUtils.find_closest_chart_tag_to_position(player, spec.position)
   end
 
   if existing_chart_tag and existing_chart_tag.valid then

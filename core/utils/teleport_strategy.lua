@@ -149,7 +149,9 @@ function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history)
   end
 
   if teleport_success then
-    if player.render_mode ~= defines.render_mode.game then
+    -- MULTIPLAYER FIX: render_mode is client-specific and causes desyncs.
+    -- Use controller_type which is deterministic game state.
+    if player.controller_type == defines.controllers.remote then
       player.exit_remote_view()
     end
 
