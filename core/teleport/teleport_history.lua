@@ -69,30 +69,29 @@ function TeleportHistory.add_gps(player, gps)
 	local hist = Cache.get_player_teleport_history(player, surface_index)
 	local stack = hist.stack
 
-	local top = stack[#stack]
-	local top_gps = top and top.gps or nil
-	-- Deduplicate: skip if the new location is within HISTORY_RESOLUTION_TILES of the top entry
-	-- (same surface required; different surfaces always count as distinct)
-	if top_gps then
-		local top_surface = GPSUtils.get_surface_index_from_gps(top_gps)
-		if top_surface and math.floor(top_surface) == surface_index then
-			if top_gps == gps then
-				hist.pointer = #stack
-				TeleportHistory.notify_observers(player)
-				return
-			end
-			local top_pos = GPSUtils.map_position_from_gps(top_gps)
-			local new_pos = GPSUtils.map_position_from_gps(gps)
-			if top_pos and new_pos then
-				local dx = top_pos.x - new_pos.x
-				local dy = top_pos.y - new_pos.y
-				if (dx * dx + dy * dy) <= (HISTORY_RESOLUTION_TILES * HISTORY_RESOLUTION_TILES) then
-					hist.pointer = #stack
-					TeleportHistory.notify_observers(player)
-					return
-				end
-			end
-		end
+	-- Helper: returns true if candidate_gps is within resolution distance of ref_gps on this surface
+	local function is_near(ref_gps, candidate_gps)
+		if not ref_gps then return false end
+		local ref_surface = GPSUtils.get_surface_index_from_gps(ref_gps)
+		if not ref_surface or math.floor(ref_surface) ~= surface_index then return false end
+		if ref_gps == candidate_gps then return true end
+		local ref_pos = GPSUtils.map_position_from_gps(ref_gps)
+		local new_pos = GPSUtils.map_position_from_gps(candidate_gps)
+		if not ref_pos or not new_pos then return false end
+		local dx = ref_pos.x - new_pos.x
+		local dy = ref_pos.y - new_pos.y
+		return (dx * dx + dy * dy) <= (HISTORY_RESOLUTION_TILES * HISTORY_RESOLUTION_TILES)
+	end
+
+	local top     = stack[#stack]
+	local prev    = stack[#stack - 1]
+	-- Skip if the new location is within resolution of the top OR the entry before it.
+	-- This collapses A→B→A→B oscillation into [A, B] without preventing genuinely new
+	-- locations (A→B→C) from being appended.
+	if is_near(top and top.gps, gps) or is_near(prev and prev.gps, gps) then
+		hist.pointer = #stack
+		TeleportHistory.notify_observers(player)
+		return
 	end
 	if #stack >= HISTORY_STACK_SIZE then
 		table.remove(stack, 1)
