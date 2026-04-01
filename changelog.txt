@@ -1,5 +1,5 @@
 ---------------------------------------------------------------------------------------------------
-Version: 0.0.96
+Version: 0.0.97
 Date: 2026-03-20
   Features:
     - Added experimental Sequential History Mode: when enabled, teleport history records both your departure location and destination for each teleport, allowing "Previous" navigation to return you to where you actually left from
