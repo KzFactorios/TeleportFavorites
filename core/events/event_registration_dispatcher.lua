@@ -35,6 +35,10 @@ local _registration_state = {}
 
 
 --- Create a safe wrapper for event handlers (using centralized helper)
+-- UPS SPIKE PROBE: Threshold (ms) above which handler execution time is logged.
+-- Set to 0 to disable. This is temporary instrumentation to identify the idle spike source.
+local SPIKE_THRESHOLD_MS = 1.0
+
 --- UPS OPTIMIZATION: Inline debug check to avoid debug_log function call overhead on every event
 local function create_safe_event_handler(handler, handler_name)
   return function(event)
@@ -46,7 +50,14 @@ local function create_safe_event_handler(handler, handler_name)
       })
     end
 
+    local t0 = SPIKE_THRESHOLD_MS > 0 and os.clock() or nil
     local success, err = xpcall(function() handler(event) end, debug.traceback)
+    if t0 then
+      local elapsed_ms = (os.clock() - t0) * 1000
+      if elapsed_ms > SPIKE_THRESHOLD_MS then
+        log(string.format("[TeleFaves][SPIKE] %s took %.2fms (tick %d)", handler_name, elapsed_ms, game.tick))
+      end
+    end
     if not success then
       ErrorHandler.warn_log("Event handler failed", {
         handler_name = handler_name,
@@ -271,7 +282,14 @@ function EventRegistrationDispatcher.register_core_events(script)
   -- Permanent on_nth_tick(2): Processes deferred GUI notifications when queue has items
   script.on_nth_tick(2, function()
     if GuiObserver.GuiEventBus._deferred_tick_active then
+      local t0 = SPIKE_THRESHOLD_MS > 0 and os.clock() or nil
       GuiObserver.GuiEventBus.process_deferred_notifications()
+      if t0 then
+        local elapsed_ms = (os.clock() - t0) * 1000
+        if elapsed_ms > SPIKE_THRESHOLD_MS then
+          log(string.format("[TeleFaves][SPIKE] on_nth_tick(2) process_deferred_notifications took %.2fms (tick %d)", elapsed_ms, game.tick))
+        end
+      end
     end
   end)
   
@@ -280,6 +298,7 @@ function EventRegistrationDispatcher.register_core_events(script)
   -- now happens at tick 60 instead of tick 1. The 1-second delay is fine because the fave bar isn't
   -- built until tick 60 anyway (deferred init), so there's nothing to observe before then.
   script.on_nth_tick(60, function()
+    local t0 = SPIKE_THRESHOLD_MS > 0 and os.clock() or nil
     -- First-session observer registration (replaces the removed on_tick handler)
     if not handlers.get_observers_registered_flag() then
       handlers.set_observers_registered_flag(true)
@@ -291,6 +310,12 @@ function EventRegistrationDispatcher.register_core_events(script)
       GuiObserver.GuiEventBus.process_deferred_notifications()
     end
     handlers.process_deferred_init_queue()
+    if t0 then
+      local elapsed_ms = (os.clock() - t0) * 1000
+      if elapsed_ms > SPIKE_THRESHOLD_MS then
+        log(string.format("[TeleFaves][SPIKE] on_nth_tick(60) took %.2fms (tick %d)", elapsed_ms, game.tick))
+      end
+    end
   end)
   
   -- Register on_gui_location_changed for modal position saving
