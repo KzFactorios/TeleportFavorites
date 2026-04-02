@@ -111,7 +111,9 @@ local function handle_favorite_slot_click(event, player, favorites)
   if SlotInteractionHandlers.handle_toggle_lock(event, player, fav, slot, favorites) then return end
   if SlotInteractionHandlers.handle_teleport(event, player, fav, slot, false) then return end
 
-  SlotInteractionHandlers.handle_request_to_open_tag_editor(event, player, fav, slot)
+  -- UPS OPTIMIZATION: handle_request_to_open_tag_editor (right-click) does not modify slot data,
+  -- so skip the redundant update_single_slot that was doing a duplicate rehydration + GUI traversal.
+  if SlotInteractionHandlers.handle_request_to_open_tag_editor(event, player, fav, slot) then return end
   fave_bar.update_single_slot(player, slot)
 end
 
@@ -171,6 +173,8 @@ end
 --- Handle favorites bar GUI click events
 ---@param event table The GUI click event containing element, player_index, button, etc.
 local function log_click_event(event, player)
+  -- UPS OPTIMIZATION: Gate behind debug check to avoid constructing large table on every click
+  if not ErrorHandler.should_log_debug() then return end
   ErrorHandler.debug_log("[FAVE_BAR] on_fave_bar_gui_click entry point", {
     element_name = event.element.name,
     player = player.name,
@@ -213,8 +217,13 @@ end
 local function handle_history_mode_toggle_click(event, player)
   local is_sequential = not Cache.get_sequential_history_mode(player)
   Cache.set_sequential_history_mode(player, is_sequential)
-  -- Rebuild bar to reflect updated mode state (handles both sprite and tooltip correctly)
-  fave_bar.build(player, true)
+  -- UPS OPTIMIZATION: Update toggle button sprite/tooltip in-place instead of full bar rebuild.
+  -- The only visual change is the mode toggle button itself.
+  local btn = event.element
+  if btn and btn.valid then
+    btn.sprite = is_sequential and Enum.SpriteEnum.SEQUENTIAL_HISTORY_MODE or Enum.SpriteEnum.STD_HISTORY_MODE
+    btn.tooltip = is_sequential and { "tf-gui.history_mode_sequential_tooltip" } or { "tf-gui.history_mode_std_tooltip" }
+  end
 end
 
 --- Handle teleport history modal GUI clicks

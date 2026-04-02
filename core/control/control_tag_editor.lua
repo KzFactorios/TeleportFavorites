@@ -124,8 +124,8 @@ local function update_chart_tag_fields(tag, tag_data, text, icon, player)
     -- Destroy the old chart tag
     chart_tag.destroy()
     
-    -- Invalidate cache after destroying
-    Cache.Lookups.invalidate_surface_chart_tags(surface_index)
+    -- UPS OPTIMIZATION: Evict old GPS from cache instead of full invalidation
+    Cache.Lookups.evict_chart_tag_from_cache(old_gps)
     
     -- Create new chart tag with updated properties (ownership already in Tag.owner_name)
     local chart_tag_spec = ChartTagSpecBuilder.build(position, nil, player, text)
@@ -140,25 +140,18 @@ local function update_chart_tag_fields(tag, tag_data, text, icon, player)
       tag.chart_tag = new_chart_tag
       tag_data.chart_tag = new_chart_tag
       
-      -- Update cache after creation
-      Cache.Lookups.invalidate_surface_chart_tags(surface_index)
-      local refreshed_cache = Cache.Lookups.get_chart_tag_cache(surface_index)
+      -- UPS OPTIMIZATION: Upsert new chart tag into cache instead of full invalidation + rescan
+      local gps = GPSUtils.gps_from_map_position(new_chart_tag.position, surface_index)
+      Cache.Lookups.upsert_chart_tag_in_cache(gps, new_chart_tag)
       
       ErrorHandler.debug_log("Chart tag recreated for multiplayer safety", {
         surface_index = surface_index,
-        chart_tags_in_cache = #refreshed_cache,
-        new_chart_tag_gps = GPSUtils.gps_from_map_position(new_chart_tag.position, surface_index),
+        new_chart_tag_gps = gps,
         tag_owner = tag.owner_name or ""
       })
       
-      -- Refresh chart_tag reference from cache
-      local gps = GPSUtils.gps_from_map_position(new_chart_tag.position, surface_index)
-      local refreshed_chart_tag = Cache.Lookups.get_chart_tag_by_gps(gps)
-      if refreshed_chart_tag and refreshed_chart_tag.valid then
-        tag.chart_tag = refreshed_chart_tag
-        tag_data.chart_tag = refreshed_chart_tag
-        tag_data.tag = tag
-      end
+      -- Use the new chart tag directly (no need to re-fetch from cache)
+      tag_data.tag = tag
       
       -- CRITICAL MULTIPLAYER FIX: Update favorites bar for ALL players who have this tag favorited
       -- The destroy-and-recreate pattern doesn't fire on_chart_tag_modified, so we need to manually
@@ -187,25 +180,17 @@ local function update_chart_tag_fields(tag, tag_data, text, icon, player)
     if new_chart_tag and new_chart_tag.valid then
       tag.chart_tag = new_chart_tag
 
-      -- CRITICAL: Invalidate cache after creating new chart tag
-      -- Add a small delay to ensure Factorio has registered the chart tag
+      -- UPS OPTIMIZATION: Upsert new chart tag into cache instead of full invalidation + rescan
       local surface_index = player.surface.index
-      Cache.Lookups.invalidate_surface_chart_tags(surface_index)
-      -- Force immediate cache rebuild to ensure the new chart tag is included
-      local refreshed_cache = Cache.Lookups.get_chart_tag_cache(surface_index)
-      ErrorHandler.debug_log("Cache refreshed after chart tag creation", {
-        surface_index = surface_index,
-        chart_tags_in_cache = #refreshed_cache,
-        new_chart_tag_gps = GPSUtils.gps_from_map_position(new_chart_tag.position, surface_index)
-      })
-      -- Refresh chart_tag reference from cache
       local gps = GPSUtils.gps_from_map_position(new_chart_tag.position, surface_index)
-      local refreshed_chart_tag = Cache.Lookups.get_chart_tag_by_gps(gps)
-      if refreshed_chart_tag and refreshed_chart_tag.valid then
-        tag.chart_tag = refreshed_chart_tag
-        tag_data.chart_tag = refreshed_chart_tag
-        tag_data.tag = tag
-      end
+      Cache.Lookups.upsert_chart_tag_in_cache(gps, new_chart_tag)
+      ErrorHandler.debug_log("Cache updated after chart tag creation", {
+        surface_index = surface_index,
+        new_chart_tag_gps = gps
+      })
+      -- Use the new chart tag directly (no need to re-fetch from cache)
+      tag_data.chart_tag = new_chart_tag
+      tag_data.tag = tag
     else
       ErrorHandler.warn_log("Failed to create chart tag", {
         gps = tag.gps,
@@ -242,10 +227,9 @@ local function close_tag_editor(player)
     if BasicHelpers.is_valid_player(player) then
       player.clear_cursor()
     end
-    -- MULTIPLAYER FIX: Do NOT deregister on_player_selected_area / on_player_alt_selected_area here.
-    -- These events are permanently registered by ModalInputBlocker at load time.
-    -- Deregistering them at runtime causes script-event-mismatch when clients join multiplayer.
-    -- The ModalInputBlocker handler already checks move_mode state and ignores irrelevant events.
+    -- NOTE: on_player_selected_area / on_player_alt_selected_area are no longer
+    -- registered (ModalInputBlocker was removed for UPS optimization).
+    -- No deregistration needed.
   end
   Cache.set_tag_editor_data(player, {})
   GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)

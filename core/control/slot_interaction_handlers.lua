@@ -231,8 +231,8 @@ function SlotInteractionHandlers.reorder_favorites(player, favorites, drag_index
     return false
   end
 
-  -- Rebuild the entire favorites bar to reflect new order
-  fave_bar.build(player)
+  -- UPS OPTIMIZATION: Update slot properties in-place instead of full bar rebuild
+  fave_bar.update_all_slots_in_place(player)
   CursorUtils.end_drag_favorite(player)
   return true
 end

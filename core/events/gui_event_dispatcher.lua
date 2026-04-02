@@ -48,18 +48,23 @@ function M.register_gui_handlers(script)
   end
 
   local function shared_on_gui_click(event)
+    -- UPS OPTIMIZATION: Guard debug_log calls to avoid function call + table allocation on every click
+    if ErrorHandler.should_log_debug() then
       ErrorHandler.debug_log("[DISPATCH] shared_on_gui_click TOP", {
         element_name = event and event.element and event.element.name or "<none>",
         player_index = event and event.player_index or "<none>"
       })
+    end
     -- Cache.init() removed - should only be called from handlers.on_init, not on every click
     
     -- Ignore these clicks everywhere EXCEPT on a fave bar slot button
     if event.button == defines.mouse_button_type.right and event.shift then return end
     if event.button == defines.mouse_button_type.left and event.shift and not is_fave_bar_slot_button(event.element) then return end
 
-    ErrorHandler.debug_log("[DISPATCH] shared_on_gui_click called",
-      { event_type = "on_gui_click", element = event and event.element and event.element.name or "<none>" })
+    if ErrorHandler.should_log_debug() then
+      ErrorHandler.debug_log("[DISPATCH] shared_on_gui_click called",
+        { event_type = "on_gui_click", element = event and event.element and event.element.name or "<none>" })
+    end
 
     if _tf_gui_click_guard then return end
 
@@ -104,15 +109,17 @@ function M.register_gui_handlers(script)
         end
 
         if not is_allowed_interaction then
-          ErrorHandler.debug_log("[DISPATCH] Blocking GUI interaction due to active modal dialog", {
-            player = player.name,
-            element_name = element.name,
-            parent_gui_name = parent_gui and parent_gui.name or "none",
-            active_modal_type = active_modal_type,
-            ENUM_TAG_EDITOR_DELETE_CONFIRM = Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM,
-            ENUM_CONFIRM_BTN = Enum.UIEnums.GUI.TagEditor.CONFIRM_DIALOG_CONFIRM_BTN,
-            ENUM_CANCEL_BTN = Enum.UIEnums.GUI.TagEditor.CONFIRM_DIALOG_CANCEL_BTN
-          })
+          if ErrorHandler.should_log_debug() then
+            ErrorHandler.debug_log("[DISPATCH] Blocking GUI interaction due to active modal dialog", {
+              player = player.name,
+              element_name = element.name,
+              parent_gui_name = parent_gui and parent_gui.name or "none",
+              active_modal_type = active_modal_type,
+              ENUM_TAG_EDITOR_DELETE_CONFIRM = Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM,
+              ENUM_CONFIRM_BTN = Enum.UIEnums.GUI.TagEditor.CONFIRM_DIALOG_CONFIRM_BTN,
+              ENUM_CANCEL_BTN = Enum.UIEnums.GUI.TagEditor.CONFIRM_DIALOG_CANCEL_BTN
+            })
+          end
           return -- Block all interactions except with the currently active modal
         end
       end
@@ -122,11 +129,13 @@ function M.register_gui_handlers(script)
         local is_dragging, _ = CursorUtils.is_dragging_favorite(player)
         if is_dragging then
           local player_data = Cache.get_player_data(player)
-          ErrorHandler.debug_log("[DISPATCH] Right-click detected during drag operation, cancelling drag", {
-            player = player.name,
-            source_slot = player_data.drag_favorite and player_data.drag_favorite.source_slot or nil,
-            raw_button = event.button
-          })
+          if ErrorHandler.should_log_debug() then
+            ErrorHandler.debug_log("[DISPATCH] Right-click detected during drag operation, cancelling drag", {
+              player = player.name,
+              source_slot = player_data.drag_favorite and player_data.drag_favorite.source_slot or nil,
+              raw_button = event.button
+            })
+          end
           CursorUtils.end_drag_favorite(player)
           GameHelpers.player_print(player, { "tf-gui.fave_bar_drag_canceled" })
 
@@ -167,10 +176,12 @@ function M.register_gui_handlers(script)
 
       local parent_gui = GuiValidation.get_gui_frame_by_element(element)
       if not parent_gui then
-        ErrorHandler.debug_log("[DISPATCH] Element parent GUI not found, skipping", {
-          element_name = element.name,
-          element_type = element.type or "unknown"
-        })
+        if ErrorHandler.should_log_debug() then
+          ErrorHandler.debug_log("[DISPATCH] Element parent GUI not found, skipping", {
+            element_name = element.name,
+            element_type = element.type or "unknown"
+          })
+        end
         return
       end
       -- Dispatch based on parent_gui
@@ -218,12 +229,14 @@ function M.register_gui_handlers(script)
           end)
         end
 
-        for k, v in pairs(event or {}) do
-          if type(v) ~= "table" and type(v) ~= "userdata" then
-            ErrorHandler.debug_log("GUI event property", {
-              property = tostring(k),
-              value = tostring(v)
-            })
+        if ErrorHandler.should_log_debug() then
+          for k, v in pairs(event or {}) do
+            if type(v) ~= "table" and type(v) ~= "userdata" then
+              ErrorHandler.debug_log("GUI event property", {
+                property = tostring(k),
+                value = tostring(v)
+              })
+            end
           end
         end
       end

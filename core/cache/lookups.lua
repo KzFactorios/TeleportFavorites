@@ -144,9 +144,9 @@ local function get_chart_tag_by_gps(gps)
     return nil
   end
   
-  -- Safely check chart tag validity
-  local valid_check_success, is_valid = pcall(function() return match_chart_tag.valid end)
-  if not valid_check_success or not is_valid then
+  -- UPS OPTIMIZATION: Direct .valid access instead of pcall wrapper.
+  -- Factorio's .valid property never throws — it returns false for invalid objects.
+  if not match_chart_tag.valid then
     return nil
   end
   
@@ -184,8 +184,53 @@ local function clear_all_caches()
   ensure_cache()
 end
 
+--- UPS OPTIMIZATION: Update a single chart tag entry in the GPS mapping cache.
+--- This avoids the expensive full cache invalidation + find_chart_tags() rescan.
+---@param gps string GPS coordinate string
+---@param chart_tag LuaCustomChartTag The chart tag to cache
+local function upsert_chart_tag_in_cache(gps, chart_tag)
+  if not gps or gps == "" then return end
+  if not chart_tag then return end
+
+  local surface_index = GPSUtils.get_surface_index_from_gps(gps)
+  local surface_idx = basic_helpers.normalize_index(surface_index)
+  if not surface_idx then return end
+
+  local cache = ensure_cache()
+  if not cache.surfaces[surface_idx] then
+    -- Surface cache doesn't exist yet — will be lazily built on next full access
+    return
+  end
+
+  -- Update GPS mapping directly (O(1) operation)
+  if cache.surfaces[surface_idx].chart_tags_mapped_by_gps then
+    cache.surfaces[surface_idx].chart_tags_mapped_by_gps[gps] = chart_tag
+  end
+end
+
+--- UPS OPTIMIZATION: Remove a single chart tag entry from the GPS mapping cache.
+--- This avoids the expensive full cache invalidation + find_chart_tags() rescan.
+---@param gps string GPS coordinate string to remove
+local function evict_chart_tag_from_cache(gps)
+  if not gps or gps == "" then return end
+
+  local surface_index = GPSUtils.get_surface_index_from_gps(gps)
+  local surface_idx = basic_helpers.normalize_index(surface_index)
+  if not surface_idx then return end
+
+  local cache = ensure_cache()
+  if not cache.surfaces[surface_idx] then return end
+
+  -- Remove from GPS mapping (O(1) operation)
+  if cache.surfaces[surface_idx].chart_tags_mapped_by_gps then
+    cache.surfaces[surface_idx].chart_tags_mapped_by_gps[gps] = nil
+  end
+end
+
 ---@class Lookups
 ---@field get_chart_tag_by_gps fun(gps: string): LuaCustomChartTag|nil
+---@field upsert_chart_tag_in_cache fun(gps: string, chart_tag: LuaCustomChartTag)
+---@field evict_chart_tag_from_cache fun(gps: string)
 return {
   init = init,
   get_chart_tag_cache = get_chart_tag_cache,
@@ -196,4 +241,6 @@ return {
   remove_chart_tag_from_cache_by_gps = remove_chart_tag_from_cache_by_gps,
   clear_all_caches = clear_all_caches,
   ensure_surface_cache = ensure_surface_cache,
+  upsert_chart_tag_in_cache = upsert_chart_tag_in_cache,
+  evict_chart_tag_from_cache = evict_chart_tag_from_cache,
 }

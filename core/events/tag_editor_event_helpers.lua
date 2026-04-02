@@ -171,8 +171,17 @@ function TagEditorEventHelpers.normalize_and_replace_chart_tag(chart_tag, player
     )
     
     if new_chart_tag and new_chart_tag.valid then
+      -- UPS OPTIMIZATION: Compute GPS for old and new positions for targeted cache update
+      local old_gps = GPSUtils.gps_from_map_position(position, tonumber(surface_index) or 1)
+      local new_gps = GPSUtils.gps_from_map_position(new_chart_tag.position, tonumber(surface_index) or 1)
       chart_tag.destroy()
-      Cache.Lookups.invalidate_surface_chart_tags(surface_index)
+      -- Targeted evict+upsert instead of full invalidate_surface_chart_tags
+      if old_gps then
+        Cache.Lookups.evict_chart_tag_from_cache(old_gps)
+      end
+      if new_gps then
+        Cache.Lookups.upsert_chart_tag_in_cache(new_gps, new_chart_tag)
+      end
       return new_chart_tag, position_pair
     end
   end

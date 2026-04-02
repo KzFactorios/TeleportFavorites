@@ -496,7 +496,9 @@ function fave_bar.refresh_slots(player)
   end
 end
 
--- Update only the slots row without rebuilding the entire bar
+-- Update only the slots row without rebuilding the entire bar.
+-- UPS OPTIMIZATION: Updates slot properties in-place via update_single_slot
+-- instead of destroying and recreating all slot GUI elements.
 -- parent: the bar_flow container (parent of fave_bar_slots_flow)
 function fave_bar.update_slot_row(player, parent_flow)
   if not ValidationUtils.validate_player(player) then return end
@@ -505,22 +507,22 @@ function fave_bar.update_slot_row(player, parent_flow)
   local slots_frame = GuiValidation.find_child_by_name(parent_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW)
   if not slots_frame or not slots_frame.valid then return end
 
-  -- Remove all children in deterministic order
-  -- CRITICAL: Use ipairs() not pairs() - pairs() iteration order is non-deterministic
-  -- and causes desyncs in multiplayer when destroying/creating GUI elements
-  local children = slots_frame.children
-  for i = 1, #children do
-    local child = children[i]
-    if child and child.valid then
-      child.destroy()
-    end
+  -- Check if slot buttons exist — if not, the bar needs a full build
+  local first_slot = GuiValidation.find_child_by_name(slots_frame, "fave_bar_slot_1")
+    or GuiValidation.find_child_by_name(slots_frame, "fave_bar_slot_wrapper_1")
+  if not first_slot then
+    -- Slots don't exist yet — fall back to destroy+recreate
+    local surface_index = player.surface.index
+    local pfaves = Cache.get_player_favorites(player, surface_index)
+    fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves)
+    return slots_frame
   end
 
-  local surface_index = player.surface.index
-  local pfaves = Cache.get_player_favorites(player, surface_index)
-
-  -- Rebuild only the slot buttons (using cached rehydrated favorites internally)
-  fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves)
+  -- Incremental update: patch each slot in-place (sprite, tooltip, label)
+  local max_slots = Cache.Settings.get_player_max_favorite_slots(player) or 10
+  for i = 1, max_slots do
+    fave_bar.update_single_slot(player, i)
+  end
 
   return slots_frame
 end
@@ -641,6 +643,26 @@ end
 
 
 
+
+--- Update all slot buttons in-place without destroying/recreating GUI elements.
+--- UPS OPTIMIZATION: This is significantly cheaper than fave_bar.build() for data-only
+--- changes (icon, tooltip, label text). Falls back to build() if bar structure is missing.
+--- Use fave_bar.build() only for structural changes (max slots, favorites on/off, surface change).
+---@param player LuaPlayer
+function fave_bar.update_all_slots_in_place(player)
+  if not ValidationUtils.validate_player(player) then return end
+  local _, _, _, slots_frame = get_fave_bar_gui_refs(player)
+  if not slots_frame or not slots_frame.valid then
+    -- Bar structure missing — fall back to full build
+    fave_bar.build(player)
+    return
+  end
+
+  local max_slots = Cache.Settings.get_player_max_favorite_slots(player) or 10
+  for i = 1, max_slots do
+    fave_bar.update_single_slot(player, i)
+  end
+end
 
 -- DEBUG: Log all keys in fave_bar at module load time
 if ErrorHandler and ErrorHandler.debug_log then

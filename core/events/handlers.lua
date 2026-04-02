@@ -41,12 +41,6 @@ local function close_all_mod_screens(player)
 end
 
 ---@param surface_index number The surface index to refresh chart tags for
-local function refresh_surface_chart_tags(surface_index)
-  local safe_index = tonumber(surface_index) or 1
-  -- Just call ensure_surface_cache, which internally handles cache invalidation
-  Cache.ensure_surface_cache(safe_index)
-end
-
 --- Restore a chart tag that was removed and refresh caches/UI
 ---@param player LuaPlayer The player
 ---@param chart_tag LuaCustomChartTag The removed chart tag (still valid during event)
@@ -65,8 +59,15 @@ local function restore_chart_tag_and_refresh(player, chart_tag, tag)
     if tag then
       tag.chart_tag = new_chart_tag
     end
+    -- UPS OPTIMIZATION: Targeted upsert for restored tag (same GPS, new chart_tag object)
+    if new_chart_tag and new_chart_tag.valid then
+      local surface_index = player.surface and player.surface.valid and player.surface.index or 1
+      local gps = GPSUtils.gps_from_map_position(new_chart_tag.position, tonumber(surface_index) or 1)
+      if gps then
+        Cache.Lookups.upsert_chart_tag_in_cache(gps, new_chart_tag)
+      end
+    end
   end
-  refresh_surface_chart_tags(tonumber(player.surface.index) or 1)
   fave_bar.build(player)
 end
 
@@ -190,20 +191,35 @@ function handlers.on_load()
   })
 end
 
+-- Queue for deferred player initialization
+-- Each entry: { player_index = N, is_rejoin = bool }
+-- Declared before on_configuration_changed so it can enqueue players during config changes
+local _deferred_init_queue = {}
+
+--- Enqueue a player for deferred initialization
+--- on_nth_tick(60) is permanently registered at load time; it processes whatever is in the queue
+---@param player_index uint
+---@param is_rejoin boolean
+local function enqueue_deferred_init(player_index, is_rejoin)
+  table.insert(_deferred_init_queue, { player_index = player_index, is_rejoin = is_rejoin })
+end
+
 --- Handle mod configuration changes (mod update, added/removed mods)
---- Destroys and rebuilds all fave bars to ensure new GUI elements are created
+--- Destroys existing fave bars and defers rebuild to reduce startup UPS spike.
+--- The rebuild happens via the deferred init queue (on_nth_tick(60)) instead of synchronously.
 function handlers.on_configuration_changed(data)
-  ErrorHandler.debug_log("[CONFIG_CHANGED] Configuration changed, rebuilding all fave bars")
+  ErrorHandler.debug_log("[CONFIG_CHANGED] Configuration changed, deferring fave bar rebuilds")
   for _, player in pairs(game.players) do
     if player.valid then
       -- Ensure player data is initialized (get_player_data calls init internally)
       Cache.get_player_data(player)
-      -- Destroy existing fave bar so it gets fully rebuilt with new elements
+      -- Destroy existing fave bar immediately (prevents stale GUI clicks)
       local main_flow = player.gui.top[Enum.UIEnums.GUI.Shared.MAIN_GUI_FLOW]
       if main_flow and main_flow.valid then
         GuiValidation.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
       end
-      fave_bar.build(player, true)
+      -- Defer the rebuild to spread work across ticks (deduplicates with on_player_joined_game)
+      enqueue_deferred_init(player.index, true)
     end
   end
 end
@@ -216,15 +232,37 @@ function handlers.set_observers_registered_flag(value)
   observers_registered_this_session = value
 end
 
--- Queue for deferred player initialization
--- Each entry: { player_index = N, is_rejoin = bool }
-local _deferred_init_queue = {}
-
 --- Process all queued player initializations
 --- on_nth_tick(60) stays permanently registered for multiplayer safety; it no-ops when queue is empty
+--- Deduplicates entries by player_index so each player is only initialized once per batch
 function handlers.process_deferred_init_queue()
   if #_deferred_init_queue == 0 then return end
-  for _, entry in ipairs(_deferred_init_queue) do
+
+  -- Deduplicate: keep only the last entry per player_index (latest is_rejoin flag wins)
+  local seen = {}
+  local deduped = {}
+  for i = #_deferred_init_queue, 1, -1 do
+    local entry = _deferred_init_queue[i]
+    if entry and not seen[entry.player_index] then
+      seen[entry.player_index] = true
+      table.insert(deduped, 1, entry)
+    end
+  end
+
+  -- Pre-warm surface chart tag caches to avoid redundant find_chart_tags() per player
+  local warmed_surfaces = {}
+  for _, entry in ipairs(deduped) do
+    local p = game.players[entry.player_index]
+    if p and p.valid and p.surface and p.surface.valid then
+      local sid = p.surface.index
+      if not warmed_surfaces[sid] then
+        warmed_surfaces[sid] = true
+        Cache.ensure_surface_cache(sid)
+      end
+    end
+  end
+
+  for _, entry in ipairs(deduped) do
     local deferred_player = game.players[entry.player_index]
     if deferred_player and deferred_player.valid then
       Cache.reset_transient_player_states(deferred_player)
@@ -238,14 +276,6 @@ function handlers.process_deferred_init_queue()
     end
   end
   _deferred_init_queue = {}
-end
-
---- Enqueue a player for deferred initialization
---- on_nth_tick(60) is permanently registered at load time; it processes whatever is in the queue
----@param player_index uint
----@param is_rejoin boolean
-local function enqueue_deferred_init(player_index, is_rejoin)
-  table.insert(_deferred_init_queue, { player_index = player_index, is_rejoin = is_rejoin })
 end
 
 function handlers.on_player_created(event)
@@ -343,18 +373,22 @@ function handlers.on_chart_tag_added(event)
         player_name = player.name,
         position = chart_tag.position
       })
-      local new_chart_tag, position_pair = TagEditorEventHelpers.normalize_and_replace_chart_tag(chart_tag, player)
+      -- UPS OPTIMIZATION: normalize_and_replace_chart_tag handles targeted cache evict+upsert internally.
+      -- Return early — the old chart_tag is destroyed after this call and further processing is invalid.
+      TagEditorEventHelpers.normalize_and_replace_chart_tag(chart_tag, player)
+      return
     end
   end
 
+  -- UPS OPTIMIZATION: Targeted O(1) cache upsert instead of no-op ensure_surface_cache.
+  -- ensure_surface_cache was a no-op on warm cache, leaving the new tag out of the GPS mapping.
   local surface_index = player.surface and player.surface.valid and player.surface.index or 1
-  refresh_surface_chart_tags(tonumber(surface_index) or 1)
-
-  -- OWNERSHIP TRACKING: Store the creator's name in the Tag storage
-  -- This is necessary because event.old_player_index is not reliable when admins move tags
   if chart_tag and chart_tag.valid then
     local gps = GPSUtils.gps_from_map_position(chart_tag.position, tonumber(surface_index) or 1)
     if gps then
+      Cache.Lookups.upsert_chart_tag_in_cache(gps, chart_tag)
+
+      -- OWNERSHIP TRACKING: Store the creator's name in the Tag storage
       local tag = Cache.get_tag_by_gps(player, gps)
       if tag and type(tag) == "table" then
         tag.owner_name = player.name
@@ -579,8 +613,11 @@ function handlers.on_chart_tag_removed(event)
       tag_destroy_helper.destroy_tag_and_chart_tag(tag, chart_tag)
     end
 
-    refresh_surface_chart_tags(tonumber(player.surface.index) or 1)
-    fave_bar.build(player)
+    -- UPS OPTIMIZATION: Targeted cache eviction instead of no-op refresh_surface_chart_tags
+    if gps then
+      Cache.Lookups.evict_chart_tag_from_cache(gps)
+    end
+    fave_bar.update_all_slots_in_place(player)
   end)
 end
 

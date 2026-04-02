@@ -119,9 +119,10 @@ function ChartTagHelpers.update_tag_and_cleanup(old_gps, new_gps, event, player,
 
   local modified_chart_tag = event.tag
 
+  -- UPS OPTIMIZATION: Targeted evict+upsert instead of full invalidate_surface_chart_tags
   if modified_chart_tag and modified_chart_tag.valid then
-    local surface_index = GPSUtils.get_context_surface_index(modified_chart_tag, player)
-    Cache.Lookups.invalidate_surface_chart_tags(surface_index)
+    Cache.Lookups.evict_chart_tag_from_cache(old_gps)
+    Cache.Lookups.upsert_chart_tag_in_cache(new_gps, modified_chart_tag)
   end
 
   -- Use new shared helper for tag mutation and surface mapping, preserving ownership
@@ -152,16 +153,20 @@ function ChartTagHelpers.update_favorites_gps(old_gps, new_gps, acting_player)
     if acting_player_updated and not acting_player_already_included then
       table.insert(all_affected_players, acting_player)
     end
-    -- Invalidate chart tag lookups for the surface
+    -- UPS OPTIMIZATION: Targeted cache update instead of full surface invalidation
     local surface_index = GPSUtils.get_surface_index_from_gps(new_gps)
-    Cache.Lookups.invalidate_surface_chart_tags(tonumber(surface_index))
+    Cache.Lookups.evict_chart_tag_from_cache(old_gps)
+    local new_chart_tag = Cache.Lookups.get_chart_tag_by_gps(new_gps)
+    if new_chart_tag then
+      Cache.Lookups.upsert_chart_tag_in_cache(new_gps, new_chart_tag)
+    end
   end
 
-  -- MULTIPLAYER FIX: Rebuild favorites bar for ALL affected players
-  -- This ensures immediate GUI updates across all clients without requiring clicks
+  -- MULTIPLAYER FIX: Update favorites bar for ALL affected players
+  -- UPS OPTIMIZATION: Use in-place slot updates instead of full bar rebuild
   for _, affected_player in ipairs(all_affected_players) do
     if affected_player and affected_player.valid then
-      fave_bar.build(affected_player)
+      fave_bar.update_all_slots_in_place(affected_player)
     end
   end
 
@@ -197,9 +202,9 @@ function ChartTagHelpers.update_tag_metadata(gps, chart_tag, player)
   if not gps or not chart_tag or not chart_tag.valid then return end
   if not player or not player.valid then return end
 
-  -- Invalidate chart tag cache for the surface
+  -- UPS OPTIMIZATION: Targeted cache update instead of full surface invalidation
   local surface_index = GPSUtils.get_context_surface_index(chart_tag, player)
-  Cache.Lookups.invalidate_surface_chart_tags(tonumber(surface_index))
+  Cache.Lookups.upsert_chart_tag_in_cache(gps, chart_tag)
 
   -- Find all players who have this tag favorited
   local affected_players = {}
@@ -213,10 +218,11 @@ function ChartTagHelpers.update_tag_metadata(gps, chart_tag, player)
     end
   end
 
-  -- Rebuild favorites bar for all affected players to show updated text/icon
+  -- Update favorites bar for all affected players to show updated text/icon
+  -- UPS OPTIMIZATION: Use in-place slot updates instead of full bar rebuild
   for _, affected_player in ipairs(affected_players) do
     if affected_player and affected_player.valid then
-      fave_bar.build(affected_player)
+      fave_bar.update_all_slots_in_place(affected_player)
     end
   end
 

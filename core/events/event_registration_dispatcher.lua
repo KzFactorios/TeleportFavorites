@@ -16,7 +16,10 @@ local control_tag_editor = require("core.control.control_tag_editor")
 local teleport_history_modal = require("gui.teleport_history_modal.teleport_history_modal")
 local handlers = require("core.events.handlers")
 local GuiHelpers = require("core.utils.gui_helpers")
-local ModalInputBlocker = require("core.events.modal_input_blocker")
+-- REMOVED: ModalInputBlocker was causing UPS spikes by registering 12 high-frequency
+-- event handlers (on_built_entity, on_player_mined_item, etc.) that fired on every
+-- build/mine/transfer. The handlers were no-ops (Factorio events can't be cancelled).
+-- local ModalInputBlocker = require("core.events.modal_input_blocker")
 local GuiValidation = require("core.utils.gui_validation")
 local Enum = require("prototypes.enums.enum")
 local ChartTagOwnershipManager = require("core.control.chart_tag_ownership_manager")
@@ -32,13 +35,16 @@ local _registration_state = {}
 
 
 --- Create a safe wrapper for event handlers (using centralized helper)
+--- UPS OPTIMIZATION: Inline debug check to avoid debug_log function call overhead on every event
 local function create_safe_event_handler(handler, handler_name)
   return function(event)
-    ErrorHandler.debug_log("Event received", {
-      handler_name = handler_name,
-      player_index = event.player_index,
-      event_type = event.name
-    })
+    if ErrorHandler.should_log_debug() then
+      ErrorHandler.debug_log("Event received", {
+        handler_name = handler_name,
+        player_index = event.player_index,
+        event_type = event.name
+      })
+    end
 
     local success, err = xpcall(function() handler(event) end, debug.traceback)
     if not success then
@@ -76,57 +82,16 @@ function EventRegistrationDispatcher.register_core_events(script)
   local core_events = {}
   core_events[defines.events.on_player_created] = {
     handler = function(event)
+      -- Observer registration is handled by the deferred init queue (process_deferred_init_queue)
       handlers.on_player_created(event)
-      -- Also setup observers for new players
-      local player = game.players[event.player_index]
-      if player and player.valid then
-        local reg_ok, reg_err = pcall(GuiObserver.GuiEventBus.register_player_observers, player)
-        if not reg_ok then
-          ErrorHandler.warn_log("Failed to register GUI observers for new player", { player = player.name, error = tostring(reg_err) })
-        end
-      end
     end,
     name = "on_player_created"
   }
   core_events[defines.events.on_player_joined_game] = {
     handler = function(event)
+      -- State resets and observer registration are handled by the deferred init queue
+      -- (process_deferred_init_queue calls reset_transient_player_states + register_gui_observers)
       handlers.on_player_joined_game(event)
-      -- Also setup observers for joined players
-      local player = game.players[event.player_index]
-      if player and player.valid then
-        -- Reset transient states for rejoining players
-        -- This handles cases where cleanup on leave may have failed
-        local player_data = Cache.get_player_data(player)
-
-        -- Reset drag mode state
-        if player_data.drag_favorite then
-          player_data.drag_favorite.active = false
-          player_data.drag_favorite.source_slot = nil
-          player_data.drag_favorite.favorite = nil
-        end
-
-        -- Reset move mode state
-        if player_data.tag_editor_data and player_data.tag_editor_data.move_mode then
-          player_data.tag_editor_data.move_mode = false
-          player_data.tag_editor_data.error_message = ""
-        end
-
-        -- Clear cursor
-        pcall(function()
-          player.clear_cursor()
-        end)
-
-        ErrorHandler.debug_log("Transient states reset for rejoining player", {
-          player = player.name,
-          player_index = player.index
-        })
-
-        -- Import gui_observer safely and always register observers
-        local reg_ok, reg_err = pcall(GuiObserver.GuiEventBus.register_player_observers, player)
-        if not reg_ok then
-          ErrorHandler.warn_log("Failed to register GUI observers for joining player", { player = player.name, error = tostring(reg_err) })
-        end
-      end
     end,
     name = "on_player_joined_game"
   }
@@ -282,20 +247,21 @@ function EventRegistrationDispatcher.register_core_events(script)
       GuiObserver.GuiEventBus.schedule_periodic_cleanup()
     end)
 
-    -- Add scheduled icon_typing table reset (every 15 minutes = 54000 ticks)
-    script.on_nth_tick(54000, function(event)
-      icon_typing.reset_icon_type_lookup()
-      ErrorHandler.debug_log("icon_typing table reset (every 15 minutes)")
-    end)
+    -- UPS OPTIMIZATION: Removed periodic icon_typing cache reset.
+    -- The icon_type_lookup table is non-persistent (lives in _G), so it auto-clears on
+    -- game restart/mod reload. Mods can't change mid-game without a restart, and
+    -- on_configuration_changed already handles mod updates. The periodic reset was
+    -- causing prototype scan storms (240-3000 lookups) on the next bar rebuild.
+    -- (Previously: on_nth_tick(54000) calling icon_typing.reset_icon_type_lookup())
   end)
 
   if not success then
     ErrorHandler.warn_log(
-      "Failed to register periodic GUI observer cleanup or icon_typing reset",
+      "Failed to register periodic GUI observer cleanup",
       { error = err })
   else
     ErrorHandler.debug_log(
-      "Registered periodic GUI observer cleanup (every 30 minutes) and icon_typing reset (every 15 minutes)")
+      "Registered periodic GUI observer cleanup (every 30 minutes)")
   end
   
   -- MULTIPLAYER FIX: All on_nth_tick and on_tick handlers are registered permanently.
@@ -520,7 +486,8 @@ function EventRegistrationDispatcher.register_all_events(script)
   results.gui = EventRegistrationDispatcher.register_gui_events(script)
   results.custom_input = EventRegistrationDispatcher.register_custom_input_events(script)
   results.observer = EventRegistrationDispatcher.register_observer_events(script)
-  results.modal_input_blocker = ModalInputBlocker.register_handlers(script)
+  -- REMOVED: Modal input blocker registration (UPS optimization)
+  -- results.modal_input_blocker = ModalInputBlocker.register_handlers(script)
   
   -- Register debug commands
   local debug_cmd_success, debug_cmd_err = pcall(DebugCommands.register_commands)
