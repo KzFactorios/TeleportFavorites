@@ -1,0 +1,38 @@
+Detected Lua version: 5.1
+LuaCov found and enabled
+==== Running All Tests ====
+
+==== Running specs/gui_observer_spec.lua ====
+
+==== Running Tests ====
+
+GuiObserver
+  - should load module without errors ... PASS
+  - should handle initialization state correctly ... PASS
+  - should manage observers and notifications correctly ... PASS
+  - should clean up invalid observers ... PASS
+
+==== Test Summary ====
+Total tests: 4
+Passed: 4
+Failed: 0
+
+==== Overall Test Summary ====
+Test files processed: 1
+Test files successful: 1
+Test files failed: 0
+Total tests passed: 4
+Total tests failed: 0
+Total tests run: 4
+
+==== Generating Coverage Report ====
+Coverage report generated in luacov.report.out
+TeleportFavorites Test Coverage Report
+========================================
+Generated: 2026-04-02 14:51:21
+Overall Coverage: 0/0 lines (No data available)
+
+
+Report saved to coverage_summary.txt
+
+==== Testing Complete ====

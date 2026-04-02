@@ -91,10 +91,12 @@ local function get_mod_version()
   return "unknown"
 end
 
---- Safe notification that handles module load order
+--- Safe notification that handles module load order.
+--- Uses package.loaded to avoid pcall(require) overhead on every call
+--- (gui_observer cannot be require'd at top level due to circular dependency).
 function Cache.notify_observers_safe(event_type, data)
-  local success, gui_observer = pcall(require, "core.events.gui_observer")
-  if success and gui_observer.GuiEventBus then
+  local gui_observer = package.loaded["core.events.gui_observer"]
+  if gui_observer and gui_observer.GuiEventBus then
     gui_observer.GuiEventBus.notify(event_type, data)
   end
 end
@@ -542,6 +544,59 @@ function Cache.get_rehydrated_favorites(player, surface_index, max_rehydrate)
   return rehydrated
 end
 
+--- Reorder the rehydrated favorites cache to match a new storage order.
+--- Rearranges existing cached entries without full rebuild, preserving already-rehydrated data.
+---@param player LuaPlayer
+---@param source_slot integer Original slot position
+---@param target_slot integer New slot position
+function Cache.reorder_rehydrated_favorites_cache(player, source_slot, target_slot)
+  if not player or not player.valid then return end
+  local idx = player.surface and player.surface.index
+  if not idx then return end
+  local cache_key = player.index .. "_" .. idx
+  local cached = rehydrated_favorites_cache[cache_key]
+  if not cached or not cached.favorites then return end
+
+  local faves = cached.favorites
+  local max = #faves
+  if source_slot < 1 or source_slot > max or target_slot < 1 or target_slot > max then
+    -- Out of range — just invalidate so next read rebuilds
+    rehydrated_favorites_cache[cache_key] = nil
+    return
+  end
+
+  -- Mirror the same cascade logic as PlayerFavorites:reorder_favorites
+  local src = faves[source_slot]
+  local tgt = faves[target_slot]
+  local is_blank_src = not src or (type(src) == "table" and (not src.gps or src.gps == "" or src.gps == (Constants.settings.BLANK_GPS)))
+  local is_blank_tgt = not tgt or (type(tgt) == "table" and (not tgt.gps or tgt.gps == "" or tgt.gps == (Constants.settings.BLANK_GPS)))
+
+  if is_blank_tgt then
+    -- Move to blank: direct swap
+    faves[target_slot] = src
+    faves[source_slot] = tgt or FavoriteUtils.get_blank_favorite()
+  elseif math.abs(source_slot - target_slot) == 1 then
+    -- Adjacent: simple swap
+    faves[source_slot], faves[target_slot] = faves[target_slot], faves[source_slot]
+  else
+    -- Cascade shift
+    local saved = faves[source_slot]
+    if source_slot < target_slot then
+      for i = source_slot, target_slot - 1 do
+        faves[i] = faves[i + 1]
+      end
+    else
+      for i = source_slot, target_slot + 1, -1 do
+        faves[i] = faves[i - 1]
+      end
+    end
+    faves[target_slot] = saved
+  end
+
+  -- Update tick so cache stays fresh
+  cached.tick = game and game.tick or 0
+end
+
 --- Invalidate rehydrated favorites cache (called on tag changes)
 --- Forces next get_rehydrated_favorites to rebuild cache
 ---@param player LuaPlayer|nil If nil, invalidates all players
@@ -627,6 +682,8 @@ function Cache.get_tag_by_gps(player, gps)
 
   local match_tag = tag_cache[gps]
   if not match_tag then
+    -- GENUINE ORPHAN: the tag exists in the player's favorites but has been deleted
+    -- from persistent storage. Notify so the UI can indicate the broken favorite.
     Cache.notify_observers_safe("invalid_chart_tag", { player = player, gps = gps })
     return nil
   end
@@ -640,20 +697,19 @@ function Cache.get_tag_by_gps(player, gps)
     end
   end
 
-  -- Attach chart_tag reference transiently (not stored in persistent storage)
+  -- Attach chart_tag reference transiently (not stored in persistent storage).
+  -- get_chart_tag_by_gps is self-healing: it warms the runtime GPS map on first miss,
+  -- so a nil here means the chart tag genuinely no longer exists on the map.
   local chart_tag_ref = Cache.Lookups.get_chart_tag_by_gps(gps)
   if chart_tag_ref and chart_tag_ref.valid and chart_tag_ref.position then
     result.chart_tag = chart_tag_ref
-  else
-    result.chart_tag = nil
-  end
-
-  -- Check if we have a valid chart_tag
-  if result.chart_tag and result.chart_tag.valid then
     return result
   end
 
-  -- Notify player if chart_tag is invalid
+  -- The tag is in persistent storage but the LuaCustomChartTag is gone from the map.
+  -- This is a real inconsistency (e.g. tag deleted by another mod, or game corruption).
+  -- Do NOT fire the notification for a simple warm-cache miss — get_chart_tag_by_gps
+  -- already performed the self-healing warm above, so this is a confirmed absence.
   Cache.notify_observers_safe("invalid_chart_tag", { player = player, gps = gps })
   return nil
 end

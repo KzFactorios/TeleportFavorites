@@ -238,44 +238,38 @@ end
 function handlers.process_deferred_init_queue()
   if #_deferred_init_queue == 0 then return end
 
-  -- Deduplicate: keep only the last entry per player_index (latest is_rejoin flag wins)
-  local seen = {}
-  local deduped = {}
-  for i = #_deferred_init_queue, 1, -1 do
-    local entry = _deferred_init_queue[i]
-    if entry and not seen[entry.player_index] then
-      seen[entry.player_index] = true
-      table.insert(deduped, 1, entry)
-    end
-  end
+  -- UPS OPTIMIZATION: Process one player per tick to spread GUI build work across multiple ticks.
+  -- Building all players' favorites bars on tick 60 caused 17ms+ spikes with 100+ YARM tags.
+  -- By processing one player per tick, work spreads naturally across ~60ms window.
+  
+  local entry = table.remove(_deferred_init_queue, 1)  -- FIFO: process first player
+  if not entry then return end
 
-  -- Pre-warm surface chart tag caches to avoid redundant find_chart_tags() per player
-  local warmed_surfaces = {}
-  for _, entry in ipairs(deduped) do
-    local p = game.players[entry.player_index]
-    if p and p.valid and p.surface and p.surface.valid then
-      local sid = p.surface.index
-      if not warmed_surfaces[sid] then
-        warmed_surfaces[sid] = true
-        Cache.ensure_surface_cache(sid)
-      end
+  local deferred_player = game.players[entry.player_index]
+  if deferred_player and deferred_player.valid then
+    Cache.reset_transient_player_states(deferred_player)
+    -- Close any stale mod GUIs from previous session (tag editor, modals, etc.)
+    close_all_mod_screens(deferred_player)
+    if entry.is_rejoin then
+      gui_observer.GuiEventBus.cleanup_player_observers(deferred_player)
     end
-  end
+    register_gui_observers(deferred_player)
 
-  for _, entry in ipairs(deduped) do
-    local deferred_player = game.players[entry.player_index]
-    if deferred_player and deferred_player.valid then
-      Cache.reset_transient_player_states(deferred_player)
-      -- Close any stale mod GUIs from previous session (tag editor, modals, etc.)
-      close_all_mod_screens(deferred_player)
-      if entry.is_rejoin then
-        gui_observer.GuiEventBus.cleanup_player_observers(deferred_player)
-      end
-      register_gui_observers(deferred_player)
-      fave_bar.build(deferred_player, true)
+    -- Warm the GPS map cache for this player's surface before building the bar.
+    -- After a game load the runtime Lookups cache is empty, causing false "invalid_chart_tag"
+    -- notifications for every favorite. A single find_chart_tags scan here avoids those.
+    local surface_idx = deferred_player.surface and deferred_player.surface.valid and deferred_player.surface.index
+    if surface_idx then
+      Cache.Lookups.warm_surface_gps_map(surface_idx)
     end
+
+    fave_bar.build(deferred_player, true)
+
+    ErrorHandler.debug_log("Deferred init processed for one player", {
+      player = deferred_player.name,
+      remaining = #_deferred_init_queue
+    })
   end
-  _deferred_init_queue = {}
 end
 
 function handlers.on_player_created(event)
@@ -356,6 +350,15 @@ function handlers.on_open_tag_editor_custom_input(event)
 end
 
 function handlers.on_chart_tag_added(event)
+  -- STARTUP SPIKE INVESTIGATION: Log all chart tag additions at startup
+  local tick = game and game.tick or 0
+  ErrorHandler.debug_log("[STARTUP] on_chart_tag_added", {
+    tick = tick,
+    player_index = event.player_index,
+    tag_text = event.tag and event.tag.text or "<no text>",
+    tag_position = event.tag and event.tag.position and { x = event.tag.position.x, y = event.tag.position.y } or nil
+  })
+
   -- Get the player object from the event.player_index (can be nil if added by script)
   if not event.player_index then
     ErrorHandler.debug_log("Chart tag added without player_index (added by script or other mod)")
@@ -402,41 +405,53 @@ function handlers.on_chart_tag_added(event)
 end
 
 function handlers.on_chart_tag_modified(event)
+  -- STARTUP SPIKE INVESTIGATION: Log all chart tag modifications at startup
+  local tick = game and game.tick or 0
+  ErrorHandler.debug_log("[STARTUP] on_chart_tag_modified", {
+    tick = tick,
+    player_index = event.player_index,
+    old_position = event.old_position,
+    new_position = event.tag and event.tag.position or nil,
+    tag_text = event.tag and event.tag.text or "<no text>"
+  })
+
   if not event or not event.old_position then return end
 
   -- Check for valid player_index (can be nil if modified by script)
-  if not event.player_index then
-    ErrorHandler.debug_log("Chart tag modified without player_index (modified by script or other mod)")
-    return
-  end
+  if not event.player_index then return end
 
   local player = game.players[event.player_index]
   if not player or not player.valid then return end
+
+  -- UPS OPTIMIZATION: Early-exit for chart tags not tracked by this mod.
+  -- Other mods (e.g. YARM) modify their own chart tags periodically, firing on_chart_tag_modified.
+  -- If the tag at the old position isn't in our storage, skip all processing.
+  local old_gps, new_gps = ChartTagHelpers.extract_gps(event, player)
+  local old_tag = old_gps and Cache.get_tag_by_gps(player, old_gps) or nil
+
+  -- Also check the new position — a tag moved FROM an untracked position but TO a tracked one
+  -- still doesn't belong to us (we track by creation, not by position coincidence).
+  -- However: if old_tag is nil AND the chart tag text is empty or nil, it's definitely not ours.
+  -- If old_tag is nil but text is non-empty, a player might be creating a new tag this way.
+  -- The safest check: if we have no Tag object for the old GPS, this tag is not ours.
+  if not old_tag then
+    -- Not a tag we track — skip all expensive processing
+    return
+  end
 
   -- OWNERSHIP PRESERVATION: Get the original owner from our Tag storage
   -- event.old_player_index is unreliable (often nil), so we track ownership in Tag.owner_name
   local original_owner = nil
   local original_owner_name = nil
 
-  -- Try to get owner from our stored Tag object first
-  local old_gps, new_gps = ChartTagHelpers.extract_gps(event, player)
-  if old_gps then
-    local old_tag = Cache.get_tag_by_gps(player, old_gps)
-    if old_tag and type(old_tag) == "table" and old_tag.owner_name then
-      original_owner_name = old_tag.owner_name
-      -- Find the player object by name
-      for _, p in pairs(game.players) do
-        if p.name == original_owner_name then
-          original_owner = p
-          break
-        end
+  if old_tag and type(old_tag) == "table" and old_tag.owner_name then
+    original_owner_name = old_tag.owner_name
+    -- Find the player object by name
+    for _, p in pairs(game.players) do
+      if p.name == original_owner_name then
+        original_owner = p
+        break
       end
-      ErrorHandler.debug_log("Retrieved original owner from Tag storage", {
-        player_who_moved = player.name,
-        original_owner_name = original_owner_name,
-        has_player_object = (original_owner ~= nil),
-        old_gps = old_gps
-      })
     end
   end
 
@@ -446,11 +461,6 @@ function handlers.on_chart_tag_modified(event)
     if original_owner and original_owner.valid then
       original_owner_name = original_owner.name
     end
-    ErrorHandler.debug_log("Retrieved original owner from event.old_player_index (fallback)", {
-      player_who_moved = player.name,
-      old_player_index = event.old_player_index,
-      original_owner_name = original_owner_name
-    })
   end
 
   if not ChartTagHelpers.is_valid_tag_modification(event, player) then
@@ -567,6 +577,18 @@ function handlers.on_chart_tag_modified(event)
 end
 
 function handlers.on_chart_tag_removed(event)
+  -- STARTUP SPIKE INVESTIGATION: Log all chart tag removals at startup
+  local tick = game and game.tick or 0
+  ErrorHandler.debug_log("[STARTUP] on_chart_tag_removed", {
+    tick = tick,
+    player_index = event.player_index,
+    tag_position = event.tag and event.tag.position and { x = event.tag.position.x, y = event.tag.position.y } or nil,
+    tag_text = event.tag and event.tag.text or "<no text>"
+  })
+
+  -- Skip tags removed by scripts/other mods (no player context)
+  if not event.player_index then return end
+
   with_valid_player(event.player_index, function(player)
     local chart_tag = event.tag
     if not chart_tag or not chart_tag.valid then return end
@@ -575,6 +597,10 @@ function handlers.on_chart_tag_removed(event)
     local gps = GPSUtils.gps_from_map_position(chart_tag.position,
       GPSUtils.get_context_surface_index(chart_tag, player))
     local tag = Cache.get_tag_by_gps(player, gps)
+
+    -- UPS OPTIMIZATION: Early-exit for chart tags not tracked by this mod.
+    -- Other mods (e.g. YARM) may remove their own chart tags; skip processing for those.
+    if not tag then return end
 
     -- Only allow removal if player is admin or owner (using Tag.owner_name)
     local is_admin = player.admin
@@ -606,12 +632,7 @@ function handlers.on_chart_tag_removed(event)
     end
 
     -- Remove/update associated tags, favorites, etc.
-    if not tag then
-      tag = { gps = gps }
-    end
-    if tag then
-      tag_destroy_helper.destroy_tag_and_chart_tag(tag, chart_tag)
-    end
+    tag_destroy_helper.destroy_tag_and_chart_tag(tag, chart_tag)
 
     -- UPS OPTIMIZATION: Targeted cache eviction instead of no-op refresh_surface_chart_tags
     if gps then

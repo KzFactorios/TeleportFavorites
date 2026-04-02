@@ -24,12 +24,12 @@ local GUI_EVENT_TYPES = {
 ---@class GuiEventBus
 ---@field _observers table<string, table[]>
 ---@field _notification_queue table[]
----@field _deferred_queue table[]
+---@field _dirty_players table<number, boolean>
 local GuiEventBus = {
   _observers = {}, -- Map of event_type to array of observers
   _notification_queue = {}, -- Queue of pending notifications (processed immediately)
-  _deferred_queue = {}, -- Queue of deferred GUI notifications (processed on next tick)
-  _deferred_tick_active = false, -- Whether deferred queue has items to process (on_nth_tick(2) is always registered)
+  _dirty_players = {}, -- Set of player indices that need a GUI refresh (coalesces multiple events per tick)
+  _deferred_tick_active = false, -- Whether _dirty_players has entries to flush (on_nth_tick(2) is always registered)
   _initialized = false -- Track initialization state
 }
 
@@ -39,7 +39,7 @@ function GuiEventBus.ensure_initialized()
   if not was_initialized then
     GuiEventBus._observers = GuiEventBus._observers or {}
     GuiEventBus._notification_queue = GuiEventBus._notification_queue or {}
-    GuiEventBus._deferred_queue = GuiEventBus._deferred_queue or {}
+    GuiEventBus._dirty_players = GuiEventBus._dirty_players or {}
     GuiEventBus._initialized = true
     ErrorHandler.debug_log("GuiEventBus initialized")
   end
@@ -102,70 +102,68 @@ end
 function GuiEventBus.notify(event_type, event_data, defer_to_tick)
   -- Auto-defer GUI events or respect explicit defer flag
   local should_defer = defer_to_tick or GUI_EVENT_TYPES[event_type]
-  
-  local notification = {
-    type = event_type,
-    data = event_data,
-    timestamp = game.tick
-  }
-  
+
   if should_defer then
-    -- Queue for deferred processing on next tick
-    GuiEventBus._deferred_queue = GuiEventBus._deferred_queue or {}
-    table.insert(GuiEventBus._deferred_queue, notification)
-    
-    -- Flag that deferred queue has items to process
-    -- on_nth_tick(2) is permanently registered at load time; it checks this flag to no-op when idle
+    -- Coalesce: mark the player dirty instead of queuing individual notifications.
+    -- Multiple events for the same player in the same tick (e.g. drag-drop firing
+    -- favorite_added + cache_updated) collapse into a single refresh call.
+    GuiEventBus._dirty_players = GuiEventBus._dirty_players or {}
+    local player_index = event_data and event_data.player_index
+    if player_index then
+      GuiEventBus._dirty_players[player_index] = true
+    else
+      -- No player_index: mark all observers' players dirty (e.g. global tag events)
+      for _, observers in pairs(GuiEventBus._observers) do
+        for _, observer in ipairs(observers) do
+          if observer.player and observer.player.valid then
+            GuiEventBus._dirty_players[observer.player.index] = true
+          end
+        end
+      end
+    end
+    -- Flag that dirty set has entries; on_nth_tick(2) is permanently registered
     GuiEventBus._deferred_tick_active = true
   else
-    -- Queue for immediate processing (non-GUI events)
+    -- Immediate path for non-GUI events (invalid_chart_tag, etc.)
+    local notification = { type = event_type, data = event_data, timestamp = game.tick }
     table.insert(GuiEventBus._notification_queue, notification)
-    
-    -- Ensure processing flag is initialized
     GuiEventBus._processing = GuiEventBus._processing or false
-    
-    -- Process immediately if not already processing
     if not GuiEventBus._processing then
       GuiEventBus.process_notifications()
     end
   end
 end
 
---- Process deferred GUI notifications (called on_tick)
+--- Flush the dirty-player set: call fave_bar.refresh_slots exactly once per dirty player per tick.
+--- All GUI events for a player in the same tick are coalesced into this single refresh.
 function GuiEventBus.process_deferred_notifications()
-  -- Initialize queue if needed
-  GuiEventBus._deferred_queue = GuiEventBus._deferred_queue or {}
-  
-  if #GuiEventBus._deferred_queue == 0 then
-    -- Mark deferred tick as inactive (handler remains registered for multiplayer safety)
+  GuiEventBus._dirty_players = GuiEventBus._dirty_players or {}
+
+  local any = false
+  for _ in pairs(GuiEventBus._dirty_players) do any = true; break end
+  if not any then
     GuiEventBus._deferred_tick_active = false
     return
   end
-  
-  -- Process all deferred notifications
-  local error_count = 0
-  
-  while #GuiEventBus._deferred_queue > 0 do
-    local notification = table.remove(GuiEventBus._deferred_queue, 1)
-    local observers = GuiEventBus._observers[notification.type] or {}
-    
-    for _, observer in ipairs(observers) do
-      if observer and observer.update then
-        local success, err = pcall(observer.update, observer, notification.data)
-        if not success then
-          error_count = error_count + 1
-          ErrorHandler.warn_log("Deferred observer update failed", {
-            event_type = notification.type,
-            observer_type = observer.observer_type or "unknown",
-            error = err
-          })
-        end
+
+  -- Swap to a local copy and clear immediately so events fired during refresh
+  -- schedule into the *next* tick rather than being lost or causing re-entry.
+  local dirty = GuiEventBus._dirty_players
+  GuiEventBus._dirty_players = {}
+  GuiEventBus._deferred_tick_active = false
+
+  for player_index, _ in pairs(dirty) do
+    local player = game.players[player_index]
+    if player and player.valid then
+      local ok, err = pcall(fave_bar.refresh_slots, player)
+      if not ok then
+        ErrorHandler.warn_log("Deferred GUI refresh failed", {
+          player_index = player_index,
+          error = err
+        })
       end
     end
   end
-  
-  -- Queue is now drained — mark inactive (handler stays registered for multiplayer safety)
-  GuiEventBus._deferred_tick_active = false
 end
 
 --- Process queued notifications
@@ -457,9 +455,9 @@ function GuiEventBus.cleanup_all()
   
   -- Clear notification queues
   GuiEventBus._notification_queue = {}
-  GuiEventBus._deferred_queue = {}
+  GuiEventBus._dirty_players = {}
   GuiEventBus._processing = false
-  
+
   ErrorHandler.debug_log("All GUI observers cleaned up")
 end
 
@@ -515,27 +513,17 @@ end
 function GuiEventBus.register_player_observers(player)
   if not player or not player.valid then return end
 
-  -- Only register DataObserver for cache_updated events (favorites bar only)
-  local data_observer = DataObserver:new(player)
-  GuiEventBus.subscribe("cache_updated", data_observer)
+  -- GUI event types (cache_updated, favorite_added, etc.) are handled by the dirty-player
+  -- coalescing mechanism in notify/process_deferred_notifications — they call fave_bar.refresh_slots
+  -- directly, so DataObserver subscriptions for those event types are not needed.
 
-  -- Also register DataObserver for favorite events to ensure favorites bar updates
-  GuiEventBus.subscribe("favorite_added", data_observer)
-  GuiEventBus.subscribe("favorite_removed", data_observer)
-  GuiEventBus.subscribe("favorite_updated", data_observer)
-
-  ErrorHandler.debug_log("GUI observers registered for player (DataObserver)", {
-    player = player.name,
-    events = {"cache_updated", "favorite_added", "favorite_removed", "favorite_updated"}
-  })
-
-  -- PERFORMANCE: Don't build GUI here - let on_player_created handle deferred build
-  -- This prevents double-building (immediate + deferred) which caused 25ms spikes
-  -- The favorites bar will be built via the deferred 3-tick handler in on_player_created
-
-  -- Register NotificationObserver for invalid_chart_tag events
+  -- Register NotificationObserver for invalid_chart_tag events (immediate non-deferred path)
   local notification_observer = NotificationObserver:new(player)
   GuiEventBus.subscribe("invalid_chart_tag", notification_observer)
+
+  ErrorHandler.debug_log("GUI observers registered for player (NotificationObserver)", {
+    player = player.name,
+  })
 end
 
 --- Clean up observers for a disconnected player (more aggressive than player leave)

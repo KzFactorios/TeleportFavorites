@@ -37,6 +37,7 @@ local function get_closest_chart_tag_gps(player, gps)
   if not gps then return nil end
 
   local chart_tag = Cache.Lookups.get_chart_tag_by_gps(gps) or nil
+
   if not chart_tag or not chart_tag.valid then
     local pos = GPSUtils.map_position_from_gps(gps)
     if not pos or type(pos.x) ~= "number" or type(pos.y) ~= "number" then

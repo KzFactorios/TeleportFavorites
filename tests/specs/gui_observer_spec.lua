@@ -173,17 +173,21 @@ describe("GuiObserver", function()
         assert(#GuiEventBus._notification_queue > 0, "Queue should have notification")
         GuiEventBus._processing = false
         
-        -- Test deferred notification (GUI events go to deferred queue)
-        GuiEventBus.notify("cache_updated", { player = mock_player, type = "cache" })
-        assert(#GuiEventBus._deferred_queue > 0, "Deferred queue should have notification")
-        
+        -- Test deferred notification (GUI events mark the player dirty, not a queue entry)
+        GuiEventBus.notify("cache_updated", { player_index = mock_player.index, type = "cache" })
+        local dirty_count = 0
+        for _ in pairs(GuiEventBus._dirty_players or {}) do dirty_count = dirty_count + 1 end
+        assert(dirty_count > 0, "Deferred queue should have notification")
+
         -- Process notifications
         GuiEventBus.process_notifications()
         assert(#GuiEventBus._notification_queue == 0, "Queue should be empty after processing")
-        
+
         -- Process deferred notifications
         GuiEventBus.process_deferred_notifications()
-        assert(#GuiEventBus._deferred_queue == 0, "Deferred queue should be empty after processing")
+        local dirty_after = 0
+        for _ in pairs(GuiEventBus._dirty_players or {}) do dirty_after = dirty_after + 1 end
+        assert(dirty_after == 0, "Deferred queue should be empty after processing")
     end)
     
     -- Test cleanup functionality

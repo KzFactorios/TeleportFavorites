@@ -54,11 +54,10 @@ end
 local function build_fresh_settings(player)
   local settings_table = {}
   local mod_settings = get_player_mod_settings(player)
-  
-  -- Build settings using direct access to avoid circular dependency
+
+  -- Boolean settings (favorites_on, enable_teleport_history)
   for setting_name, default_value in pairs(DEFAULT_SETTINGS) do
     if type(default_value) == "boolean" then
-      -- Direct boolean setting access
       if mod_settings then
         local setting = mod_settings[setting_name]
         if setting and setting.value ~= nil and type(setting.value) == "boolean" then
@@ -71,7 +70,29 @@ local function build_fresh_settings(player)
       end
     end
   end
-  
+
+  -- Max favorite slots (per-user string setting "10" | "20" | "30")
+  local default_slots = math.floor(tonumber(Constants.settings.DEFAULT_MAX_FAVORITE_SLOTS) or 10)
+  local max_slots_key = Constants.settings.MAX_FAVORITE_SLOTS_SETTING
+  if mod_settings and max_slots_key then
+    local s = mod_settings[max_slots_key]
+    local n = s and tonumber(s.value) or nil
+    settings_table.max_favorite_slots = (n == 10 or n == 20 or n == 30) and math.floor(n) or default_slots
+  else
+    settings_table.max_favorite_slots = default_slots
+  end
+
+  -- Slot label mode (per-user string setting "off" | "short" | "long")
+  local default_mode = Constants.settings.DEFAULT_SLOT_LABEL_MODE or "off"
+  local label_key = Constants.settings.SLOT_LABEL_MODE_SETTING
+  if mod_settings and label_key then
+    local s = mod_settings[label_key]
+    local v = s and s.value or nil
+    settings_table.slot_label_mode = (v == "short" or v == "long") and v or default_mode
+  else
+    settings_table.slot_label_mode = default_mode
+  end
+
   return settings_table
 end
 
@@ -97,27 +118,9 @@ end
 --- @param player LuaPlayer|nil
 --- @return integer
 function Settings.get_player_max_favorite_slots(player)
-  local default_slots = math.floor(tonumber(Constants.settings.DEFAULT_MAX_FAVORITE_SLOTS) or 10)
-  local setting_key = Constants and Constants.settings and Constants.settings.MAX_FAVORITE_SLOTS_SETTING or nil
-  if not setting_key then return default_slots end
-
-  local global_settings = get_global_settings(player)
-  if not global_settings then return default_slots end
-
-  local s = global_settings[setting_key]
-  local value = s and s.value or nil
-  if type(value) == "string" then
-    local n = tonumber(value)
-    if n == 10 or n == 20 or n == 30 then
-      return math.floor(n)
-    end
-  elseif type(value) == "number" then
-    local n = math.floor(value)
-    if n == 10 or n == 20 or n == 30 then
-      return n
-    end
-  end
-  return default_slots
+  local cached = Settings.get_player_settings(player)
+  return cached.max_favorite_slots
+    or math.floor(tonumber(Constants.settings.DEFAULT_MAX_FAVORITE_SLOTS) or 10)
 end
 
 --- Returns a table of all per-player mod settings with caching
@@ -188,19 +191,9 @@ end
 --- @param player LuaPlayer|nil
 --- @return string mode "off", "short", or "long"
 function Settings.get_player_slot_label_mode(player)
-  local default_mode = Constants.settings.DEFAULT_SLOT_LABEL_MODE or "off"
-  local setting_key = Constants.settings.SLOT_LABEL_MODE_SETTING
-  if not setting_key then return default_mode end
-
-  local global_settings = get_global_settings(player)
-  if not global_settings then return default_mode end
-
-  local s = global_settings[setting_key]
-  local value = s and s.value or nil
-  if value == "short" or value == "long" then
-    return value
-  end
-  return default_mode
+  local cached = Settings.get_player_settings(player)
+  return cached.slot_label_mode
+    or Constants.settings.DEFAULT_SLOT_LABEL_MODE or "off"
 end
 
 return Settings

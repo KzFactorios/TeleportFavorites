@@ -95,13 +95,8 @@ function SlotInteractionHandlers.handle_toggle_lock(event, player, fav, slot, fa
       return false
     end
 
-    -- Update the slot row to reflect lock state change
-    local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
-    local bar_frame = GuiValidation.find_child_by_name(main_flow, "fave_bar_frame")
-    local bar_flow = bar_frame and GuiValidation.find_child_by_name(bar_frame, "fave_bar_flow")
-    if bar_flow then
-      fave_bar.update_slot_row(player, bar_flow)
-    end
+    -- Update all slots to reflect the lock state change (batch, no manual GUI traversal needed)
+    fave_bar.update_all_slots_in_place(player)
 
     return true
   end
@@ -231,7 +226,9 @@ function SlotInteractionHandlers.reorder_favorites(player, favorites, drag_index
     return false
   end
 
-  -- UPS OPTIMIZATION: Update slot properties in-place instead of full bar rebuild
+  -- Invalidate rehydration cache so GUI reads fresh data after reorder
+  Cache.invalidate_rehydrated_favorites(player, player.surface and player.surface.index)
+
   fave_bar.update_all_slots_in_place(player)
   CursorUtils.end_drag_favorite(player)
   return true

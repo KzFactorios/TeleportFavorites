@@ -170,6 +170,9 @@ end
 
 function fave_bar.build(player, force_show)
   
+  local tick = game and game.tick or 0
+  ErrorHandler.debug_log("[SPIKE_DEBUG] fave_bar.build called", { tick = tick, player = player and player.name or "<no player>" })
+
   ErrorHandler.debug_log("[FAVE_BAR] ========== BUILD CALLED ==========", {
     player = player and player.name or "<no player>",
     force_show = force_show or false,
@@ -487,43 +490,35 @@ fave_bar.build_favorite_buttons_row = build_favorite_buttons_row
 ---@param player LuaPlayer
 function fave_bar.refresh_slots(player)
   if not ValidationUtils.validate_player(player) then return end
-  local _, _, bar_flow, slots_frame = get_fave_bar_gui_refs(player)
-  if bar_flow and bar_flow.valid and slots_frame and slots_frame.valid then
-    fave_bar.update_slot_row(player, bar_flow)
-  else
-    -- Bar structure missing — fall back to full build
-    fave_bar.build(player)
-  end
+  -- update_all_slots_in_place does a single batched pass (one rehydration, one settings read)
+  -- and falls back to build() if the bar structure is missing.
+  fave_bar.update_all_slots_in_place(player)
 end
 
 -- Update only the slots row without rebuilding the entire bar.
--- UPS OPTIMIZATION: Updates slot properties in-place via update_single_slot
--- instead of destroying and recreating all slot GUI elements.
--- parent: the bar_flow container (parent of fave_bar_slots_flow)
+-- parent_flow is accepted for backward compatibility but not needed — the batch updater
+-- resolves its own refs. Delegates to update_all_slots_in_place for a single-pass update.
 function fave_bar.update_slot_row(player, parent_flow)
   if not ValidationUtils.validate_player(player) then return end
-  if not parent_flow or not parent_flow.valid then return end
+  if parent_flow and not parent_flow.valid then return end
 
-  local slots_frame = GuiValidation.find_child_by_name(parent_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW)
-  if not slots_frame or not slots_frame.valid then return end
-
-  -- Check if slot buttons exist — if not, the bar needs a full build
-  local first_slot = GuiValidation.find_child_by_name(slots_frame, "fave_bar_slot_1")
-    or GuiValidation.find_child_by_name(slots_frame, "fave_bar_slot_wrapper_1")
-  if not first_slot then
-    -- Slots don't exist yet — fall back to destroy+recreate
-    local surface_index = player.surface.index
-    local pfaves = Cache.get_player_favorites(player, surface_index)
-    fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves)
-    return slots_frame
+  -- Fast-path: check for slot existence without recursive search
+  local slots_frame
+  if parent_flow and parent_flow.valid then
+    slots_frame = parent_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW]
+  end
+  if slots_frame and slots_frame.valid then
+    local first_slot = slots_frame["fave_bar_slot_1"] or slots_frame["fave_bar_slot_wrapper_1"]
+    if not first_slot then
+      -- Slots don't exist yet — fall back to destroy+recreate
+      local pfaves = Cache.get_player_favorites(player, player.surface.index)
+      fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves)
+      return slots_frame
+    end
   end
 
-  -- Incremental update: patch each slot in-place (sprite, tooltip, label)
-  local max_slots = Cache.Settings.get_player_max_favorite_slots(player) or 10
-  for i = 1, max_slots do
-    fave_bar.update_single_slot(player, i)
-  end
-
+  -- Delegate to the batch updater: one rehydration pass, one settings read, direct indexing.
+  fave_bar.update_all_slots_in_place(player)
   return slots_frame
 end
 

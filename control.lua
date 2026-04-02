@@ -10,8 +10,9 @@ local handlers = require("core.events.handlers")
 local TeleportHistory = require("core.teleport.teleport_history")
 
 -- Initialize logging immediately using single source of truth
-ErrorHandler.initialize(Constants.settings.DEFAULT_LOG_LEVEL)
-ErrorHandler.debug_log("[CONTROL] control.lua loaded, logger active", { level = Constants.settings.DEFAULT_LOG_LEVEL })
+-- TEMPORARY: Enable debug mode for spike investigation
+ErrorHandler.initialize("debug")
+ErrorHandler.debug_log("[CONTROL] control.lua loaded, logger active in DEBUG mode", { level = "debug" })
 
 
 local gui_observer = nil
@@ -23,9 +24,6 @@ if success then gui_observer = module end
 
 -- Custom on_init to allow easy toggling of intro cutscene skip
 local function custom_on_init()
-  -- Initialize debug system first
-  ErrorHandler.initialize(Constants.settings.DEFAULT_LOG_LEVEL)
-  
   -- Register teleport history remote interface
   TeleportHistory.register_remote_interface()
 
