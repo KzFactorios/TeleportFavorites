@@ -75,9 +75,10 @@ end)
 ErrorHandler.debug_log("[CONTROL] Registering all mod events through centralized dispatcher", {})
 event_registration_dispatcher.register_all_events(script)
 
--- The dispatcher registers on_tick permanently (no-op after first tick) for observer setup.
--- on_nth_tick(2) is registered/unregistered dynamically for deferred GUI notification processing.
--- DO NOT register conflicting on_tick or on_nth_tick(2) handlers!
+-- UPS OPTIMIZATION: on_tick handler eliminated (was 60 no-op dispatches/sec).
+-- Observer setup now happens in on_nth_tick(60) alongside the deferred init queue.
+-- on_nth_tick(2) is permanently registered for deferred GUI notification processing.
+-- DO NOT register conflicting on_nth_tick(2) or on_nth_tick(60) handlers!
 
 
 

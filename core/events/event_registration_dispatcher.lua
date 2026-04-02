@@ -264,7 +264,7 @@ function EventRegistrationDispatcher.register_core_events(script)
       "Registered periodic GUI observer cleanup (every 30 minutes)")
   end
   
-  -- MULTIPLAYER FIX: All on_nth_tick and on_tick handlers are registered permanently.
+  -- MULTIPLAYER FIX: All on_nth_tick handlers are registered permanently.
   -- Dynamic registration/deregistration at runtime causes script-event-mismatch when clients join.
   -- Each handler uses a flag guard to no-op when inactive (negligible UPS cost).
   
@@ -275,41 +275,22 @@ function EventRegistrationDispatcher.register_core_events(script)
     end
   end)
   
-  -- Permanent on_nth_tick(60): Processes deferred player initialization queue
+  -- Permanent on_nth_tick(60): Processes deferred player initialization queue AND first-session observer setup
+  -- UPS OPTIMIZATION: Eliminated on_tick handler (was 60 no-op dispatches/sec). Observer registration
+  -- now happens at tick 60 instead of tick 1. The 1-second delay is fine because the fave bar isn't
+  -- built until tick 60 anyway (deferred init), so there's nothing to observe before then.
   script.on_nth_tick(60, function()
-    handlers.process_deferred_init_queue()
-  end)
-  
-  ErrorHandler.debug_log("[EVENT_REG] Registering on_tick handler for first-tick setup")
-  script.on_event(defines.events.on_tick, function(event)
-    -- CRITICAL: Register observers on FIRST tick after load (not tick 1, but first execution)
-    -- This works for both new games and loaded saves
+    -- First-session observer registration (replaces the removed on_tick handler)
     if not handlers.get_observers_registered_flag() then
       handlers.set_observers_registered_flag(true)
-      ErrorHandler.debug_log("[TICK] *** REGISTERING GUI OBSERVERS *** (first tick after load)", {
-        tick = event.tick
-      })
-      
-      -- Register observers for all existing players
       for _, player in pairs(game.players) do
         if player and player.valid then
           GuiObserver.GuiEventBus.register_player_observers(player)
-          ErrorHandler.debug_log("[TICK] Registered observers for player", {
-            player = player.name,
-            player_index = player.index,
-            tick = event.tick
-          })
         end
       end
-      ErrorHandler.debug_log("[TICK] GUI observers registered for all players", { tick = event.tick })
-      
-      -- Process any deferred notifications queued during this first tick
       GuiObserver.GuiEventBus.process_deferred_notifications()
     end
-    -- MULTIPLAYER FIX: Do NOT de-register on_tick here.
-    -- Removing on_tick after the first tick causes a script-event-mismatch when a client
-    -- joins a multiplayer game (saved map has no on_tick, but freshly-loaded mod registers it).
-    -- The flag check above makes subsequent ticks essentially free (single boolean test).
+    handlers.process_deferred_init_queue()
   end)
   
   -- Register on_gui_location_changed for modal position saving
