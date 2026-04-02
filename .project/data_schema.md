@@ -18,10 +18,9 @@ Defines the persistent and runtime data structures for the mod, including player
 │ │ players          │   │  │ surfaces              │        │
 │ │  └─[player_index]│   │  │  └─[surface_index]    │        │
 │ │     ├─player_name│   │  │     ├─chart_tags      │        │
-│ │     ├─render_mode│   │  │     └─chart_tags_     │        │
+│ │     ├─last_max_fa│   │  │     └─chart_tags_     │        │
 │ │     ├─tag_editor_│   │  │        mapped_by_gps  │        │
 │ │     │  data      │   │  └───────────────────────┘        │
-│ │     ├─history_modal_pin      │   │                                   │
 │ │     ├─history_modal_position │   │                                   │
 │ │     └─surfaces   │   │                                   │
 │ │        └─[index] │   │                                   │
@@ -44,8 +43,8 @@ storage = {
   players = {
     [player_index] = {
       player_name = string,            -- Factorio player name (for debugging)
-      render_mode = string,            -- Player's current render mode
       fave_bar_slots_visible = boolean,-- Whether favorites bar slots are visible (true = visible, false = hidden)
+      last_max_favorite_slots = number,-- Last known max slots; used to detect decreases and trim excess favorites
                                        -- Controls the eye/eyelash icon: eyelash when visible, eye when hidden
       tag_editor_data = {              -- Created via Cache.create_tag_editor_data()
         gps = string,                  -- GPS where tag editor was opened
@@ -63,7 +62,6 @@ storage = {
         move_mode = boolean|nil,       -- True if in move mode
         delete_confirmed = boolean|nil,-- True if delete confirmation is active
       },
-      history_modal_pin = boolean,         -- Whether teleport history modal is pinned (true = pinned)
       history_modal_position = {           -- Last location of teleport history modal (persisted)
         x = number,                       -- X screen coordinate
         y = number,                       -- Y screen coordinate

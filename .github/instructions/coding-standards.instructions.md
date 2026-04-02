@@ -22,16 +22,31 @@ Update all event handler checks and variable references when refactoring.
 ## No Leading Underscores for Private Fields
 Use `chart_tag` not `_chart_tag` for private or internal fields in classes.
 
-## Error-Free Code Policy
+## Comment Policy
+Prefer self-documenting code — clear naming over inline explanation. Add comments only to:
+- Explain quirky or non-obvious Factorio API behavior (e.g. why `LuaCustomChartTag` cannot be stored in `storage`)
+- Explain intentional workarounds or create-then-validate patterns
+- Mark deliberate architectural decisions that might otherwise look like mistakes
+Do not add comments that restate what the code already clearly expresses.
+
+## Module Size
+Target ~200 lines per file. When a module grows beyond this, split at logical boundaries — not at an arbitrary line count. Keep cohesive logic together even if it means exceeding 200 lines. Prefer a slightly larger file over a split that separates tightly related functions.
+
+## Error Handling and Logging
+- **`pcall`**: Acceptable as a short-term fix, but expensive. Plan to eliminate `pcall` wrappers in optimization passes once the happy path is well understood. Never use `pcall` to suppress an error you could have prevented with a validity check.
+- **`error()` / `assert()`**: Use for genuine programming errors — unexpected nil, violated invariants, states that should never occur.
+- **Validity checks**: Always prefer explicit guards (`if not player or not player.valid then return end`) over wrapping in `pcall`.
+- **Logging**: Use `ErrorHandler` for all logging. Route by level: `debug_log` for development detail, `warn_log` for recoverable issues, `error_log` for runtime failures displayed to the player in standard Factorio fashion. In production builds, logging output should be near-zero — debug and info calls must be gated by log level. Runtime errors that reach the player should use Factorio's standard error display mechanism.
 All code contributions must be free of syntax errors, runtime errors, and Factorio data-stage errors before being applied. Fix immediately on detection.
 
 ## Paradigms and Patterns
 - **Class-based OOP**: Idiomatic Lua class patterns with strict EmmyLua annotations.
-- **Design Patterns**: Adapter, Facade, Proxy, Singleton, Observer, Builder, Command, Strategy, Composite. Pattern base classes in `core/pattern/` or `core/patterns/`, documented in `.project/pattern_class_notes.md`.
+- **Design Patterns**: Adapter, Facade, Proxy, Singleton, Observer, Builder, Command, Strategy, Composite.
 - **Surface Awareness**: All helpers and accessors must be surface-aware and multiplayer-safe.
 - **Event-driven Architecture**: Use Factorio's event system for initialization, surface management, and runtime cache handling. Register event handlers in `control.lua`.
 - **Persistent vs. Runtime Data**: Persistent data → `core/cache` module → `storage`. Runtime-only data → `core/cache/lookups.lua`.
-- **Shared Tag Mutation Helper**: Always use `Tag.update_gps_and_surface_mapping(old_gps, new_gps, chart_tag, player)` for chart tag position changes.
+- **Shared Tag Mutation Helper**: Always use `Tag.update_gps_and_surface_mapping(old_gps, new_gps, chart_tag, player, preserve_owner_name)` for chart tag position changes.
+- **Validation Helpers**: Use `BasicHelpers.is_valid_player(player)` and `BasicHelpers.is_valid_element(element)` for all validity checks. There is no `SafeHelpers` module — it does not exist.
 
 ## Vanilla Factorio Utility Sprite Usage
 ✅ Allowed:
@@ -104,26 +119,7 @@ storage.players[player_index].surfaces[surface_index].favorites
 storage.surfaces[surface_index].tags[gps_string]
 ```
 
-## Common Lua Patterns
+### Tick Handlers
+Never use `script.on_event(defines.events.on_tick, ...)` for non-critical work. Use `script.on_nth_tick(N, ...)` with an appropriate interval (minimum 2). Register handlers permanently at startup — do not register/deregister dynamically. Unconditional `on_tick(1)` is the primary cause of UPS spikes in this mod.
 
-### Safe Player Operations
-```lua
-local function safe_operation(player)
-  if not player or not player.valid then return end
-  -- ... your code here
-end
-```
 
-### Event Handler Template
-```lua
-local function on_some_event(event)
-  local player = game.players[event.player_index]
-  if not player or not player.valid then return end
-  -- Read from storage
-  local data = Cache.get_some_data(player)
-  -- Update storage
-  data.field = new_value
-  -- Optional: refresh UI
-  fave_bar.update_all_slots_in_place(player)
-end
-```

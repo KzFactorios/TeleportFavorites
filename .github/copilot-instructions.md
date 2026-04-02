@@ -153,11 +153,14 @@ Before starting any implementation work, read `.project/TODO.md` for outstanding
 - `.project/architecture.md` - Overall system design & patterns
 - `.project/data_schema.md` - Storage structure & data relationships  
 - `.project/coding_standards.md` - Critical rules & "storage as source of truth"
+- `.project/performance_patterns.md` - Caching strategies, O(1) lookups, tick handler rules
 - `.project/game_rules.md` - Multiplayer permissions & tag ownership
 - `tests/docs/README.md` - Test execution & framework usage
 
 
 ## 🚨 FACTORIO API ESSENTIALS (v2.0+)
+
+**Official API reference**: https://lua-api.factorio.com/latest/
 
 ### Syntax Rules (v2.0+)
 ```lua
@@ -182,52 +185,4 @@ script.on_event(defines.events.on_chart_tag_added, handlers.on_chart_tag_added)
 
 ---
 
-*This is a multiplayer-safe Factorio mod with complex GUI interactions. When in doubt, prioritize data consistency and player safety over convenience features.*
-## 💡 DEVELOPMENT TIPS
-
-### Quick Problem Solving
-- **Read the error**: Factorio provides detailed error messages with stack traces
-- **Check storage first**: Most issues stem from incorrect data access patterns
-- **Validate inputs**: Always check player/element validity before operations
-- **Use the cache**: Never access `storage` directly - use `Cache.*` methods
-
-### Common Patterns
-```lua
--- Safe player operations
-local function safe_operation(player)
-  if not player or not player.valid then return end
-  -- ... your code here
-end
-
--- Error handling pattern
-local function handle_input(input)
-  if not input then return end  -- Graceful nil handling
-  -- ... process input
-end
-
--- Event handler template  
-local function on_some_event(event)
-  local player = game.players[event.player_index]
-  if not player or not player.valid then return end
-  
-  -- Read from storage
-  local data = Cache.get_some_data(player)
-  
-  -- Update storage
-  data.field = new_value
-  Cache.set_some_data(player, data)
-  
-  -- Optional: refresh UI
-  refresh_ui_if_needed(player)
-end
-```
-
-### Best Practices
-- **Start simple**: Get basic functionality working before adding complexity
-- **Test incrementally**: Use the test suite to catch regressions early
-- **Document decisions**: Update `.project/` docs for significant changes
-- **Follow the patterns**: Consistency is key to maintainability
-
----
-
-*Remember: This mod prioritizes multiplayer safety and data consistency. When in doubt, choose the more conservative approach that preserves data integrity.*
+*Multiplayer-safe mod. Prioritize data consistency and player safety over convenience features.*

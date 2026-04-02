@@ -13,7 +13,7 @@ local function create_gui_event_bus()
     local bus = {
         _observers = {},
         _notification_queue = {},
-        _deferred_queue = {},
+        _dirty_players = {},
         _initialized = false
     }
 
@@ -21,7 +21,7 @@ local function create_gui_event_bus()
         self._initialized = true
         self._observers = self._observers or {}
         self._notification_queue = self._notification_queue or {}
-        self._deferred_queue = self._deferred_queue or {}
+        self._dirty_players = self._dirty_players or {}
     end
 
     function bus:subscribe(event_name, observer)
@@ -39,10 +39,9 @@ local function create_gui_event_bus()
         local should_defer = defer_to_tick or gui_event_types[event_name]
         
         if should_defer then
-            table.insert(self._deferred_queue, {
-                event = event_name,
-                data = data
-            })
+            if data and data.player_index then
+                self._dirty_players[data.player_index] = true
+            end
         else
             table.insert(self._notification_queue, {
                 event = event_name,
@@ -56,7 +55,7 @@ local function create_gui_event_bus()
     end
     
     function bus:process_deferred_notifications()
-        self._deferred_queue = {}
+        self._dirty_players = {}
     end
 
     function bus:cleanup_old_observers()
@@ -110,8 +109,7 @@ describe("GuiObserver", function()
         local GuiEventBus = GuiObserverModule.GuiEventBus
         GuiEventBus._observers = {}
         GuiEventBus._notification_queue = {}
-        GuiEventBus._deferred_queue = {}
-        GuiEventBus._deferred_tick_active = false
+        GuiEventBus._dirty_players = {}
         GuiEventBus._initialized = false
 
         -- Enable debug logging

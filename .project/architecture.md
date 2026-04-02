@@ -53,20 +53,19 @@ This policy applies to all Lua modules in the codebase.
 
 ## Module Breakdown
 ### Shared Tag Mutation & Surface Mapping Helper (2025-07-19)
-The helper `Tag.update_gps_and_surface_mapping(old_gps, new_gps, chart_tag, player)` centralizes all logic for moving tag data between GPS keys, updating tag objects, and synchronizing runtime lookup caches. This replaces inline logic in event handlers and ensures multiplayer and surface consistency. Always use this helper for chart tag position changes.
+The helper `Tag.update_gps_and_surface_mapping(old_gps, new_gps, chart_tag, player, preserve_owner_name)` centralizes all logic for moving tag data between GPS keys, updating tag objects, and synchronizing runtime lookup caches. This replaces inline logic in event handlers and ensures multiplayer and surface consistency. Always use this helper for chart tag position changes.
 - All modules should use a class paradigm. Use emmylua definitions to achieve this goal. Store external type in the core/types folder
 - `core/cache/` – Persistent data cache, schema, init methods and helpers.
 - `core/control/` – Lifecycle, event, and utility modules. Top-level event handlers are now split into extension modules (see `control_fave_bar.lua`, `control_tag_editor.lua`).
-- `core/pattern/` – eg: Observer, singleton, etc modules. Base files to handle design pattern logic
-- `core/tag/sync.lua` – tag synchronization and migration logic.
-- `core/types/` – for external type definitions
-- `core/utils/` – will hold a variety of helper files
-- Version information retrieved dynamically from Factorio API via `game.active_mods[script.mod_name]`
-- `core/favorite.lua` – Favorite object logic and helpers.
-- `core/tag.lua` – Map tag object logic and helpers.
-- `core/error_handling.lua` – Centralizes error handling and displying the information to the user and/or logging to the correct files
-- `gui/` – GUI modules for favorite bar, tag editor.
-- `core/gps.lua` - used for helper file for gps conversion to a map position and vice versa. Includes any helper methods related to gps
+- `core/favorite/` – Favorite object logic, rehydration, and player management.
+- `core/tag/tag.lua` – Map tag object logic and helpers.
+- `core/events/chart_tag_helpers.lua` – Chart tag event routing and synchronization.
+- `core/types/` – External type definitions (EmmyLua annotations for Factorio runtime types).
+- `core/utils/` – Helper modules (GPS, validation, GUI builders, error handling).
+- `core/utils/error_handler.lua` – Centralizes error handling and logging.
+- `core/utils/gps_utils.lua` – GPS conversion helpers (GPS string ↔ map position).
+- `gui/` – GUI modules for favorite bar, tag editor, and teleport history modal.
+- Version information retrieved dynamically via `game.active_mods[script.mod_name]`.
 
 ---
 
