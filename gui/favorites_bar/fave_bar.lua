@@ -645,9 +645,10 @@ end
 
 
 --- Update all slot buttons in-place without destroying/recreating GUI elements.
---- UPS OPTIMIZATION: This is significantly cheaper than fave_bar.build() for data-only
---- changes (icon, tooltip, label text). Falls back to build() if bar structure is missing.
---- Use fave_bar.build() only for structural changes (max slots, favorites on/off, surface change).
+--- UPS OPTIMIZATION: Fetches GUI refs, favorites, and rehydrated data ONCE,
+--- then patches each slot directly. Eliminates N redundant GUI traversals,
+--- N redundant storage lookups, and N individual rehydrations.
+--- Falls back to build() if bar structure is missing.
 ---@param player LuaPlayer
 function fave_bar.update_all_slots_in_place(player)
   if not ValidationUtils.validate_player(player) then return end
@@ -659,8 +660,69 @@ function fave_bar.update_all_slots_in_place(player)
   end
 
   local max_slots = Cache.Settings.get_player_max_favorite_slots(player) or 10
+  local surface_index = player.surface.index
+
+  -- Batch rehydrate all favorites once (uses 1-second TTL cache)
+  local rehydrated = Cache.get_rehydrated_favorites(player, surface_index)
+  local label_mode = Cache.Settings.get_player_slot_label_mode(player)
+
   for i = 1, max_slots do
-    fave_bar.update_single_slot(player, i)
+    -- Direct child access by name (O(1)) instead of recursive find_child_by_name
+    local wrapper = slots_frame["fave_bar_slot_wrapper_" .. i]
+    local slot_button
+    if wrapper and wrapper.valid then
+      slot_button = wrapper["fave_bar_slot_" .. i]
+    else
+      slot_button = slots_frame["fave_bar_slot_" .. i]
+    end
+    if slot_button and slot_button.valid then
+      local fav = rehydrated and rehydrated[i] or FavoriteUtils.get_blank_favorite()
+
+      local did_update = false
+      if fav and not FavoriteUtils.is_blank_favorite(fav) then
+        local icon = nil
+        local icon_valid = true
+        if fav.tag and fav.tag.chart_tag then
+          if fav.tag.chart_tag.valid then
+            icon = fav.tag.chart_tag.icon
+          else
+            icon_valid = false
+          end
+        end
+        if icon_valid then
+          local norm_icon = icon
+          if type(icon) == "table" and icon.type == "virtual" then
+            norm_icon = {}
+            for k, v in pairs(icon) do norm_icon[k] = v end
+            norm_icon.type = "virtual_signal"
+          end
+          local sprite_icon = norm_icon
+          if type(norm_icon) == "table" and norm_icon.type == "virtual_signal" then
+            sprite_icon = {}
+            for k, v in pairs(norm_icon) do sprite_icon[k] = v end
+            sprite_icon.type = "virtual-signal"
+          end
+          slot_button.sprite = GuiValidation.get_validated_sprite_path(sprite_icon,
+            { fallback = Enum.SpriteEnum.PIN, log_context = { slot = i, fav_gps = fav.gps, fav_tag = fav.tag } })
+          ---@type LocalisedString
+          slot_button.tooltip = GuiHelpers.build_favorite_tooltip(fav, { slot = i })
+          did_update = true
+        end
+      end
+      if not did_update then
+        slot_button.sprite = ""
+        ---@diagnostic disable-next-line: assign-type-mismatch
+        slot_button.tooltip = { "tf-gui.favorite_slot_empty" }
+      end
+
+      -- Update slot label text
+      if wrapper and wrapper.valid then
+        local slot_label = wrapper["fave_bar_slot_label_" .. i]
+        if slot_label and slot_label.valid then
+          slot_label.caption = get_slot_label_text(fav, label_mode)
+        end
+      end
+    end
   end
 end
 
