@@ -24,8 +24,11 @@ function FavoriteRehydration.rehydrate_favorite_at_runtime(player, fav)
   local tag = Cache.get_tag_by_gps(player, fav.gps)
   local t1 = game and game.tick or 0
   
-  if t1 > t0 then
-    ErrorHandler.debug_log("[SPIKE_DEBUG] rehydrate_favorite: Cache.get_tag_by_gps took multiple ticks", { duration = t1 - t0, gps = fav.gps })
+  if t1 > t0 and ErrorHandler.should_log_debug() then
+    ErrorHandler.debug_log("[FAVORITE_REHYDRATION] Cache.get_tag_by_gps took multiple ticks", {
+      duration = t1 - t0,
+      gps = fav.gps
+    })
   end
   
   local locked = fav.locked or false

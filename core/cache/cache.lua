@@ -166,29 +166,33 @@ function Cache.init()
   -- end
 
   local t1 = game and game.tick or 0
-  -- Legacy stack migration: convert raw GPS strings to HistoryItem objects
-  if is_debug and log and type(log) == "function" then
-    log("[CACHE] legacy stack migration start | tick=" .. tostring(t1))
-  end
-  for player_index, player_data in pairs(storage.players) do
-    if player_data.surfaces then
-      for surface_index, surface_data in pairs(player_data.surfaces) do
-        local history = surface_data.teleport_history
-        if history and history.stack then
-          for idx, entry in ipairs(history.stack) do
-            if type(entry) == "string" then
-              -- Convert legacy GPS string to HistoryItem (timestamp is set to game.tick)
-              local new_item = HistoryItem.new(entry)
-              history.stack[idx] = new_item
+  -- Legacy stack migration: convert raw GPS strings to HistoryItem objects.
+  -- This scan is expensive on large saves, so run it once per save after deployment.
+  if storage._history_item_migration_complete ~= true then
+    if is_debug and log and type(log) == "function" then
+      log("[CACHE] legacy stack migration start | tick=" .. tostring(t1))
+    end
+    for _, player_data in pairs(storage.players) do
+      if player_data.surfaces then
+        for _, surface_data in pairs(player_data.surfaces) do
+          local history = surface_data.teleport_history
+          if history and history.stack then
+            for idx, entry in ipairs(history.stack) do
+              if type(entry) == "string" then
+                -- Convert legacy GPS string to HistoryItem (timestamp is set to game.tick)
+                local new_item = HistoryItem.new(entry)
+                history.stack[idx] = new_item
+              end
             end
           end
         end
       end
     end
-  end
-  local t2 = game and game.tick or 0
-  if is_debug and log and type(log) == "function" then
-    log("[CACHE] legacy stack migration end | tick=" .. tostring(t2) .. " | duration=" .. tostring(t2 - t1))
+    storage._history_item_migration_complete = true
+    local t2 = game and game.tick or 0
+    if is_debug and log and type(log) == "function" then
+      log("[CACHE] legacy stack migration end | tick=" .. tostring(t2) .. " | duration=" .. tostring(t2 - t1))
+    end
   end
 
   -- Update stored version only after migrations would complete
@@ -242,7 +246,7 @@ local function init_player_favorites(player)
 
   storage.players[player.index].surfaces[player.surface.index].favorites = pfaves or {}
   local t1 = game and game.tick or 0
-  if ErrorHandler and ErrorHandler.debug_log then
+  if ErrorHandler and ErrorHandler.should_log_debug and ErrorHandler.should_log_debug() then
     ErrorHandler.debug_log("[CACHE] init_player_favorites", { tick = t1, duration = t1 - t0, player = player.name })
   end
   return storage.players[player.index].surfaces[player.surface.index].favorites
@@ -315,10 +319,19 @@ local function init_player_data(player)
   storage.players[player.index].surfaces = storage.players[player.index].surfaces or {}
 
   local player_data = storage.players[player.index]
-  player_data.surfaces[player.surface.index] = player_data.surfaces[player.surface.index] or {}
-  player_data.surfaces[player.surface.index].favorites = init_player_favorites(player)
-  player_data.surfaces[player.surface.index].teleport_history = player_data.surfaces[player.surface.index]
-      .teleport_history or { stack = {}, pointer = 0 }
+  local surface_index = player.surface.index
+  player_data.surfaces[surface_index] = player_data.surfaces[surface_index] or {}
+  local surface_data = player_data.surfaces[surface_index]
+
+  -- Hot path guard: only seed favorites when this surface has not been initialized yet.
+  if not surface_data._favorites_initialized then
+    surface_data.favorites = init_player_favorites(player)
+    surface_data._favorites_initialized = true
+  elseif not surface_data.favorites or type(surface_data.favorites) ~= "table" then
+    surface_data.favorites = init_player_favorites(player)
+  end
+
+  surface_data.teleport_history = surface_data.teleport_history or { stack = {}, pointer = 0 }
 
   player_data.player_name = player.name or "Unknown"
   -- MULTIPLAYER FIX: Removed player.render_mode from cache - it's client-specific state that should NEVER be persisted!
@@ -452,6 +465,51 @@ function Cache.get_player_favorites(player, surface_index)
   if not surface_data then return nil end
   return surface_data.favorites or {}
 end
+
+--- Get startup-safe favorites render snapshot (persistent, userdata-free).
+--- Returns favorite-like objects that can be used for initial GUI hydration
+--- without chart-tag lookup work.
+---@param player LuaPlayer
+---@param surface_index integer|nil
+---@param max_slots integer|nil
+---@return table[]
+function Cache.get_favorites_render_snapshot(player, surface_index, max_slots)
+  local surface_data = Cache.ensure_player_surface_data(player, surface_index)
+  if not surface_data then return {} end
+
+  local snapshot = surface_data.favorites_render_snapshot
+  if type(snapshot) ~= "table" then return {} end
+
+  local result = {}
+  local limit = max_slots or #snapshot
+  local blank_gps = Constants.settings.BLANK_GPS
+
+  for i = 1, limit do
+    local entry = snapshot[i]
+    if type(entry) == "table" and type(entry.gps) == "string" and entry.gps ~= "" then
+      local fav = {
+        gps = entry.gps,
+        locked = entry.locked == true,
+      }
+
+      if entry.gps ~= blank_gps and (entry.icon ~= nil or (type(entry.text) == "string" and entry.text ~= "")) then
+        fav.tag = {
+          chart_tag = {
+            valid = true,
+            icon = entry.icon,
+            text = entry.text or "",
+          }
+        }
+      end
+
+      result[i] = fav
+    else
+      result[i] = FavoriteUtils.get_blank_favorite()
+    end
+  end
+
+  return result
+end
 --- Get rehydrated favorites with 1-second caching (Performance optimization)
 --- Caches rehydrated favorites to avoid expensive rehydration on every rebuild (10-30 lookups per rebuild)
 --- Cache TTL: 1 second (60 ticks at 60 UPS) - balances freshness vs performance
@@ -534,6 +592,30 @@ function Cache.get_rehydrated_favorites(player, surface_index, max_rehydrate)
   -- Store in cache with current tick (but only if we did full rehydration)
   -- Partial rehydration should not be cached to avoid serving stale data
   if not max_rehydrate or max_rehydrate >= #pfaves then
+    local surface_data = Cache.ensure_player_surface_data(player, idx)
+    if surface_data then
+      local snapshot = {}
+      local max_slots = Cache.Settings.get_player_max_favorite_slots(player) or #rehydrated
+      for i = 1, max_slots do
+        local fav = rehydrated[i] or FavoriteUtils.get_blank_favorite()
+        local entry = {
+          gps = (fav and fav.gps) or Constants.settings.BLANK_GPS,
+          locked = fav and fav.locked == true or false,
+          icon = nil,
+          text = "",
+        }
+
+        local chart_tag = fav and fav.tag and fav.tag.chart_tag or nil
+        if chart_tag and chart_tag.valid then
+          entry.icon = chart_tag.icon
+          entry.text = chart_tag.text or ""
+        end
+
+        snapshot[i] = entry
+      end
+      surface_data.favorites_render_snapshot = snapshot
+    end
+
     local current_tick = game and game.tick or 0
     rehydrated_favorites_cache[cache_key] = {
       favorites = rehydrated,
@@ -630,7 +712,7 @@ local function init_surface_data(surface_index)
   local surface_data = storage.surfaces[surface_index]
   surface_data.tags = surface_data.tags or {}
   local t1 = game and game.tick or 0
-  if ErrorHandler and ErrorHandler.debug_log then
+  if ErrorHandler and ErrorHandler.should_log_debug and ErrorHandler.should_log_debug() then
     ErrorHandler.debug_log("[CACHE] init_surface_data", { tick = t1, duration = t1 - t0, surface_index = surface_index })
   end
   return surface_data

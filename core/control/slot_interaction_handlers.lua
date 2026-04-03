@@ -12,7 +12,6 @@ local Cache = require("core.cache.cache")
 local tag_editor = require("gui.tag_editor.tag_editor")
 local GuiValidation = require("core.utils.gui_validation")
 local GuiHelpers = require("core.utils.gui_helpers")
-local GPSUtils = require("core.utils.gps_utils")
 local ErrorHandler = require("core.utils.error_handler")
 local LocaleUtils = require("core.utils.locale_utils")
 local PlayerHelpers = require("core.utils.player_helpers")
@@ -41,37 +40,29 @@ end
 function SlotInteractionHandlers.handle_teleport(event, player, fav, slot, did_drag)
   if event.button == defines.mouse_button_type.left and not event.control and not did_drag then
     if fav and not FavoriteUtils.is_blank_favorite(fav) then
-      ErrorHandler.debug_log("[DEBUG] SlotInteractionHandlers.handle_teleport called", {
-        slot = slot,
-        fav_gps = fav.gps,
-        player_name = player and player.name or "<nil>"
-      })
+      if ErrorHandler.should_log_debug() then
+        ErrorHandler.debug_log("[DEBUG] SlotInteractionHandlers.handle_teleport called", {
+          slot = slot,
+          fav_gps = fav.gps,
+          player_name = player and player.name or "<nil>"
+        })
+      end
       if not fav.gps or type(fav.gps) ~= "string" or fav.gps == "" then
         ErrorHandler.warn_log("[SLOT_INTERACTION] Invalid GPS for favorite teleport",
           { slot = slot, fav = fav, player = player and player.name or "<nil>" })
-        return false
+        return true
       end
 
-      local parsed = GPSUtils.parse_gps_string(fav.gps)
-      if not parsed or not parsed.x or not parsed.y or not parsed.s then
-        ErrorHandler.warn_log("[SLOT_INTERACTION] Invalid GPS coordinates for teleport",
-          { slot = slot, gps = fav.gps, fav = fav, player = player and player.name or "<nil>" })
-        return false
+      local success, result = TeleportStrategy.teleport_to_gps(player, fav.gps)
+      if success and TeleportHistoryModal.is_open(player) then
+        TeleportHistoryModal.update_history_list(player)
       end
 
-      local ok, result, gps_string = pcall(function()
-        local success, gps_string = TeleportStrategy.teleport_to_gps(player, fav.gps)
-        -- If teleport succeeded and history modal is open, refresh it        
-        if success and TeleportHistoryModal.is_open(player) then
-          TeleportHistoryModal.update_history_list(player)
-        end
-        return true, success, gps_string
-      end)
-      if not ok or not result then
-        ErrorHandler.warn_log("[SLOT_INTERACTION] Teleport failed: " .. tostring(gps_string),
+      if not success then
+        ErrorHandler.warn_log("[SLOT_INTERACTION] Teleport failed: " .. tostring(result),
           { slot = slot, fav = fav, player = player and player.name or "<nil>" })
-        return false
       end
+
       return true
     end
   end

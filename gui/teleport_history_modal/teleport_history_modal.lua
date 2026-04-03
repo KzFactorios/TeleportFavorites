@@ -59,12 +59,14 @@ end
 ---@param player LuaPlayer
 function teleport_history_modal.build(player)
   -- Register observer to auto-refresh modal
-  TeleportHistory.register_observer(function(obs_player)
-    if obs_player and obs_player.valid and teleport_history_modal.is_open(obs_player) then
-      teleport_history_modal.update_history_list(obs_player)
-    end
-  end)
-  teleport_history_modal._observer_registered = true
+  if not teleport_history_modal._observer_registered then
+    TeleportHistory.register_observer(function(obs_player)
+      if obs_player and obs_player.valid and teleport_history_modal.is_open(obs_player) then
+        teleport_history_modal.update_history_list(obs_player)
+      end
+    end)
+    teleport_history_modal._observer_registered = true
+  end
   ErrorHandler.debug_log("[MODAL] build called", { player = player and player.name or "<nil>" })
   if not BasicHelpers.is_valid_player(player) then return end
 

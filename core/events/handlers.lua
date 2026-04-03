@@ -40,6 +40,19 @@ local function close_all_mod_screens(player)
   GuiValidation.safe_destroy_frame(player.gui.screen, Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_FRAME)
 end
 
+---@param player LuaPlayer
+---@return boolean
+local function has_any_mod_screen_gui(player)
+  if not player or not player.valid then return false end
+  local screen = player.gui and player.gui.screen
+  if not screen or not screen.valid then return false end
+
+  return (screen[Enum.GuiEnum.GUI_FRAME.TAG_EDITOR] and screen[Enum.GuiEnum.GUI_FRAME.TAG_EDITOR].valid)
+      or (screen[Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM] and screen[Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM].valid)
+      or (screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL] and screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL].valid)
+      or (screen[Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_FRAME] and screen[Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_FRAME].valid)
+end
+
 ---@param surface_index number The surface index to refresh chart tags for
 --- Restore a chart tag that was removed and refresh caches/UI
 ---@param player LuaPlayer The player
@@ -94,11 +107,6 @@ local function register_gui_observers(player)
     return
   end
 
-  ErrorHandler.debug_log("Starting GUI observer registration", {
-    player = player.name,
-    player_index = player.index
-  })
-
   -- Initialize event bus
   gui_observer.GuiEventBus.ensure_initialized()
 
@@ -107,12 +115,7 @@ local function register_gui_observers(player)
     gui_observer.GuiEventBus.register_player_observers(player)
   end)
 
-  if register_ok then
-    ErrorHandler.debug_log("Successfully registered GUI observers", {
-      player = player.name,
-      player_index = player.index
-    })
-  else
+  if not register_ok then
     ErrorHandler.warn_log("Failed to register GUI observers", {
       player = player.name,
       error = err
@@ -142,8 +145,8 @@ function handlers.on_player_changed_surface(event)
 end
 
 function handlers.on_init()
-  if log and type(log) == "function" then
-    log("[TeleFaves][DEBUG] handlers.on_init() called (forced log)")
+  if Constants.settings.DEFAULT_LOG_LEVEL == "debug" and log and type(log) == "function" then
+    log("[TeleFaves][DEBUG] handlers.on_init() called")
   end
   -- Initialize the GUI event bus first
   gui_observer.GuiEventBus.ensure_initialized()
@@ -155,18 +158,12 @@ function handlers.on_init()
   end
   Cache.init()
 
-  -- Set up each player - defer GUI build to reduce startup UPS spike
-  for _, player in pairs(game.players) do
-    if Cache.get_player_data(player) == nil then
-      if Constants.settings.DEFAULT_LOG_LEVEL == "debug" then
-        ErrorHandler.debug_log("[Cache] Cache.reset_transient_player_states() for player", { player = player.name })
-      end
-      Cache.reset_transient_player_states(player)
+  -- Touch connected player data only; observer registration and GUI work are deferred
+  -- to the startup queue on on_nth_tick(2) to avoid init-time spikes.
+  for _, player in pairs(game.connected_players) do
+    if player and player.valid and player.connected then
+      Cache.get_player_data(player)
     end
-
-    -- Register observers but defer GUI build until player joins
-    register_gui_observers(player)
-    -- Note: fave_bar.build() will be called when player joins via on_player_joined_game
   end
 
   if Constants.settings.DEFAULT_LOG_LEVEL == "debug" then
@@ -195,18 +192,29 @@ end
 -- Each entry: { player_index = N, is_rejoin = bool }
 -- Declared before on_configuration_changed so it can enqueue players during config changes
 local _deferred_init_queue = {}
+local _deferred_init_pending = {}
 
 --- Enqueue a player for deferred initialization
---- on_nth_tick(60) is permanently registered at load time; it processes whatever is in the queue
+--- on_nth_tick(2) is permanently registered at load time; it processes whatever is in the queue
 ---@param player_index uint
 ---@param is_rejoin boolean
-local function enqueue_deferred_init(player_index, is_rejoin)
-  table.insert(_deferred_init_queue, { player_index = player_index, is_rejoin = is_rejoin })
+---@param priority_front boolean|nil
+---@param phase string|nil
+local function enqueue_deferred_init(player_index, is_rejoin, priority_front, phase)
+  if not player_index then return end
+  if _deferred_init_pending[player_index] then return end
+  _deferred_init_pending[player_index] = true
+  local entry = { player_index = player_index, is_rejoin = is_rejoin, phase = phase or "prepare" }
+  if priority_front then
+    table.insert(_deferred_init_queue, 1, entry)
+  else
+    table.insert(_deferred_init_queue, entry)
+  end
 end
 
 --- Handle mod configuration changes (mod update, added/removed mods)
---- Destroys existing fave bars and defers rebuild to reduce startup UPS spike.
---- The rebuild happens via the deferred init queue (on_nth_tick(60)) instead of synchronously.
+--- Destroys existing fave bars and defers rebuild to reduce startup UPS spikes.
+--- The rebuild happens via the deferred init queue (on_nth_tick(2)) instead of synchronously.
 function handlers.on_configuration_changed(data)
   ErrorHandler.debug_log("[CONFIG_CHANGED] Configuration changed, deferring fave bar rebuilds")
   for _, player in pairs(game.players) do
@@ -235,70 +243,74 @@ end
 --- Enqueue all current players for deferred initialization once per session.
 --- Needed on save-load sessions where on_player_joined_game may not fire for already connected players.
 function handlers.enqueue_all_players_for_deferred_init()
-  for _, player in pairs(game.players) do
-    if player and player.valid then
+  for _, player in pairs(game.connected_players) do
+    if player and player.valid and player.connected then
       enqueue_deferred_init(player.index, true)
     end
   end
 end
 
 --- Process all queued player initializations
---- on_nth_tick(60) stays permanently registered for multiplayer safety; it no-ops when queue is empty
+--- on_nth_tick(2) stays permanently registered for multiplayer safety; it no-ops when queue is empty
 --- Deduplicates entries by player_index so each player is only initialized once per batch
+---@return boolean|string did_work_or_phase
 function handlers.process_deferred_init_queue()
-  if #_deferred_init_queue == 0 then return end
+  if #_deferred_init_queue == 0 then return false end
 
   -- UPS OPTIMIZATION: Process one player per tick to spread GUI build work across multiple ticks.
   -- Building all players' favorites bars on tick 60 caused 17ms+ spikes with 100+ YARM tags.
   -- By processing one player per tick, work spreads naturally across ~60ms window.
   
   local entry = table.remove(_deferred_init_queue, 1)  -- FIFO: process first player
-  if not entry then return end
+  if not entry then return false end
+  local phase = entry.phase or "prepare"
 
   local deferred_player = game.players[entry.player_index]
-  if deferred_player and deferred_player.valid then
-    Cache.reset_transient_player_states(deferred_player)
-    -- Close any stale mod GUIs from previous session (tag editor, modals, etc.)
-    close_all_mod_screens(deferred_player)
-    if entry.is_rejoin then
-      gui_observer.GuiEventBus.cleanup_player_observers(deferred_player)
+  if deferred_player and deferred_player.valid and deferred_player.connected then
+    if phase == "prepare" then
+      local has_notification_observer = gui_observer.GuiEventBus.has_player_observer(
+        deferred_player.index,
+        "invalid_chart_tag",
+        "notification"
+      )
+      Cache.reset_transient_player_states(deferred_player)
+
+      -- Close any stale mod GUIs from previous session (tag editor, modals, etc.)
+      local should_close_screens = has_any_mod_screen_gui(deferred_player)
+      if should_close_screens then
+        close_all_mod_screens(deferred_player)
+      end
+
+      if entry.is_rejoin and not has_notification_observer then
+        gui_observer.GuiEventBus.cleanup_player_observers(deferred_player)
+      end
+
+      if not has_notification_observer then
+        register_gui_observers(deferred_player)
+      end
+
+      table.insert(_deferred_init_queue, 1, {
+        player_index = entry.player_index,
+        is_rejoin = entry.is_rejoin,
+        phase = "build"
+      })
+      return "prepare"
     end
-    register_gui_observers(deferred_player)
 
-    -- Warm the GPS map cache for this player's surface before building the bar.
-    -- After a game load the runtime Lookups cache is empty, causing false "invalid_chart_tag"
-    -- notifications for every favorite. A single find_chart_tags scan here avoids those.
-    local surface_idx = deferred_player.surface and deferred_player.surface.valid and deferred_player.surface.index
-    if surface_idx then
-      Cache.Lookups.warm_surface_gps_map(surface_idx)
-    end
-
-    -- Invalidate any stale rehydrated favorites immediately before the authoritative build.
-    -- This prevents the first visible bar render from reusing fallback icon cache entries that
-    -- may have been populated by an early dirty-player flush before the GPS map was warmed.
+    -- Build phase: lightweight authoritative queue handoff.
     Cache.invalidate_rehydrated_favorites(deferred_player)
-
-    fave_bar.build(deferred_player, true)
-
-    -- Startup safety refresh: some saves can still produce fallback icons on the first visible
-    -- build if runtime lookups settle one tick later. Queue one deferred refresh so the bar
-    -- self-corrects without requiring a manual action (e.g. opening map view).
-    Cache.invalidate_rehydrated_favorites(deferred_player)
-    gui_observer.GuiEventBus.notify("cache_updated", {
-      player_index = deferred_player.index,
-      type = "post_init_refresh"
-    }, true)
-
-    ErrorHandler.debug_log("Deferred init processed for one player", {
-      player = deferred_player.name,
-      remaining = #_deferred_init_queue
-    })
+    fave_bar.enqueue_startup_build(deferred_player, true)
+    _deferred_init_pending[entry.player_index] = nil
+    return "build"
   end
+
+  _deferred_init_pending[entry.player_index] = nil
+  return false
 end
 
 function handlers.on_player_created(event)
   with_valid_player(event.player_index, function(player)
-    enqueue_deferred_init(player.index, false)
+    enqueue_deferred_init(player.index, false, true)
   end)
 end
 
@@ -308,7 +320,8 @@ function handlers.on_player_joined_game(event)
       player = player.name,
       player_index = player.index
     })
-    enqueue_deferred_init(player.index, true)
+    -- Priority enqueue so the active joining player's bar appears ASAP.
+    enqueue_deferred_init(player.index, true, true)
   end)
 end
 
@@ -374,18 +387,9 @@ function handlers.on_open_tag_editor_custom_input(event)
 end
 
 function handlers.on_chart_tag_added(event)
-  -- STARTUP SPIKE INVESTIGATION: Log all chart tag additions at startup
-  local tick = game and game.tick or 0
-  ErrorHandler.debug_log("[STARTUP] on_chart_tag_added", {
-    tick = tick,
-    player_index = event.player_index,
-    tag_text = event.tag and event.tag.text or "<no text>",
-    tag_position = event.tag and event.tag.position and { x = event.tag.position.x, y = event.tag.position.y } or nil
-  })
-
   -- Get the player object from the event.player_index (can be nil if added by script)
   if not event.player_index then
-    ErrorHandler.debug_log("Chart tag added without player_index (added by script or other mod)")
+    -- Script-generated chart tag events are common at startup (other mods); skip noisy logging.
     return
   end
 
@@ -416,7 +420,9 @@ function handlers.on_chart_tag_added(event)
       Cache.Lookups.upsert_chart_tag_in_cache(gps, chart_tag)
 
       -- OWNERSHIP TRACKING: Store the creator's name in the Tag storage
-      local tag = Cache.get_tag_by_gps(player, gps)
+      local integer_surface_index = surface_index --[[@as integer]]
+      local surface_tags = Cache.get_surface_tags(integer_surface_index)
+      local tag = surface_tags and surface_tags[gps] or nil
       if tag and type(tag) == "table" then
         tag.owner_name = player.name
         ErrorHandler.debug_log("Stored tag owner on creation", {
@@ -429,16 +435,6 @@ function handlers.on_chart_tag_added(event)
 end
 
 function handlers.on_chart_tag_modified(event)
-  -- STARTUP SPIKE INVESTIGATION: Log all chart tag modifications at startup
-  local tick = game and game.tick or 0
-  ErrorHandler.debug_log("[STARTUP] on_chart_tag_modified", {
-    tick = tick,
-    player_index = event.player_index,
-    old_position = event.old_position,
-    new_position = event.tag and event.tag.position or nil,
-    tag_text = event.tag and event.tag.text or "<no text>"
-  })
-
   if not event or not event.old_position then return end
 
   -- Check for valid player_index (can be nil if modified by script)
@@ -450,8 +446,12 @@ function handlers.on_chart_tag_modified(event)
   -- UPS OPTIMIZATION: Early-exit for chart tags not tracked by this mod.
   -- Other mods (e.g. YARM) modify their own chart tags periodically, firing on_chart_tag_modified.
   -- If the tag at the old position isn't in our storage, skip all processing.
+  -- Use a storage-only lookup here so third-party tag traffic doesn't trigger
+  -- invalid_chart_tag notifications or chart-tag runtime lookup work.
   local old_gps, new_gps = ChartTagHelpers.extract_gps(event, player)
-  local old_tag = old_gps and Cache.get_tag_by_gps(player, old_gps) or nil
+  local surface_index = player.surface and player.surface.valid and player.surface.index or nil
+  local surface_tags = surface_index and Cache.get_surface_tags(surface_index) or nil
+  local old_tag = old_gps and surface_tags and surface_tags[old_gps] or nil
 
   -- Also check the new position — a tag moved FROM an untracked position but TO a tracked one
   -- still doesn't belong to us (we track by creation, not by position coincidence).
@@ -601,15 +601,6 @@ function handlers.on_chart_tag_modified(event)
 end
 
 function handlers.on_chart_tag_removed(event)
-  -- STARTUP SPIKE INVESTIGATION: Log all chart tag removals at startup
-  local tick = game and game.tick or 0
-  ErrorHandler.debug_log("[STARTUP] on_chart_tag_removed", {
-    tick = tick,
-    player_index = event.player_index,
-    tag_position = event.tag and event.tag.position and { x = event.tag.position.x, y = event.tag.position.y } or nil,
-    tag_text = event.tag and event.tag.text or "<no text>"
-  })
-
   -- Skip tags removed by scripts/other mods (no player context)
   if not event.player_index then return end
 
@@ -620,7 +611,9 @@ function handlers.on_chart_tag_removed(event)
     -- Get GPS and Tag object to check ownership via Tag.owner_name
     local gps = GPSUtils.gps_from_map_position(chart_tag.position,
       GPSUtils.get_context_surface_index(chart_tag, player))
-    local tag = Cache.get_tag_by_gps(player, gps)
+    local surface_index = player.surface and player.surface.valid and player.surface.index or nil
+    local surface_tags = surface_index and Cache.get_surface_tags(surface_index) or nil
+    local tag = gps and surface_tags and surface_tags[gps] or nil
 
     -- UPS OPTIMIZATION: Early-exit for chart tags not tracked by this mod.
     -- Other mods (e.g. YARM) may remove their own chart tags; skip processing for those.

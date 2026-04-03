@@ -33,20 +33,26 @@ local EventRegistrationDispatcher = {}
 -- Track registration state (use rawget to avoid static analysis issues)
 local _registration_state = {}
 
+---@param event_player_index uint|nil
+---@return LuaPlayer[]
+local function get_setting_target_players(event_player_index)
+  if event_player_index then
+    local player = game.players[event_player_index]
+    if player then
+      return { player }
+    end
+    return {}
+  end
+  return game.connected_players
+end
+
 
 --- Create a safe wrapper for event handlers (using centralized helper)
 --- UPS OPTIMIZATION: Inline debug check to avoid debug_log function call overhead on every event
 local function create_safe_event_handler(handler, handler_name)
   return function(event)
-    if ErrorHandler.should_log_debug() then
-      ErrorHandler.debug_log("Event received", {
-        handler_name = handler_name,
-        player_index = event.player_index,
-        event_type = event.name
-      })
-    end
-
     local success, err = pcall(handler, event)
+
     if not success then
       ErrorHandler.warn_log("Event handler failed", {
         handler_name = handler_name,
@@ -126,9 +132,10 @@ function EventRegistrationDispatcher.register_core_events(script)
         ErrorHandler.debug_log("[SETTINGS] Event setting_type: " .. tostring(event.setting_type))
       end
 
-  if event.setting == "favorites_on" then
+    if event.setting == "favorites_on" then
         ErrorHandler.debug_log("[SETTINGS] Processing favorites_on change")
-        for _, player in pairs(game.connected_players) do
+      local target_players = get_setting_target_players(event.player_index)
+      for _, player in pairs(target_players) do
           -- Invalidate cache first to ensure we get fresh settings
           Cache.Settings.invalidate_player_cache(player)
           local player_settings = Cache.Settings.get_player_settings(player)
@@ -152,46 +159,28 @@ function EventRegistrationDispatcher.register_core_events(script)
       -- Handle per-player max favorite slots change
       if event.setting == Constants.settings.MAX_FAVORITE_SLOTS_SETTING then
         ErrorHandler.debug_log("[SETTINGS] Processing max-favorite-slots change")
-        local player = (event.player_index and game.players[event.player_index]) or nil
-        if player and player.valid then
-          -- Invalidate cache and compute old vs new (old from persistent, new from settings)
+        local target_players = get_setting_target_players(event.player_index)
+        for _, player in pairs(target_players) do
           local old_max = Cache.get_last_max_favorite_slots(player)
           Cache.Settings.invalidate_player_cache(player)
           local new_max = Cache.Settings.get_player_max_favorite_slots(player)
           if ErrorHandler.should_log_debug() then
             ErrorHandler.debug_log("[SETTINGS] old_max vs new_max", { player = player.name, old_max = old_max, new_max = new_max })
           end
-          -- Apply changes
           Cache.apply_player_max_slots(player, new_max)
-          -- Persist last known value
           Cache.set_last_max_favorite_slots(player, new_max)
-          -- Rebuild favorites bar for this player only
           fave_bar.build(player, true)
-          -- If decreased, inform via game.print (global message per requirement)
           if type(old_max) == "number" and type(new_max) == "number" and new_max < old_max then
             local msg = string.format("[TeleportFavorites] %s set Max Slots to %d. Favorites beyond this new maximum have been permanently deleted.", player.name, new_max)
             game.print(msg)
           end
-        else
-          -- No specific player in event; fallback to all connected players to be safe
-          for _, p in pairs(game.connected_players) do
-            local old_max = Cache.get_last_max_favorite_slots(p)
-            Cache.Settings.invalidate_player_cache(p)
-            local new_max = Cache.Settings.get_player_max_favorite_slots(p)
-            Cache.apply_player_max_slots(p, new_max)
-            Cache.set_last_max_favorite_slots(p, new_max)
-            fave_bar.build(p, true)
-            if type(old_max) == "number" and type(new_max) == "number" and new_max < old_max then
-              local msg = string.format("[TeleportFavorites] %s set Max Slots to %d. Favorites beyond this new maximum have been permanently deleted.", p.name, new_max)
-              game.print(msg)
-            end
-          end
         end
         return
       end
-  if event.setting == "enable_teleport_history" then
+      if event.setting == "enable_teleport_history" then
         ErrorHandler.debug_log("[SETTINGS] Processing enable_teleport_history change")
-        for _, player in pairs(game.connected_players) do
+        local target_players = get_setting_target_players(event.player_index)
+        for _, player in pairs(target_players) do
           -- Invalidate cache first to ensure we get fresh settings
           Cache.Settings.invalidate_player_cache(player)
           local player_settings = Cache.Settings.get_player_settings(player)
@@ -287,29 +276,36 @@ function EventRegistrationDispatcher.register_core_events(script)
   -- Each handler uses a flag guard to no-op when inactive (negligible UPS cost).
   
   -- Permanent on_nth_tick(2): fast startup/update loop.
-  -- Handles deferred GUI notifications and deferred init queue without visible 1s lag.
+  -- Handles deferred GUI notifications, deferred init, and chunked startup slot hydration.
   script.on_nth_tick(2, function()
+    local bootstrapped_this_tick = false
+
     -- First-session observer registration (replaces removed on_tick handler)
     if not handlers.get_observers_registered_flag() then
       handlers.set_observers_registered_flag(true)
-      for _, player in pairs(game.players) do
-        if player and player.valid then
-          GuiObserver.GuiEventBus.register_player_observers(player)
-        end
-      end
       -- Ensure loaded-session players run through deferred init/build path.
       -- on_player_joined_game may not fire for already connected players after save load.
+      -- Observer registration is intentionally deferred per-player to avoid startup spikes.
       handlers.enqueue_all_players_for_deferred_init()
-      GuiObserver.GuiEventBus.process_deferred_notifications()
+      bootstrapped_this_tick = true
     end
 
     if GuiObserver.GuiEventBus._deferred_tick_active then
       GuiObserver.GuiEventBus.process_deferred_notifications()
     end
 
-    -- Process one deferred player every 2 ticks (instead of every 60 ticks)
-    -- so the first visible favorites bar render is corrected almost immediately.
-    handlers.process_deferred_init_queue()
+    -- Avoid combining first-session bootstrap enqueue with deferred queue processing
+    -- on the same tick; this smooths the startup peak.
+    if bootstrapped_this_tick then
+      return
+    end
+
+    -- Avoid stacking deferred-init work and slot hydration in the same tick.
+    -- This lowers startup peak while keeping slot hydration frequent once init settles.
+    local deferred_phase = handlers.process_deferred_init_queue()
+    if deferred_phase ~= "prepare" then
+      fave_bar.process_startup_slot_build_queue()
+    end
   end)
   
   -- Register on_gui_location_changed for modal position saving

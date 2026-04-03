@@ -201,6 +201,10 @@ local function handle_history_toggle_button_click(event, player)
     event = event,
     player = player and player.name or "<nil>"
   })
+
+  -- Lazy-create mode toggle on first actual history interaction.
+  fave_bar.ensure_history_mode_toggle(player)
+
   local modal_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]
   local modal_open = modal_frame and modal_frame.valid
   if modal_open then

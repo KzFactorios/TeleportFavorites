@@ -23,21 +23,70 @@ local GUI_EVENT_TYPES = {
 
 ---@class GuiEventBus
 ---@field _observers table<string, table[]>
+---@field _observer_index table<string, table<string, table<string, table>>>
 ---@field _notification_queue table[]
 ---@field _dirty_players table<number, boolean>
 local GuiEventBus = {
   _observers = {}, -- Map of event_type to array of observers
+  _observer_index = {}, -- O(1) index: event_type -> player_index -> observer_type -> observer
   _notification_queue = {}, -- Queue of pending notifications (processed immediately)
   _dirty_players = {}, -- Set of player indices that need a GUI refresh (coalesces multiple events per tick)
   _deferred_tick_active = false, -- Whether _dirty_players has entries to flush (on_nth_tick(2) is always registered)
   _initialized = false -- Track initialization state
 }
 
+---@param observer table
+---@return uint|nil
+local function get_observer_player_index(observer)
+  if not observer then return nil end
+  if observer.player and observer.player.index then
+    return observer.player.index
+  end
+  return nil
+end
+
+---@param event_type string
+---@param observer table
+local function index_observer(event_type, observer)
+  local player_index = get_observer_player_index(observer)
+  if not player_index then return end
+  local player_key = tostring(player_index)
+  local observer_type = observer.observer_type or "default"
+
+  GuiEventBus._observer_index[event_type] = GuiEventBus._observer_index[event_type] or {}
+  GuiEventBus._observer_index[event_type][player_key] = GuiEventBus._observer_index[event_type][player_key] or {}
+  GuiEventBus._observer_index[event_type][player_key][observer_type] = observer
+end
+
+---@param event_type string
+---@param observer table
+local function deindex_observer(event_type, observer)
+  local player_index = get_observer_player_index(observer)
+  if not player_index then return end
+  local player_key = tostring(player_index)
+  local event_bucket = GuiEventBus._observer_index[event_type]
+  if not event_bucket then return end
+  local player_bucket = event_bucket[player_key]
+  if not player_bucket then return end
+
+  local observer_type = observer.observer_type or "default"
+  if player_bucket[observer_type] == observer then
+    player_bucket[observer_type] = nil
+  end
+  if next(player_bucket) == nil then
+    event_bucket[player_key] = nil
+  end
+  if next(event_bucket) == nil then
+    GuiEventBus._observer_index[event_type] = nil
+  end
+end
+
 --- Initialize the event bus if not already initialized
 function GuiEventBus.ensure_initialized()
   local was_initialized = GuiEventBus._initialized == true
   if not was_initialized then
     GuiEventBus._observers = GuiEventBus._observers or {}
+    GuiEventBus._observer_index = GuiEventBus._observer_index or {}
     GuiEventBus._notification_queue = GuiEventBus._notification_queue or {}
     GuiEventBus._dirty_players = GuiEventBus._dirty_players or {}
     GuiEventBus._initialized = true
@@ -54,26 +103,30 @@ function GuiEventBus.subscribe(event_type, observer)
     GuiEventBus._observers[event_type] = {}
   end
 
-  -- Dedup: skip if an observer for the same player already exists for this event type
-  if observer.player_index then
+  -- Dedup via O(1) index lookup when player-scoped observer metadata is available.
+  local player_index = get_observer_player_index(observer)
+  local observer_type = observer.observer_type or "default"
+  if player_index then
+    local player_key = tostring(player_index)
+    local event_bucket = GuiEventBus._observer_index[event_type]
+    local player_bucket = event_bucket and event_bucket[player_key]
+    if player_bucket and player_bucket[observer_type] then
+      ErrorHandler.debug_log("Observer subscribe skipped (duplicate)", {
+        event_type = event_type,
+        observer_type = observer_type,
+        player_index = player_index
+      })
+      return
+    end
+  else
+    -- Fallback dedup for non player-scoped observers.
     for _, existing in ipairs(GuiEventBus._observers[event_type]) do
-      if existing.player_index == observer.player_index and existing.observer_type == observer.observer_type then
-        ErrorHandler.debug_log("Observer subscribe skipped (duplicate)", {
-          event_type = event_type,
-          observer_type = observer.observer_type or "unknown",
-          player_index = observer.player_index
-        })
-        return
-      end
+      if existing == observer then return end
     end
   end
 
   table.insert(GuiEventBus._observers[event_type], observer)
-  
-  ErrorHandler.debug_log("Observer subscribed", {
-    event_type = event_type,
-    observer_type = observer.observer_type or "unknown"
-  })
+  index_observer(event_type, observer)
 end
 
 --- Unsubscribe observer from event type
@@ -85,6 +138,7 @@ function GuiEventBus.unsubscribe(event_type, observer)
   
   for i, obs in ipairs(observers) do
     if obs == observer then
+      deindex_observer(event_type, observer)
       table.remove(observers, i)
       ErrorHandler.debug_log("Observer unsubscribed", {
         event_type = event_type,
@@ -216,6 +270,7 @@ function GuiEventBus.cleanup_observers(event_type)
   for i = #observers, 1, -1 do
     local observer = observers[i]
     if not observer or not observer.is_valid or not observer:is_valid() then
+      deindex_observer(event_type, observer)
       table.remove(observers, i)
       cleaned_count = cleaned_count + 1
     end
@@ -248,6 +303,7 @@ function GuiEventBus.cleanup_player_observers(player)
         (observer.player and not observer.player.valid) or
         not observer:is_valid()
       ) then
+        deindex_observer(event_type, observer)
         table.remove(observers, i)
         cleaned_count = cleaned_count + 1
       end
@@ -255,13 +311,36 @@ function GuiEventBus.cleanup_player_observers(player)
     total_cleaned = total_cleaned + cleaned_count
   end
   
-  if total_cleaned > 0 then
-    ErrorHandler.debug_log("Cleaned up player-specific observers", {
-      player = player_name,
-      player_index = player_index,
-      cleaned_count = total_cleaned
-    })
+end
+
+--- Check whether a valid observer already exists for a player/event pair.
+---@param player_index uint
+---@param event_type string
+---@param observer_type string|nil
+---@return boolean
+function GuiEventBus.has_player_observer(player_index, event_type, observer_type)
+  if not player_index or not event_type then return false end
+  local event_bucket = GuiEventBus._observer_index[event_type]
+  if not event_bucket then return false end
+  local player_bucket = event_bucket[tostring(player_index)]
+  if not player_bucket then return false end
+
+  if observer_type then
+    local observer = player_bucket[observer_type]
+    if observer and observer.is_valid and observer:is_valid() then
+      return true
+    end
+    deindex_observer(event_type, observer)
+    return false
   end
+
+  for _, observer in pairs(player_bucket) do
+    if observer and observer.is_valid and observer:is_valid() then
+      return true
+    end
+  end
+
+  return false
 end
 
 --- Aggressive cleanup: Remove observers older than specified ticks
@@ -306,6 +385,7 @@ function GuiEventBus.cleanup_old_observers(max_age_ticks)
         end
         
         if should_remove then
+          deindex_observer(event_type, observer)
           table.remove(observers, i)
           cleaned_count = cleaned_count + 1
           
@@ -352,6 +432,7 @@ function GuiEventBus.schedule_periodic_cleanup()
         or not observer.is_valid
         or not observer:is_valid()
         or (observer.player and not observer.player.valid) then
+        deindex_observer(event_type, observer)
         table.remove(observers, i)
       end
     end
@@ -462,6 +543,7 @@ function GuiEventBus.cleanup_all()
   -- Clear notification queues
   GuiEventBus._notification_queue = {}
   GuiEventBus._dirty_players = {}
+  GuiEventBus._observer_index = {}
   GuiEventBus._processing = false
 
   ErrorHandler.debug_log("All GUI observers cleaned up")
@@ -527,9 +609,6 @@ function GuiEventBus.register_player_observers(player)
   local notification_observer = NotificationObserver:new(player)
   GuiEventBus.subscribe("invalid_chart_tag", notification_observer)
 
-  ErrorHandler.debug_log("GUI observers registered for player (NotificationObserver)", {
-    player = player.name,
-  })
 end
 
 --- Clean up observers for a disconnected player (more aggressive than player leave)
@@ -561,6 +640,7 @@ function GuiEventBus.cleanup_disconnected_player_observers(player_index)
         end
         
         if should_remove then
+          deindex_observer(event_type, observer)
           table.remove(observers, i)
           cleaned_count = cleaned_count + 1
         end
@@ -569,12 +649,6 @@ function GuiEventBus.cleanup_disconnected_player_observers(player_index)
     total_cleaned = total_cleaned + cleaned_count
   end
   
-  if total_cleaned > 0 then
-    ErrorHandler.debug_log("Cleaned up disconnected player observers", {
-      player_index = player_index,
-      cleaned_count = total_cleaned
-    })
-  end
 end
 
 return {

@@ -45,7 +45,11 @@ local function ensure_surface_cache(surface_index)
 
   if not cache.surfaces[surface_idx].chart_tags_mapped_by_gps then
     cache.surfaces[surface_idx].chart_tags_mapped_by_gps = {}
-    -- GPS map starts empty and is lazily warmed on first access (see warm_surface_gps_map).
+    -- GPS map starts empty and is lazily filled by targeted GPS probes.
+  end
+
+  if not cache.surfaces[surface_idx].missing_chart_tags_by_gps then
+    cache.surfaces[surface_idx].missing_chart_tags_by_gps = {}
   end
 
   return cache.surfaces[surface_idx]
@@ -69,7 +73,72 @@ local function clear_surface_cache_chart_tags(surface_index)
   if cache.surfaces[surface_idx] then
     cache.surfaces[surface_idx].chart_tags = nil  -- Set to nil to trigger refetch
     cache.surfaces[surface_idx].chart_tags_mapped_by_gps = nil  -- Set to nil to trigger rebuild
+    cache.surfaces[surface_idx].missing_chart_tags_by_gps = nil
     cache.surfaces[surface_idx].chart_tags_gps_map_warmed = nil  -- Reset warm flag so next access re-warms
+  end
+end
+
+---@param gps string
+---@return BoundingBox|nil
+local function build_chart_tag_search_area(gps)
+  local position = GPSUtils.map_position_from_gps(gps)
+  if not position then return nil end
+
+  local half_extent = 0.51
+  return {
+    { x = position.x - half_extent, y = position.y - half_extent },
+    { x = position.x + half_extent, y = position.y + half_extent }
+  }
+end
+
+---@param gps string
+---@return LuaCustomChartTag|nil
+local function probe_chart_tag_by_gps(gps)
+  if not BasicHelpers.is_valid_gps(gps) then return nil end
+
+  local surface_index = GPSUtils.get_surface_index_from_gps(gps)
+  local surface = game.surfaces[surface_index]
+  if not surface then return nil end
+
+  local surface_cache = ensure_surface_cache(surface_index)
+  if not surface_cache then return nil end
+
+  local missing_cache = surface_cache.missing_chart_tags_by_gps or {}
+  surface_cache.missing_chart_tags_by_gps = missing_cache
+  if missing_cache[gps] then return nil end
+
+  local area = build_chart_tag_search_area(gps)
+  if not area then
+    missing_cache[gps] = true
+    return nil
+  end
+
+  local nearby_tags = game.forces["player"].find_chart_tags(surface, area) or {}
+  for _, tag in ipairs(nearby_tags) do
+    if tag.valid and tag.position then
+      local tag_gps = GPSUtils.gps_from_map_position(tag.position, surface_index)
+      if tag_gps == gps then
+        surface_cache.chart_tags_mapped_by_gps[gps] = tag
+        missing_cache[gps] = nil
+        return tag
+      end
+    end
+  end
+
+  missing_cache[gps] = true
+  return nil
+end
+
+---@param gps_list string[]|nil
+local function warm_gps_entries(gps_list)
+  if type(gps_list) ~= "table" then return end
+
+  local seen = {}
+  for _, gps in ipairs(gps_list) do
+    if type(gps) == "string" and gps ~= "" and not seen[gps] then
+      seen[gps] = true
+      probe_chart_tag_by_gps(gps)
+    end
   end
 end
 
@@ -100,7 +169,6 @@ local function warm_surface_gps_map(surface_index)
       end
     end
   end
-  ErrorHandler.debug_log("warm_surface_gps_map: complete", { surface_index = surface_idx, tags_cached = count })
 end
 
 local function get_chart_tag_cache(surface_index)
@@ -126,9 +194,7 @@ local function get_chart_tag_cache(surface_index)
 end
 
 --- Static method to fetch a LuaCustomChartTag by gps (O(1) lookup).
---- Self-healing: if the GPS map has not yet been warmed for this surface (e.g. after a
---- game load or surface switch), performs a one-time find_chart_tags scan on first miss
---- so subsequent lookups are O(1) hits rather than false cache misses.
+--- On miss, performs a targeted probe for that exact GPS only.
 ---@param gps string
 ---@return LuaCustomChartTag|nil
 local function get_chart_tag_by_gps(gps)
@@ -141,21 +207,9 @@ local function get_chart_tag_by_gps(gps)
   if not surface_cache then return nil end
   local match_chart_tag = surface_cache.chart_tags_mapped_by_gps[gps]
 
-  -- Self-healing warm: if the map hasn't been scanned yet and we have a miss,
-  -- do the one-time find_chart_tags scan and retry. This covers game-load and
-  -- surface-switch scenarios without requiring callers to pre-warm explicitly.
-  if not match_chart_tag and not surface_cache.chart_tags_gps_map_warmed then
-    warm_surface_gps_map(surface_index)
-    match_chart_tag = surface_cache.chart_tags_mapped_by_gps[gps]
-  end
-
-  if ErrorHandler.should_log_debug() then
-    ErrorHandler.debug_log("[LOOKUPS] get_chart_tag_by_gps", {
-      gps = gps,
-      surface_index = surface_index,
-      chart_tag_found = match_chart_tag ~= nil,
-      chart_tag_valid = match_chart_tag and match_chart_tag.valid or false,
-    })
+  -- Correctness path: after load, runtime cache can be empty. Probe only this GPS.
+  if not match_chart_tag then
+    match_chart_tag = probe_chart_tag_by_gps(gps)
   end
 
   if not match_chart_tag then return nil end
@@ -218,6 +272,9 @@ local function upsert_chart_tag_in_cache(gps, chart_tag)
   if cache.surfaces[surface_idx].chart_tags_mapped_by_gps then
     cache.surfaces[surface_idx].chart_tags_mapped_by_gps[gps] = chart_tag
   end
+  if cache.surfaces[surface_idx].missing_chart_tags_by_gps then
+    cache.surfaces[surface_idx].missing_chart_tags_by_gps[gps] = nil
+  end
 end
 
 --- UPS OPTIMIZATION: Remove a single chart tag entry from the GPS mapping cache.
@@ -237,6 +294,9 @@ local function evict_chart_tag_from_cache(gps)
   if cache.surfaces[surface_idx].chart_tags_mapped_by_gps then
     cache.surfaces[surface_idx].chart_tags_mapped_by_gps[gps] = nil
   end
+  if cache.surfaces[surface_idx].missing_chart_tags_by_gps then
+    cache.surfaces[surface_idx].missing_chart_tags_by_gps[gps] = nil
+  end
 end
 
 ---@class Lookups
@@ -244,6 +304,7 @@ end
 ---@field upsert_chart_tag_in_cache fun(gps: string, chart_tag: LuaCustomChartTag)
 ---@field evict_chart_tag_from_cache fun(gps: string)
 ---@field warm_surface_gps_map fun(surface_index: number)
+---@field warm_gps_entries fun(gps_list: string[]|nil)
 return {
   init = init,
   get_chart_tag_cache = get_chart_tag_cache,
@@ -257,4 +318,5 @@ return {
   upsert_chart_tag_in_cache = upsert_chart_tag_in_cache,
   evict_chart_tag_from_cache = evict_chart_tag_from_cache,
   warm_surface_gps_map = warm_surface_gps_map,
+  warm_gps_entries = warm_gps_entries,
 }

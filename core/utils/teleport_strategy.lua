@@ -7,18 +7,16 @@
 local GPSUtils = require("core.utils.gps_utils")
 local ErrorHandler = require("core.utils.error_handler")
 local LocaleUtils = require("core.utils.locale_utils")
-local ChartTagUtils = require("core.utils.chart_tag_utils")
 local BasicHelpers = require("core.utils.basic_helpers")
 local Cache = require("core.cache.cache")
-local Constants = require("constants")
+local TeleportHistory = require("core.teleport.teleport_history")
 
 local TeleportStrategy = {}
 
 
 ---@param player LuaPlayer
----@param gps string
 ---@return boolean, string
-local function validate_prerequisites(player, gps)
+local function validate_prerequisites(player)
   if not player or not player.valid then
     return false, LocaleUtils.get_error_string(player, "player_missing")
   end
@@ -28,30 +26,34 @@ local function validate_prerequisites(player, gps)
   return true, ""
 end
 
---- Get the matching or closest Chart_tag's gps
---- This will return a normalized position gps
 ---@param player LuaPlayer
----@param gps string
----@return string|nil -- gps string
-local function get_closest_chart_tag_gps(player, gps)
-  if not gps then return nil end
-
-  local chart_tag = Cache.Lookups.get_chart_tag_by_gps(gps) or nil
-
-  if not chart_tag or not chart_tag.valid then
-    local pos = GPSUtils.map_position_from_gps(gps)
-    if not pos or type(pos.x) ~= "number" or type(pos.y) ~= "number" then
-      ErrorHandler.error_log("TeleportStrategy", "Invalid MapPosition for chart tag search", { gps = gps }, "get_closest_chart_tag_gps")
-      return nil
+---@param position MapPosition
+---@param surface LuaSurface
+---@return boolean success
+---@return string? error_code
+local function teleport_entity_to_position(player, position, surface)
+  if player.physical_vehicle and player.physical_vehicle.valid then
+    if player.physical_vehicle.speed == nil or player.physical_vehicle.speed == 0 then
+      return player.physical_vehicle.teleport(position, surface, true), nil
     end
-    chart_tag = ChartTagUtils.find_closest_chart_tag_to_position(player, pos)
+
+    player.play_sound { path = "utility/cannot_build" }
+    ErrorHandler.warn_log("Safe teleport blocked: Vehicle is moving")
+    return false, "vehicle_moving"
   end
 
-  if chart_tag and chart_tag.position and type(chart_tag.position.x) == "number" and type(chart_tag.position.y) == "number" then
-  local surface_index = player.surface.index + 0
-  return GPSUtils.gps_from_map_position(chart_tag.position, surface_index)
-  end
-  return nil
+  return player.teleport(position, surface, true), nil
+end
+
+---@param target_position MapPosition
+---@return MapPosition[]
+local function build_fast_fallback_positions(target_position)
+  return {
+    { x = target_position.x + 1, y = target_position.y },
+    { x = target_position.x - 1, y = target_position.y },
+    { x = target_position.x, y = target_position.y + 1 },
+    { x = target_position.x, y = target_position.y - 1 },
+  }
 end
 
 ---@param player LuaPlayer Player to teleport
@@ -61,11 +63,13 @@ end
 function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history)
   if add_to_history == nil then add_to_history = true end
 
-  ErrorHandler.debug_log("Executing safe teleportation", {
-    player_name = player and player.name or "nil",
-    target_gps = target_gps,
-    add_to_history = add_to_history
-  })
+  if ErrorHandler.should_log_debug() then
+    ErrorHandler.debug_log("Executing safe teleportation", {
+      player_name = player and player.name or "nil",
+      target_gps = target_gps,
+      add_to_history = add_to_history
+    })
+  end
   if not player or not player.valid then
   ErrorHandler.error_log("TeleportStrategy", "Teleportation failed: Invalid player", {}, "teleport_to_gps")
     return false, "invalid_player"
@@ -75,78 +79,94 @@ function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history)
     return false, "invalid_gps"
   end
 
-  local valid, error_msg = validate_prerequisites(player, target_gps)
+  local valid, error_msg = validate_prerequisites(player)
   if not valid then
     ErrorHandler.warn_log("Safe teleport failed validation", { error = error_msg })
     return false, error_msg
   end
 
-  -- Normalize the pos
-  local target_position = GPSUtils.map_position_from_gps(target_gps)
-  local player_gps = nil
-  if player.position and type(player.position.x) == "number" and type(player.position.y) == "number" then
-  local surface_index = player.surface.index + 0
-  player_gps = GPSUtils.gps_from_map_position(player.position, surface_index)
+  local parsed_target_gps = GPSUtils.parse_gps_string(target_gps)
+  if not parsed_target_gps then
+    ErrorHandler.error_log("TeleportStrategy", "Teleportation failed: Malformed GPS", { target_gps = target_gps },
+      "teleport_to_gps")
+    return false, "invalid_gps"
   end
+
+  local target_surface_index = math.floor(parsed_target_gps.s)
+  local target_position = { x = parsed_target_gps.x, y = parsed_target_gps.y }
+  local normalized_target_gps = GPSUtils.gps_from_map_position(target_position, target_surface_index)
+  local target_surface = target_surface_index and game.surfaces[target_surface_index] or nil
+  if not target_surface or not target_surface.valid then
+    ErrorHandler.error_log("TeleportStrategy", "Teleportation failed: Invalid target surface", {
+      target_gps = target_gps,
+      target_surface_index = target_surface_index
+    }, "teleport_to_gps")
+    return false, "invalid_target_surface"
+  end
+
   -- Short-circuit if player is already at the target GPS position (surface-aware, multiplayer-safe)
-  if target_gps == player_gps then
-    ErrorHandler.debug_log("Teleport short-circuited: Already at target GPS", {
-      player_gps = player_gps,
-      target_gps = target_gps
-    })
-    return false, "already_at_target"
+  local player_surface_index = player.surface and player.surface.valid and player.surface.index or nil
+  local is_same_surface = player_surface_index and player_surface_index == target_surface_index
+  if is_same_surface and player.position and type(player.position.x) == "number" and type(player.position.y) == "number" then
+    local rounded_x = math.floor(player.position.x + 0.5)
+    local rounded_y = math.floor(player.position.y + 0.5)
+    if rounded_x == parsed_target_gps.x and rounded_y == parsed_target_gps.y then
+      if ErrorHandler.should_log_debug() then
+        ErrorHandler.debug_log("Teleport short-circuited: Already at target GPS", {
+          target_gps = normalized_target_gps
+        })
+      end
+      return false, "already_at_target"
+    end
   end
 
-  -- determine if there is a chart_tag in the immediate vicintiy
-  local working_gps = get_closest_chart_tag_gps(player, target_gps)
+  local from_gps = nil
+  if add_to_history and Cache.get_sequential_history_mode(player) then
+    if player.position and type(player.position.x) == "number" and type(player.position.y) == "number" and player_surface_index then
+      from_gps = GPSUtils.gps_from_map_position(player.position, player_surface_index)
+    end
+  end
 
-  -- no matches, find the closest position to our intent
-  if not working_gps or working_gps == Constants.settings.BLANK_GPS then
+  local working_position = target_position
+  local working_gps = normalized_target_gps
+
+  local teleport_success, teleport_error = teleport_entity_to_position(player, working_position, target_surface)
+  if not teleport_success and teleport_error == "vehicle_moving" then
+    return false, teleport_error
+  end
+
+  if not teleport_success then
+    local fallback_positions = build_fast_fallback_positions(target_position)
+    for _, fallback_position in ipairs(fallback_positions) do
+      working_position = fallback_position
+      working_gps = GPSUtils.gps_from_map_position(fallback_position, tonumber(target_surface.index) or 1)
+      teleport_success, teleport_error = teleport_entity_to_position(player, working_position, target_surface)
+      if teleport_success then
+        break
+      end
+      if teleport_error == "vehicle_moving" then
+        return false, teleport_error
+      end
+    end
+  end
+
+  if not teleport_success then
     local search_radius = 4.0
     local precision = 0.5
-
-    -- Use Factorio's built-in collision detection to find a safe position
-    ---@type MapPosition|nil
-    local safe_target_position = (target_position and type(target_position.x) == "number" and type(target_position.y) == "number") and target_position or {x=0, y=0}
-    local non_collide_position = nil
-    if safe_target_position and type(safe_target_position.x) == "number" and type(safe_target_position.y) == "number" then
-      non_collide_position = player.surface.find_non_colliding_position("character", safe_target_position, search_radius, precision)
-    end
+    local non_collide_position = target_surface.find_non_colliding_position("character", target_position, search_radius, precision)
 
     if not non_collide_position or type(non_collide_position.x) ~= "number" or type(non_collide_position.y) ~= "number" then
-  ErrorHandler.error_log("TeleportStrategy", "Safe teleport failed: No valid safe landing position", {}, "teleport_to_gps")
-  BasicHelpers.safe_player_print(player, LocaleUtils.get_error_string(player, "no_safe_landing_position"))
+      ErrorHandler.error_log("TeleportStrategy", "Safe teleport failed: No valid safe landing position", {}, "teleport_to_gps")
+      BasicHelpers.safe_player_print(player, LocaleUtils.get_error_string(player, "no_safe_landing_position"))
       return false, "no_safe_landing_position"
     end
 
-  working_gps = GPSUtils.gps_from_map_position(non_collide_position, tonumber(player.surface.index) or 1)
-  end
-
-  if not working_gps then
-  ErrorHandler.error_log("TeleportStrategy", "Safe teleport failed: No valid safe landing position", {}, "teleport_to_gps")
-  BasicHelpers.safe_player_print(player, LocaleUtils.get_error_string(player, "no_safe_landing_position"))
-    return false, "no_safe_landing_position"
-  end
-
-  -- We have a position - time to teleport
-  local working_position = GPSUtils.map_position_from_gps(working_gps)
-  if not working_position then
-  ErrorHandler.error_log("TeleportStrategy", "Safe teleport failed: Invalid working position", {}, "teleport_to_gps")
-  BasicHelpers.safe_player_print(player, LocaleUtils.get_error_string(player, "invalid_working_position"))
-    return false, "invalid_working_position"
-  end
-
-  local teleport_success = false
-  if player.physical_vehicle and player.physical_vehicle.valid then
-    if player.physical_vehicle.speed == nil or player.physical_vehicle.speed == 0 then
-      teleport_success = player.physical_vehicle.teleport(working_position, player.surface, true)
-    else
-      player.play_sound { path = "utility/cannot_build" }
-  ErrorHandler.warn_log("Safe teleport blocked: Vehicle is moving")
-  return false, "vehicle_moving"
+    working_position = non_collide_position
+    working_gps = GPSUtils.gps_from_map_position(non_collide_position, tonumber(target_surface.index) or 1)
+    teleport_success, teleport_error = teleport_entity_to_position(player, working_position, target_surface)
+    if not teleport_success and teleport_error == "vehicle_moving" then
+      return false, teleport_error
     end
-  else
-    teleport_success = player.teleport(working_position, player.surface, true)
   end
 
   if teleport_success then
@@ -157,12 +177,7 @@ function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history)
     end
 
     if add_to_history then
-      local ok, result = pcall(function()
-        if remote.interfaces["TeleportFavorites_History"] and
-            remote.interfaces["TeleportFavorites_History"].add_teleport then
-          remote.call("TeleportFavorites_History", "add_teleport", player.index, player_gps, working_gps)
-        end
-      end)
+      TeleportHistory.add_teleport(player, from_gps, working_gps)
     end
     return true, working_gps
   end

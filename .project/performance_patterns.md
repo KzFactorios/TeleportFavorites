@@ -101,3 +101,27 @@ When a derived data structure is needed repeatedly, compute it once at cache-bui
 - Player favorites arrays are materialized from storage once per GUI refresh cycle, not re-filtered on each slot render.
 
 Avoid patterns that iterate `storage` inside tight loops or GUI render paths.
+
+---
+
+## Startup Render Snapshot (Favorites Bar)
+
+**Where:** `core/cache/cache.lua`, `gui/favorites_bar/fave_bar.lua`
+
+**Problem:** Startup hydration of favorites slots can trigger chart-tag lookup and rehydration work before first paint, causing visible bar population delay and init spikes.
+
+**Solution:** Persist a lightweight per-slot render snapshot (gps, locked, icon, text) in player surface storage during full rehydration passes, then use snapshot data for startup slot hydration first. Slots without valid snapshot entries fall back to normal runtime rehydration.
+
+```lua
+-- Snapshot read (startup)
+local snapshot = Cache.get_favorites_render_snapshot(player, surface_index, max_slots)
+
+-- Snapshot write (full rehydration path)
+surface_data.favorites_render_snapshot = snapshot
+```
+
+**Rules:**
+- Snapshot entries must stay userdata-free (no `LuaCustomChartTag` in storage).
+- Startup code must treat snapshot as a fast-path hint, not source of truth.
+- Missing or stale snapshot entries must always fall back to runtime rehydration.
+- Keep chart-tag update paths invalidating/rebuilding runtime cache as usual; snapshot does not replace correctness paths.

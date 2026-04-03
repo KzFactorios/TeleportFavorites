@@ -10,9 +10,8 @@ local handlers = require("core.events.handlers")
 local TeleportHistory = require("core.teleport.teleport_history")
 
 -- Initialize logging immediately using single source of truth
--- TEMPORARY: Enable debug mode for spike investigation
-ErrorHandler.initialize("debug")
-ErrorHandler.debug_log("[CONTROL] control.lua loaded, logger active in DEBUG mode", { level = "debug" })
+ErrorHandler.initialize(Constants.settings.DEFAULT_LOG_LEVEL)
+ErrorHandler.debug_log("[CONTROL] control.lua loaded", { level = tostring(Constants.settings.DEFAULT_LOG_LEVEL) })
 
 
 local gui_observer = nil

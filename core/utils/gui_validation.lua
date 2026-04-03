@@ -254,24 +254,11 @@ function GuiValidation.get_validated_sprite_path(icon, opts)
     debug_info.reason = "icon is not string or table"
   end
 
-  -- Extra debug: log the normalized sprite path and fallback usage
-  Logger.debug_log("[GUI_VALIDATION] Sprite path normalization", {
-    original_icon = icon,
-    normalized_sprite_path = sprite_path,
-    debug_info = debug_info
-  })
-
   local is_valid, error_msg = GuiValidation.validate_sprite(sprite_path)
   if not is_valid then
     debug_info.reason = (debug_info.reason or "") .. (error_msg and (": " .. error_msg) or "")
     sprite_path = fallback
     used_fallback = true
-
-    Logger.debug_log("[GUI_VALIDATION] Sprite validation failed, using fallback", {
-      attempted_sprite_path = sprite_path,
-      error_msg = error_msg,
-      fallback = fallback
-    })
   end
 
   debug_info.log_context = log_context

@@ -17,6 +17,30 @@ local SEQ_RESOLUTION_TILES = 32  -- Sequential mode: FROM→TO hops shorter than
 
 local TeleportHistory = {}
 
+---@param parsed_gps table|nil
+---@return string|nil
+local function normalize_parsed_gps(parsed_gps)
+  if not parsed_gps or type(parsed_gps.x) ~= "number" or type(parsed_gps.y) ~= "number" or type(parsed_gps.s) ~= "number" then
+    return nil
+  end
+
+  return GPSUtils.gps_from_map_position({ x = parsed_gps.x, y = parsed_gps.y }, math.floor(parsed_gps.s))
+end
+
+--- Check if two parsed GPS values are within a given tile resolution (same surface only).
+---@param parsed_a table|nil
+---@param parsed_b table|nil
+---@param resolution number Tile distance threshold
+---@return boolean
+local function parsed_gps_within_resolution(parsed_a, parsed_b, resolution)
+	if not parsed_a or not parsed_b then return false end
+	if math.floor(parsed_a.s) ~= math.floor(parsed_b.s) then return false end
+	if parsed_a.x == parsed_b.x and parsed_a.y == parsed_b.y then return true end
+	local dx = parsed_a.x - parsed_b.x
+	local dy = parsed_a.y - parsed_b.y
+	return (dx * dx + dy * dy) <= (resolution * resolution)
+end
+
 --- Check if two GPS strings are within a given tile resolution of each other (same surface only).
 ---@param gps_a string|nil
 ---@param gps_b string|nil
@@ -24,18 +48,51 @@ local TeleportHistory = {}
 ---@return boolean
 local function gps_within_resolution(gps_a, gps_b, resolution)
 	if not gps_a or not gps_b then return false end
-	local surface_a = GPSUtils.get_surface_index_from_gps(gps_a)
-	local surface_b = GPSUtils.get_surface_index_from_gps(gps_b)
-	if not surface_a or not surface_b then return false end
-	if math.floor(surface_a) ~= math.floor(surface_b) then return false end
-	if gps_a == gps_b then return true end
-	local pos_a = GPSUtils.map_position_from_gps(gps_a)
-	local pos_b = GPSUtils.map_position_from_gps(gps_b)
-	if not pos_a or not pos_b then return false end
-	local dx = pos_a.x - pos_b.x
-	local dy = pos_a.y - pos_b.y
-	return (dx * dx + dy * dy) <= (resolution * resolution)
+	return parsed_gps_within_resolution(GPSUtils.parse_gps_string(gps_a), GPSUtils.parse_gps_string(gps_b), resolution)
 end
+
+---@param player LuaPlayer
+---@param gps string
+---@param notify boolean|nil
+---@return boolean changed
+local function add_gps_internal(player, gps, notify)
+	local parsed_gps = GPSUtils.parse_gps_string(gps)
+	if not parsed_gps then
+		game.print("[TeleportFavorites] WARNING: Malformed GPS string, skipping history entry. gps=" .. tostring(gps))
+		return false
+	end
+
+	local surface_index = math.floor(parsed_gps.s)
+	local normalized_gps = normalize_parsed_gps(parsed_gps)
+	if not normalized_gps then return false end
+
+	local hist = Cache.get_player_teleport_history(player, surface_index)
+	local stack = hist.stack
+	local top = stack[#stack]
+	local top_parsed = top and top.gps and GPSUtils.parse_gps_string(top.gps) or nil
+
+	if parsed_gps_within_resolution(top_parsed, parsed_gps, STD_RESOLUTION_TILES) then
+		hist.pointer = #stack
+		if notify ~= false then
+			TeleportHistory.notify_observers(player)
+		end
+		return false
+	end
+
+	if #stack >= HISTORY_STACK_SIZE then
+		table.remove(stack, 1)
+	end
+
+	local item = HistoryItem.new(normalized_gps)
+	if not item then return false end
+
+	table.insert(stack, item)
+	hist.pointer = #stack
+	if notify ~= false then
+		TeleportHistory.notify_observers(player)
+	end
+	return true
+	end
 
 
 --- Remove a history item at a specific index
@@ -82,31 +139,7 @@ end
 function TeleportHistory.add_gps(player, gps)
 	local valid = ValidationUtils.validate_player(player)
 	if not valid or not gps then return end
-
-	local surface_index = GPSUtils.get_surface_index_from_gps(gps)
-	if not surface_index or type(surface_index) ~= "number" then
-		game.print("[TeleportFavorites] WARNING: Malformed GPS string, using player's current surface index for history. gps=" .. tostring(gps))
-		surface_index = player.surface and player.surface.index or 1
-	else
-		surface_index = math.floor(surface_index)
-	end
-	local hist = Cache.get_player_teleport_history(player, surface_index)
-	local stack = hist.stack
-
-	-- Rule C: no consecutive duplicate locations — skip if within resolution of the top entry
-	local top = stack[#stack]
-	if gps_within_resolution(top and top.gps, gps, STD_RESOLUTION_TILES) then
-		hist.pointer = #stack
-		TeleportHistory.notify_observers(player)
-		return
-	end
-	if #stack >= HISTORY_STACK_SIZE then
-		table.remove(stack, 1)
-	end
-	local item = HistoryItem.new(gps)
-	table.insert(stack, item)
-	hist.pointer = #stack
-	TeleportHistory.notify_observers(player)
+	add_gps_internal(player, gps, true)
 end
 
 --- Record a teleport in history, applying mode-specific deduplication logic.
@@ -120,28 +153,40 @@ end
 function TeleportHistory.add_teleport(player, from_gps, to_gps)
 	if not ValidationUtils.validate_player(player) then return end
 	if not to_gps then return end
+	local parsed_to_gps = GPSUtils.parse_gps_string(to_gps)
+	if not parsed_to_gps then return end
+	local normalized_to_gps = normalize_parsed_gps(parsed_to_gps)
+	if not normalized_to_gps then return end
 
 	local is_sequential = Cache.get_sequential_history_mode(player)
 
 	if not is_sequential then
 		-- Standard mode: record destination only
-		TeleportHistory.add_gps(player, to_gps)
+		add_gps_internal(player, normalized_to_gps, true)
 		return
 	end
+
+	local parsed_from_gps = from_gps and GPSUtils.parse_gps_string(from_gps) or nil
+	local normalized_from_gps = parsed_from_gps and normalize_parsed_gps(parsed_from_gps) or nil
 
 	-- Sequential mode
 	-- Rule B: trivial hop — FROM is within SEQ_RESOLUTION_TILES of TO, record nothing
-	if from_gps and gps_within_resolution(from_gps, to_gps, SEQ_RESOLUTION_TILES) then
+	if parsed_from_gps and parsed_gps_within_resolution(parsed_from_gps, parsed_to_gps, SEQ_RESOLUTION_TILES) then
 		return
 	end
 
+	local did_change = false
+
 	-- Record FROM first (add_gps top-check handles Rule A implicitly)
-	if from_gps then
-		TeleportHistory.add_gps(player, from_gps)
+	if normalized_from_gps then
+		did_change = add_gps_internal(player, normalized_from_gps, false) or did_change
 	end
 
 	-- Record TO (add_gps consecutive-duplicate check prevents dup when TO ≈ FROM)
-	TeleportHistory.add_gps(player, to_gps)
+	did_change = add_gps_internal(player, normalized_to_gps, false) or did_change
+	if did_change then
+		TeleportHistory.notify_observers(player)
+	end
 end
 
 -- Set pointer to specific index (for teleport history modal navigation)
