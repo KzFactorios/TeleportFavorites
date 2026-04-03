@@ -46,7 +46,7 @@ local function create_safe_event_handler(handler, handler_name)
       })
     end
 
-    local success, err = xpcall(function() handler(event) end, debug.traceback)
+    local success, err = pcall(handler, event)
     if not success then
       ErrorHandler.warn_log("Event handler failed", {
         handler_name = handler_name,
@@ -120,9 +120,11 @@ function EventRegistrationDispatcher.register_core_events(script)
   }
   core_events[defines.events.on_runtime_mod_setting_changed] = {
     handler = function(event) -- Handle changes to the favorites on/off setting
-      ErrorHandler.debug_log("[SETTINGS] on_runtime_mod_setting_changed fired for setting: " .. tostring(event.setting))
-      ErrorHandler.debug_log("[SETTINGS] Event player_index: " .. tostring(event.player_index))
-      ErrorHandler.debug_log("[SETTINGS] Event setting_type: " .. tostring(event.setting_type))
+      if ErrorHandler.should_log_debug() then
+        ErrorHandler.debug_log("[SETTINGS] on_runtime_mod_setting_changed fired for setting: " .. tostring(event.setting))
+        ErrorHandler.debug_log("[SETTINGS] Event player_index: " .. tostring(event.player_index))
+        ErrorHandler.debug_log("[SETTINGS] Event setting_type: " .. tostring(event.setting_type))
+      end
 
   if event.setting == "favorites_on" then
         ErrorHandler.debug_log("[SETTINGS] Processing favorites_on change")
@@ -130,14 +132,18 @@ function EventRegistrationDispatcher.register_core_events(script)
           -- Invalidate cache first to ensure we get fresh settings
           Cache.Settings.invalidate_player_cache(player)
           local player_settings = Cache.Settings.get_player_settings(player)
-          ErrorHandler.debug_log("[SETTINGS] Player " ..
-            player.name .. " favorites_on: " .. tostring(player_settings.favorites_on))
+          if ErrorHandler.should_log_debug() then
+            ErrorHandler.debug_log("[SETTINGS] Player " ..
+              player.name .. " favorites_on: " .. tostring(player_settings.favorites_on))
+          end
 
           -- Always rebuild the bar to update visibility - don't destroy it completely
           -- The build function handles showing/hiding specific elements based on settings
           fave_bar.build(player, true) -- Force rebuild to update element visibility
-          ErrorHandler.debug_log("[SETTINGS] Rebuilt favorites bar for player " ..
-            player.name .. " (favorites_on: " .. tostring(player_settings.favorites_on) .. ")")
+          if ErrorHandler.should_log_debug() then
+            ErrorHandler.debug_log("[SETTINGS] Rebuilt favorites bar for player " ..
+              player.name .. " (favorites_on: " .. tostring(player_settings.favorites_on) .. ")")
+          end
         end
         ErrorHandler.debug_log("[SETTINGS] favorites_on processing complete")
         return
@@ -152,7 +158,9 @@ function EventRegistrationDispatcher.register_core_events(script)
           local old_max = Cache.get_last_max_favorite_slots(player)
           Cache.Settings.invalidate_player_cache(player)
           local new_max = Cache.Settings.get_player_max_favorite_slots(player)
-          ErrorHandler.debug_log("[SETTINGS] old_max vs new_max", { player = player.name, old_max = old_max, new_max = new_max })
+          if ErrorHandler.should_log_debug() then
+            ErrorHandler.debug_log("[SETTINGS] old_max vs new_max", { player = player.name, old_max = old_max, new_max = new_max })
+          end
           -- Apply changes
           Cache.apply_player_max_slots(player, new_max)
           -- Persist last known value
@@ -187,19 +195,25 @@ function EventRegistrationDispatcher.register_core_events(script)
           -- Invalidate cache first to ensure we get fresh settings
           Cache.Settings.invalidate_player_cache(player)
           local player_settings = Cache.Settings.get_player_settings(player)
-          ErrorHandler.debug_log("[SETTINGS] Player " ..
-            player.name .. " enable_teleport_history: " .. tostring(player_settings.enable_teleport_history))
+          if ErrorHandler.should_log_debug() then
+            ErrorHandler.debug_log("[SETTINGS] Player " ..
+              player.name .. " enable_teleport_history: " .. tostring(player_settings.enable_teleport_history))
+          end
 
           -- If teleport history is being disabled, close any open modal
           if not player_settings.enable_teleport_history then
             teleport_history_modal.destroy(player)
-            ErrorHandler.debug_log("[SETTINGS] Closed teleport history modal for player " .. player.name)
+            if ErrorHandler.should_log_debug() then
+              ErrorHandler.debug_log("[SETTINGS] Closed teleport history modal for player " .. player.name)
+            end
           end
 
           -- Rebuild the favorites bar to reflect the new teleport history setting
           fave_bar.build(player, true)
-          ErrorHandler.debug_log("[SETTINGS] Rebuilt favorites bar for teleport history change for player " ..
-            player.name)
+          if ErrorHandler.should_log_debug() then
+            ErrorHandler.debug_log("[SETTINGS] Rebuilt favorites bar for teleport history change for player " ..
+              player.name)
+          end
         end
         ErrorHandler.debug_log("[SETTINGS] enable_teleport_history processing complete")
         return
@@ -212,13 +226,17 @@ function EventRegistrationDispatcher.register_core_events(script)
         if player and player.valid then
           Cache.Settings.invalidate_player_cache(player)
           fave_bar.build(player, true)
-          ErrorHandler.debug_log("[SETTINGS] Rebuilt favorites bar for slot-label-mode change for player " .. player.name)
+          if ErrorHandler.should_log_debug() then
+            ErrorHandler.debug_log("[SETTINGS] Rebuilt favorites bar for slot-label-mode change for player " .. player.name)
+          end
         end
         return
       end
 
       -- Destination message setting has been removed - messages always shown
-      ErrorHandler.debug_log("[SETTINGS] Unknown setting changed: " .. tostring(event.setting))
+      if ErrorHandler.should_log_debug() then
+        ErrorHandler.debug_log("[SETTINGS] Unknown setting changed: " .. tostring(event.setting))
+      end
     end,
     name = "on_runtime_mod_setting_changed"
   }
@@ -268,18 +286,10 @@ function EventRegistrationDispatcher.register_core_events(script)
   -- Dynamic registration/deregistration at runtime causes script-event-mismatch when clients join.
   -- Each handler uses a flag guard to no-op when inactive (negligible UPS cost).
   
-  -- Permanent on_nth_tick(2): Processes deferred GUI notifications when queue has items
+  -- Permanent on_nth_tick(2): fast startup/update loop.
+  -- Handles deferred GUI notifications and deferred init queue without visible 1s lag.
   script.on_nth_tick(2, function()
-    if GuiObserver.GuiEventBus._deferred_tick_active then
-      GuiObserver.GuiEventBus.process_deferred_notifications()
-    end
-  end)
-  
-  -- UPS OPTIMIZATION: Eliminated on_tick handler (was 60 no-op dispatches/sec). Observer registration
-  -- now happens at tick 60 instead of tick 1. The 1-second delay is fine because the fave bar isn't
-  -- built until tick 60 anyway (deferred init), so there's nothing to observe before then.
-  script.on_nth_tick(60, function()
-    -- First-session observer registration (replaces the removed on_tick handler)
+    -- First-session observer registration (replaces removed on_tick handler)
     if not handlers.get_observers_registered_flag() then
       handlers.set_observers_registered_flag(true)
       for _, player in pairs(game.players) do
@@ -287,8 +297,18 @@ function EventRegistrationDispatcher.register_core_events(script)
           GuiObserver.GuiEventBus.register_player_observers(player)
         end
       end
+      -- Ensure loaded-session players run through deferred init/build path.
+      -- on_player_joined_game may not fire for already connected players after save load.
+      handlers.enqueue_all_players_for_deferred_init()
       GuiObserver.GuiEventBus.process_deferred_notifications()
     end
+
+    if GuiObserver.GuiEventBus._deferred_tick_active then
+      GuiObserver.GuiEventBus.process_deferred_notifications()
+    end
+
+    -- Process one deferred player every 2 ticks (instead of every 60 ticks)
+    -- so the first visible favorites bar render is corrected almost immediately.
     handlers.process_deferred_init_queue()
   end)
   

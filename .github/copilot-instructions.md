@@ -1,4 +1,11 @@
-# 🛑 LUA FUNCTION/VARIABLE ORDERING NOTE
+# If you ever need further clarification - do not hesistate to ask
+
+# If you can see that my request will make an inordinate amount of token backlash in the request, ask me for refinement prior to trying to answer the question.
+
+- in other words, if you think you do not have enough information to complete your tasks effectively and efficiently from the prompt I have given you, please ask me to refine my prompt and provide the reason why. It will be much easier for me to correct my prompt if you give me clues as to how to make it more efficient and provide context as to what needs clarification. 
+
+
+# LUA FUNCTION/VARIABLE ORDERING NOTE
 
 **Lua does NOT hoist function or variable declarations.**
 - All functions, tables, and variables must be defined before they are referenced or used in the file.
@@ -6,15 +13,15 @@
 - Always declare helper functions and handler tables at the top of the file, before any code that uses them.
 - This is different from JavaScript, where function declarations are hoisted.
 
-# 🚨 CRITICAL: FACTORIO REQUIRE STATEMENT RULES
+# CRITICAL: FACTORIO REQUIRE STATEMENT RULES
 
 **Factorio's runtime STRICTLY PROHIBITS `require()` calls inside functions or after module load time.**
 
 When you see the error: `"Require can't be used outside of control.lua parsing"` - this means you placed a `require()` call inside a function, event handler, or anywhere other than the top-level module scope.
 
-## ✅ CORRECT Pattern (Module-Level Requires):
+## CORRECT Pattern (Module-Level Requires):
 ```lua
--- ✅ ALL requires at the very top, before any logic
+-- ALL requires at the very top, before any logic
 local Cache = require("core.cache.cache")
 local PlayerHelpers = require("core.utils.player_helpers")
 local ErrorHandler = require("core.utils.error_handler")
@@ -31,9 +38,9 @@ end
 return MyModule
 ```
 
-## ❌ FORBIDDEN Pattern (Runtime Requires):
+## FORBIDDEN Pattern (Runtime Requires):
 ```lua
--- ❌ NEVER EVER DO THIS - Will cause "Require can't be used outside of control.lua parsing"
+-- NEVER EVER DO THIS - Will cause "Require can't be used outside of control.lua parsing"
 function MyModule.some_function()
   local ErrorHandler = require("core.utils.error_handler")  -- FORBIDDEN!
   ErrorHandler.debug_log("Message")
@@ -44,7 +51,7 @@ function MyModule.log(level, message, data)
 end
 ```
 
-## 🔄 Circular Dependency Exception (Lazy Loading):
+## Circular Dependency Exception (Lazy Loading):
 **ONLY use this pattern when you have a genuine circular dependency that cannot be refactored:**
 
 ```lua
@@ -69,14 +76,14 @@ return MyModule
 ```
 
 **When to use lazy loading:**
-- ✅ Genuine circular dependency (A requires B, B requires A)
-- ✅ Module is only used in runtime functions (never in module initialization)
-- ✅ You've verified refactoring into a third module is not viable
+- Genuine circular dependency (A requires B, B requires A)
+- Module is only used in runtime functions (never in module initialization)
+- You've verified refactoring into a third module is not viable
 
 **When NOT to use lazy loading:**
-- ❌ "Convenience" - just because a module is only used in one function
-- ❌ To avoid thinking about module organization
-- ❌ Any non-circular dependency scenario
+- "Convenience" - just because a module is only used in one function
+- To avoid thinking about module organization
+- Any non-circular dependency scenario
 
 ## 🔍 How to Detect Your Mistake:
 
@@ -98,11 +105,11 @@ __ModName__/path/to/file.lua:XX: Require can't be used outside of control.lua pa
 # IMPORTANT: All code, API usage, and modding guidance in this project MUST target Factorio v2.0+ and above. Do not use deprecated or legacy patterns from earlier versions. Always verify compatibility and reference the v2.0+ documentation for all features, prototypes, and runtime logic.
 # TeleportFavorites Factorio Mod — AI Agent Instructions
 
-## 🎯 PROJECT OVERVIEW
+## PROJECT OVERVIEW
 
 TeleportFavorites is a **multiplayer-safe Factorio mod** that enables instant teleportation to favorite locations via map tags. Key features:
 
-## 🏗️ ARCHITECTURE QUICK START
+## ARCHITECTURE QUICK START
 
 ### Module Structure
 ```
@@ -128,10 +135,10 @@ tests/              # Custom test framework with smoke testing
 - All persistent data flows through `core/cache/cache.lua`
 - Surface-aware data management for multiplayer compatibility
 
-## 🛡️ CODING STANDARDS & BEST PRACTICES (STRICT)
+## CODING STANDARDS & BEST PRACTICES (STRICT)
 See `.github/instructions/coding-standards.instructions.md` for full Lua coding standards (EmmyLua annotations, GUI naming, sprite usage, storage patterns, drag-drop algorithm, Factorio-specific patterns).
 
-## 🔧 DEVELOPMENT WORKFLOW
+## DEVELOPMENT WORKFLOW
 
 ### Testing
 ```powershell
@@ -143,10 +150,10 @@ See `.github/instructions/coding-standards.instructions.md` for full Lua coding 
 - Save script output before piping: `.\.test.ps1 > out.txt 2>&1; Get-Content out.txt -Tail 20; Remove-Item out.txt`
 - See `.github/instructions/powershell.instructions.md` for full antipatterns reference.
 
-## 📋 ACTIVE TASKS
+## ACTIVE TASKS
 Before starting any implementation work, read `.project/TODO.md` for outstanding tasks.
 
-## 📚 KEY DOCUMENTATION REFERENCES
+## KEY DOCUMENTATION REFERENCES
 
 **ALWAYS check these before making changes:**
 - `.project/TODO.md` - Outstanding tasks and technical debt
@@ -158,7 +165,7 @@ Before starting any implementation work, read `.project/TODO.md` for outstanding
 - `tests/docs/README.md` - Test execution & framework usage
 
 
-## 🚨 FACTORIO API ESSENTIALS (v2.0+)
+## FACTORIO API ESSENTIALS (v2.0+)
 
 **Official API reference**: https://lua-api.factorio.com/latest/
 

@@ -244,20 +244,25 @@ function PlayerFavorites.update_gps_for_all_players(old_gps, new_gps, acting_pla
 
   for player_index, player in pairs(game.players) do
     if player and player.valid and player_index ~= acting_player_index then
-      local favorites = PlayerFavorites.new(player)
-      -- Only update if the player's favorite is still old_gps (not already updated)
-      local needs_update = false
-      for i = 1, #favorites.favorites do
-        local fav = favorites.favorites[i]
-        if fav and fav.gps == old_gps then
-          needs_update = true
-          break
+      -- Check raw storage first to avoid creating PlayerFavorites instances for non-matching players
+      local surface_index = player.surface.index
+      local raw_favorites = Cache.get_player_favorites(player, surface_index)
+      if raw_favorites then
+        local needs_update = false
+        for i = 1, #raw_favorites do
+          local fav = raw_favorites[i]
+          if fav and fav.gps == old_gps then
+            needs_update = true
+            break
+          end
         end
-      end
-      if needs_update then
-        local was_updated = favorites:update_gps_coordinates(old_gps, new_gps)
-        if was_updated then
-          table.insert(affected_players, player)
+        if needs_update then
+          local max_slots = Cache.Settings.get_player_max_favorite_slots(player)
+          local favorites = PlayerFavorites.new(player)
+          local was_updated = favorites:update_gps_coordinates(old_gps, new_gps, max_slots)
+          if was_updated then
+            table.insert(affected_players, player)
+          end
         end
       end
     end
@@ -268,14 +273,15 @@ end
 --- Update GPS coordinates for all favorites that match the old GPS
 ---@param old_gps string Original GPS coordinate string
 ---@param new_gps string New GPS coordinate string
+---@param provided_max_slots integer? Pre-fetched max slots (avoids redundant settings lookup)
 ---@return boolean any_updated True if any favorites were updated
-function PlayerFavorites:update_gps_coordinates(old_gps, new_gps)
+function PlayerFavorites:update_gps_coordinates(old_gps, new_gps, provided_max_slots)
   if not old_gps or not new_gps or old_gps == new_gps then
     return false
   end
 
   local any_updated = false
-  local max_slots = Cache.Settings.get_player_max_favorite_slots(self.player)
+  local max_slots = provided_max_slots or Cache.Settings.get_player_max_favorite_slots(self.player)
   for i = 1, max_slots do
     local fav = self.favorites[i] or FavoriteUtils.get_blank_favorite()
     if fav and not FavoriteUtils.is_blank_favorite(fav) and fav.gps == old_gps then

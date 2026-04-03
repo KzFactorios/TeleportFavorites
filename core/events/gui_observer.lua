@@ -177,11 +177,17 @@ function GuiEventBus.process_notifications()
   GuiEventBus._processing = true
   
   local error_count = 0
-  
-  while #GuiEventBus._notification_queue > 0 do
-    local notification = table.remove(GuiEventBus._notification_queue, 1)
+
+  -- Snapshot and clear the queue immediately so that notify() calls fired *during*
+  -- observer updates write into a fresh table rather than the one we're iterating.
+  -- Also eliminates the O(n²) cost of table.remove(queue, 1) shifting the array.
+  local snapshot = GuiEventBus._notification_queue
+  GuiEventBus._notification_queue = {}
+
+  for i = 1, #snapshot do
+    local notification = snapshot[i]
     local observers = GuiEventBus._observers[notification.type] or {}
-    
+
     for _, observer in ipairs(observers) do
       if observer and observer.update then
         local success, err = pcall(observer.update, observer, notification.data)
@@ -196,7 +202,7 @@ function GuiEventBus.process_notifications()
       end
     end
   end
-  
+
   GuiEventBus._processing = false
 end
 

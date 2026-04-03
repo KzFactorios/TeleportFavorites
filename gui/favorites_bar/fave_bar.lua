@@ -162,9 +162,9 @@ end
 
 local function get_fave_bar_gui_refs(player)
   local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
-  local bar_frame = main_flow and GuiValidation.find_child_by_name(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
-  local bar_flow = bar_frame and GuiValidation.find_child_by_name(bar_frame, Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW)
-  local slots_frame = bar_flow and GuiValidation.find_child_by_name(bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW)
+  local bar_frame = main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
+  local bar_flow = bar_frame and bar_frame[Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW]
+  local slots_frame = bar_flow and bar_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW]
   return main_flow, bar_frame, bar_flow, slots_frame
 end
 
@@ -408,24 +408,24 @@ local function build_favorite_buttons_row(parent, player, pfaves)
   local function get_slot_btn_props(i, fav)
     if fav and not FavoriteUtils.is_blank_favorite(fav) then
       local icon = nil
-      if fav.tag and fav.tag.chart_tag then
-        if fav.tag.chart_tag.valid then
-          icon = fav.tag.chart_tag.icon
-        else
-          return nil, { "tf-gui.favorite_slot_empty" }, "slot_button", false
+      local chart_tag = fav.tag and fav.tag.chart_tag or nil
+      if chart_tag and chart_tag.valid then
+        icon = chart_tag.icon
+      else
+        local chart_tag_lookup = fav.gps and Cache.Lookups.get_chart_tag_by_gps(fav.gps) or nil
+        if chart_tag_lookup and chart_tag_lookup.valid then
+          icon = chart_tag_lookup.icon
         end
       end
-      local norm_icon = icon
-      if type(icon) == "table" and icon.type == "virtual" then
-        norm_icon = {}
-        for k, v in pairs(icon) do norm_icon[k] = v end
-        norm_icon.type = "virtual_signal"
-      end
-      local sprite_icon = norm_icon
-      if type(norm_icon) == "table" and norm_icon.type == "virtual_signal" then
-        sprite_icon = {}
-        for k, v in pairs(norm_icon) do sprite_icon[k] = v end
-        sprite_icon.type = "virtual-signal"
+      local sprite_icon = icon
+      if type(icon) == "table" then
+        local icon_type = icon.type
+        if icon_type == "virtual" or icon_type == "virtual_signal" then
+          sprite_icon = { type = "virtual-signal" }
+          for k, v in pairs(icon) do
+            if k ~= "type" then sprite_icon[k] = v end
+          end
+        end
       end
       local btn_icon = GuiValidation.get_validated_sprite_path(sprite_icon,
         { fallback = Enum.SpriteEnum.PIN, log_context = { slot = i, fav_gps = fav.gps, fav_tag = fav.tag } })
@@ -558,31 +558,25 @@ function fave_bar.update_single_slot(player, slot_index)
 
   if fav and not FavoriteUtils.is_blank_favorite(fav) then
     -- Icon comes from chart_tag.icon only (tags do not have icon property)
-    -- Safely check chart_tag validity before accessing its properties
     local icon = nil
-    if fav.tag and fav.tag.chart_tag then
-      if fav.tag.chart_tag.valid then
-        icon = fav.tag.chart_tag.icon
-      else
-        -- Chart tag is invalid, treat as blank favorite
-        slot_button.sprite = ""
-        ---@diagnostic disable-next-line: assign-type-mismatch
-        slot_button.tooltip = { "tf-gui.favorite_slot_empty" }
-        return
+    local chart_tag = fav.tag and fav.tag.chart_tag or nil
+    if chart_tag and chart_tag.valid then
+      icon = chart_tag.icon
+    else
+      local chart_tag_lookup = fav.gps and Cache.Lookups.get_chart_tag_by_gps(fav.gps) or nil
+      if chart_tag_lookup and chart_tag_lookup.valid then
+        icon = chart_tag_lookup.icon
       end
     end
-    local norm_icon = icon
-    if type(icon) == "table" and icon.type == "virtual" then
-      norm_icon = {}
-      for k, v in pairs(icon) do norm_icon[k] = v end
-      norm_icon.type = "virtual_signal"
-    end
-    -- Patch: For sprite path, use 'virtual-signal' (hyphen) for Factorio GUI
-    local sprite_icon = norm_icon
-    if type(norm_icon) == "table" and norm_icon.type == "virtual_signal" then
-      sprite_icon = {}
-      for k, v in pairs(norm_icon) do sprite_icon[k] = v end
-      sprite_icon.type = "virtual-signal" -- hyphen for sprite path
+    local sprite_icon = icon
+    if type(icon) == "table" then
+      local icon_type = icon.type
+      if icon_type == "virtual" or icon_type == "virtual_signal" then
+        sprite_icon = { type = "virtual-signal" }
+        for k, v in pairs(icon) do
+          if k ~= "type" then sprite_icon[k] = v end
+        end
+      end
     end
     slot_button.sprite = GuiValidation.get_validated_sprite_path(sprite_icon,
       { fallback = Enum.SpriteEnum.PIN, log_context = { slot = slot_index, fav_gps = fav.gps, fav_tag = fav.tag } })
@@ -617,11 +611,10 @@ function fave_bar.update_toggle_state(player, slots_visible)
 
   -- First update the toggle button sprite
   if bar_flow then
-    local toggle_container = GuiValidation.find_child_by_name(bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER)
+    local toggle_container = bar_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER]
     if toggle_container then
       -- Update the visibility toggle button (fave_bar_visibility_toggle)
-      local toggle_visibility_button = GuiValidation.find_child_by_name(toggle_container,
-        Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_BUTTON)
+      local toggle_visibility_button = toggle_container[Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_BUTTON]
       if toggle_visibility_button and toggle_visibility_button.valid then
         -- Simple approach - just update the sprite property
         -- Swapped sprites: eyelash (closed eye) when visible, eye (open) when hidden
@@ -676,26 +669,25 @@ function fave_bar.update_all_slots_in_place(player)
       local did_update = false
       if fav and not FavoriteUtils.is_blank_favorite(fav) then
         local icon = nil
-        local icon_valid = true
-        if fav.tag and fav.tag.chart_tag then
-          if fav.tag.chart_tag.valid then
-            icon = fav.tag.chart_tag.icon
-          else
-            icon_valid = false
+        local chart_tag = fav.tag and fav.tag.chart_tag or nil
+        if chart_tag and chart_tag.valid then
+          icon = chart_tag.icon
+        else
+          local chart_tag_lookup = fav.gps and Cache.Lookups.get_chart_tag_by_gps(fav.gps) or nil
+          if chart_tag_lookup and chart_tag_lookup.valid then
+            icon = chart_tag_lookup.icon
           end
         end
-        if icon_valid then
-          local norm_icon = icon
-          if type(icon) == "table" and icon.type == "virtual" then
-            norm_icon = {}
-            for k, v in pairs(icon) do norm_icon[k] = v end
-            norm_icon.type = "virtual_signal"
-          end
-          local sprite_icon = norm_icon
-          if type(norm_icon) == "table" and norm_icon.type == "virtual_signal" then
-            sprite_icon = {}
-            for k, v in pairs(norm_icon) do sprite_icon[k] = v end
-            sprite_icon.type = "virtual-signal"
+        if icon ~= nil then
+          local sprite_icon = icon
+          if type(icon) == "table" then
+            local icon_type = icon.type
+            if icon_type == "virtual" or icon_type == "virtual_signal" then
+              sprite_icon = { type = "virtual-signal" }
+              for k, v in pairs(icon) do
+                if k ~= "type" then sprite_icon[k] = v end
+              end
+            end
           end
           slot_button.sprite = GuiValidation.get_validated_sprite_path(sprite_icon,
             { fallback = Enum.SpriteEnum.PIN, log_context = { slot = i, fav_gps = fav.gps, fav_tag = fav.tag } })

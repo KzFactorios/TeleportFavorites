@@ -232,6 +232,16 @@ function handlers.set_observers_registered_flag(value)
   observers_registered_this_session = value
 end
 
+--- Enqueue all current players for deferred initialization once per session.
+--- Needed on save-load sessions where on_player_joined_game may not fire for already connected players.
+function handlers.enqueue_all_players_for_deferred_init()
+  for _, player in pairs(game.players) do
+    if player and player.valid then
+      enqueue_deferred_init(player.index, true)
+    end
+  end
+end
+
 --- Process all queued player initializations
 --- on_nth_tick(60) stays permanently registered for multiplayer safety; it no-ops when queue is empty
 --- Deduplicates entries by player_index so each player is only initialized once per batch
@@ -263,7 +273,21 @@ function handlers.process_deferred_init_queue()
       Cache.Lookups.warm_surface_gps_map(surface_idx)
     end
 
+    -- Invalidate any stale rehydrated favorites immediately before the authoritative build.
+    -- This prevents the first visible bar render from reusing fallback icon cache entries that
+    -- may have been populated by an early dirty-player flush before the GPS map was warmed.
+    Cache.invalidate_rehydrated_favorites(deferred_player)
+
     fave_bar.build(deferred_player, true)
+
+    -- Startup safety refresh: some saves can still produce fallback icons on the first visible
+    -- build if runtime lookups settle one tick later. Queue one deferred refresh so the bar
+    -- self-corrects without requiring a manual action (e.g. opening map view).
+    Cache.invalidate_rehydrated_favorites(deferred_player)
+    gui_observer.GuiEventBus.notify("cache_updated", {
+      player_index = deferred_player.index,
+      type = "post_init_refresh"
+    }, true)
 
     ErrorHandler.debug_log("Deferred init processed for one player", {
       player = deferred_player.name,
