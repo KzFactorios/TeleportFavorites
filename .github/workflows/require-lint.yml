@@ -33,3 +33,12 @@ jobs:
           else
             echo "No direct player.gui.screen.add usage found.";
           fi
+        - name: Check for direct player.gui.screen.add usage
+          run: |
+            # Search only Lua source files and exclude tests, git metadata and repository docs
+            if grep -R --line-number --include="*.lua" "player\.gui\.screen\.add" --exclude-dir=tests --exclude-dir=.git --exclude-dir=.github .; then
+              echo "Direct player.gui.screen.add usage found. Fail the job.";
+              exit 1;
+            else
+              echo "No direct player.gui.screen.add usage found.";
+            fi
