@@ -13,6 +13,7 @@
 -- This ensures all clients receive the same game actions and maintain synchronized state.
 -- See update_chart_tag_fields() for the implementation of this pattern.
 
+
 local tag_editor = require("gui.tag_editor.tag_editor")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local Cache = require("core.cache.cache")
@@ -33,6 +34,7 @@ local ChartTagHelpers = require("core.events.chart_tag_helpers")
 local SharedUtils = require("core.control.control_shared_utils")
 local TeleportStrategy = require("core.utils.teleport_strategy")
 local Enum = require("prototypes.enums.enum")
+local IconUtils = require("core.cache.icon_utils")
 
 
 local M = {}
@@ -236,7 +238,25 @@ local function close_tag_editor(player)
   player.opened = nil
 end
 
+-- Ensures tag_data.gps is set to a valid GPS string using the player's current position if missing
+local function ensure_tag_data_gps(player, tag_data)
+  if not tag_data.gps or tag_data.gps == "" then
+    if player and player.position and player.surface and player.surface.index then
+      tag_data.gps = GPSUtils.gps_from_map_position(player.position, player.surface.index)
+      if ErrorHandler and ErrorHandler.debug_log then
+        ErrorHandler.debug_log("[TAG_EDITOR][GPS_FIX] Assigned GPS from player position", {
+          player = player.name,
+          gps = tag_data.gps,
+          position = player.position,
+          surface_index = player.surface.index
+        })
+      end
+    end
+  end
+end
+
 local function handle_confirm_btn(player, element, tag_data)
+  ensure_tag_data_gps(player, tag_data)
   ErrorHandler.debug_log("[TAG_EDITOR] handle_confirm_btn: entry", {
     gps = tag_data and tag_data.gps,
     is_favorite = tag_data and tag_data.is_favorite
@@ -247,7 +267,7 @@ local function handle_confirm_btn(player, element, tag_data)
   })
   -- Get values directly from storage (tag_data), not from UI elements
   local text = (tag_data.text or ""):gsub("%s+$", "")
-  local icon = tag_data.icon or ""
+  local icon = IconUtils.get_canonical_icon(tag_data.icon or "")
   local is_favorite = tag_data.is_favorite
   local max_len = Constants.settings.TAG_TEXT_MAX_LENGTH
   if #text > max_len then
@@ -314,9 +334,40 @@ local function handle_confirm_btn(player, element, tag_data)
       return nil
     end)()
   })
+  -- Determine canonical GPS for storage (prefer chart_tag position when available)
+  local canonical_gps = nil
+  if refreshed_tag and refreshed_tag.chart_tag and refreshed_tag.chart_tag.valid and refreshed_tag.chart_tag.position then
+    canonical_gps = GPSUtils.gps_from_map_position(refreshed_tag.chart_tag.position, surface_index)
+  end
+  canonical_gps = canonical_gps or (refreshed_tag.gps or tag.gps)
+  refreshed_tag.gps = canonical_gps
+
+  -- Ensure we persist a canonical icon table (do NOT persist userdata)
+  do
+    local icon_source = nil
+    if refreshed_tag.chart_tag and refreshed_tag.chart_tag.valid and refreshed_tag.chart_tag.icon then
+      icon_source = refreshed_tag.chart_tag.icon
+    else
+      icon_source = refreshed_tag.icon or tag_data.icon
+    end
+    refreshed_tag.icon = IconUtils.get_canonical_icon(icon_source) or nil
+  end
+
   -- Ensure tag is written to persistent storage (sanitized)
   local sanitized_tag = Cache.sanitize_for_storage(refreshed_tag)
-  tags[tag.gps] = sanitized_tag
+  tags[canonical_gps] = sanitized_tag
+  if ErrorHandler and ErrorHandler.debug_log then
+    ErrorHandler.debug_log("[TAG_EDITOR][CACHE_WRITE] Wrote sanitized tag to storage", {
+      gps = tag.gps,
+      owner_name = sanitized_tag.owner_name,
+      faved_by_players = sanitized_tag.faved_by_players,
+      keys = (function()
+        local ks = {}
+        for k in pairs(tags) do table.insert(ks, k) end
+        return ks
+      end)()
+    })
+  end
 
   -- MULTIPLAYER SAFETY: DO NOT store chart_tag userdata in storage!
   -- Chart tags are LuaObject references that are client-specific and cause desyncs
@@ -352,25 +403,56 @@ local function handle_confirm_btn(player, element, tag_data)
     Cache.invalidate_rehydrated_favorites(player, player.surface.index)
   else
     local player_favorites = PlayerFavorites.new(player)
-    player_favorites:remove_favorite(refreshed_tag.gps)
-    refreshed_tag.faved_by_players[player.index] = nil
-    -- Notify favorites bar to update after removing favorite
-    ErrorHandler.debug_log("[TAG_EDITOR] Sending favorite_removed notification", {
-      player = player.name,
-      gps = refreshed_tag.gps
-    })
-    SharedUtils.notify_observer("favorite_removed", {
-      player = player,
-      gps = refreshed_tag.gps,
-      tag = refreshed_tag
-    })
-    -- Invalidate rehydrated favorites cache for this player-surface
-    Cache.invalidate_rehydrated_favorites(player, player.surface.index)
+    local was_favorite = player_favorites:get_favorite_by_gps(refreshed_tag.gps)
+    if was_favorite then
+      player_favorites:remove_favorite(refreshed_tag.gps)
+      refreshed_tag.faved_by_players[player.index] = nil
+      -- Notify favorites bar to update after removing favorite
+      ErrorHandler.debug_log("[TAG_EDITOR] Sending favorite_removed notification", {
+        player = player.name,
+        gps = refreshed_tag.gps
+      })
+      SharedUtils.notify_observer("favorite_removed", {
+        player = player,
+        gps = refreshed_tag.gps,
+        tag = refreshed_tag
+      })
+      -- Invalidate rehydrated favorites cache for this player-surface
+      Cache.invalidate_rehydrated_favorites(player, player.surface.index)
+    end
   end
 
   -- After updating faved_by_players, re-sanitize and persist the tag
+  local final_canonical_gps = nil
+  if refreshed_tag and refreshed_tag.chart_tag and refreshed_tag.chart_tag.valid and refreshed_tag.chart_tag.position then
+    final_canonical_gps = GPSUtils.gps_from_map_position(refreshed_tag.chart_tag.position, surface_index)
+  end
+  final_canonical_gps = final_canonical_gps or refreshed_tag.gps
+  refreshed_tag.gps = final_canonical_gps
+  -- Ensure icon is canonical before final persist
+  do
+    local icon_source = nil
+    if refreshed_tag.chart_tag and refreshed_tag.chart_tag.valid and refreshed_tag.chart_tag.icon then
+      icon_source = refreshed_tag.chart_tag.icon
+    else
+      icon_source = refreshed_tag.icon or tag_data.icon
+    end
+    refreshed_tag.icon = IconUtils.get_canonical_icon(icon_source) or nil
+  end
   local sanitized_tag = Cache.sanitize_for_storage(refreshed_tag)
-  tags[refreshed_tag.gps] = sanitized_tag
+  tags[final_canonical_gps] = sanitized_tag
+  if ErrorHandler and ErrorHandler.debug_log then
+    ErrorHandler.debug_log("[TAG_EDITOR][CACHE_WRITE] Final persisted tag", {
+      gps = refreshed_tag.gps,
+      owner_name = sanitized_tag.owner_name,
+      faved_by_players = sanitized_tag.faved_by_players,
+      keys = (function()
+        local ks = {}
+        for k in pairs(tags) do table.insert(ks, k) end
+        return ks
+      end)()
+    })
+  end
   tag_data.tag = sanitized_tag
 
   -- Notify observers of tag creation or modification

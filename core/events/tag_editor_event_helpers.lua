@@ -110,9 +110,23 @@ function TagEditorEventHelpers.find_nearby_chart_tag(normalized_pos, surface_ind
 
       local dx = math.abs(tag_pos.x - normalized_pos.x)
       local dy = math.abs(tag_pos.y - normalized_pos.y)
-      
+      local distance = math.sqrt(dx * dx + dy * dy)
+
+      if ErrorHandler and ErrorHandler.debug_log then
+        ErrorHandler.debug_log("[TAG_EDITOR][RADIUS_FIND] Candidate tag", {
+          tag_pos = tag_pos,
+          normalized_pos = normalized_pos,
+          dx = dx,
+          dy = dy,
+          distance = distance,
+          click_radius = click_radius,
+          min_distance = min_distance,
+          tag_valid = tag.valid,
+          tag_text = tag.text or "",
+        })
+      end
+
       if dx <= click_radius and dy <= click_radius then
-        local distance = math.sqrt(dx * dx + dy * dy)
         if distance < min_distance then
           min_distance = distance
           closest_chart_tag = tag

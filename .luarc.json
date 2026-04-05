@@ -1,0 +1,11 @@
+﻿{
+  "runtime.version": "Lua 5.2",
+  "diagnostics.globals": [
+    "game", "script", "data", "mods", "defines",
+    "remote", "commands", "settings", "log", "table_size"
+  ],
+  "workspace.library": [
+    "V:/Fac2orios/2_Gemini/data/core/lualib"
+  ],
+  "workspace.checkThirdParty": false
+}

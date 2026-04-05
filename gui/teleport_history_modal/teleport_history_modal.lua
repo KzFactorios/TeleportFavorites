@@ -14,7 +14,7 @@ local HistoryItem = require("core.teleport.history_item")
 local Lookups = require("core.cache.lookups")
 local TeleportHistory = require("core.teleport.teleport_history")
 local Constants = require("constants")
-local icon_typing = require("core.cache.icon_typing")
+local IconUtils = require("core.cache.icon_utils")
 
 
 local teleport_history_modal = {}
@@ -86,14 +86,13 @@ function teleport_history_modal.build(player)
   local modal_width = (pos and type(pos.width) == "number") and pos.width or 350
   local modal_height = (pos and type(pos.height) == "number") and pos.height or 392
 
-  -- Create the main modal frame (following tag editor pattern)
-  local modal_frame = player.gui.screen.add {
-    type = "frame",
+  -- Create the main modal frame (using GuiBase helper to ensure consistency)
+  local modal_frame = GuiBase.create_element('frame', player.gui.screen, {
     name = Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL,
     direction = "vertical",
     style = "tf_teleport_history_modal_frame",
     modal = false
-  }
+  })
   -- Sizing is defined by style; do not mutate style fields at runtime
 
   -- Critical error check: Ensure modal was created successfully
@@ -323,7 +322,7 @@ function teleport_history_modal.update_history_list(player)
       )
 
       if tag_icon and tag_icon.name then
-        local icon_rich_text = icon_typing.format_icon_as_rich_text(tag_icon)
+        local icon_rich_text = IconUtils.to_rich_text(tag_icon)
         GuiBase.create_label(item_button, "teleport_history_icon_label_" .. tostring(i), icon_rich_text,
           "tf_history_icon_label")
       end

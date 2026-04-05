@@ -1,0 +1,35 @@
+name: Require Lint
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Find runtime requires
+        run: |
+          echo "Searching for in-function runtime require() usages..."
+          set -e
+          files=$(find . -name "*.lua" -not -path "./tests/*" -not -path "./.git/*" )
+          found=0
+          for f in $files; do
+            awk '/^[ \t]+.*require\(/ { print FILENAME ":" NR ":" $0; found=1 } END { if (found==1) exit 1 }' "$f" || exit_code=$?
+            if [ "$exit_code" = "1" ]; then found=1; fi
+          done
+          if [ "$found" = "1" ]; then
+            echo "Runtime require() usages detected. Fail the job.";
+            exit 1;
+          else
+            echo "No runtime require() usages found.";
+          fi
+      - name: Check for direct player.gui.screen.add usage
+        run: |
+          if grep -R --line-number "player\.gui\.screen\.add" --exclude-dir=tests --exclude-dir=.git .; then
+            echo "Direct player.gui.screen.add usage found. Fail the job.";
+            exit 1;
+          else
+            echo "No direct player.gui.screen.add usage found.";
+          fi

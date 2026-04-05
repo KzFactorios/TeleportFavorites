@@ -5,15 +5,32 @@
       "factorioPath": "v:\\Fac2orios\\2_Gemini\\bin\\x64\\factorio.exe"
     }
   ],
-  "Lua.workspace.userThirdParty": [
-    "c:\\Users\\Dev\\AppData\\Roaming\\Code - Insiders\\User\\workspaceStorage\\20dd1ca5b862b4fd4d0d6da8819e2cfe\\justarandomgeek.factoriomod-debug\\sumneko-3rd"
+  "Lua.runtime.version": "Lua 5.2",
+  "Lua.diagnostics.globals": [
+    "script",
+    "data",
+    "storage",
+    "defines",
+    "log",
+    "remote",
+    "commands",
+    "rendering"
   ],
-  "Lua.workspace.checkThirdParty": "ApplyInMemory",
-  "chat.agent.enabled": true,
   "Lua.workspace.library": [
-    "${workspaceFolder}/core/types"
+    "${workspaceFolder}/core/types",
+    "c:\\Users\\Dev\\AppData\\Roaming\\Code - Insiders\\User\\workspaceStorage\\20dd1ca5b862b4fd4d0d6da8819e2cfe\\justarandomgeek.factoriomod-debug\\sumneko-3rd\\factorio"
   ],
-  "github.copilot.advanced": {
-        "debug.useNodeFetcher": true
-    }
+  "Lua.typeChecking.mode": "Information",
+  "Lua.workspace.checkThirdParty": "ApplyInMemory",
+  "github.copilot.editor.enableAutoCompletions": true,
+  "chat.agent.enabled": true,
+  "Lua.runtime.path": [
+    "?.lua",
+    "?/init.lua",
+    "${workspaceFolder}/?.lua"
+  ],
+  "github.copilot.chat.codeGeneration.instructions": [
+    ".github/copilot-instructions.md"
+  ],
+  "github.copilot.chat.search.semanticSearch": true
 }

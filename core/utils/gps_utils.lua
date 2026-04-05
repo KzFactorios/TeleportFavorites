@@ -39,6 +39,9 @@ function GPSUtils.gps_from_map_position(map_position, surface_index)
   surface_index = surface_index or 1
   local x = math.floor(map_position.x + 0.5)
   local y = math.floor(map_position.y + 0.5)
+  if ErrorHandler and ErrorHandler.debug_log then
+    ErrorHandler.debug_log("[GPS] gps_from_map_position", { map_x = map_position.x, map_y = map_position.y, rounded_x = x, rounded_y = y, surface_index = surface_index })
+  end
   return BasicHelpers.pad(x, padlen) .. "." .. BasicHelpers.pad(y, padlen) .. "." .. tostring(surface_index)
 end
 

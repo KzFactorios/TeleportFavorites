@@ -13,6 +13,11 @@ local basic_helpers = require("core.utils.basic_helpers")
 local ValidationUtils = require("core.utils.validation_utils")
 local Cache = require("core.cache.cache")
 local fave_bar = require("gui.favorites_bar.fave_bar")
+local DebugConfig = require("core.utils.debug_config")
+local ErrorHandler = require("core.utils.error_handler")
+local PlayerHelpers = require("core.utils.player_helpers")
+local GuiHelpers = require("core.utils.gui_helpers")
+local GuiValidation = require("core.utils.gui_validation")
 
 local DebugCommands = {}
 
@@ -20,15 +25,15 @@ local DebugCommands = {}
 local function get_deps(deps)
   deps = deps or {}
   return {
-    DebugConfig = deps.DebugConfig or require("core.utils.debug_config"),
-    Logger = deps.Logger or require("core.utils.error_handler"),
-    PlayerHelpers = deps.PlayerHelpers or require("core.utils.player_helpers"),
-    FaveBar = deps.FaveBar or require("gui.favorites_bar.fave_bar"),
-    GuiHelpers = deps.GuiHelpers or require("core.utils.gui_helpers"),
-    GuiValidation = deps.GuiValidation or require("core.utils.gui_validation"),
-    BasicHelpers = deps.BasicHelpers or require("core.utils.basic_helpers"),
-    Cache = deps.Cache or require("core.cache.cache"),
-    fave_bar = deps.fave_bar or require("gui.favorites_bar.fave_bar"),
+    DebugConfig = deps.DebugConfig or DebugConfig,
+    Logger = deps.Logger or ErrorHandler,
+    PlayerHelpers = deps.PlayerHelpers or PlayerHelpers,
+    FaveBar = deps.FaveBar or fave_bar,
+    GuiHelpers = deps.GuiHelpers or GuiHelpers,
+    GuiValidation = deps.GuiValidation or GuiValidation,
+    BasicHelpers = deps.BasicHelpers or basic_helpers,
+    Cache = deps.Cache or Cache,
+    fave_bar = deps.fave_bar or fave_bar,
   }
 end
 

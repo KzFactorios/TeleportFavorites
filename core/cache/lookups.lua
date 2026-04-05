@@ -1,3 +1,35 @@
+    if ErrorHandler and ErrorHandler.debug_log then
+      local icon_str = "<nil>"
+      if chart_tag and chart_tag.icon then
+        if type(chart_tag.icon) == "table" and serpent and serpent.line then
+          icon_str = serpent.line(chart_tag.icon)
+        else
+          icon_str = tostring(chart_tag.icon)
+        end
+      end
+      ErrorHandler.debug_log("[LOOKUPS] upsert_chart_tag_in_cache", {
+        gps = gps,
+        icon = icon_str,
+        chart_tag = chart_tag
+      })
+    end
+  if ErrorHandler and ErrorHandler.debug_log then
+    local chart_tag = chart_tag_cache[gps]
+    local icon_str = "<nil>"
+    if chart_tag and chart_tag.icon then
+      if type(chart_tag.icon) == "table" and serpent and serpent.line then
+        icon_str = serpent.line(chart_tag.icon)
+      else
+        icon_str = tostring(chart_tag.icon)
+      end
+    end
+    ErrorHandler.debug_log("[LOOKUPS] get_chart_tag_by_gps", {
+      gps = gps,
+      chart_tag_valid = chart_tag and chart_tag.valid or false,
+      icon = icon_str,
+      chart_tag = chart_tag
+    })
+  end
 -- core/cache/lookups.lua
 -- TeleportFavorites Factorio Mod
 -- Manages runtime cache for chart tag lookups, rebuilt from game state for performance and multiplayer safety.
@@ -18,6 +50,8 @@ local basic_helpers = require("core.utils.basic_helpers")
 local GPSUtils = require("core.utils.gps_utils")
 local ErrorHandler = require("core.utils.error_handler")
 local BasicHelpers = require("core.utils.basic_helpers")
+local _serpent_ok, serpent = pcall(require, "serpent")
+if not _serpent_ok then serpent = nil end
 
 -- Handles the non-persistent in-game data cache for runtime lookups.
 local Lookups = {}
@@ -175,19 +209,45 @@ local function get_chart_tag_cache(surface_index)
   local surface_idx = basic_helpers.normalize_index(surface_index)
   local surface_cache = ensure_surface_cache(surface_idx)
   
-  -- Lazy-load chart_tags array only when this function is actually called (proximity search)
-  -- This defers find_chart_tags() from initialization to right-click time
-  if not surface_cache.chart_tags then
+    -- Lazy-load chart_tags array only when this function is actually called (proximity search)
+    -- This defers find_chart_tags() from initialization to right-click time
+    if not surface_cache.chart_tags then
     local surface = game.surfaces[surface_idx]
+    local all_tags = {}
     if surface then
-      surface_cache.chart_tags = game.forces["player"].find_chart_tags(surface) or {}
+      for _, force in pairs(game.forces) do
+        local force_tags = force.find_chart_tags(surface) or {}
+          if ErrorHandler and ErrorHandler.debug_log then
+            ErrorHandler.debug_log("[TAG_CACHE][FORCE_SCAN]", {
+              force = force.name,
+              tags_found = #force_tags
+            })
+            for i, tag in ipairs(force_tags) do
+              ErrorHandler.debug_log("[TAG_CACHE][FOUND] Chart tag", {
+                index = i,
+                position = tag.position,
+                text = tag.text or "",
+                icon = tag.icon,
+                valid = tag.valid,
+                force = tag.force and tag.force.name or "<nil>",
+                surface = tag.surface and tag.surface.name or "<nil>"
+              })
+              table.insert(all_tags, tag)
+            end
+          else
+            for _, tag in ipairs(force_tags) do
+              table.insert(all_tags, tag)
+            end
+          end
+      end
+      surface_cache.chart_tags = all_tags
     else
       surface_cache.chart_tags = {}
     end
-    ErrorHandler.debug_log("get_chart_tag_cache: find_chart_tags scan", {
-      surface_index = surface_idx,
-      tags_found = #(surface_cache.chart_tags)
-    })
+      ErrorHandler.debug_log("get_chart_tag_cache: find_chart_tags scan", {
+        surface_index = surface_idx,
+        tags_found = #(surface_cache.chart_tags)
+      })
   end
   
   return surface_cache.chart_tags or {}

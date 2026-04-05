@@ -7,7 +7,7 @@
 
 local ErrorHandler = require("core.utils.error_handler")
 local Constants = require("constants")
-local icon_typing = require("core.cache.icon_typing")
+local IconUtils = require("core.cache.icon_utils")
 local Cache = require("core.cache.cache")
 local gui_event_dispatcher = require("core.events.gui_event_dispatcher")
 local custom_input_dispatcher = require("core.events.custom_input_dispatcher")
@@ -16,10 +16,6 @@ local control_tag_editor = require("core.control.control_tag_editor")
 local teleport_history_modal = require("gui.teleport_history_modal.teleport_history_modal")
 local handlers = require("core.events.handlers")
 local GuiHelpers = require("core.utils.gui_helpers")
--- REMOVED: ModalInputBlocker was causing UPS spikes by registering 12 high-frequency
--- event handlers (on_built_entity, on_player_mined_item, etc.) that fired on every
--- build/mine/transfer. The handlers were no-ops (Factorio events can't be cancelled).
--- local ModalInputBlocker = require("core.events.modal_input_blocker")
 local GuiValidation = require("core.utils.gui_validation")
 local Enum = require("prototypes.enums.enum")
 local ChartTagOwnershipManager = require("core.control.chart_tag_ownership_manager")
@@ -32,6 +28,19 @@ local EventRegistrationDispatcher = {}
 
 -- Track registration state (use rawget to avoid static analysis issues)
 local _registration_state = {}
+
+--[[
+---@param phase string
+---@param context table|nil
+
+ Completely disabled for test noise reduction
+local function log_startup_scheduler_phase(phase, context)
+  -- if not ErrorHandler.should_log_debug() then return end
+  -- local log_context = context or {}
+  -- log_context.tick = game and game.tick or 0
+  -- ErrorHandler.debug_log("[STARTUP_SCHEDULER] " .. phase, log_context)
+end
+]]
 
 ---@param event_player_index uint|nil
 ---@return LuaPlayer[]
@@ -254,12 +263,12 @@ function EventRegistrationDispatcher.register_core_events(script)
       GuiObserver.GuiEventBus.schedule_periodic_cleanup()
     end)
 
-    -- UPS OPTIMIZATION: Removed periodic icon_typing cache reset.
-    -- The icon_type_lookup table is non-persistent (lives in _G), so it auto-clears on
+    -- UPS OPTIMIZATION: Removed periodic IconUtils cache reset.
+    -- The icon type lookup table is non-persistent (lives in _G), so it auto-clears on
     -- game restart/mod reload. Mods can't change mid-game without a restart, and
     -- on_configuration_changed already handles mod updates. The periodic reset was
     -- causing prototype scan storms (240-3000 lookups) on the next bar rebuild.
-    -- (Previously: on_nth_tick(54000) calling icon_typing.reset_icon_type_lookup())
+    -- (Previously: on_nth_tick(54000) calling IconUtils.reset_icon_type_lookup())
   end)
 
   if not success then
@@ -282,16 +291,20 @@ function EventRegistrationDispatcher.register_core_events(script)
 
     -- First-session observer registration (replaces removed on_tick handler)
     if not handlers.get_observers_registered_flag() then
+      -- log_startup_scheduler_phase("bootstrap.begin")
       handlers.set_observers_registered_flag(true)
       -- Ensure loaded-session players run through deferred init/build path.
       -- on_player_joined_game may not fire for already connected players after save load.
       -- Observer registration is intentionally deferred per-player to avoid startup spikes.
       handlers.enqueue_all_players_for_deferred_init()
       bootstrapped_this_tick = true
+      -- log_startup_scheduler_phase("bootstrap.end")
     end
 
     if GuiObserver.GuiEventBus._deferred_tick_active then
+      -- log_startup_scheduler_phase("gui_observer.deferred_notifications.begin")
       GuiObserver.GuiEventBus.process_deferred_notifications()
+      -- log_startup_scheduler_phase("gui_observer.deferred_notifications.end")
     end
 
     -- Avoid combining first-session bootstrap enqueue with deferred queue processing
@@ -303,8 +316,11 @@ function EventRegistrationDispatcher.register_core_events(script)
     -- Avoid stacking deferred-init work and slot hydration in the same tick.
     -- This lowers startup peak while keeping slot hydration frequent once init settles.
     local deferred_phase = handlers.process_deferred_init_queue()
-    if deferred_phase ~= "prepare" then
+    -- log_startup_scheduler_phase("deferred_phase", { phase = deferred_phase })
+    if deferred_phase == false or deferred_phase == "build" then
+      -- log_startup_scheduler_phase("startup_slot_queue.begin")
       fave_bar.process_startup_slot_build_queue()
+      -- log_startup_scheduler_phase("startup_slot_queue.end")
     end
   end)
   

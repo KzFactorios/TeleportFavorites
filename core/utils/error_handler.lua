@@ -13,7 +13,10 @@ local function send_error_to_player(player, error_key)
   BasicHelpers.safe_player_print(player, message_text)
 end
 
+
 ErrorHandler._log_level = (Constants and Constants.settings and Constants.settings.DEFAULT_LOG_LEVEL) or "production"
+
+-- Forced test write to verify script-output logging
 
 function ErrorHandler.is_debug()
   return ErrorHandler._log_level == "debug"
@@ -41,7 +44,7 @@ function ErrorHandler.initialize(log_level)
   end
   -- Only log initialization in debug mode
   if ErrorHandler.is_debug() then
-    pcall(function() 
+    pcall(function()
       log("[TeleFaves][DEBUG] Logger initialized with log level: " .. tostring(ErrorHandler._log_level))
     end)
   end
@@ -53,15 +56,17 @@ function ErrorHandler.debug_log(message, context)
   _in_error_handler = true
   local prefix = "[TeleFaves][DEBUG] "
   local ok, err = pcall(function()
+    local line = ""
     if context and type(context) == "table" then
       local context_str = ""
       for k, v in pairs(context) do
         context_str = context_str .. tostring(k) .. "=" .. tostring(v) .. " "
       end
-      log(prefix .. message .. " | Context: " .. context_str)
+      line = prefix .. message .. " | Context: " .. context_str
     else
-      log(prefix .. message)
+      line = prefix .. message
     end
+    log(line)
   end)
   -- Do not attempt to log errors from within the logger itself
   _in_error_handler = false

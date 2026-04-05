@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+# Pre-commit hook: run require lint and attempt fix; abort commit on remaining violations.
+ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || echo ".")
+cd "$ROOT_DIR" || exit 1
+
+echo "Running require lint..."
+lua scripts/require_lint.lua --fix .
+rc=$?
+if [ "$rc" -ne 0 ]; then
+  echo "Pre-commit: require lint failed (rc=$rc). Commit aborted." >&2
+  exit 1
+fi
+echo "Pre-commit: require lint passed. Proceeding with commit."
+exit 0

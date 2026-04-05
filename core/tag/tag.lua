@@ -46,8 +46,27 @@ function Tag.update_gps_and_surface_mapping(old_gps, new_gps, chart_tag, player,
   -- Get or create tag object
   local TagClass = Tag
   local old_tag = Cache.get_tag_by_gps(player, old_gps)
-  if old_tag == nil and new_gps then
-    old_tag = TagClass.new(new_gps, {})
+  -- If we don't have an old_tag in storage, try to hydrate from any pending move info
+  if old_tag == nil then
+    local pending = Cache.pop_pending_tag_move(player, old_gps)
+    if pending and new_gps then
+      old_tag = TagClass.new(new_gps, pending.faved_by_players or {}, pending.owner_name or preserve_owner_name)
+      -- copy text/icon hints if provided
+      if pending.text then old_tag.text = pending.text end
+      if pending.icon then old_tag.icon = pending.icon end
+      ErrorHandler.debug_log("[TAG_MOVE][HYDRATE_PENDING] Hydrated missing old_tag from pending move info", {
+        old_gps = old_gps,
+        new_gps = new_gps,
+        owner_name = old_tag.owner_name
+      })
+    elseif old_tag == nil and new_gps then
+      local fallback_owner = preserve_owner_name or (player and player.name) or nil
+      old_tag = TagClass.new(new_gps, {}, fallback_owner)
+      ErrorHandler.debug_log("[TAG_MOVE][FALLBACK_NEW_TAG] Created new tag with owner_name", {
+        new_gps = new_gps,
+        owner_name = fallback_owner
+      })
+    end
   end
 
   -- Only update if old_tag is a table

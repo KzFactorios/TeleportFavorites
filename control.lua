@@ -1,6 +1,6 @@
 ---@diagnostic disable: undefined-global, need-check-nil, assign-type-mismatch, param-type-mismatch, undefined-field
 
-
+local util = require("util")
 local control_tag_editor = require("core.control.control_tag_editor")
 local control_fave_bar = require("core.control.control_fave_bar")
 local event_registration_dispatcher = require("core.events.event_registration_dispatcher")
@@ -27,10 +27,12 @@ local function custom_on_init()
   TeleportHistory.register_remote_interface()
 
   -- Set debug mode based on development indicators
-  if storage and storage._tf_debug_mode then
-    ErrorHandler.debug_log("Development mode detected - enabling debug logging")
+  local configured_level = (Constants and Constants.settings and Constants.settings.DEFAULT_LOG_LEVEL) or "production"
+  local storage_flag = storage and storage._tf_debug_mode
+  if storage_flag then
+    ErrorHandler.debug_log("Development mode detected via storage._tf_debug_mode - enabling debug logging", { configured_level = configured_level })
   else
-    ErrorHandler.debug_log("Production mode - using minimal logging")
+    ErrorHandler.debug_log("Startup log mode", { configured_level = configured_level, storage_debug_flag = tostring(storage_flag) })
   end
 
   handlers.on_init()

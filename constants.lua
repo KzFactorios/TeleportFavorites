@@ -13,8 +13,7 @@ local Constants = {
     -- Logging Configuration
     -- ========================================
     -- One place to set runtime log level: "production" | "warn" | "error" | "debug"
-    DEFAULT_LOG_LEVEL = "production",
-    --DEFAULT_LOG_LEVEL = "debug",
+    DEFAULT_LOG_LEVEL = "debug",
     
     -- ========================================
     -- Chart Tag Settings

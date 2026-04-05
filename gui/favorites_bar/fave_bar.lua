@@ -17,6 +17,8 @@
 --          ├─ fave_bar_slot_1 (sprite-button)
 --          └─ fave_bar_slot_label_1 (label)
 
+
+-- icon typing merged into IconUtils
 local GuiBase = require("gui.gui_base")
 local GuiElementBuilders = require("core.utils.gui_element_builders")
 local ErrorMessageHelpers = require("core.utils.error_message_helpers")
@@ -27,6 +29,7 @@ local FavoriteRehydration = require("core.favorite.favorite_rehydration")
 local GuiValidation = require("core.utils.gui_validation")
 local GuiHelpers = require("core.utils.gui_helpers")
 local Cache = require("core.cache.cache")
+local IconUtils = require("core.cache.icon_utils")
 local Enum = require("prototypes.enums.enum")
 local BasicHelpers = require("core.utils.basic_helpers")
 local ValidationUtils = require("core.utils.validation_utils")
@@ -41,6 +44,20 @@ local startup_slot_build_queue = {}
 local startup_full_build_queue = {}
 local player_slot_trees = {}
 local STARTUP_LOADING_PLACEHOLDER = "fave_bar_startup_loading_placeholder"
+
+---@param phase string
+---@param player LuaPlayer|nil
+---@param context table|nil
+local function log_startup_phase(phase, player, context)
+  if not ErrorHandler.should_log_debug() then return end
+  local log_context = context or {}
+  log_context.tick = game and game.tick or 0
+  if player and player.valid then
+    log_context.player_index = player.index
+    log_context.player_name = player.name
+  end
+  ErrorHandler.debug_log("[STARTUP_BAR] " .. phase, log_context)
+end
 
 ---@param player_index uint
 local function invalidate_player_slot_tree(player_index)
@@ -69,9 +86,77 @@ local function get_or_create_slot_tree(player, slots_frame)
     slot_labels = {},
     slot_number_labels = {},
     slot_lock_sprites = {},
+    label_mode = nil,
+    max_slots = 0,
   }
   player_slot_trees[player_index] = slot_tree
   return slot_tree
+end
+
+---@param slot_tree table|nil
+---@param slots_frame LuaGuiElement|nil
+---@param label_mode string|nil
+---@param max_slots integer|nil
+local function reset_slot_tree(slot_tree, slots_frame, label_mode, max_slots)
+  if not slot_tree then return end
+  slot_tree.slots_frame = slots_frame
+  slot_tree.wrappers = {}
+  slot_tree.slot_buttons = {}
+  slot_tree.slot_labels = {}
+  slot_tree.slot_number_labels = {}
+  slot_tree.slot_lock_sprites = {}
+  slot_tree.label_mode = label_mode
+  slot_tree.max_slots = max_slots or 0
+end
+
+---@param slots_frame LuaGuiElement|nil
+local function destroy_all_slot_children(slots_frame)
+  if not (slots_frame and slots_frame.valid) then return end
+  local children = slots_frame.children
+  for i = #children, 1, -1 do
+    local child = children[i]
+    if child and child.valid then
+      child.destroy()
+    end
+  end
+end
+
+---@param slots_frame LuaGuiElement|nil
+---@param slot_tree table|nil
+---@param slot_index integer
+local function destroy_slot_shell(slots_frame, slot_tree, slot_index)
+  if not (slots_frame and slots_frame.valid) then return end
+
+  local wrapper = slot_tree and slot_tree.wrappers[slot_index] or nil
+  local slot_button = slot_tree and slot_tree.slot_buttons[slot_index] or nil
+  if wrapper and not wrapper.valid then wrapper = nil end
+  if slot_button and not slot_button.valid then slot_button = nil end
+
+  if not wrapper then
+    wrapper = slots_frame["fave_bar_slot_wrapper_" .. slot_index]
+  end
+
+  if not slot_button then
+    if wrapper and wrapper.valid then
+      slot_button = wrapper["fave_bar_slot_" .. slot_index]
+    else
+      slot_button = slots_frame["fave_bar_slot_" .. slot_index]
+    end
+  end
+
+  if wrapper and wrapper.valid then
+    wrapper.destroy()
+  elseif slot_button and slot_button.valid then
+    slot_button.destroy()
+  end
+
+  if slot_tree then
+    slot_tree.wrappers[slot_index] = nil
+    slot_tree.slot_buttons[slot_index] = nil
+    slot_tree.slot_labels[slot_index] = nil
+    slot_tree.slot_number_labels[slot_index] = nil
+    slot_tree.slot_lock_sprites[slot_index] = nil
+  end
 end
 
 ---@param bar_flow LuaGuiElement|nil
@@ -139,6 +224,7 @@ end
 ---@return LocalisedString tooltip
 ---@return boolean locked
 local function get_slot_runtime_visuals(fav)
+
   if fav and not FavoriteUtils.is_blank_favorite(fav) then
     local icon = nil
     local chart_tag = fav.tag and fav.tag.chart_tag or nil
@@ -150,19 +236,17 @@ local function get_slot_runtime_visuals(fav)
         icon = chart_tag_lookup.icon
       end
     end
-    local sprite_icon = icon
-    if type(icon) == "table" then
-      local icon_type = icon.type
-      if icon_type == "virtual" or icon_type == "virtual_signal" then
-        sprite_icon = { type = "virtual-signal" }
-        for k, v in pairs(icon) do
-          if k ~= "type" then sprite_icon[k] = v end
-        end
-      end
+    if ErrorHandler and ErrorHandler.debug_log then
+      ErrorHandler.debug_log("[FAVE_BAR] Slot hydration", {
+        gps = fav.gps,
+        chart_tag_found = chart_tag and chart_tag.valid or false,
+        icon = icon
+      })
     end
-
-    local validated_sprite = GuiValidation.get_validated_sprite_path(sprite_icon,
-      { fallback = Enum.SpriteEnum.PIN, log_context = { fav_gps = fav.gps, fav_tag = fav.tag } })
+    local validated_sprite = IconUtils.to_sprite_path(icon, {
+      fallback = Enum.SpriteEnum.PIN,
+      log_context = { fav_gps = fav.gps, fav_tag = fav.tag }
+    })
     ---@type LocalisedString
     local tooltip = GuiHelpers.build_favorite_tooltip(fav)
     local is_locked = fav.locked == true
@@ -289,13 +373,6 @@ local function build_startup_slot_shells(slots_frame, player, start_slot, end_sl
   local resolved_label_mode = label_mode or Cache.Settings.get_player_slot_label_mode(player)
   local use_labels = resolved_label_mode ~= "off"
   local slot_tree = get_or_create_slot_tree(player, slots_frame)
-  if slot_tree and start_slot == 1 then
-    slot_tree.wrappers = {}
-    slot_tree.slot_buttons = {}
-    slot_tree.slot_labels = {}
-    slot_tree.slot_number_labels = {}
-    slot_tree.slot_lock_sprites = {}
-  end
   for i = start_slot, end_slot do
     local btn_parent = slots_frame
     local wrapper = nil
@@ -317,6 +394,75 @@ local function build_startup_slot_shells(slots_frame, player, start_slot, end_sl
       cache_slot_refs(slot_tree, i, wrapper, btn, slot_number_label, nil)
     else
       cache_slot_refs(slot_tree, i, wrapper, nil, nil, nil)
+    end
+  end
+
+  if slot_tree then
+    slot_tree.label_mode = resolved_label_mode
+    slot_tree.max_slots = math.max(slot_tree.max_slots or 0, end_slot)
+  end
+end
+
+---@param player LuaPlayer
+---@param slots_frame LuaGuiElement|nil
+---@param max_slots integer
+---@param label_mode string
+---@return table|nil
+local function ensure_slot_shells(player, slots_frame, max_slots, label_mode)
+  if not (player and player.valid and slots_frame and slots_frame.valid) then return nil end
+
+  local slot_tree = get_or_create_slot_tree(player, slots_frame)
+  if not slot_tree then return nil end
+
+  local has_cached_structure = slot_tree.label_mode ~= nil
+  local has_existing_gui = slots_frame["fave_bar_slot_1"] or slots_frame["fave_bar_slot_wrapper_1"]
+  local needs_full_reset = false
+
+  if has_cached_structure then
+    needs_full_reset = slot_tree.label_mode ~= label_mode
+  elseif has_existing_gui then
+    needs_full_reset = true
+  else
+    reset_slot_tree(slot_tree, slots_frame, label_mode, 0)
+  end
+
+  if needs_full_reset then
+    destroy_all_slot_children(slots_frame)
+    reset_slot_tree(slot_tree, slots_frame, label_mode, 0)
+  else
+    slot_tree.slots_frame = slots_frame
+    slot_tree.label_mode = label_mode
+    slot_tree.max_slots = slot_tree.max_slots or 0
+  end
+
+  if slot_tree.max_slots > max_slots then
+    for i = slot_tree.max_slots, max_slots + 1, -1 do
+      destroy_slot_shell(slots_frame, slot_tree, i)
+    end
+  elseif slot_tree.max_slots < max_slots then
+    build_startup_slot_shells(slots_frame, player, slot_tree.max_slots + 1, max_slots, label_mode)
+  end
+
+  slot_tree.label_mode = label_mode
+  slot_tree.max_slots = max_slots
+  return slot_tree
+end
+
+---@param player LuaPlayer
+---@param slots_frame LuaGuiElement|nil
+---@param max_slots integer
+---@param label_mode string
+---@param rehydrated_pfaves table|nil
+local function hydrate_all_slots(player, slots_frame, max_slots, label_mode, rehydrated_pfaves)
+  if not (player and player.valid and slots_frame and slots_frame.valid) then return end
+
+  ensure_slot_shells(player, slots_frame, max_slots, label_mode)
+
+  for i = 1, max_slots do
+    local wrapper, slot_button, slot_tree = get_slot_gui_refs(player, slots_frame, i)
+    if slot_button and slot_button.valid then
+      local fav = rehydrated_pfaves and rehydrated_pfaves[i] or FavoriteUtils.get_blank_favorite()
+      hydrate_slot_in_place(slot_button, wrapper, i, fav, label_mode, slot_tree)
     end
   end
 end
@@ -432,6 +578,7 @@ function fave_bar.enqueue_startup_build(player, force_show)
   if not player or not player.valid then return end
   startup_full_build_queue[player.index] = {
     force_show = force_show == true,
+    phase = "frame",
     ready_tick = (game and game.tick or 0) + 1,
   }
 end
@@ -542,8 +689,9 @@ function fave_bar.build_quickbar_style(player, parent, player_settings, opts) --
   local history_toggle_button = nil
   local history_mode_toggle = nil
   if player_settings and player_settings.enable_teleport_history then
-    -- Build the history toggle immediately; mode toggle is created lazily on first history interaction.
+    -- Build the history toggle and mode toggle immediately if history is enabled.
     history_toggle_button = ensure_history_toggle_control(player, toggle_container)
+    history_mode_toggle = ensure_history_mode_control(player, toggle_container)
   end
 
   ---@type LocalisedString
@@ -570,8 +718,101 @@ end
 ---@param player LuaPlayer
 ---@param force_show boolean|nil
 ---@return LuaGuiElement|nil
-local function build_startup_shell(player, force_show)
+---Helper: validate player and settings; return true if bar should be built, false if should be destroyed
+---@param player LuaPlayer
+---@param force_show boolean|nil
+---@return boolean should_build
+local function validate_and_check_bar_build(player, force_show)
+  if not ValidationUtils.validate_player(player) then return false end
+
+  if not force_show then
+    local should_hide = not BasicHelpers.is_planet_surface(player.surface) or BasicHelpers.is_restricted_controller(player)
+    if should_hide then return false end
+  end
+
+  local player_settings = Cache.Settings.get_player_settings(player)
+  if not player_settings.favorites_on and not player_settings.enable_teleport_history then
+    return false
+  end
+
+  if BasicHelpers.is_restricted_controller(player) then
+    return false
+  end
+
+  return true
+end
+
+---Phase 1: Validate settings and destroy old bar if needed
+local function startup_phase_validate_destroy(player, force_show)
+  log_startup_phase("startup_phase_validate_destroy.begin", player)
+  local should_build = validate_and_check_bar_build(player, force_show)
+  if not should_build then
+    _destroy_fave_bar(player)
+    log_startup_phase("startup_phase_validate_destroy.end - destroying", player)
+    return false
+  end
+  log_startup_phase("startup_phase_validate_destroy.end - proceed", player)
+  return true
+end
+
+---Phase 2: Create just the outer frame element
+local function startup_phase_create_frame(player)
   if not ValidationUtils.validate_player(player) then return nil end
+  log_startup_phase("startup_phase_create_frame.begin", player)
+
+  clear_startup_slot_queue(player)
+  invalidate_player_slot_tree(player.index)
+
+  local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
+  if not main_flow or not main_flow.valid then
+    log_startup_phase("startup_phase_create_frame.end - no main_flow", player)
+    return nil
+  end
+
+  GuiValidation.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
+
+  local fave_bar_frame = GuiBase.create_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR, "horizontal", "tf_fave_bar_frame")
+  if not fave_bar_frame or not fave_bar_frame.valid then
+    log_startup_phase("startup_phase_create_frame.end - frame failed", player)
+    return nil
+  end
+
+  log_startup_phase("startup_phase_create_frame.end", player)
+  return fave_bar_frame
+end
+
+---Legacy function for backward compatibility if called directly
+local function build_startup_shell_frame(player, force_show)
+  if not ValidationUtils.validate_player(player) then return nil end
+  log_startup_phase("build_startup_shell_frame.begin", player)
+
+  if not validate_and_check_bar_build(player, force_show) then
+    _destroy_fave_bar(player)
+    return nil
+  end
+
+  clear_startup_slot_queue(player)
+  invalidate_player_slot_tree(player.index)
+
+  local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
+  if not main_flow or not main_flow.valid then return nil end
+
+  GuiValidation.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
+
+  local fave_bar_frame = GuiBase.create_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR, "horizontal", "tf_fave_bar_frame")
+  if not fave_bar_frame or not fave_bar_frame.valid then return nil end
+
+  log_startup_phase("build_startup_shell_frame.end", player)
+
+  return fave_bar_frame
+end
+
+---@param player LuaPlayer
+---@param force_show boolean|nil
+---@return LuaGuiElement|nil
+local function build_startup_shell_controls(player, force_show)
+  if not ValidationUtils.validate_player(player) then return nil end
+  log_startup_phase("build_startup_shell_controls.begin", player)
 
   if not force_show then
     local should_hide = not BasicHelpers.is_planet_surface(player.surface) or BasicHelpers.is_restricted_controller(player)
@@ -592,15 +833,13 @@ local function build_startup_shell(player, force_show)
     return nil
   end
 
-  clear_startup_slot_queue(player)
-  invalidate_player_slot_tree(player.index)
-
   local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   if not main_flow or not main_flow.valid then return nil end
 
-  GuiValidation.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
-
-  local fave_bar_frame = GuiBase.create_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR, "horizontal", "tf_fave_bar_frame")
+  local fave_bar_frame = main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
+  if not fave_bar_frame or not fave_bar_frame.valid then
+    fave_bar_frame = build_startup_shell_frame(player, force_show)
+  end
   if not fave_bar_frame or not fave_bar_frame.valid then return nil end
 
   local bar_flow, slots_frame, toggle_button, toggle_container, history_toggle_button, history_mode_toggle =
@@ -666,6 +905,12 @@ local function build_startup_shell(player, force_show)
     reveal_after_ready = slots_visible == true,
     ready_tick = (game and game.tick or 0) + 1,
   }
+
+  log_startup_phase("build_startup_shell_controls.end", player, {
+    max_slots = max_slots,
+    label_mode = label_mode,
+    slots_visible = slots_visible == true,
+  })
 
   return fave_bar_frame
 end
@@ -822,28 +1067,10 @@ function fave_bar.build(player, force_show)
         end
       end
 
-      -- Build slot buttons (destroy existing ones first for non-rebuild path)
-      if slots_frame and slots_frame.valid then
-        local slot_tree = get_or_create_slot_tree(player, slots_frame)
-        if slot_tree then
-          slot_tree.wrappers = {}
-          slot_tree.slot_buttons = {}
-          slot_tree.slot_labels = {}
-          slot_tree.slot_number_labels = {}
-          slot_tree.slot_lock_sprites = {}
-        end
-        local children = slots_frame.children
-        for i = #children, 1, -1 do
-          local child = children[i]
-          if child and child.valid then
-            child.destroy()
-          end
-        end
-      end
       local max_slots = Cache.Settings.get_player_max_favorite_slots(player) or 10
+      local label_mode = Cache.Settings.get_player_slot_label_mode(player)
       local use_chunked_startup_build = force_show and needs_rebuild and max_slots > STARTUP_SLOT_CHUNK_SIZE
       if use_chunked_startup_build then
-        local label_mode = Cache.Settings.get_player_slot_label_mode(player)
         local surface_idx = player.surface and player.surface.valid and player.surface.index
         local reveal_after_ready = slots_frame.visible == true
         ensure_startup_loading_placeholder(_bar_flow)
@@ -862,8 +1089,9 @@ function fave_bar.build(player, force_show)
         }
       else
         local surface_index = player.surface.index
-        pfaves = Cache.get_player_favorites(player, surface_index)
-        fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves)
+        pfaves = Cache.get_player_favorites(player, surface_index) or {}
+        local rehydrated_pfaves = Cache.get_rehydrated_favorites(player, surface_index, max_slots) or {}
+        hydrate_all_slots(player, slots_frame, max_slots, label_mode, rehydrated_pfaves)
       end
 
       -- Do NOT update toggle state in pdata here! Only the event handler should do that.
@@ -885,134 +1113,58 @@ function fave_bar.build(player, force_show)
   return result
 end
 
-
-
-
-local function build_favorite_buttons_row(parent, player, pfaves, opts)
-  if not parent or not parent.valid then
-    ErrorHandler.warn_log("[FAVE_BAR] build_favorite_buttons_row called with invalid parent", {
-      parent_exists = parent ~= nil,
-      player = player and player.name
-    })
-    return parent
-  end
-
-  local opts = opts or {}
-  local max_slots = opts.max_slots or (Cache.Settings.get_player_max_favorite_slots(player) or 10)
-  local start_slot = opts.start_slot or 1
-  local end_slot = opts.end_slot or max_slots
-
-  local rehydrated_pfaves = opts.rehydrated_pfaves
-  if not rehydrated_pfaves then
-    -- Rehydrate favorites in one batch through cache-backed helper.
-    local surface_index = player.surface and player.surface.valid and player.surface.index
-    rehydrated_pfaves = Cache.get_rehydrated_favorites(player, surface_index, max_slots) or {}
-  end
-
-  local function get_slot_btn_props(i, fav)
-    if fav and not FavoriteUtils.is_blank_favorite(fav) then
-      local icon = nil
-      local chart_tag = fav.tag and fav.tag.chart_tag or nil
-      if chart_tag and chart_tag.valid then
-        icon = chart_tag.icon
-      end
-      local sprite_icon = icon
-      if type(icon) == "table" then
-        local icon_type = icon.type
-        if icon_type == "virtual" or icon_type == "virtual_signal" then
-          sprite_icon = { type = "virtual-signal" }
-          for k, v in pairs(icon) do
-            if k ~= "type" then sprite_icon[k] = v end
-          end
-        end
-      end
-      local btn_icon = GuiValidation.get_validated_sprite_path(sprite_icon,
-        { fallback = Enum.SpriteEnum.PIN, log_context = { slot = i, fav_gps = fav.gps, fav_tag = fav.tag } })
-      local style = fav.locked and "tf_slot_button_locked" or "tf_slot_button_smallfont"
-      if btn_icon == "tf_tag_in_map_view_small" then style = "tf_slot_button_smallfont_map_pin" end
-      return btn_icon, GuiHelpers.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }, style, fav.locked
-    else
-      return "", { "tf-gui.favorite_slot_empty" }, "tf_slot_button_smallfont", false
-    end
-  end
-
-  local label_mode = Cache.Settings.get_player_slot_label_mode(player)
-  local use_labels = label_mode ~= "off"
-  local slot_tree = get_or_create_slot_tree(player, parent)
-  if slot_tree and start_slot == 1 then
-    slot_tree.wrappers = {}
-    slot_tree.slot_buttons = {}
-    slot_tree.slot_labels = {}
-    slot_tree.slot_number_labels = {}
-    slot_tree.slot_lock_sprites = {}
-  end
-
-  for i = start_slot, end_slot do
-    local fav = rehydrated_pfaves[i] or FavoriteUtils.get_blank_favorite()
-    local btn_icon, tooltip, style, locked = get_slot_btn_props(i, fav)
-
-    -- When labels are enabled, wrap button + label in a vertical flow
-    local btn_parent = parent
-    local wrapper = nil
-    if use_labels then
-      wrapper = parent.add {
-        type = "flow",
-        name = "fave_bar_slot_wrapper_" .. i,
-        direction = "vertical",
-        style = "tf_fave_bar_slot_wrapper"
-      }
-      btn_parent = wrapper
-    end
-
-    local btn = GuiHelpers.create_slot_button(btn_parent, "fave_bar_slot_" .. i, tostring(btn_icon), tooltip, { style = style })
-    if btn and btn.valid then
-      local number_label_style = locked and "tf_fave_bar_locked_slot_number" or "tf_fave_bar_slot_number"
-      local slot_number_label = GuiBase.create_label(btn, "tf_fave_bar_slot_number_" .. tostring(i), tostring(i),
-        number_label_style)
-      if locked then
-        btn.add {
-          type = "sprite",
-          name = "slot_lock_sprite_" .. tostring(i),
-          sprite = Enum.SpriteEnum.LOCK,
-          style = "tf_fave_bar_slot_lock_sprite"
-        }
-      end
-      -- Add text label below button when labels are enabled
-      local slot_label = nil
-      if use_labels then
-        local label_text = get_slot_label_text(fav, label_mode)
-        slot_label = GuiBase.create_label(btn_parent, "fave_bar_slot_label_" .. i, label_text, "tf_fave_bar_slot_label")
-      end
-      cache_slot_refs(slot_tree, i, wrapper, btn, slot_number_label, slot_label)
-    else
-      cache_slot_refs(slot_tree, i, wrapper, nil, nil, nil)
-      ErrorHandler.warn_log("[FAVE_BAR] Failed to create slot button", { slot = i, icon = btn_icon })
-    end
-  end
-
-  return parent
-end
-
--- Export the function on the fave_bar table (in case it was not attached)
-fave_bar.build_favorite_buttons_row = build_favorite_buttons_row
-
 function fave_bar.process_startup_slot_build_queue()
   if next(startup_full_build_queue) == nil and next(startup_slot_build_queue) == nil then
     return
   end
 
   local current_tick = game and game.tick or 0
+  local built_startup_shell_this_tick = false
 
-  -- Spread full bar builds across ticks before processing slot chunks.
+  -- Spread full bar builds across 4 ticks: validate_destroy -> create_frame -> build_quickbar -> populate_slots
   for player_index, state in pairs(startup_full_build_queue) do
     local player = game.players[player_index]
     if not player or not player.valid or not player.connected then
       startup_full_build_queue[player_index] = nil
     elseif not state.ready_tick or current_tick >= state.ready_tick then
-      startup_full_build_queue[player_index] = nil
-      build_startup_shell(player, state.force_show)
+      local phase = state.phase or "validate_destroy"
+      log_startup_phase("process_startup_slot_build_queue.full_queue", player, { phase = phase })
+
+      if phase == "validate_destroy" then
+        local should_proceed = startup_phase_validate_destroy(player, state.force_show)
+        if not should_proceed then
+          startup_full_build_queue[player_index] = nil
+        else
+          state.phase = "create_frame"
+          state.ready_tick = current_tick + 1
+        end
+
+      elseif phase == "create_frame" then
+        local frame = startup_phase_create_frame(player)
+        if not frame then
+          startup_full_build_queue[player_index] = nil
+        else
+          state.phase = "build_quickbar"
+          state.ready_tick = current_tick + 1
+        end
+
+      elseif phase == "build_quickbar" then
+        build_startup_shell_controls(player, state.force_show)
+        startup_full_build_queue[player_index] = nil
+
+      else
+        startup_full_build_queue[player_index] = nil
+      end
+
+      built_startup_shell_this_tick = true
       break
     end
+  end
+
+  -- Do not combine shell build and slot hydration in the same tick.
+  -- This lowers startup max-frame spikes on brand-new games.
+  if built_startup_shell_this_tick then
+    return
   end
 
   for player_index, state in pairs(startup_slot_build_queue) do
@@ -1030,7 +1182,12 @@ function fave_bar.process_startup_slot_build_queue()
           local start_slot = state.next_slot
           local chunk_size = state.shells_chunked and STARTUP_SHELL_HYDRATION_CHUNK_SIZE or STARTUP_SLOT_CHUNK_SIZE
           local end_slot = math.min(start_slot + chunk_size - 1, state.max_slots)
-          local rehydrated_pfaves = rehydrate_startup_slot_range(player, state, start_slot, end_slot)
+          log_startup_phase("process_startup_slot_build_queue.slot_chunk", player, {
+            start_slot = start_slot,
+            end_slot = end_slot,
+            max_slots = state.max_slots,
+          })
+          rehydrate_startup_slot_range(player, state, start_slot, end_slot)
           if state.hydrate_only then
             if state.shells_chunked then
               local prebuilt_until = state.prebuilt_until or 0
@@ -1047,13 +1204,6 @@ function fave_bar.process_startup_slot_build_queue()
             if state.reveal_after_ready and start_slot == 1 and slots_frame and slots_frame.valid then
               slots_frame.visible = true
             end
-          else
-            fave_bar.build_favorite_buttons_row(slots_frame, player, nil, {
-              start_slot = start_slot,
-              end_slot = end_slot,
-              max_slots = state.max_slots,
-              rehydrated_pfaves = rehydrated_pfaves,
-            })
           end
           if end_slot >= state.max_slots then
             remove_startup_loading_placeholder(bar_flow)
@@ -1104,24 +1254,12 @@ function fave_bar.update_slot_row(player, parent_flow)
   if not ValidationUtils.validate_player(player) then return end
   if parent_flow and not parent_flow.valid then return end
 
-  -- Fast-path: check for slot existence without recursive search
-  local slots_frame
-  if parent_flow and parent_flow.valid then
-    slots_frame = parent_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW]
-  end
-  if slots_frame and slots_frame.valid then
-    local first_slot = slots_frame["fave_bar_slot_1"] or slots_frame["fave_bar_slot_wrapper_1"]
-    if not first_slot then
-      -- Slots don't exist yet — fall back to destroy+recreate
-      local pfaves = Cache.get_player_favorites(player, player.surface.index)
-      fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves)
-      return slots_frame
-    end
-  end
-
   -- Delegate to the batch updater: one rehydration pass, one settings read, direct indexing.
   fave_bar.update_all_slots_in_place(player)
-  return slots_frame
+  if parent_flow and parent_flow.valid then
+    return parent_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW]
+  end
+  return nil
 end
 
 --- Update a single slot button without rebuilding the entire row
@@ -1208,13 +1346,7 @@ function fave_bar.update_all_slots_in_place(player)
   local rehydrated = Cache.get_rehydrated_favorites(player, surface_index)
   local label_mode = Cache.Settings.get_player_slot_label_mode(player)
 
-  for i = 1, max_slots do
-    local wrapper, slot_button, slot_tree = get_slot_gui_refs(player, slots_frame, i)
-    if slot_button and slot_button.valid then
-      local fav = rehydrated and rehydrated[i] or FavoriteUtils.get_blank_favorite()
-      hydrate_slot_in_place(slot_button, wrapper, i, fav, label_mode, slot_tree)
-    end
-  end
+  hydrate_all_slots(player, slots_frame, max_slots, label_mode, rehydrated)
 end
 
 return fave_bar

@@ -1,195 +1,35 @@
-# If you ever need further clarification - do not hesistate to ask
+# TeleportFavorites: Master Instructions (Hub)
 
-# If you can see that my request will make an inordinate amount of token backlash in the request, ask me for refinement prior to trying to answer the question.
+## 1. CRITICAL CONSTRAINTS (FORBIDDEN PATTERNS)
 
-- in other words, if you think you do not have enough information to complete your tasks effectively and efficiently from the prompt I have given you, please ask me to refine my prompt and provide the reason why. It will be much easier for me to correct my prompt if you give me clues as to how to make it more efficient and provide context as to what needs clarification. 
-
-
-# LUA FUNCTION/VARIABLE ORDERING NOTE
-
-**Lua does NOT hoist function or variable declarations.**
-- All functions, tables, and variables must be defined before they are referenced or used in the file.
-- If you reference a function or table before its definition, you will get a runtime error (nil value).
-- Always declare helper functions and handler tables at the top of the file, before any code that uses them.
-- This is different from JavaScript, where function declarations are hoisted.
-
-# CRITICAL: FACTORIO REQUIRE STATEMENT RULES
-
-**Factorio's runtime STRICTLY PROHIBITS `require()` calls inside functions or after module load time.**
-
-When you see the error: `"Require can't be used outside of control.lua parsing"` - this means you placed a `require()` call inside a function, event handler, or anywhere other than the top-level module scope.
-
-## CORRECT Pattern (Module-Level Requires):
-```lua
--- ALL requires at the very top, before any logic
-local Cache = require("core.cache.cache")
-local PlayerHelpers = require("core.utils.player_helpers")
-local ErrorHandler = require("core.utils.error_handler")
-
----@class MyModule
-local MyModule = {}
-
-function MyModule.some_function()
-  -- Use already-loaded modules here
-  ErrorHandler.debug_log("Message")
-  local data = Cache.get_something()
-end
-
-return MyModule
-```
-
-## FORBIDDEN Pattern (Runtime Requires):
-```lua
--- NEVER EVER DO THIS - Will cause "Require can't be used outside of control.lua parsing"
-function MyModule.some_function()
-  local ErrorHandler = require("core.utils.error_handler")  -- FORBIDDEN!
-  ErrorHandler.debug_log("Message")
-end
-
-function MyModule.log(level, message, data)
-  local ErrorHandler = require("core.utils.error_handler")  -- FORBIDDEN!
-end
-```
-
-## Circular Dependency Exception (Lazy Loading):
-**ONLY use this pattern when you have a genuine circular dependency that cannot be refactored:**
-
-```lua
--- Declare as nil at module level
-local CircularModule = nil
-
-local OtherModule = require("some.other.module")
-
----@class MyModule
-local MyModule = {}
-
-function MyModule.function_that_needs_circular()
-  -- Lazy-load ONLY on first call to break circular dependency
-  if not CircularModule then
-    CircularModule = require("module.that.requires.me")
-  end
-  
-  CircularModule.do_something()
-end
-
-return MyModule
-```
-
-**When to use lazy loading:**
-- Genuine circular dependency (A requires B, B requires A)
-- Module is only used in runtime functions (never in module initialization)
-- You've verified refactoring into a third module is not viable
-
-**When NOT to use lazy loading:**
-- "Convenience" - just because a module is only used in one function
-- To avoid thinking about module organization
-- Any non-circular dependency scenario
-
-## 🔍 How to Detect Your Mistake:
-
-**If you see this error:**
-```
-__ModName__/path/to/file.lua:XX: Require can't be used outside of control.lua parsing.
-```
-
-**Check the line number - you will find:**
-1. A `require()` call inside a function body
-2. A `require()` call inside an if statement or loop
-3. A `require()` call anywhere other than the top-level of the file
-
-**Fix by:**
-1. Move the `require()` to the top of the file (line 1-10, before any logic)
-2. Order alphabetically with other requires
-3. If you get a circular dependency error, use the lazy loading pattern above
-
-# IMPORTANT: All code, API usage, and modding guidance in this project MUST target Factorio v2.0+ and above. Do not use deprecated or legacy patterns from earlier versions. Always verify compatibility and reference the v2.0+ documentation for all features, prototypes, and runtime logic.
-# TeleportFavorites Factorio Mod — AI Agent Instructions
-
-## PROJECT OVERVIEW
-
-TeleportFavorites is a **multiplayer-safe Factorio mod** that enables instant teleportation to favorite locations via map tags. Key features:
-
-## ARCHITECTURE QUICK START
-
-### Module Structure
-```
-core/
-├── cache/           # Data persistence (storage.players, storage.surfaces)
-├── control/         # GUI controllers & lifecycle management  
-├── events/          # Event handlers & dispatcher patterns
-├── favorite/        # Favorite object logic & player favorite management
-├── tag/             # Map tag objects & synchronization
-├── teleport/        # Teleportation logic & history
-└── utils/           # Helper modules (GPS, validation, GUI builders)
-
-gui/
-├── favorites_bar/   # Top-screen favorites bar interface
-└── tag_editor/      # Right-click map tag creation/editing
-
-prototypes/          # Factorio data-stage definitions
-tests/              # Custom test framework with smoke testing
-```
-
-### Data Flow Pattern
-**User Input** → **Event Handler** → **Storage Update** → **GUI Refresh**
-- All persistent data flows through `core/cache/cache.lua`
-- Surface-aware data management for multiplayer compatibility
-
-## CODING STANDARDS & BEST PRACTICES (STRICT)
-See `.github/instructions/coding-standards.instructions.md` for full Lua coding standards (EmmyLua annotations, GUI naming, sprite usage, storage patterns, drag-drop algorithm, Factorio-specific patterns).
-
-## DEVELOPMENT WORKFLOW
-
-### Testing
-```powershell
-.\.test.ps1    # Run full test suite
-```
-
-### Shell Commands (PowerShell on Windows)
-- Use `;` for chaining (NOT `&&`). Use `Get-ChildItem`/`Select-String`/`Where-Object` (NOT Unix commands).
-- Save script output before piping: `.\.test.ps1 > out.txt 2>&1; Get-Content out.txt -Tail 20; Remove-Item out.txt`
-- See `.github/instructions/powershell.instructions.md` for full antipatterns reference.
-
-## ACTIVE TASKS
-Before starting any implementation work, read `.project/TODO.md` for outstanding tasks.
-
-## KEY DOCUMENTATION REFERENCES
-
-**ALWAYS check these before making changes:**
-- `.project/TODO.md` - Outstanding tasks and technical debt
-- `.project/architecture.md` - Overall system design & patterns
-- `.project/data_schema.md` - Storage structure & data relationships  
-- `.project/coding_standards.md` - Critical rules & "storage as source of truth"
-- `.project/performance_patterns.md` - Caching strategies, O(1) lookups, tick handler rules
-- `.project/game_rules.md` - Multiplayer permissions & tag ownership
-- `tests/docs/README.md` - Test execution & framework usage
+# FATAL ERROR: RUNTIME REQUIRE
+- **ABSOLUTELY FORBIDDEN:** Never add `require()` inside any function, event handler, or conditional. This is a build-breaking, non-recoverable error in Factorio mods.
+- If you see a require in a non-top-level scope, you must remove it and move it to the top.
+- If a symbol is missing, ask the user to clarify or add the require at the top, never inside a function.
 
 
-## FACTORIO API ESSENTIALS (v2.0+)
+- **NO RUNTIME REQUIRES**: `require()` must be at the **absolute top-level** module scope. Factorio 2.0 strictly prohibits `require()` inside functions, loops, or conditional event handlers. Any violation is a fatal error and must be reverted immediately.
+- **NO HOISTING**: Lua does not hoist. Define all local functions and tables **BEFORE** they are referenced in the file.
+- **STORAGE ONLY**: Target API 2.0+. Use `storage` (The `global` table is deprecated/forbidden).
+- **SURGICAL EDITS**: Modify ONLY the requested function or block. Do not refactor or "clean up" surrounding code unless explicitly asked.
+## 2. AUTOMATIC SUBSYSTEM CONTEXT
+The following instruction modules are auto-loaded based on the file type being edited. Refer to them for implementation details:
+- **Lua & API Rules**: `.github/instructions/coding_standards.instructions.md`
+- **GUI & Architecture**: `.github/instructions/architecture.instructions.md`
+- **Data & Schema**: `.github/instructions/data_schema.instructions.md`
+- **Permissions**: `.github/instructions/game_rules.instructions.md`
+- **Performance**: `.github/instructions/performance_patterns.instructions.md`
+- **Terminal & PowerShell**: `.github/instructions/powershell_standards.instructions.md`
+- **Testing & Mocks**: `.github/instructions/testing_standards.instructions.md`
 
-**Official API reference**: https://lua-api.factorio.com/latest/
+## 3. PROJECT-WIDE DOMAIN KNOWLEDGE
+- **Core Intent**: High-speed teleportation via favorites bar and map tags.
+- **Constraints**: Teleportation is allowed from Map and Remote View. **No favorites allowed on Space Platforms.**
+- **GUI Naming**: All GUI elements MUST be named with the `tp_fav_` prefix.
+- **Ownership**: Follow the strict creator-based ownership model defined in `game_rules`.
+- **Roadmap**: Consult `.github/instructions/todo.instructions.md` for current tasks and tech debt.
 
-### Syntax Rules (v2.0+)
-```lua
-surface:get_tile(position)      # Method calls with ':'
-chart_tag.position             # Property access with '.'
-player.force:add_chart_tag()   # Chain method calls properly
-```
-
-### Common Validations (v2.0+)
-```lua
-if not player or not player.valid then return end
-if not chart_tag or not chart_tag.valid then return end  
-if not surface or not surface.valid then return end
-```
-
-### Event Registration Pattern
-```lua
--- Via event_registration_dispatcher.lua
-script.on_event(defines.events.on_gui_click, handlers.on_gui_click)
-script.on_event(defines.events.on_chart_tag_added, handlers.on_chart_tag_added)
-```
-
----
-
-*Multiplayer-safe mod. Prioritize data consistency and player safety over convenience features.*
+## 4. WORKFLOW & SAFETY
+- **Ambiguity**: If a request lacks context or conflicts with these rules, **ASK** for clarification before generating code.
+- **PowerShell**: Use `Out-String` when piping script output to avoid object-binding errors in the terminal.
+- **Performance Check**: Always reference `performance_patterns` before implementing `on_nth_tick` or loop-heavy logic.

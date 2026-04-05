@@ -19,7 +19,7 @@ local ErrorHandler = require("core.utils.error_handler")
 local GPSUtils = require("core.utils.gps_utils")
 local Cache = require("core.cache.cache")
 local BasicHelpers = require("core.utils.basic_helpers")
-local icon_typing = require("core.cache.icon_typing")
+local IconUtils = require("core.cache.icon_utils")
 
 ---@class ChartTagUtils
 local ChartTagUtils = {}
@@ -157,6 +157,33 @@ function ChartTagUtils.safe_add_chart_tag(force, surface, spec, player)
     return force.add_chart_tag(surface, spec)
   end)
 
+  -- Debug output: log the created tag's details if successful
+  if success and result and result.valid then
+    local created_tag = result
+    local tag_gps = created_tag.position and GPSUtils.gps_from_map_position(created_tag.position, created_tag.surface and created_tag.surface.index or surface_index)
+    ErrorHandler.debug_log("[TAG_CREATION][POST] Created chart tag", {
+      tag_valid = created_tag.valid,
+      tag_force = created_tag.force and created_tag.force.name or "<nil>",
+      expected_force = force and force.name or "<nil>",
+      tag_surface = created_tag.surface and created_tag.surface.name or "<nil>",
+      expected_surface = surface and surface.name or "<nil>",
+      tag_position = created_tag.position,
+      tag_gps = tag_gps,
+      spec_gps = gps
+    })
+    if created_tag.force and force and created_tag.force.name ~= force.name then
+      ErrorHandler.debug_log("[TAG_CREATION][WARNING] Created tag force does not match expected force!", {
+        tag_force = created_tag.force.name,
+        expected_force = force.name
+      })
+    end
+    if created_tag.surface and surface and created_tag.surface.name ~= surface.name then
+      ErrorHandler.debug_log("[TAG_CREATION][WARNING] Created tag surface does not match expected surface!", {
+        tag_surface = created_tag.surface.name,
+        expected_surface = surface.name
+      })
+    end
+  end
   -- Check if creation was successful
   if not success then
     ErrorHandler.debug_log("Chart tag creation failed with error", {
@@ -182,9 +209,9 @@ function ChartTagUtils.safe_add_chart_tag(force, surface, spec, player)
     return nil
   end
 
-  -- Register the icon in icon_typing storage for O(1) lookup
-  if spec.icon then    
-    icon_typing.format_icon_as_rich_text(spec.icon)
+  -- Register the icon in icon typing/rich-text cache (via IconUtils)
+  if spec.icon then
+    IconUtils.to_rich_text(spec.icon)
   end
 
   return result

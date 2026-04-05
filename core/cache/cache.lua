@@ -1,3 +1,6 @@
+-- Temporary storage for tag moves (per player, per GPS)
+-- Implemented after the primary `Cache` table is created below so functions
+-- are attached to the exported `Cache` that other modules `require`.
 ---@diagnostic disable: undefined-global
 
 -- Data Structure (v2.0+):
@@ -38,11 +41,13 @@ local rehydrated_favorites_cache = {}
 
 local BasicHelpers = require("core.utils.basic_helpers")
 local Constants = require("constants")
+local ErrorHandler = require("core.utils.error_handler")
 local FavoriteUtils = require("core.favorite.favorite_utils")
 local GPSUtils = require("core.utils.gps_utils")
 local HistoryItem = require("core.teleport.history_item")
 local Lookups = require("core.cache.lookups")
 local SettingsCache = require("core.cache.settings")
+local IconUtils = require("core.cache.icon_utils")
 
 local Cache = {}
 
@@ -60,6 +65,32 @@ Cache.Lookups = Lookups
 --- Settings cache and access layer for all mod settings.
 ---@type Settings
 Cache.Settings = SettingsCache
+
+-- Temporary storage for tag moves (per player, per GPS)
+Cache._pending_tag_moves = Cache._pending_tag_moves or {}
+
+--- Store pending tag move info for a player and GPS
+---@param player LuaPlayer
+---@param old_gps string
+---@param tag_info table
+function Cache.set_pending_tag_move(player, old_gps, tag_info)
+  if not player or not old_gps then return end
+  Cache._pending_tag_moves[player.index] = Cache._pending_tag_moves[player.index] or {}
+  Cache._pending_tag_moves[player.index][old_gps] = tag_info
+end
+
+--- Retrieve and clear pending tag move info for a player and GPS
+---@param player LuaPlayer
+---@param old_gps string
+---@return table|nil
+function Cache.pop_pending_tag_move(player, old_gps)
+  if not player or not old_gps then return nil end
+  local player_moves = Cache._pending_tag_moves[player.index]
+  if not player_moves then return nil end
+  local info = player_moves[old_gps]
+  player_moves[old_gps] = nil
+  return info
+end
 
 -- Ensure storage is always available for persistence (Factorio 2.0+)
 if not storage then
@@ -133,14 +164,9 @@ function Cache.init()
   end
   
   local is_debug = Constants.settings.DEFAULT_LOG_LEVEL == "debug"
-  
-  if is_debug and log and type(log) == "function" then
-    log("[TeleFaves][DEBUG] Cache.init() called")
-  end
+  -- Debug log removed for noise reduction
   local tick_start = game and game.tick or 0
-  if is_debug and log and type(log) == "function" then
-    log("[CACHE] init called | tick=" .. tostring(tick_start))
-  end
+  -- Debug log removed for noise reduction
   if not storage then
     if ErrorHandler and ErrorHandler.error_log then
       ErrorHandler.error_log("CacheInit", "Storage table not available - this mod requires Factorio 2.0+", nil, "init")
@@ -170,7 +196,7 @@ function Cache.init()
   -- This scan is expensive on large saves, so run it once per save after deployment.
   if storage._history_item_migration_complete ~= true then
     if is_debug and log and type(log) == "function" then
-      log("[CACHE] legacy stack migration start | tick=" .. tostring(t1))
+      -- Debug log removed for noise reduction
     end
     for _, player_data in pairs(storage.players) do
       if player_data.surfaces then
@@ -191,7 +217,7 @@ function Cache.init()
     storage._history_item_migration_complete = true
     local t2 = game and game.tick or 0
     if is_debug and log and type(log) == "function" then
-      log("[CACHE] legacy stack migration end | tick=" .. tostring(t2) .. " | duration=" .. tostring(t2 - t1))
+      -- Debug log removed for noise reduction
     end
   end
 
@@ -200,25 +226,25 @@ function Cache.init()
 
   local t3 = game and game.tick or 0
   if is_debug and log and type(log) == "function" then
-    log("[CACHE] Lookups.init start | tick=" .. tostring(t3))
+    -- Debug log removed for noise reduction
   end
   Lookups.init()
   Cache.Lookups = Lookups
   local t4 = game and game.tick or 0
   if is_debug and log and type(log) == "function" then
-    log("[CACHE] Lookups.init end | tick=" .. tostring(t4) .. " | duration=" .. tostring(t4 - t3))
+    -- Debug log removed for noise reduction
   end
 
   -- Initialize settings cache
   local t5 = game and game.tick or 0
   if is_debug and log and type(log) == "function" then
-    log("[CACHE] SettingsCache init start | tick=" .. tostring(t5))
+    -- Debug log removed for noise reduction
   end
   Cache.Settings = SettingsCache
   local t6 = game and game.tick or 0
   if is_debug and log and type(log) == "function" then
-    log("[CACHE] SettingsCache init end | tick=" .. tostring(t6) .. " | duration=" .. tostring(t6 - t5))
-    log("[CACHE] init complete | tick=" .. tostring(t6) .. " | total_duration=" .. tostring(t6 - tick_start))
+    -- Debug log removed for noise reduction
+    -- Debug log removed for noise reduction
   end
   
   -- Mark initialization complete and clear initializing flag
@@ -235,6 +261,13 @@ local function init_player_favorites(player)
   local pfaves = storage.players[player.index].surfaces[player.surface.index].favorites or {}
   -- Use the player's actual max slot setting instead of hardcoded default
   local seed_max = SettingsCache.get_player_max_favorite_slots(player)
+  if ErrorHandler and ErrorHandler.debug_log then
+    ErrorHandler.debug_log("[CACHE_INIT_FAVES] Initializing player favorites", {
+      player = player.name,
+      surface = player.surface and player.surface.name or "<nil>",
+      seed_max = seed_max
+    })
+  end
   for i = 1, seed_max do
     if not pfaves[i] or type(pfaves[i]) ~= "table" then
       pfaves[i] = FavoriteUtils.get_blank_favorite()
@@ -244,10 +277,14 @@ local function init_player_favorites(player)
     pfaves[i].locked = pfaves[i].locked or false
   end
 
-  storage.players[player.index].surfaces[player.surface.index].favorites = pfaves or {}
+  storage.players[player.index].surfaces[player.surface.index].favorites = Cache.sanitize_for_storage(pfaves or {})
   local t1 = game and game.tick or 0
-  if ErrorHandler and ErrorHandler.should_log_debug and ErrorHandler.should_log_debug() then
-    ErrorHandler.debug_log("[CACHE] init_player_favorites", { tick = t1, duration = t1 - t0, player = player.name })
+  if ErrorHandler and ErrorHandler.debug_log then
+    ErrorHandler.debug_log("[CACHE_INIT_FAVES] Favorites initialized", {
+      player = player.name,
+      surface = player.surface and player.surface.name or "<nil>",
+      favorites_len = #pfaves
+    })
   end
   return storage.players[player.index].surfaces[player.surface.index].favorites
 end
@@ -306,8 +343,8 @@ function Cache.apply_player_max_slots(player, new_max)
     sdata.favorites = favorites
   end
 
-  -- Persist changes
-  storage.players[player.index] = player_data
+  -- Persist changes (sanitize to avoid persisting userdata/functions)
+  storage.players[player.index] = Cache.sanitize_for_storage(player_data)
 end
 
 local function init_player_data(player)
@@ -493,10 +530,12 @@ function Cache.get_favorites_render_snapshot(player, surface_index, max_slots)
       }
 
       if entry.gps ~= blank_gps and (entry.icon ~= nil or (type(entry.text) == "string" and entry.text ~= "")) then
+        -- Normalize icon via IconUtils to canonical form
+        local icon = IconUtils.get_canonical_icon(entry.icon)
         fav.tag = {
           chart_tag = {
             valid = true,
-            icon = entry.icon,
+            icon = icon,
             text = entry.text or "",
           }
         }
@@ -607,7 +646,8 @@ function Cache.get_rehydrated_favorites(player, surface_index, max_rehydrate)
 
         local chart_tag = fav and fav.tag and fav.tag.chart_tag or nil
         if chart_tag and chart_tag.valid then
-          entry.icon = chart_tag.icon
+          -- Normalize icon to canonical form for snapshot
+          entry.icon = IconUtils.get_canonical_icon(chart_tag.icon)
           entry.text = chart_tag.text or ""
         end
 
@@ -713,7 +753,7 @@ local function init_surface_data(surface_index)
   surface_data.tags = surface_data.tags or {}
   local t1 = game and game.tick or 0
   if ErrorHandler and ErrorHandler.should_log_debug and ErrorHandler.should_log_debug() then
-    ErrorHandler.debug_log("[CACHE] init_surface_data", { tick = t1, duration = t1 - t0, surface_index = surface_index })
+    -- Debug log removed for noise reduction
   end
   return surface_data
 end
@@ -729,6 +769,11 @@ function Cache.get_surface_tags(surface_index)
     return nil
   end
   local sdata = init_surface_data(surface_index)
+  if ErrorHandler and ErrorHandler.debug_log then
+    local keys = {}
+    for k in pairs(sdata.tags) do table.insert(keys, k) end
+    ErrorHandler.debug_log("[CACHE] get_surface_tags", { surface_index = surface_index, tag_keys = keys })
+  end
   return sdata and sdata.tags or {}
 end
 
@@ -759,19 +804,49 @@ function Cache.get_tag_by_gps(player, gps)
   if not BasicHelpers.is_valid_gps(gps) then return nil end
   local surface_index = player.surface.index
 
+
   local tag_cache = Cache.get_surface_tags(surface_index --[[@as integer]])
-  if not tag_cache then return nil end
+  if ErrorHandler and ErrorHandler.debug_log then
+    -- Dump all chart tags for this surface
+    local all_chart_tags = {}
+    local chart_tags = nil
+    if Cache.Lookups and Cache.Lookups.get_chart_tag_cache then
+      chart_tags = Cache.Lookups.get_chart_tag_cache(surface_index)
+    end
+    if chart_tags then
+      for i, tag in ipairs(chart_tags) do
+        table.insert(all_chart_tags, {
+          index = i,
+          valid = tag.valid,
+          position = tag.position,
+          icon = tag.icon,
+          text = tag.text,
+          force = tag.force and tag.force.name or nil,
+          surface = tag.surface and tag.surface.name or nil
+        })
+      end
+    end
+    ErrorHandler.debug_log("[TAG_LOOKUP] Chart tag cache dump", {
+      surface_index = surface_index,
+      chart_tags = all_chart_tags
+    })
+  end
+  if not tag_cache then
+    if ErrorHandler and ErrorHandler.debug_log then
+      ErrorHandler.debug_log("[TAG_LOOKUP] No tag_cache for surface", { gps = gps, surface_index = surface_index })
+    end
+    return nil
+  end
 
   local match_tag = tag_cache[gps]
   if not match_tag then
-    -- GENUINE ORPHAN: the tag exists in the player's favorites but has been deleted
-    -- from persistent storage. Notify so the UI can indicate the broken favorite.
+    if ErrorHandler and ErrorHandler.debug_log then
+      ErrorHandler.debug_log("[TAG_LOOKUP] No match_tag in tag_cache", { gps = gps, surface_index = surface_index })
+    end
     Cache.notify_observers_safe("invalid_chart_tag", { player = player, gps = gps })
     return nil
   end
 
-  -- MULTIPLAYER SAFETY: Create a shallow copy so we can attach chart_tag (userdata)
-  -- without polluting the storage-backed table. Userdata in storage causes desyncs.
   local result = {}
   for k, v in pairs(match_tag) do
     if type(v) ~= "userdata" then
@@ -779,19 +854,23 @@ function Cache.get_tag_by_gps(player, gps)
     end
   end
 
-  -- Attach chart_tag reference transiently (not stored in persistent storage).
-  -- get_chart_tag_by_gps is self-healing: it warms the runtime GPS map on first miss,
-  -- so a nil here means the chart tag genuinely no longer exists on the map.
   local chart_tag_ref = Cache.Lookups.get_chart_tag_by_gps(gps)
+  if ErrorHandler and ErrorHandler.debug_log then
+    ErrorHandler.debug_log("[TAG_LOOKUP] Chart tag lookup result", {
+      gps = gps,
+      surface_index = surface_index,
+      chart_tag_found = chart_tag_ref and chart_tag_ref.valid or false,
+      icon = chart_tag_ref and chart_tag_ref.icon or nil
+    })
+  end
   if chart_tag_ref and chart_tag_ref.valid and chart_tag_ref.position then
     result.chart_tag = chart_tag_ref
     return result
   end
 
-  -- The tag is in persistent storage but the LuaCustomChartTag is gone from the map.
-  -- This is a real inconsistency (e.g. tag deleted by another mod, or game corruption).
-  -- Do NOT fire the notification for a simple warm-cache miss — get_chart_tag_by_gps
-  -- already performed the self-healing warm above, so this is a confirmed absence.
+  if ErrorHandler and ErrorHandler.debug_log then
+    ErrorHandler.debug_log("[TAG_LOOKUP] Chart tag missing after lookup", { gps = gps, surface_index = surface_index })
+  end
   Cache.notify_observers_safe("invalid_chart_tag", { player = player, gps = gps })
   return nil
 end
@@ -812,6 +891,11 @@ function Cache.set_tag_editor_data(player, data)
   local pdata = Cache.get_player_data(player)
   if not pdata or not pdata.tag_editor_data then
     return nil
+  end
+
+  -- Hydrate icon from chart_tag if present and icon is empty
+  if (not data.icon or data.icon == "") and data.chart_tag and type(data.chart_tag) == "table" and data.chart_tag.icon then
+    data.icon = data.chart_tag.icon
   end
 
   -- If data is empty table, clear all tag_editor_data
@@ -930,27 +1014,40 @@ end
 ---@return table sanitized_obj
 function Cache.sanitize_for_storage(obj, exclude_fields)
   if type(obj) ~= "table" then return {} end
-  local sanitized = {}
   exclude_fields = exclude_fields or {}
-  
-  -- MULTIPLAYER FIX: Sort keys for deterministic iteration order
-  -- pairs() iterates hash tables in non-deterministic order, causing desyncs
-  local keys = {}
-  for k in pairs(obj) do
-    table.insert(keys, k)
-  end
-  table.sort(keys, function(a, b)
-    return tostring(a) < tostring(b)
-  end)
-  
-  for _, k in ipairs(keys) do
-    local v = obj[k]
-    if not exclude_fields[k] and type(v) ~= "userdata" then
-      sanitized[k] = v
+
+  local seen = setmetatable({}, { __mode = "k" })
+
+  local function sanitize_table(t)
+    if type(t) ~= "table" then return nil end
+    if seen[t] then return nil end
+    seen[t] = true
+
+    local out = {}
+    local keys = {}
+    for k in pairs(t) do table.insert(keys, k) end
+    table.sort(keys, function(a, b) return tostring(a) < tostring(b) end)
+
+    for _, k in ipairs(keys) do
+      if not exclude_fields[k] then
+        local v = t[k]
+        local vt = type(v)
+        if vt == "table" then
+          local nested = sanitize_table(v)
+          if nested ~= nil then out[k] = nested end
+        elseif vt == "string" or vt == "number" or vt == "boolean" then
+          out[k] = v
+        else
+          -- skip userdata, functions, threads, etc. for multiplayer safety
+        end
+      end
     end
+
+    return out
   end
-  
-  return sanitized
+
+  local res = sanitize_table(obj)
+  return res or {}
 end
 
 --- Ensure the player's surface data structure exists and return it.
@@ -995,7 +1092,8 @@ end
 function Cache.set_player_favorites(player, favorites)
   local surface_data = Cache.ensure_player_surface_data(player)
   if not surface_data then return false end
-  surface_data.favorites = favorites or {}
+  -- Ensure we never persist userdata/functions; sanitize before storing
+  surface_data.favorites = Cache.sanitize_for_storage(favorites or {})
   return true
 end
 

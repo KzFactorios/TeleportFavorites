@@ -7,7 +7,7 @@ Date: 2026-04-01
     - Targeted chart tag cache operations: added upsert/evict helpers for O(1) surgical cache updates, replacing full surface-wide invalidation and rescan on every tag edit or creation
     - Removed pcall wrapper in hot-path chart tag lookup (get_chart_tag_by_gps) — direct .valid access is safe and avoids per-call overhead
     - Guarded all debug_log calls in GUI click dispatcher with should_log_debug() checks to eliminate function call and table allocation overhead on every click when debug mode is off
-    - Removed periodic icon_typing cache reset (on_nth_tick every 15 minutes) that caused prototype scan storms of 240-3000 lookups on the next bar rebuild — cache auto-clears on game restart/mod reload
+    - Removed periodic IconUtils cache reset (on_nth_tick every 15 minutes) that caused prototype scan storms of 240-3000 lookups on the next bar rebuild — cache auto-clears on game restart/mod reload
     - History mode toggle now updates button sprite and tooltip in-place instead of rebuilding the entire favorites bar
 ---------------------------------------------------------------------------------------------------
 Version: 0.0.97

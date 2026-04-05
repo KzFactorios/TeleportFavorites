@@ -31,6 +31,10 @@ local Cache = require("core.cache.cache")
 local AdminUtils = require("core.utils.admin_utils")
 local PlayerFavorites = require("core.favorite.player_favorites")
 
+local ErrorHandler = require("core.utils.error_handler")
+
+local _serpent_ok, serpent = pcall(require, "serpent")
+if not _serpent_ok then serpent = nil end
 
 local tag_editor = {}
 
@@ -143,18 +147,40 @@ local function build_teleport_favorite_row(parent, tag_data)
   return row, favorite_btn, teleport_btn
 end
 
+local IconUtils = require("core.cache.icon_utils")
 local function create_icon_button(row, tag_data)
-  local sprite_path, used_fallback, debug_info = GuiValidation.get_validated_sprite_path(tag_data.icon,
-    { fallback = Enum.SpriteEnum.PIN, log_context = { context = "tag_editor", gps = tag_data.gps } })
-  
-  local icon_btn = GuiBase.create_element("choose-elem-button", row, {
+  -- Only show icon if valid, otherwise leave blank (no fallback)
+  local normalized_icon = tag_data.icon
+  local choose_opts = IconUtils.to_choose_elem_opts(normalized_icon)
+
+  -- Debug: Log icon and elem_type/value for troubleshooting
+  if ErrorHandler and ErrorHandler.debug_log then
+    local icon_str = "<nil>"
+    if tag_data.icon then
+      if type(tag_data.icon) == "table" and serpent and serpent.line then
+        icon_str = serpent.line(tag_data.icon)
+      else
+        icon_str = tostring(tag_data.icon)
+      end
+    end
+    ErrorHandler.debug_log("[TAG_EDITOR][UI] create_icon_button", {
+      icon = icon_str,
+      normalized_icon = (type(normalized_icon) == "table" and serpent and serpent.line) and serpent.line(normalized_icon) or tostring(normalized_icon),
+      choose_opts = (type(choose_opts) == "table" and serpent and serpent.line) and serpent.line(choose_opts) or tostring(choose_opts)
+    })
+  end
+
+  local opts = {
     name = "tag_editor_icon_button",
     tooltip = { "tf-gui.icon_tooltip" },
-    style = "tf_slot_button",
-    elem_type = "signal",
-    signal = tag_data.icon,
-    sprite = sprite_path
-  })
+    style = "tf_slot_button"
+  }
+  -- Merge choose-elem options (may be empty to show full chooser)
+  if choose_opts and type(choose_opts) == "table" then
+    for k, v in pairs(choose_opts) do opts[k] = v end
+  end
+
+  local icon_btn = GuiBase.create_element("choose-elem-button", row, opts)
   return icon_btn
 end
 
@@ -206,12 +232,80 @@ end
 ---
 ---@param player LuaPlayer
 function tag_editor.build(player)
+    local tag_data = Cache.get_player_data(player).tag_editor_data or Cache.create_tag_editor_data()
+    -- Hydrate icon from runtime chart_tag lookup if missing, matching favorites bar logic
+    if (not tag_data.icon or tag_data.icon == "") then
+      -- Use tag_data.gps if present, else fallback to tag_data.tag.gps if available
+      local gps = tag_data.gps
+      if (not gps or gps == "") and tag_data.tag and tag_data.tag.gps then
+        gps = tag_data.tag.gps
+      end
+      if ErrorHandler and ErrorHandler.debug_log then
+        ErrorHandler.debug_log("[TAG_EDITOR][UI] build: about to lookup chart_tag by gps", { tag_data_gps = tag_data.gps, tag_data_tag_gps = tag_data.tag and tag_data.tag.gps or nil, lookup_gps = gps })
+      end
+      local chart_tag = nil
+      if gps and gps ~= "" then
+        chart_tag = Cache.Lookups.get_chart_tag_by_gps(gps)
+      end
+      if ErrorHandler and ErrorHandler.debug_log then
+        local icon_str = "<nil>"
+        if chart_tag and chart_tag.icon then
+          if type(chart_tag.icon) == "table" and serpent and serpent.line then
+            icon_str = serpent.line(chart_tag.icon)
+          else
+            icon_str = tostring(chart_tag.icon)
+          end
+        end
+        ErrorHandler.debug_log("[TAG_EDITOR][UI] build: chart_tag lookup result", { lookup_gps = gps, chart_tag_valid = chart_tag and chart_tag.valid or false, icon = icon_str, chart_tag = chart_tag })
+      end
+      if chart_tag and chart_tag.valid and chart_tag.icon then
+        tag_data.icon = chart_tag.icon
+        tag_data.chart_tag = chart_tag
+      elseif tag_data.chart_tag and tag_data.chart_tag.icon then
+        tag_data.icon = tag_data.chart_tag.icon
+      end
+    end
+    -- Debug: Dump full tag_data after hydration
+    if ErrorHandler and ErrorHandler.debug_log then
+      local chart_tag_icon_str = "<nil>"
+      if tag_data.chart_tag and tag_data.chart_tag.icon then
+        if type(tag_data.chart_tag.icon) == "table" and serpent and serpent.line then
+          chart_tag_icon_str = serpent.line(tag_data.chart_tag.icon)
+        else
+          chart_tag_icon_str = tostring(tag_data.chart_tag.icon)
+        end
+      end
+      ErrorHandler.debug_log("[TAG_EDITOR][UI] build: FULL tag_data dump", {
+        gps = tag_data.gps,
+        icon = tag_data.icon,
+        chart_tag = tag_data.chart_tag,
+        chart_tag_icon = chart_tag_icon_str,
+        text = tag_data.text,
+        is_favorite = tostring(tag_data.is_favorite),
+        tag_present = tag_data.tag and true or false,
+        chart_tag_present = tag_data.chart_tag and true or false
+      })
+    end
   if not BasicHelpers.is_valid_player(player) then return end
   local tag_data = Cache.get_player_data(player).tag_editor_data or Cache.create_tag_editor_data()
   if not tag_data.gps or tag_data.gps == "" then
     tag_data.gps = tag_data.move_gps or ""
   end
-  -- Do NOT attempt to find or create chart tags here. Only use tag_data.tag and tag_data.chart_tag as provided.
+  -- Hydrate icon from chart_tag if present and icon is empty
+  if (not tag_data.icon or tag_data.icon == "") and tag_data.chart_tag and type(tag_data.chart_tag) == "table" and tag_data.chart_tag.icon then
+    tag_data.icon = tag_data.chart_tag.icon
+  end
+  -- Normalize icon using IconUtils (ensures canonical token types)
+  tag_data.icon = IconUtils.get_canonical_icon(tag_data.icon)
+  -- Debug: Log tag_data at build start
+  ErrorHandler.debug_log("[TAG_EDITOR][UI] build: tag_data received", {
+    gps = tag_data.gps,
+    icon = tag_data.icon,
+    text = tag_data.text,
+    is_favorite = tostring(tag_data.is_favorite),
+    tag_present = tag_data.tag and true or false,
+    chart_tag_present = tag_data.chart_tag and true or false
+  })
 
   local gps = tag_data.gps
   local parent = player.gui.screen
@@ -251,11 +345,26 @@ function tag_editor.build(player)
   local tag_editor_teleport_favorite_row, tag_editor_is_favorite_button, tag_editor_teleport_button =
       build_teleport_favorite_row(tag_editor_content_inner_frame, tag_data)
 
+  -- Debug: Log favorite/teleport button state
+  ErrorHandler.debug_log("[TAG_EDITOR][UI] build: favorite_btn/teleport_btn", {
+    is_favorite = tostring(tag_data.is_favorite),
+    favorite_btn = tag_editor_is_favorite_button and true or false,
+    teleport_btn = tag_editor_teleport_button and true or false
+  })
+
   -- NOTE: The built-in Factorio signal/icon picker (used for icon selection) always requires the user to confirm their selection
   -- with a checkmark button. There is no property or style that allows auto-accepting the selection on click; this is a limitation
   -- of the Factorio engine as of 1.1.x.
   local tag_editor_rich_text_row, tag_editor_icon_button, tag_editor_rich_text_input =
       build_rich_text_row(tag_editor_content_inner_frame, tag_data)
+
+  -- Debug: Log icon/text input state
+  ErrorHandler.debug_log("[TAG_EDITOR][UI] build: icon/text input", {
+    icon = tag_data.icon,
+    icon_btn = tag_editor_icon_button and true or false,
+    text = tag_data.text,
+    text_input = tag_editor_rich_text_input and true or false
+  })
 
   local tag_editor_error_row_frame, error_row_error_message = build_error_row(tag_editor_outer_frame, tag_data)
   local tag_editor_last_row, tag_editor_confirm_button = build_last_row(tag_editor_outer_frame)

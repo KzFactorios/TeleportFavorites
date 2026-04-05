@@ -208,8 +208,9 @@ end
 ---@param slot number The target slot index
 ---@return boolean success
 function SlotInteractionHandlers.reorder_favorites(player, favorites, drag_index, slot)
-  local success, error_msg = favorites:reorder_favorites(drag_index, slot)
+  local success, changed_slots_or_error = favorites:reorder_favorites(drag_index, slot)
   if not success then
+    local error_msg = changed_slots_or_error
     PlayerHelpers.error_message_to_player(player,
       LocaleUtils.get_error_string(player, "failed_reorder_favorite",
         { error_msg or LocaleUtils.get_error_string(player, "unknown_error") }))
@@ -217,10 +218,17 @@ function SlotInteractionHandlers.reorder_favorites(player, favorites, drag_index
     return false
   end
 
+  local changed_slots = changed_slots_or_error
   -- Invalidate rehydration cache so GUI reads fresh data after reorder
   Cache.invalidate_rehydrated_favorites(player, player.surface and player.surface.index)
 
-  fave_bar.update_all_slots_in_place(player)
+  if changed_slots and type(changed_slots) == "table" then
+    for _, slot_index in ipairs(changed_slots) do
+      fave_bar.update_single_slot(player, slot_index)
+    end
+  else
+    fave_bar.update_all_slots_in_place(player)
+  end
   CursorUtils.end_drag_favorite(player)
   return true
 end

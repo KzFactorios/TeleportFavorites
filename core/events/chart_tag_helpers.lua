@@ -53,7 +53,18 @@ function ChartTagHelpers.is_valid_tag_modification(event, player)
   local surface_index = GPSUtils.get_context_surface_index(event.tag, player)
   local old_gps = GPSUtils.gps_from_map_position(event.old_position, surface_index)
   local tag = old_gps and Cache.get_tag_by_gps(player, old_gps) or nil
-  
+
+  -- Debug: Log tag object and admin status before permission check
+  if ErrorHandler and ErrorHandler.debug_log then
+    ErrorHandler.debug_log("[PERM_DEBUG] Tag object and admin status before permission check", {
+      player_name = player and player.name or nil,
+      is_admin = AdminUtils.is_admin(player),
+      tag = tag,
+      tag_owner = tag and tag.owner_name or "<nil>",
+      old_gps = old_gps
+    })
+  end
+
   -- Check permissions using AdminUtils with Tag object (uses Tag.owner_name)
   local can_edit, _is_owner, is_admin_override = AdminUtils.can_edit_chart_tag(player, tag)
 
@@ -134,16 +145,40 @@ end
 ---@param new_gps string New GPS coordinates
 ---@param acting_player LuaPlayer Player who made the change
 function ChartTagHelpers.update_favorites_gps(old_gps, new_gps, acting_player)
+    if ErrorHandler and ErrorHandler.debug_log then
+      ErrorHandler.debug_log("[FAV_UPDATE_GPS][ENTRY] update_favorites_gps called", {
+        old_gps = old_gps,
+        new_gps = new_gps,
+        acting_player = acting_player and acting_player.name or "<nil>",
+        stack = debug and debug.traceback and debug.traceback() or "<no traceback>"
+      })
+    end
   if not old_gps or not new_gps then return end
   local acting_player_index = acting_player and acting_player.valid and acting_player.index or nil
 
-  -- Update ALL players including the acting player
-  local all_affected_players = PlayerFavorites.update_gps_for_all_players(old_gps, new_gps, nil)
+  -- Update ALL players including the acting player (wrap in pcall to catch unexpected errors)
+  local ok, all_affected_players_or_err = pcall(PlayerFavorites.update_gps_for_all_players, old_gps, new_gps, nil)
+  local all_affected_players = {}
+  if not ok then
+    ErrorHandler.error_log("update_favorites_gps", all_affected_players_or_err, nil, "events")
+    return
+  else
+    all_affected_players = all_affected_players_or_err or {}
+  end
 
   -- Also update the acting player's favorites explicitly if not already included
   if acting_player and acting_player.valid then
-    local acting_player_favorites = PlayerFavorites.new(acting_player)
-    local acting_player_updated = acting_player_favorites:update_gps_coordinates(old_gps, new_gps)
+    local ok2, act_res = pcall(function()
+      local acting_player_favorites = PlayerFavorites.new(acting_player)
+      return acting_player_favorites:update_gps_coordinates(old_gps, new_gps)
+    end)
+    local acting_player_updated = false
+    if not ok2 then
+      ErrorHandler.error_log("update_favorites_gps_acting_player", act_res, nil, "events")
+      acting_player_updated = false
+    else
+      acting_player_updated = act_res
+    end
     local acting_player_already_included = false
     for _, player in ipairs(all_affected_players) do
       if player.index == acting_player_index then
