@@ -11,4 +11,10 @@ if [ "$rc" -ne 0 ]; then
   exit 1
 fi
 echo "Pre-commit: require lint passed. Proceeding with commit."
+# Prevent accidental commits modifying bundled lualib files
+staged=$(git diff --cached --name-only)
+if echo "$staged" | grep -E "(^|/)lualib/" >/dev/null 2>&1; then
+  echo "Pre-commit: changes to lualib detected in staged files. Commits to lualib are forbidden." >&2
+  exit 1
+fi
 exit 0

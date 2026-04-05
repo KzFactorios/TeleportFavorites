@@ -33,3 +33,4 @@ The following instruction modules are auto-loaded based on the file type being e
 - **Ambiguity**: If a request lacks context or conflicts with these rules, **ASK** for clarification before generating code.
 - **PowerShell**: Use `Out-String` when piping script output to avoid object-binding errors in the terminal.
 - **Performance Check**: Always reference `performance_patterns` before implementing `on_nth_tick` or loop-heavy logic.
+ - **Tooling**: The repo includes `scripts/require_lint.lua` (linter) and `scripts/hoist_requires.lua` (auto-fixer). Contributors should run `lua scripts/require_lint.lua --check .` before committing; use `--fix` to apply automatic hoists. The `data/core/lualib` path is intentionally excluded from linting and protected by a pre-commit hook. Use `Cache.sanitize_for_storage` in [core/cache/cache.lua](core/cache/cache.lua) to sanitize tables before writing them to `storage` (no userdata/functions allowed).

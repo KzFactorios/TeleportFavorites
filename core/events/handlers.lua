@@ -102,11 +102,7 @@ local function restore_chart_tag_and_refresh(player, chart_tag, tag)
   fave_bar.update_all_slots_in_place(player)
 end
 
--- Removed since we will set the caption directly
 
---- Validate player and run handler logic with early return pattern
----@param player_index number Player index from event
----@param handler_fn function Function to call with validated player
 ---@param ... any Additional arguments to pass to handler
 ---@return any Result from handler function, or nil if player invalid
 -- Shared player validation using centralized helpers

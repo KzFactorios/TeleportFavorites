@@ -38,7 +38,8 @@ local function list_lua_files(root)
   for line in p:lines() do
     -- normalize paths to forward slashes
     local path = line:gsub('\\', '/')
-    if not path:match('/%.git/') and not path:match('/tests/') then
+    -- Skip .git, tests, and any lualib folders (external library code)
+    if not path:match('/%.git/') and not path:match('/tests/') and not path:match('/lualib/') then
       table.insert(files, path)
     end
   end

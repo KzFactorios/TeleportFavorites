@@ -23,7 +23,8 @@ local function list_files()
   if not p then return files end
   for line in p:lines() do
     local path = line:gsub('\\', '/')
-    if not path:match('/%.git/') and not path:match('/tests/') then table.insert(files, path) end
+    -- Skip .git, tests, and any lualib folders (external library code)
+    if not path:match('/%.git/') and not path:match('/tests/') and not path:match('/lualib/') then table.insert(files, path) end
   end
   p:close()
   return files

@@ -460,13 +460,6 @@ function EventRegistrationDispatcher.register_observer_events(script)
   end
 
 
-  -- REMOVED: Duplicate favorites_bar_observer subscription that was causing double rebuilds
-  -- The DataObserver in gui_observer.lua already handles favorite_added/favorite_removed
-  -- by rebuilding the favorites bar. Having two observers rebuild the same GUI creates
-  -- non-deterministic state and causes multiplayer desyncs.
-  -- 
-  -- The favorites bar is now rebuilt ONLY by DataObserver when favorite_added or
-  -- favorite_removed events are fired.
   
   ErrorHandler.debug_log("Observer events registration complete (using DataObserver only)")
 
@@ -498,8 +491,7 @@ function EventRegistrationDispatcher.register_all_events(script)
   results.gui = EventRegistrationDispatcher.register_gui_events(script)
   results.custom_input = EventRegistrationDispatcher.register_custom_input_events(script)
   results.observer = EventRegistrationDispatcher.register_observer_events(script)
-  -- REMOVED: Modal input blocker registration (UPS optimization)
-  -- results.modal_input_blocker = ModalInputBlocker.register_handlers(script)
+  
   
   -- Register debug commands
   local debug_cmd_success, debug_cmd_err = pcall(DebugCommands.register_commands)

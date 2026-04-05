@@ -230,7 +230,7 @@ local function close_tag_editor(player)
       player.clear_cursor()
     end
     -- NOTE: on_player_selected_area / on_player_alt_selected_area are no longer
-    -- registered (ModalInputBlocker was removed for UPS optimization).
+    -- registered.
     -- No deregistration needed.
   end
   Cache.set_tag_editor_data(player, {})

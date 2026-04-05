@@ -379,7 +379,6 @@ function GuiEventBus.cleanup_old_observers(max_age_ticks)
                (current_tick - observer.created_tick) > max_age_ticks then
           should_remove = true
         
-        -- MULTIPLAYER FIX: Removed player.connected check - it's client-specific!
         -- Only clean up observers with invalid players, not disconnected ones.
         -- Disconnected players will be cleaned up when they're removed from the game.
         end

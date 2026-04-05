@@ -3,7 +3,7 @@
 -- core/events/modal_input_blocker.lua
 -- TeleportFavorites Factorio Mod
 --
--- REMOVED: This module previously registered 12 high-frequency event handlers
+ 
 -- (on_built_entity, on_pre_build, on_player_mined_item, etc.) that fired on every
 -- build/mine/transfer action. The handlers only performed an early-return check for
 -- modal dialog state, but Factorio event handlers cannot cancel events (the action

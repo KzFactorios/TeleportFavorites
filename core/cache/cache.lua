@@ -164,9 +164,9 @@ function Cache.init()
   end
   
   local is_debug = Constants.settings.DEFAULT_LOG_LEVEL == "debug"
-  -- Debug log removed for noise reduction
+  
   local tick_start = game and game.tick or 0
-  -- Debug log removed for noise reduction
+  
   if not storage then
     if ErrorHandler and ErrorHandler.error_log then
       ErrorHandler.error_log("CacheInit", "Storage table not available - this mod requires Factorio 2.0+", nil, "init")
@@ -196,7 +196,6 @@ function Cache.init()
   -- This scan is expensive on large saves, so run it once per save after deployment.
   if storage._history_item_migration_complete ~= true then
     if is_debug and log and type(log) == "function" then
-      -- Debug log removed for noise reduction
     end
     for _, player_data in pairs(storage.players) do
       if player_data.surfaces then
@@ -217,7 +216,6 @@ function Cache.init()
     storage._history_item_migration_complete = true
     local t2 = game and game.tick or 0
     if is_debug and log and type(log) == "function" then
-      -- Debug log removed for noise reduction
     end
   end
 
@@ -226,13 +224,11 @@ function Cache.init()
 
   local t3 = game and game.tick or 0
   if is_debug and log and type(log) == "function" then
-    -- Debug log removed for noise reduction
   end
   Lookups.init()
   Cache.Lookups = Lookups
   local t4 = game and game.tick or 0
   if is_debug and log and type(log) == "function" then
-    -- Debug log removed for noise reduction
   end
 
   -- Initialize settings cache
@@ -243,8 +239,6 @@ function Cache.init()
   Cache.Settings = SettingsCache
   local t6 = game and game.tick or 0
   if is_debug and log and type(log) == "function" then
-    -- Debug log removed for noise reduction
-    -- Debug log removed for noise reduction
   end
   
   -- Mark initialization complete and clear initializing flag
@@ -350,7 +344,7 @@ end
 local function init_player_data(player)
   if not player or not player.valid then return {} end
 
-  -- Cache.init() removed - should be called externally, not recursively
+  
   storage.players = storage.players or {}
   storage.players[player.index] = storage.players[player.index] or {}
   storage.players[player.index].surfaces = storage.players[player.index].surfaces or {}

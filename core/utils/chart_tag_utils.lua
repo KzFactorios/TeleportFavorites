@@ -35,7 +35,6 @@ function ChartTagUtils.find_closest_chart_tag_to_position(player, cursor_positio
   if not BasicHelpers.is_valid_player(player) or not cursor_position then return nil end
 
   -- MULTIPLAYER FIX: render_mode is client-specific and causes desyncs.
-  -- Removed render_mode gate from this data lookup function.
   -- Caller is responsible for context validation (event handlers, UI layer).
   -- Get surface index from player's current surface
   local surface_index = player.surface and player.surface.index or nil
