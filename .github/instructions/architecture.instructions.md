@@ -1,8 +1,6 @@
----
-name: "TeleportFavorites Architecture"
+title: "TeleportFavorites Architecture"
 description: "System design, GUI patterns, and data flow"
 applyTo: "core/**/*.lua, gui/**/*.lua"
----
 
 
 # TeleportFavorites: Architecture & Patterns
@@ -11,8 +9,9 @@ applyTo: "core/**/*.lua, gui/**/*.lua"
 NEVER use raw `player.gui.screen.add`. Always use `GuiBase` helpers from `gui/gui_base.lua`:
 - **Frames/Flows**: `create_frame`, `create_hflow`, `create_vflow`, `create_draggable`.
 - **Elements**: `create_button`, `create_sprite_button`, `create_label`, `create_textbox`.
-- **Special**: `create_titlebar` (includes close button logic).
-- **Rule**: All `require` statements must be at the absolute top of the file.
+-- **Special**: `create_titlebar` (includes close button logic).
+
+Note: For global policies such as `require()` placement and no-hoisting, see `.github/copilot-instructions.md`.
 
 ## 2. MODULE SYSTEM
 - **Logic**: Class-based paradigm with EmmyLua.

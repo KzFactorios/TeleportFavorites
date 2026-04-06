@@ -1,16 +1,16 @@
----
-name: "TeleportFavorites Coding Standards"
+title: "TeleportFavorites Coding Standards"
 description: "Strict Lua patterns and Factorio 2.0 API usage"
 applyTo: "**/*.lua"
----
 
 
 # TeleportFavorites: Lua Coding Standards (v2.0+)
 
 ## 1. STRUCTURE & DEPENDENCIES
-- **Top-Level Requires**: All `require` at lines 1-10 (as much as possible as there maybe more than 10 requires), alphabetical.
+
+Note: For global policies such as `require()` placement, no-hoisting, and other contributor policies, see `.github/copilot-instructions.md`.
+
 - **Circulars**: 1. Refactor to `core/utils/basic_helpers.lua`. 2. Lazy-load via `if not M then M = require() end` ONLY if refactor fails.
-- **No Hoisting**: Declare all locals/functions before use. No nested functions.
+-- **No Hoisting**: Declare all locals/functions before use. No nested functions.
 
 ## 2. NAMING & ANNOTATIONS
 - **EmmyLua**: Mandatory `---@class`, `---@field`, `---@param`, `---@return`.

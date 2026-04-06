@@ -1,8 +1,6 @@
----
-name: "TeleportFavorites PowerShell Standards"
+title: "TeleportFavorites PowerShell Standards"
 description: "Windows-specific terminal commands and anti-patterns"
 applyTo: "**/*.ps1"
----
 
 
 # TeleportFavorites: PowerShell Standards (Windows)

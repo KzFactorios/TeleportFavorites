@@ -39,7 +39,7 @@ Use `fetch_webpage` for:
 
 ## Making Code Changes
 
-- **Top-Level Scope**: Ensure all `require` statements remain at the absolute top of the file.
+Note: For global policies such as `require()` placement, no-hoisting, and other contributor constraints, see `.github/copilot-instructions.md`.
 - **Incrementalism**: One logical change at a time. Verify the "Vibe" and syntax before moving to the next block.
 - **Context Re-read**: If a code patch fails, re-read the file to check for local variable declarations (no hoisting!).
 - CRITICAL: Do not generate summary/documentation files or "refactor for cleanliness" unless specifically instructed. Stay surgical.

@@ -1,8 +1,6 @@
----
-name: "Linter & Tooling"
+title: "Linter & Tooling"
 description: "How to run and fix the require-lint, hoist-fixer, pre-commit hooks, and storage sanitizer."
 applyTo: "**/*"
----
 
 
 Purpose
@@ -17,8 +15,8 @@ Quickstart
   - Copy `.githooks/pre-commit` into `.git/hooks/pre-commit` (or run the repo-provided install script if present).
 
 Rules (enforced)
-- `require()` must appear only at top-level module scope. Runtime/conditional `require()` is forbidden and will be flagged.
-- Any table written to `storage` must be sanitized via `Cache.sanitize_for_storage` (or equivalent) to remove userdata/functions and ensure deterministic ordering.
+-- Note: For global policies such as `require()` placement and no-hoisting, see `.github/copilot-instructions.md`.
+-- Any table written to `storage` must be sanitized via `Cache.sanitize_for_storage` (or equivalent) to remove userdata/functions and ensure deterministic ordering.
 
 Examples & Fixes
 - Move `local serpent = require("serpent")` to top-of-file, or guard debug-only requires with top-level `pcall(require, "serpent")` and an early nil check.

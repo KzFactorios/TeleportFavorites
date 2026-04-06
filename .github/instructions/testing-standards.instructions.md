@@ -1,8 +1,6 @@
----
-name: "TeleportFavorites Testing Standards"
+title: "TeleportFavorites Testing Standards"
 description: "Smoke testing patterns and mock usage"
 applyTo: "tests/**/*.lua, **/*_spec.lua"
----
 
 
 # TeleportFavorites: Testing Standards

@@ -1,8 +1,6 @@
----
-name: "TeleportFavorites Game Rules"
+title: "TeleportFavorites Game Rules"
 description: "Ownership, Admin overrides, and Permission logic"
 applyTo: "core/utils/admin_utils.lua, gui/**/*.lua, **/*.lua"
----
 
 
 # TeleportFavorites: Permissions & Game Rules

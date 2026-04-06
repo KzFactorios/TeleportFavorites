@@ -1,8 +1,6 @@
----
-name: "TeleportFavorites Data Schema"
+title: "TeleportFavorites Data Schema"
 description: "Core logic and data rules"
 applyTo: "core/cache/**/*.lua, **/*.lua"
----
 
 
 # TeleportFavorites: Data Schema & Storage Rules

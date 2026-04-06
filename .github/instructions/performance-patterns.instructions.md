@@ -1,8 +1,6 @@
----
-name: "TeleportFavorites Performance Patterns"
+title: "TeleportFavorites Performance Patterns"
 description: "Caching strategies, O(1) lookups, and tick optimization"
 applyTo: "core/events/**/*.lua, core/cache/**/*.lua, **/*.lua"
----
 
 
 # TeleportFavorites: Performance & Optimization

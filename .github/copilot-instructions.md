@@ -42,16 +42,20 @@ scope: "global"
 - Define helper functions and supporting tables before code that references them.
 
 
-## Automatic subsystem context
-The following instruction modules are auto-loaded based on the file type being edited. Refer to them for implementation details:
+## Related instructions
 
-- Lua & API Rules: `.github/instructions/coding-standards.instructions.md`
-- GUI & Architecture: `.github/instructions/architecture.instructions.md`
-- Data & Schema: `.github/instructions/data-schema.instructions.md`
-- Permissions: `.github/instructions/game-rules.instructions.md`
-- Performance: `.github/instructions/performance-patterns.instructions.md`
-- Terminal & PowerShell: `.github/instructions/powershell-standards.instructions.md`
-- Testing & Mocks: `.github/instructions/testing-standards.instructions.md`
+The following scoped instruction files live under `.github/instructions/` and contain targeted rules and patterns referenced by this document:
+
+- [TeleportFavorites Architecture](.github/instructions/architecture.instructions.md)
+- [TeleportFavorites Coding Standards](.github/instructions/coding-standards.instructions.md)
+- [TeleportFavorites Data Schema](.github/instructions/data-schema.instructions.md)
+- [TeleportFavorites Game Rules](.github/instructions/game-rules.instructions.md)
+- [Linter & Tooling](.github/instructions/linter-tooling.instructions.md)
+- [TeleportFavorites Performance Patterns](.github/instructions/performance-patterns.instructions.md)
+- [TeleportFavorites PowerShell Standards](.github/instructions/powershell-standards.instructions.md)
+- [TeleportFavorites Testing Standards](.github/instructions/testing-standards.instructions.md)
+- [Beast Mode](.github/instructions/beast-mode.instructions.md)
+- `TODO.instructions.md` (intentionally preserved as an empty placeholder)
 
 
 ## Project-wide domain knowledge
