@@ -1,541 +1,65 @@
-# 🛑 LUA FUNCTION/VARIABLE ORDERING NOTE
-
-**Lua does NOT hoist function or variable declarations.**
-- All functions, tables, and variables must be defined before they are referenced or used in the file.
-- If you reference a function or table before its definition, you will get a runtime error (nil value).
-- Always declare helper functions and handler tables at the top of the file, before any code that uses them.
-- This is different from JavaScript, where function declarations are hoisted.
-
-# 🚨 CRITICAL: FACTORIO REQUIRE STATEMENT RULES
-
-**Factorio's runtime STRICTLY PROHIBITS `require()` calls inside functions or after module load time.**
-
-When you see the error: `"Require can't be used outside of control.lua parsing"` - this means you placed a `require()` call inside a function, event handler, or anywhere other than the top-level module scope.
-
-## ✅ CORRECT Pattern (Module-Level Requires):
-```lua
--- ✅ ALL requires at the very top, before any logic
-local Cache = require("core.cache.cache")
-local PlayerHelpers = require("core.utils.player_helpers")
-local ErrorHandler = require("core.utils.error_handler")
-
----@class MyModule
-local MyModule = {}
-
-function MyModule.some_function()
-  -- Use already-loaded modules here
-  ErrorHandler.debug_log("Message")
-  local data = Cache.get_something()
-end
-
-return MyModule
-```
-
-## ❌ FORBIDDEN Pattern (Runtime Requires):
-```lua
--- ❌ NEVER EVER DO THIS - Will cause "Require can't be used outside of control.lua parsing"
-function MyModule.some_function()
-  local ErrorHandler = require("core.utils.error_handler")  -- FORBIDDEN!
-  ErrorHandler.debug_log("Message")
-end
-
-function MyModule.log(level, message, data)
-  local ErrorHandler = require("core.utils.error_handler")  -- FORBIDDEN!
-end
-```
-
-## 🔄 Circular Dependency Exception (Lazy Loading):
-**ONLY use this pattern when you have a genuine circular dependency that cannot be refactored:**
-
-```lua
--- Declare as nil at module level
-local CircularModule = nil
-
-local OtherModule = require("some.other.module")
-
----@class MyModule
-local MyModule = {}
-
-function MyModule.function_that_needs_circular()
-  -- Lazy-load ONLY on first call to break circular dependency
-  if not CircularModule then
-    CircularModule = require("module.that.requires.me")
-  end
-  
-  CircularModule.do_something()
-end
-
-return MyModule
-```
-
-**When to use lazy loading:**
-- ✅ Genuine circular dependency (A requires B, B requires A)
-- ✅ Module is only used in runtime functions (never in module initialization)
-- ✅ You've verified refactoring into a third module is not viable
-
-**When NOT to use lazy loading:**
-- ❌ "Convenience" - just because a module is only used in one function
-- ❌ To avoid thinking about module organization
-- ❌ Any non-circular dependency scenario
-
-## 🔍 How to Detect Your Mistake:
-
-**If you see this error:**
-```
-__ModName__/path/to/file.lua:XX: Require can't be used outside of control.lua parsing.
-```
-
-**Check the line number - you will find:**
-1. A `require()` call inside a function body
-2. A `require()` call inside an if statement or loop
-3. A `require()` call anywhere other than the top-level of the file
-
-**Fix by:**
-1. Move the `require()` to the top of the file (line 1-10, before any logic)
-2. Order alphabetically with other requires
-3. If you get a circular dependency error, use the lazy loading pattern above
-
-# IMPORTANT: All code, API usage, and modding guidance in this project MUST target Factorio v2.0+ and above. Do not use deprecated or legacy patterns from earlier versions. Always verify compatibility and reference the v2.0+ documentation for all features, prototypes, and runtime logic.
-# TeleportFavorites Factorio Mod — AI Agent Instructions
-
-## 🎯 PROJECT OVERVIEW
-
-TeleportFavorites is a **multiplayer-safe Factorio mod** that enables instant teleportation to favorite locations via map tags. Key features:
-
-## 🏗️ ARCHITECTURE QUICK START
-
-### Module Structure
-```
-core/
-├── cache/           # Data persistence (storage.players, storage.surfaces)
-├── control/         # GUI controllers & lifecycle management  
-├── events/          # Event handlers & dispatcher patterns
-├── favorite/        # Favorite object logic & player favorite management
-├── tag/             # Map tag objects & synchronization
-├── teleport/        # Teleportation logic & history
-└── utils/           # Helper modules (GPS, validation, GUI builders)
-
-gui/
-├── favorites_bar/   # Top-screen favorites bar interface
-└── tag_editor/      # Right-click map tag creation/editing
-
-prototypes/          # Factorio data-stage definitions
-tests/              # Custom test framework with smoke testing
-```
-
-### Data Flow Pattern
-**User Input** → **Event Handler** → **Storage Update** → **GUI Refresh**
-- All persistent data flows through `core/cache/cache.lua`
-- Surface-aware data management for multiplayer compatibility
-
-## 🛡️ CODING STANDARDS & BEST PRACTICES (STRICT)
-
-### EmmyLua Annotation Requirements
-- All classes, fields, and methods must be annotated for strictness and IDE support. Use `---@class`, `---@field`, `---@param`, and `---@return` for documentation and static analysis. See `core/types/factorio.emmy.lua` for Factorio runtime types and type aliases.
-
-### Helper/Module Structure & Circular Dependency Policy
-- **CRITICAL**: All require statements must be at the very top of each file (lines 1-10), ordered alphabetically, before any logic or function definitions.
-- **FACTORIO RESTRICTION**: `require()` can ONLY be used at module load time (top-level scope). NEVER place require statements inside functions, event handlers, conditionals, loops, or at the end of files. This will cause "Require can't be used outside of control.lua parsing" error.
-- **Circular Dependencies**: If you encounter a circular dependency (Module A requires Module B, which requires Module A), you have TWO options:
-  1. **PREFERRED**: Refactor shared logic into a third, dependency-free helper module (see `core/utils/basic_helpers.lua`)
-  2. **ONLY IF REFACTORING IS NOT VIABLE**: Use lazy-loading pattern (declare as `nil` at module level, load on first function call - see examples in copilot-instructions.md)
-- Helper modules must not depend on higher-level modules. If a helper is needed in multiple places, move it to a lower-level, dependency-free module.
-- **Before moving ANY require() call**: Ask yourself: "Is this being called at module load time (top-level) or at runtime (inside a function)?" If runtime, you will break Factorio's require restrictions.
-
-### GUI Element Naming Convention
-- All interactive and structural GUI element names (buttons, labels, textfields, frames, flows, etc.) must be prefixed with their GUI/module context, using the format `{gui_context}_{purpose}_{type}`. Example: `tag_editor_move_button`, `fave_bar_slot_button_1`.
-- Update all event handler checks and variable references to use the new names when refactoring or adding new elements.
-
-### No Leading Underscores for Private Fields
-- For private or internal fields in classes, do not use a leading underscore (e.g., use `chart_tag` instead of `_chart_tag`).
-
-### Error-Free Code Policy
-- All code contributions, including those generated by automated agents, must be error-free to the best of the contributor's ability. No syntax errors, runtime errors, or Factorio data stage errors should be present in any committed or proposed code. All Lua code must be valid and loadable by Factorio without warnings or errors.
-- Automated agents (such as Copilot) must validate and ensure their code is error-free before submitting or applying changes. If an error is detected after submission, it must be fixed immediately.
-
-### Paradigms and Patterns
- - **Class-based OOP:** Use idiomatic Lua class patterns with strict EmmyLua annotations.
- - **Design Patterns:** Adapter, Facade, Proxy, Singleton, Observer, Builder, Command, Strategy, Composite. Pattern base classes are in `core/pattern/` or `core/patterns/` and documented in `.project/pattern_class_notes.md`.
- - **Surface Awareness:** All helpers and accessors must be surface-aware and multiplayer-safe.
- - **Event-driven Architecture:** Use Factorio's event system for initialization, surface management, and runtime cache handling. Register event handlers in `control.lua`.
- - **Persistent vs. Runtime Data:** Persistent data must be managed via the `core/cache` module and stored in `storage`. Runtime-only (non-persistent) data must use the runtime cache (`core/cache/lookups.lua`).
- - **Shared Tag Mutation Helper:** Always use `Tag.update_gps_and_surface_mapping(old_gps, new_gps, chart_tag, player)` for chart tag position changes. This centralizes tag data movement, tag object updates, and runtime cache synchronization for multiplayer and surface consistency.
-
-### Vanilla Factorio Utility Sprite Usage
-- Only use the following vanilla utility sprites for GUIs:
-  - utility/list_view, utility/close, utility/refresh, utility/arrow-up, utility/arrow-down, utility/arrow-left, utility/arrow-right
-- Do NOT use: utility/minus, utility/plus, utility/remove, utility/add, utility/tab_icon, utility/up_arrow, utility/down_arrow. These do NOT exist in vanilla Factorio and will cause exceptions.
-- For more icons, check the [Factorio Wiki: Prototype/Sprite](https://wiki.factorio.com/Prototype/Sprite#Sprites) or inspect the game's utility-sprites.png for available names.
-
-### Commit & Review Process
-- Lint before commit
-- Run tests before submitting
-- Document all changes
-
-### Shell Command Formatting
-- Use PowerShell syntax: This project is developed on Windows using PowerShell.
-- Use semicolons (`;`) instead of `&&` for command chaining.
-- Use PowerShell path conventions: Use backslashes (`\`) or forward slashes (`/`) consistently.
-- Format multi-line commands properly: Use backticks for line continuation in PowerShell.
-
 ---
-local Cache = require("core.cache.cache")
-local PlayerHelpers = require("core.utils.player_helpers")
-
--- ❌ NEVER inside functions, conditionals, or at file end
-function some_function()
-  local Module = require("some.module")  -- FORBIDDEN!
-end
-```
-
-### 2. Storage as Source of Truth
-```lua
--- ❌ NEVER read from GUI
-local text = text_element.text
-
--- ✅ ALWAYS read from storage
-local tag_data = Cache.get_tag_editor_data(player)
-local text = tag_data.text
-```
-
-### 3. Function Structure
-- All functions must be **top-level** (never nested inside other functions)
-- Match every `function` with corresponding `end` at same indentation
-- Use proper Factorio API syntax: `:` for methods, `.` for properties
-
-## 🔧 DEVELOPMENT WORKFLOW
-
-### Testing Commands (Universal - Work from Any Directory)
-```powershell
-# Run full test suite
-.\.test.ps1        # PowerShell (recommended)
-.test.bat         # Batch file  
-lua .test.lua     # Direct Lua
-
-# Check code line count (target: under 10,000 lines production code)
-python .scripts\analyze_lua_lines.py
-```
-
-### PowerShell Environment Notes
-**This project is developed on Windows with PowerShell as the default shell.** When generating terminal commands:
-- Use PowerShell syntax: `Get-ChildItem`, `Select-Object`, `Where-Object` 
-- NOT Unix commands: `ls`, `head`, `tail`, `grep`
-- Use `Select-String` instead of `grep`
-- Use `-First N` instead of `head -N`
-- Use proper PowerShell pipe syntax and object handling
-
-## ⚠️ COST EFFICIENCY AND COMMAND ACCURACY
-
-**CRITICAL**: Misconfigured or erroneous commands cost money per request. The agent must stay vigilant and maintain accurate PowerShell command patterns. **If an antipattern is discovered that has not been documented, it MUST be documented in these instructions before using a corrected command.**
-
-### PowerShell Anti-Patterns to Avoid
-
-**❌ COMMON COMMAND FAILURES:**
-```powershell
-# BROKEN: Select-String with -A parameter (After context)
-.\.test.ps1 | Select-String -Pattern "Total tests.*:" -A 2
-# ERROR: "The input object cannot be bound to any parameters"
-
-# BROKEN: Select-String with -A parameter on script output (After context lines)
-.\.test.ps1 | Select-String -Pattern "Failed|Failures" -A 10
-# ERROR: "The input object cannot be bound to any parameters for the command"
-
-# BROKEN: Complex regex patterns in Select-String with pipeline from scripts
-.\.test.ps1 | Select-String -Pattern "Failed|Total tests passed|Total tests failed" -Context 1
-# ERROR: Parameter binding exceptions when script output contains objects
-
-# BROKEN: Using Unix-style commands
-ls -la | grep pattern
-head -10 file.txt
-tail -f log.txt
-
-# BROKEN: Using Unix && operator for command chaining
-.\.test.ps1 > test_output.txt 2>&1 && Get-Content test_output.txt
-# ERROR: "The token '&&' is not a valid statement separator"
-
-# BROKEN: Complex pipeline combinations with script output
-.\.test.ps1 | Out-String | Select-String "Overall Test Summary" -A 10
-# ERROR: Parameter binding exceptions due to object/string conversion issues
-
-# BROKEN: Trying to pipe script objects directly to Select-String with context
-(.\.test.ps1) | Select-String "Total tests" | Select-Object -Last 3
-# ERROR: PowerShell treats script output as objects, not strings, causing binding failures
-
-# BROKEN: Using lua -c for syntax checking (incorrect parameter)
-lua -c tests\specs\drag_drop_utils_spec.lua
-# ERROR: "-c" is not a valid parameter for lua.exe - shows usage help instead
-
-# BROKEN: Mixing Unix dir command with PowerShell in complex pipelines  
-Set-Location tests; dir /b "specs\*_spec.lua" | Select-String "drag_drop"
-# ERROR: "dir /b" is cmd syntax, creates path confusion and pipeline errors in PowerShell
-```
-
-### File Organization Rules
-
-**❌ NEVER place test-related files in root directory:**
-- test_output.txt, test_output_latest.txt, debug_test_runner.lua, debug_vehicle_test.lua
-- All test files belong in tests/ directory or subdirectories
-- Root directory should only contain production mod files and essential config files
-
-**✅ CORRECT file placement:**
-- Production code: core/, gui/, prototypes/, graphics/
-- Test files: tests/specs/, tests/output/, tests/mocks/
-- Config files: .vscode/, .github/, .project/
-
-**✅ CORRECT POWERSHELL PATTERNS:**
-```powershell
-# Use parentheses to force string output before piping
-(.\.test.ps1) | Select-String -Pattern "pattern"
-
-# Use Out-String to convert objects to strings
-.\.test.ps1 | Out-String | Select-String -Pattern "Failed"
-
-# Use PowerShell native cmdlets
-Get-ChildItem -Recurse | Where-Object { $_.Name -match "pattern" }
-Get-Content file.txt | Select-Object -First 10
-Get-Content file.txt -Wait -Tail 10
-
-# Use proper PowerShell operators for text replacement
-(Get-Content "file.lua") -replace "old_pattern", "new_pattern" | Set-Content "file.lua"
-
-# Use semicolon for command chaining (not &&)
-.\.test.ps1 > test_output.txt 2>&1; Get-Content test_output.txt
-
-# For test output, run tests separately then check results
-.\.test.ps1
-# Then check specific output files or use simpler commands
-```
-
-**❌ NEWLY DISCOVERED ANTIPATTERN:**
-```powershell
-# BROKEN: Incorrect path navigation in Get-ChildItem
-Get-ChildItem "tests\specs\*_spec.lua"  # When already in tests directory
-# ERROR: Looks for tests\tests\specs instead of specs
-
-# BROKEN: PowerShell path confusion with relative directories
-cd tests; Get-ChildItem "tests\specs\*_spec.lua" 
-# ERROR: Double-nests the path when already in subdirectory
-
-# BROKEN: Select-String with -A parameter on any script output (CONFIRMED ANTIPATTERN)
-(.\.test.ps1) | Select-String "Overall Test Summary" -A 5
-# ERROR: "The input object cannot be bound to any parameters for the command either because the command does not take pipeline input or the input and its properties do not match any of the parameters that take pipeline input"
-# This fails because PowerShell script output creates objects, not strings, and Select-String -A parameter cannot bind to these objects
-
-# BROKEN: Any Select-String with context parameters (-A, -B, -C) on script output
-.\.test.ps1 | Select-String -Pattern "Total tests.*:" -A 2
-.\.test.ps1 | Select-String -Pattern "Failed|Failures" -A 10  
-.\.test.ps1 | Select-String -Pattern "Failed|Total tests passed|Total tests failed" -Context 1
-# ERROR: "The input object cannot be bound to any parameters for the command either because the command does not take pipeline input or the input and its properties do not match any of the parameters that take pipeline input"
-# All of these fail because PowerShell script output produces objects, not strings, causing parameter binding failures
-```
-
-**✅ CORRECT POWERSHELL PATTERNS:**
-```powershell
-# Use proper relative paths based on current directory
-Get-ChildItem "specs\*_spec.lua"  # When in tests directory  
-Set-Location ..; Get-ChildItem "tests\specs\*_spec.lua"  # From subdirectory to root
-Get-ChildItem -Path ".\specs\*_spec.lua"  # Explicit current directory
-
-# Check for empty files correctly
-Get-ChildItem "specs\*_spec.lua" | Where-Object { (Get-Content $_.FullName -Raw -ErrorAction SilentlyContinue).Trim() -eq "" }
-
-# CORRECT: Avoid Select-String -A entirely with script output - use direct execution instead
-.\.test.ps1                                    # Run script directly and read full output
-.\.test.ps1 > output.txt; Get-Content output.txt -Tail 10  # Save output then read specific lines
-.\.test.ps1 2>&1 | Tee-Object -FilePath "test_results.txt"  # Capture output to file while displaying
-
-# CORRECT: For test result analysis, run tests then check specific files
-.\.test.ps1; Get-Content "tests\test_output.txt" | Select-String "Overall Test Summary" 
-.\.test.ps1; Get-Content "tests\results.txt" | Where-Object { $_ -match "Failed|Total tests" }
-
-# CORRECT: Use Out-String to convert objects to strings before Select-String (but avoid -A)
-.\.test.ps1 | Out-String | Select-String -Pattern "Failed"  # Without context parameters
-
-# For Lua syntax checking, use proper lua execution
-lua -e "loadfile('tests\\specs\\drag_drop_utils_spec.lua')"  # Load and check syntax without execution
-lua tests\specs\drag_drop_utils_spec.lua                     # Execute the file directly (if it's standalone)
-Get-Content tests\specs\drag_drop_utils_spec.lua | lua       # Pipe file content to lua interpreter
-
-# For file searches, use PowerShell native commands
-Get-ChildItem "specs\*_spec.lua" | Where-Object { $_.Name -match "pattern" }
-Get-ChildItem -Path ".\specs\*_spec.lua" -Filter "*drag_drop*"
-```
-
-### Key File Patterns
-- **Entry Points**: `control.lua` (runtime), `data.lua` (data stage), `settings.lua` (mod settings)
-- **Constants**: `constants.lua` - Central configuration values and limits
-- **Cache Access**: Always use `Cache.get_*()` / `Cache.set_*()` - never access `storage` directly
-- **Player Safety**: Use `PlayerHelpers.safe_player_print()` instead of `player.print()`
-- **Validation**: Use `SafeHelpers.is_valid_player()` / `SafeHelpers.is_valid_element()`
-
-### GUI Development
-- Use `GuiElementBuilders` for consistent element creation
-- Follow **storage-first** pattern: save immediately on input, read from storage for logic
-- Tag editor state stored in `cache.players[index].tag_editor_data`
-- Favorites bar state in `cache.players[index].surfaces[surface].favorites`
-
-### Drag-Drop Algorithm (`DragDropUtils.reorder_slots`)
-The favorites bar uses a custom **blank-seeking cascade algorithm** with these behaviors:
-
-**Special Cases (Simple Operations):**
-- **Move to blank**: Direct swap with no cascade
-- **Adjacent slots**: Simple swap operation  
-- **Locked slots**: Cannot be source, destination, or cascade targets
-
-**Cascade Algorithm (Non-Adjacent, Non-Blank):**
-1. **Source evacuation**: Source slot becomes blank immediately
-2. **Blank detection**: Search between source and destination for existing blank slots
-3. **Cascade direction**: Items shift toward the newly-created blank at source position
-4. **Destination placement**: Source item gets placed at destination, displacing what was there
-5. **Natural compaction**: Displaced items flow into available blanks, creating intuitive reordering
-
-**Example**: Drag slot 10 → slot 8
-- Slot 10 content → slot 8 (destination)
-- Slot 8 content → slot 9 (cascades toward blank at slot 10)
-- Slot 9 content → slot 10 (fills the blank)
-- Result: Natural rightward shift of affected items
-
-**Implementation Notes:**
-- Returns `(modified_slots, success, error_message)` tuple
-- Creates deep copy to avoid mutating input data
-- Respects locked slot boundaries throughout cascade
-- Provides detailed error messages for validation failures
-
-## 🎮 FACTORIO-SPECIFIC PATTERNS
-
-### Chart Tag Ownership System
-```lua
--- Only tag owner OR admin can edit
-local can_edit = AdminUtils.can_edit_chart_tag(player, chart_tag)
--- Ownership tracked via chart_tag.last_user (player name string)
-```
-
-### GPS & Position Handling
-```lua
--- GPS format: "x.y.surface_index" (e.g., "100.200.1")
-local position = GPSUtils.map_position_from_gps(gps_string)
-local gps = GPSUtils.gps_from_map_position(position, surface)
-```
-
-### Surface-Aware Data Management
-All player data is organized by surface to handle multiple worlds:
-```lua
-storage.players[player_index].surfaces[surface_index].favorites
-storage.surfaces[surface_index].tags[gps_string]
-```
-
-## 🧪 TESTING PHILOSOPHY
-
-**Simplified Smoke Testing**: Focus on execution validation over deep behavior testing.
-
-### Test Pattern (Standard)
-```lua
-require("test_bootstrap")
-require("mocks.factorio_test_env")
-
-describe("ModuleName", function()
-    it("should load module without errors", function()
-        local success, err = pcall(function()
-            local Module = require("path.to.module")
-            assert(Module ~= nil, "Module should load")
-        end)
-        assert(success, "Module should load without errors: " .. tostring(err))
-    end)
-    
-    it("should expose expected API methods", function()
-        local Module = require("path.to.module")
-        assert(type(Module.method_name) == "function", "method should exist")
-    end)
-end)
-```
-
-### Mock Strategy
-- Mock dependencies via `package.loaded["module.path"] = mock_table`
-- Use `PlayerFavoritesMocks.mock_player(1, "TestPlayer", 1)` for player objects
-- Focus on smoke testing: execution validation over behavior verification
-- All tests in `tests/specs/*_spec.lua` with describe/it structure
-
-## 📚 KEY DOCUMENTATION REFERENCES
-
-**ALWAYS check these before making changes:**
-- `.project/architecture.md` - Overall system design & patterns
-- `.project/data_schema.md` - Storage structure & data relationships  
-- `.project/coding_standards.md` - Critical rules & "storage as source of truth"
-- `.project/game_rules.md` - Multiplayer permissions & tag ownership
-- `tests/docs/README.md` - Test execution & framework usage
-
-
-## 🚨 FACTORIO API ESSENTIALS (v2.0+)
-
-### Syntax Rules (v2.0+)
-```lua
-surface:get_tile(position)      # Method calls with ':'
-chart_tag.position             # Property access with '.'
-player.force:add_chart_tag()   # Chain method calls properly
-```
-
-### Common Validations (v2.0+)
-```lua
-if not player or not player.valid then return end
-if not chart_tag or not chart_tag.valid then return end  
-if not surface or not surface.valid then return end
-```
-
-### Event Registration Pattern
-```lua
--- Via event_registration_dispatcher.lua
-script.on_event(defines.events.on_gui_click, handlers.on_gui_click)
-script.on_event(defines.events.on_chart_tag_added, handlers.on_chart_tag_added)
-```
-
+title: "Copilot instructions"
+description: "Canonical project guidance for AI agents and contributors"
+scope: "global"
 ---
 
-*This is a multiplayer-safe Factorio mod with complex GUI interactions. When in doubt, prioritize data consistency and player safety over convenience features.*
-## 💡 DEVELOPMENT TIPS
+# Require statement policy (critical)
 
-### Quick Problem Solving
-- **Read the error**: Factorio provides detailed error messages with stack traces
-- **Check storage first**: Most issues stem from incorrect data access patterns
-- **Validate inputs**: Always check player/element validity before operations
-- **Use the cache**: Never access `storage` directly - use `Cache.*` methods
+**All** `require()` calls must be at the top of every Lua file, before any logic, function, or variable definitions.
 
-### Common Patterns
-```lua
--- Safe player operations
-local function safe_operation(player)
-  if not player or not player.valid then return end
-  -- ... your code here
-end
+- Keep all `require()` calls at top-level, grouped and ordered consistently.
+- Do not call `require()` inside functions, event handlers, conditionals, loops, or after module initialization. Factorio will error: "Require can't be used outside of control.lua parsing."
+- Prefer extracting shared logic into a helper module (for example `core/utils/basic_helpers.lua`).
+- If refactoring is not viable, use lazy-loading inside runtime functions only as a last resort.
 
--- Error handling pattern
-local function handle_input(input)
-  if not input then return end  -- Graceful nil handling
-  -- ... process input
-end
+**Notes**:
 
--- Event handler template  
-local function on_some_event(event)
-  local player = game.players[event.player_index]
-  if not player or not player.valid then return end
-  
-  -- Read from storage
-  local data = Cache.get_some_data(player)
-  
-  -- Update storage
-  data.field = new_value
-  Cache.set_some_data(player, data)
-  
-  -- Optional: refresh UI
-  refresh_ui_if_needed(player)
-end
-```
+- **No hoisting:** Lua does not hoist. Define all local functions and tables **before** they are referenced in the file.
+- **Storage only:** Target API v2.0+. Use `storage` (the `global` table is deprecated/forbidden).
+- **Surgical edits:** Modify only the requested function or block. Do not refactor or "clean up" surrounding code unless explicitly asked.
 
-### Best Practices
-- **Start simple**: Get basic functionality working before adding complexity
-- **Test incrementally**: Use the test suite to catch regressions early
-- **Document decisions**: Update `.project/` docs for significant changes
-- **Follow the patterns**: Consistency is key to maintainability
 
----
+## Core rules
 
-*Remember: This mod prioritizes multiplayer safety and data consistency. When in doubt, choose the more conservative approach that preserves data integrity.*
+- **Safety first:** avoid runtime-breaking changes.
+- Fix root causes; keep edits focused and minimal.
+- Add or update tests and run the test suite locally before committing.
+- Use EmmyLua annotations for public APIs.
+- Do not use emojis or decorative symbols in repository docs or instruction files.
+
+
+## Key conventions
+
+- **Storage is the source of truth:** use `core/cache/*` helpers rather than reading GUI state.
+- Follow Factorio v2.0+ patterns: surface-aware storage and event-driven handlers.
+
+
+## Workflow notes
+
+- Reference canonical docs in `.github/copilot-instructions.md` and `.project/*` as needed.
+- Keep documentation concise; update docs only when behavior or architecture changes.
+- Define helper functions and supporting tables before code that references them.
+
+
+## Automatic subsystem context
+The following instruction modules are auto-loaded based on the file type being edited. Refer to them for implementation details:
+
+- Lua & API Rules: `.github/instructions/coding-standards.instructions.md`
+- GUI & Architecture: `.github/instructions/architecture.instructions.md`
+- Data & Schema: `.github/instructions/data-schema.instructions.md`
+- Permissions: `.github/instructions/game-rules.instructions.md`
+- Performance: `.github/instructions/performance-patterns.instructions.md`
+- Terminal & PowerShell: `.github/instructions/powershell-standards.instructions.md`
+- Testing & Mocks: `.github/instructions/testing-standards.instructions.md`
+
+
+## Project-wide domain knowledge
+
+- **Core intent:** High-speed teleportation via favorites bar and map tags.
+- **Constraints:** Teleportation is allowed from Map and Remote View. No favorites allowed on Space Platforms.
+- **Ownership:** Follow the strict creator-based ownership model defined in `game-rules`.
+- **PowerShell:** Use `Out-String` when piping script output to avoid object-binding errors.
+- **Performance check:** Always reference `performance-patterns` before implementing `on_nth_tick` or loop-heavy logic.
+
+- Use `Cache.sanitize_for_storage` in [core/cache/cache.lua](core/cache/cache.lua) to sanitize tables before writing them to `storage` (no userdata/functions allowed).
