@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="e2ea2e94-bda5-4ad0-b13d-6600c6b8371a" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.luarc.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.github/instructions/coding-standards.instructions.md" beforeDir="false" afterPath="$PROJECT_DIR$/.github/instructions/coding-standards.instructions.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/TESTING_INSTRUCTIONS.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/constants.lua" beforeDir="false" afterPath="$PROJECT_DIR$/constants.lua" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/control.lua" beforeDir="false" afterPath="$PROJECT_DIR$/control.lua" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/cache/cache.lua" beforeDir="false" afterPath="$PROJECT_DIR$/core/cache/cache.lua" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/control/control_tag_editor.lua" beforeDir="false" afterPath="$PROJECT_DIR$/core/control/control_tag_editor.lua" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/control/slot_interaction_handlers.lua" beforeDir="false" afterPath="$PROJECT_DIR$/core/control/slot_interaction_handlers.lua" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/events/event_registration_dispatcher.lua" beforeDir="false" afterPath="$PROJECT_DIR$/core/events/event_registration_dispatcher.lua" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/events/handlers.lua" beforeDir="false" afterPath="$PROJECT_DIR$/core/events/handlers.lua" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/favorite/player_favorites.lua" beforeDir="false" afterPath="$PROJECT_DIR$/core/favorite/player_favorites.lua" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/utils/error_handler.lua" beforeDir="false" afterPath="$PROJECT_DIR$/core/utils/error_handler.lua" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/favorites_bar/fave_bar.lua" beforeDir="false" afterPath="$PROJECT_DIR$/gui/favorites_bar/fave_bar.lua" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/tag_editor/tag_editor.lua" beforeDir="false" afterPath="$PROJECT_DIR$/gui/tag_editor/tag_editor.lua" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/coverage_summary.txt" beforeDir="false" afterPath="$PROJECT_DIR$/tests/coverage_summary.txt" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="EmbeddingIndexingInfo">
+    <option name="cachedIndexableFilesCount" value="17152" />
+    <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="NewLua" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="KubernetesApiPersistence">{}</component>
+  <component name="KubernetesApiProvider">{
+  &quot;isMigrated&quot;: true
+}</component>
+  <component name="McpProjectServerCommands">
+    <commands />
+    <urls />
+  </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="QODANA_PROBLEMS_VIEW_TAB" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 6
+}</component>
+  <component name="ProjectId" id="3BskejoMRHwETvsom7pow2O7tP2" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Notification.DisplayName-DoNotAsk-project.configuration.files.added.notification": "",
+    "Notification.DoNotAsk-project.configuration.files.added.notification": "true",
+    "RunOnceActivity.MCP Project settings loaded": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
+    "git-widget-placeholder": "master",
+    "ignore.virus.scanning.warn.message": "true",
+    "junie.onboarding.icon.badge.shown": "true",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "to.speed.mode.migration.done": "true",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="QodanaReportsService">
+    <option name="descriptions">
+      <ReportDescription localRun="true" path="C:\Users\Dev\AppData\Local\Temp\qodana_output\qodana.sarif.json" reportGuid="f4e21082-6bdc-400f-b920-3c4fb3102963" reportId="TeleportFavorites/qodana/2026-04-04" />
+    </option>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="e2ea2e94-bda5-4ad0-b13d-6600c6b8371a" name="Changes" comment="" />
+      <created>1775285263536</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1775285263536</updated>
+      <workItem from="1775285265286" duration="1217000" />
+      <workItem from="1775321645517" duration="1381000" />
+      <workItem from="1775323110456" duration="100000" />
+      <workItem from="1775323266643" duration="280000" />
+      <workItem from="1775323564639" duration="937000" />
+      <workItem from="1775324524654" duration="59000" />
+      <workItem from="1775324599106" duration="330000" />
+      <workItem from="1775324948672" duration="26000" />
+      <workItem from="1775324994476" duration="3253000" />
+      <workItem from="1775330915120" duration="2359000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="UnityProjectConfiguration" hasMinimizedUI="false" />
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <option name="CLEAR_INITIAL_COMMIT_MESSAGE" value="true" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <breakpoint enabled="true" type="DotNet_Exception_Breakpoints">
+          <properties exception="System.OperationCanceledException" breakIfHandledByOtherCode="false" displayValue="System.OperationCanceledException" />
+          <option name="timeStamp" value="1" />
+        </breakpoint>
+        <breakpoint enabled="true" type="DotNet_Exception_Breakpoints">
+          <properties exception="System.Threading.Tasks.TaskCanceledException" breakIfHandledByOtherCode="false" displayValue="System.Threading.Tasks.TaskCanceledException" />
+          <option name="timeStamp" value="2" />
+        </breakpoint>
+        <breakpoint enabled="true" type="DotNet_Exception_Breakpoints">
+          <properties exception="System.Threading.ThreadAbortException" breakIfHandledByOtherCode="false" displayValue="System.Threading.ThreadAbortException" />
+          <option name="timeStamp" value="3" />
+        </breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+  <component name="XSLT-Support.FileAssociations.UIState">
+    <expand />
+    <select />
+  </component>
+</project>
