@@ -84,14 +84,13 @@ function teleport_history_modal.build(player)
   local modal_width = (pos and type(pos.width) == "number") and pos.width or 350
   local modal_height = (pos and type(pos.height) == "number") and pos.height or 392
 
-  -- Create the main modal frame (following tag editor pattern)
-  local modal_frame = player.gui.screen.add {
-    type = "frame",
-    name = Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL,
-    direction = "vertical",
-    style = "tf_teleport_history_modal_frame",
-    modal = false
-  }
+  -- Create the main modal frame via GuiBase helper
+  local modal_frame = GuiBase.create_frame(
+    player.gui.screen,
+    Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL,
+    "vertical",
+    "tf_teleport_history_modal_frame"
+  )
   -- Sizing is defined by style; do not mutate style fields at runtime
 
   -- Critical error check: Ensure modal was created successfully

@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 -- Conservative hoist fixer: move simple in-function `local X = require("mod")` to file top
--- Usage: lua scripts/hoist_requires.lua [path]
+-- Usage: lua .scripts/hoist_requires.lua [path]
 
 local root = arg[1] or '.'
 

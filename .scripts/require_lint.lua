@@ -59,7 +59,7 @@ end
 
 if fix then
   -- run hoist fixer
-  local ok = os.execute('lua "' .. 'scripts/hoist_requires.lua' .. '" "' .. root .. '"')
+  local ok = os.execute('lua "' .. '.scripts/hoist_requires.lua' .. '" "' .. root .. '"')
   if ok ~= 0 and ok ~= true then
     print('Hoist fixer failed; aborting.')
     os.exit(2)
