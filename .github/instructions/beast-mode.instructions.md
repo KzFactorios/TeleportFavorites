@@ -26,7 +26,7 @@ Work autonomously until the user's request is completely resolved. Do not yield 
 Before writing code:
 1. **Deep Trace**: Investigate the codebase. Read relevant files and trace dependencies (e.g., if changing a tag, check `core/cache/lookups.lua`).
 2. **Standard Check**: Identify which `.instructions.md` files apply to this task.
-3. **Run Linter/Tooling**: Run `lua scripts/require_lint.lua --check <path>` to detect runtime `require()` violations. Use `--fix` to apply conservative hoists; manual review is required for ambiguous cases. When tracing storage flows, reference `Cache.sanitize_for_storage` in [core/cache/cache.lua](core/cache/cache.lua) and ensure sanitizer calls on every write to `storage`.
+3. **Run Linter/Tooling**: Run `lua scripts/require_lint.lua --check <path>` to detect runtime `require()` violations. Use `--fix` to apply conservative hoists; manual review is required for ambiguous cases. For storage sanitization guidance, see `.github/instructions/linter-tooling.instructions.md`.
 4. **Todo List**: Create concrete steps. **Tag each step** with the intended file (e.g., `[ ] Step 1: Update storage schema in cache.lua`).
 4. **Reflect**: After each step, verify the change didn't break the "Source of Truth" (storage).
 

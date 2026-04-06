@@ -46,6 +46,10 @@ local SettingsCache = require("core.cache.settings")
 
 local Cache = {}
 
+-- Optional GUI observer module (guarded require at top-of-file to avoid runtime requires)
+local _ok_gui_observer, GuiObserver = pcall(require, "core.events.gui_observer")
+if not _ok_gui_observer then GuiObserver = nil end
+
 
 --- Persistent and runtime cache management for TeleportFavorites mod.
 ---@class Cache
@@ -93,9 +97,8 @@ end
 
 --- Safe notification that handles module load order
 function Cache.notify_observers_safe(event_type, data)
-  local success, gui_observer = pcall(require, "core.events.gui_observer")
-  if success and gui_observer.GuiEventBus then
-    gui_observer.GuiEventBus.notify(event_type, data)
+  if GuiObserver and GuiObserver.GuiEventBus then
+    GuiObserver.GuiEventBus.notify(event_type, data)
   end
 end
 
@@ -686,7 +689,9 @@ function Cache.set_tag_editor_data(player, data)
   if is_empty then
     pdata.tag_editor_data = Cache.create_tag_editor_data()
   else
-    for k, v in pairs(data) do
+    -- Sanitize incoming data before persisting to storage to avoid userdata/functions
+    local sanitized = Cache.sanitize_for_storage(data, { chart_tag = true, tag = true })
+    for k, v in pairs(sanitized) do
       pdata.tag_editor_data[k] = v
     end
   end

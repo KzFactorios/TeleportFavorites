@@ -19,6 +19,48 @@ scope: "global"
 - **Storage only:** Target API v2.0+. Use `storage` (the `global` table is deprecated/forbidden).
 - **Surgical edits:** Modify only the requested function or block. Do not refactor or "clean up" surrounding code unless explicitly asked.
 
+## Require policy (concrete rules)
+
+Follow these concrete rules to avoid runtime `require()` violations and keep code deterministic:
+
+- **Always preferred (production code):** Top-of-file `require()` calls. Place them at the absolute top of the module (before any logic or function definitions) and group alphabetically.
+
+	Example:
+	```lua
+	local BasicHelpers = require("core.utils.basic_helpers")
+	local Cache = require("core.cache.cache")
+	local GPSUtils = require("core.utils.gps_utils")
+	```
+
+- **Allowed at top-of-file:** `pcall(require, ...)` for optional or development-only libraries (e.g., `luacov`, `serpent`) — only if performed at top-of-file and guarded.
+
+	Example:
+	```lua
+	local ok, serpent = pcall(require, "serpent")
+	if not ok then serpent = nil end
+	```
+
+- **Forbidden (runtime/inside functions):** Do NOT call `require()` inside functions, event handlers, loops, conditionals, or after module initialization. This is the most common cause of pre-commit failures.
+
+	Forbidden example (do not do this):
+	```lua
+	local function do_something()
+		local mod = require("some.runtime.module") -- BAD: runtime require
+	end
+	```
+
+- **If circular dependencies force lazy loading:** prefer dependency injection (pass required modules into functions) or hoist the `require()` to top-of-file. Use runtime `require()` only as a last resort and document why.
+
+	Example preferred pattern (dependency injection):
+	```lua
+	local function make_handler(deps)
+		local Logger = deps.Logger
+		return function(cmd) Logger.debug(cmd) end
+	end
+	```
+
+These concrete examples should be used by reviewers and by automated lint fixes as the canonical source of truth.
+
 
 ## Core rules
 
@@ -66,4 +108,4 @@ The following scoped instruction files live under `.github/instructions/` and co
 - **PowerShell:** Use `Out-String` when piping script output to avoid object-binding errors.
 - **Performance check:** Always reference `performance-patterns` before implementing `on_nth_tick` or loop-heavy logic.
 
-- Use `Cache.sanitize_for_storage` in [core/cache/cache.lua](core/cache/cache.lua) to sanitize tables before writing them to `storage` (no userdata/functions allowed).
+-- For storage sanitization (use of `Cache.sanitize_for_storage`), see `.github/instructions/linter-tooling.instructions.md` for concrete guidance and examples.

@@ -9,6 +9,26 @@ applyTo: "core/cache/**/*.lua, **/*.lua"
 - **NO USERDATA IN STORAGE**: Never store `LuaCustomChartTag`, `LuaPlayer`, or `LuaSurface` in `storage`.
 - **Retrieval**: Store the **GPS String**, then use `Cache.Lookups.get_chart_tag_by_gps(gps)` at runtime.
 
+## 1.5 GPS STRING FORMAT (Canonical)
+
+- **Canonical format**: TeleportFavorites uses a canonical GPS string for all persistent storage and lookups: `xxx.yyy.s` where:
+  - `xxx` = X coordinate (integer, zero-padded to `Constants.settings.GPS_PAD_NUMBER` digits for the magnitude)
+  - `yyy` = Y coordinate (integer, zero-padded to `Constants.settings.GPS_PAD_NUMBER` digits for the magnitude)
+  - `s` = Surface index (integer, not padded)
+
+- **Padding & sign rules**: Magnitudes are padded to the configured pad length; negative values include a leading minus sign followed by the padded magnitude. Example behavior is implemented in `core/utils/basic_helpers.lua` (`basic_helpers.pad`) and used by `core/utils/gps_utils.lua`.
+
+- **Examples** (pad length = 3):
+  - `099.100.1` (x=99, y=100, s=1)
+  - `-005.010.1` (x=-5 -> `-005`, y=10 -> `010`, s=1)
+  - `2048.-6000.1` (x=2048, y=-6000, s=1 — magnitudes exceed pad length, so full digits are used)
+
+- **Blank GPS**: Use `Constants.settings.BLANK_GPS` to represent an empty/unset GPS value in storage.
+
+- **Conversion & Helpers**: Always use `core/utils/gps_utils.lua` helpers to convert between map positions, tables, Factorio `[gps=x,y,s]` rich-text, and the canonical string. Do not store or pass tables or `[gps=...]` strings as persistent `gps` values — convert immediately.
+
+- **Why**: This canonical format ensures deterministic keys for storage, indexing, and lookups across surfaces and players.
+
 ## 2. GPS FORMAT & LOGIC (Old Section 4)
 - **Canonical Format**: `"xxx.yyy.s"` (x, y coordinates + surface index).
 - **Padding**: Coordinates are padded/signed (e.g., `-005.120.1`).
