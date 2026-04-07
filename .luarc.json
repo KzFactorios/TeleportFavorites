@@ -1,0 +1,39 @@
+{
+    "$schema": "https://githubusercontent.com",
+    "runtime": {
+        "version": "Lua 5.2",
+        "path": [
+            "?.lua",
+            "?/init.lua"
+        ],
+        "pathStrict": true
+    },
+    "workspace": {
+        "library": [
+            "__factorio__/data",
+            "__factorio__/core"
+        ],
+        "checkThirdParty": false
+    },
+    "diagnostics": {
+        "globals": [
+            "data",
+            "script",
+            "game",
+            "mods",
+            "serendipity",
+            "remote",
+            "commands",
+            "settings",
+            "defines",
+            "log",
+            "table_size"
+        ],
+        "disable": [
+            "lowercase-global"
+        ]
+    },
+    "type": {
+        "castNumberToInteger": true
+    }
+}
