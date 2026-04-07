@@ -8,13 +8,10 @@ local Constants = require("constants")
 local ErrorHandler = require("core.utils.error_handler")
 local handlers = require("core.events.handlers")
 local TeleportHistory = require("core.teleport.teleport_history")
+local ProfilerExport = require("core.utils.profiler_export")
 
 -- Initialize logging immediately using single source of truth
 ErrorHandler.initialize(Constants.settings.DEFAULT_LOG_LEVEL)
--- Force runtime log level to production to avoid verbose debug output during normal play
-ErrorHandler.set_log_level("debug")
-ErrorHandler.debug_log("[CONTROL] control.lua loaded, logger active", { level = Constants.settings.DEFAULT_LOG_LEVEL })
-
 
 local gui_observer = nil
 
@@ -27,9 +24,9 @@ if success then gui_observer = module end
 local function custom_on_init()
   -- Initialize debug system first
   ErrorHandler.initialize(Constants.settings.DEFAULT_LOG_LEVEL)
-  -- Ensure production by default on init
-  ErrorHandler.set_log_level("debug")
-  
+  ProfilerExport.register_profiling_commands()
+  ProfilerExport.apply_profile_mode_from_constants()
+
   -- Register teleport history remote interface
   TeleportHistory.register_remote_interface()
 
@@ -45,10 +42,12 @@ end
 
 -- Custom on_load to ensure commands are registered
 local function custom_on_load()
-  
+  ProfilerExport.register_profiling_commands()
+  ProfilerExport.on_load_cleanup()
+
   -- Register teleport history remote interface
   TeleportHistory.register_remote_interface()
-  
+
   -- Call the original handlers.on_load
   handlers.on_load()
 end
@@ -64,6 +63,7 @@ end)
 
 script.on_configuration_changed(function(data)
   handlers.on_configuration_changed(data)
+  ProfilerExport.apply_profile_mode_from_constants()
 end)
 
 -- KEEP THIS CODE for development (disabled in production)
@@ -80,12 +80,13 @@ ErrorHandler.debug_log("[CONTROL] Registering all mod events through centralized
 event_registration_dispatcher.register_all_events(script)
 
 -- The dispatcher registers on_tick permanently (no-op after first tick) for observer setup.
+-- Profiler auto-stop is handled inside that on_tick via ProfilerExport.on_game_tick (helpers.write_file).
 -- on_nth_tick(2) is registered/unregistered dynamically for deferred GUI notification processing.
 -- DO NOT register conflicting on_tick or on_nth_tick(2) handlers!
 
 
 
--- TURN THIS OFF BEFORE DEPLOYMENT TO AVOID - Cannot join. The following mod event handlers are not identical between you and the server. 
+-- TURN THIS OFF BEFORE DEPLOYMENT TO AVOID - Cannot join. The following mod event handlers are not identical between you and the server.
 -- This indicates that the following mods are not multiplayer (save/load) safe. (See the log file for more details):
 
 -- TODO TODO TODO TODO TODO

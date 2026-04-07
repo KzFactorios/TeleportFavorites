@@ -23,6 +23,7 @@ local ChartTagOwnershipManager = require("core.control.chart_tag_ownership_manag
 
 local GuiObserver = require("core.events.gui_observer")
 local DebugCommands = require("core.commands.debug_commands")
+local ProfilerExport = require("core.utils.profiler_export")
 
 ---@class EventRegistrationDispatcher
 local EventRegistrationDispatcher = {}
@@ -316,6 +317,7 @@ function EventRegistrationDispatcher.register_core_events(script)
   
   ErrorHandler.debug_log("[EVENT_REG] Registering on_tick handler for first-tick setup")
   script.on_event(defines.events.on_tick, function(event)
+    ProfilerExport.on_game_tick(event)
     -- CRITICAL: Register observers on FIRST tick after load (not tick 1, but first execution)
     -- This works for both new games and loaded saves
     if not handlers.get_observers_registered_flag() then

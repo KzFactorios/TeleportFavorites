@@ -13,8 +13,18 @@ local Constants = {
     -- Logging Configuration
     -- ========================================
     -- One place to set runtime log level: "production" | "warn" | "error" | "debug"
-    --DEFAULT_LOG_LEVEL = "production",
-    DEFAULT_LOG_LEVEL = "debug",
+    DEFAULT_LOG_LEVEL = "production",
+    --DEFAULT_LOG_LEVEL = "debug",
+
+    -- ========================================
+    -- Profiling Configuration
+    -- ========================================
+    -- Set to "profile" to auto-start profiling on init/config-change; any other value disables auto-start.
+    PROFILER_CONTROL_MODE = "off",
+    -- Auto-stop: number of game ticks after profiler start (not calendar time if paused). 0 = manual /tf_profile_stop only.
+    PROFILER_MAX_TICKS = 20 * 60,
+    -- Output file under write-data/script-output.
+    PROFILER_OUTPUT_FILE = "teleport-favorites-profile.txt",
     
     -- ========================================
     -- Chart Tag Settings
