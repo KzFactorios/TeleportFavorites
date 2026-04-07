@@ -5,6 +5,7 @@
 -- Centralized event handler implementations for TeleportFavorites.
 -- Handles Factorio events, multiplayer/surface-aware updates, helpers, error handling, validation, and API for all event types.
 
+local TagClass = require("core.tag.tag")
 local AdminUtils = require("core.utils.admin_utils")
 local BasicHelpers = require("core.utils.basic_helpers")
 local ControlTagEditor = require("core.control.control_tag_editor")
@@ -359,7 +360,6 @@ function handlers.on_chart_tag_added(event)
       local surface_tags = Cache.get_surface_tags(surface_index)
       if not tag then
         -- Create and store a new Tag object with owner_name
-        local TagClass = require("core.tag.tag")
         tag = TagClass.new(gps, {}, player.name)
         surface_tags[gps] = tag
         ErrorHandler.debug_log("[OWNER][on_chart_tag_added] Created new Tag object with owner_name", {
