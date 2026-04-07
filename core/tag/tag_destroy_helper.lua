@@ -8,6 +8,7 @@
 local Cache = require("core.cache.cache")
 local FavoriteUtils = require("core.favorite.favorite_utils")
 local ErrorHandler = require("core.utils.error_handler")
+local Constants = require("constants")
 
 local destroying_tags = setmetatable({}, { __mode = "k" })
 local destroying_chart_tags = setmetatable({}, { __mode = "k" })
@@ -45,8 +46,8 @@ local function cleanup_player_favorites(tag)
     local pfaves = Cache.get_player_favorites(player)
     for _, fave in pairs(pfaves) do
       if fave.gps == tag.gps then
-        -- TODO: reference a constant
-        fave.gps = "1000000.1000000.1"
+        -- Use canonical blank GPS constant to avoid hardcoded literal
+        fave.gps = (Constants and Constants.settings and Constants.settings.BLANK_GPS) or "1000000.1000000.1"
         fave.locked = false
         cleaned_count = cleaned_count + 1
       end

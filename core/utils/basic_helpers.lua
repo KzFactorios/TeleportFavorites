@@ -14,6 +14,7 @@
 
 
 local basic_helpers = {}
+local Constants = require("constants")
 
 
 function basic_helpers.pad(n, padlen)
@@ -70,7 +71,8 @@ function basic_helpers.is_locked_favorite(fav)
 end
 
 function basic_helpers.is_blank_favorite(fav)
-  return not fav or fav.gps == nil or fav.gps == "" or fav.gps == "1000000.1000000.1" -- Constants.settings.BLANK_GPS
+  local blank = Constants and Constants.settings and Constants.settings.BLANK_GPS or "1000000.1000000.1"
+  return not fav or fav.gps == nil or fav.gps == "" or fav.gps == blank
 end
 --- Truncates a string containing rich text tags, counting each tag as 3 display spaces
 --- @param text string

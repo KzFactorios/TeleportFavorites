@@ -47,24 +47,38 @@ function Tag.update_gps_and_surface_mapping(old_gps, new_gps, chart_tag, player,
   local TagClass = Tag
   local old_tag = Cache.get_tag_by_gps(player, old_gps)
   if old_tag == nil and new_gps then
-    old_tag = TagClass.new(new_gps, {})
+    old_tag = TagClass.new(new_gps, {}, preserve_owner_name)
+    ErrorHandler.debug_log("[OWNER][Tag.update_gps_and_surface_mapping] Created new Tag object for new_gps (owner preserved)", {
+      new_gps = new_gps,
+      preserve_owner_name = preserve_owner_name
+    })
   end
 
   -- Only update if old_tag is a table
   if type(old_tag) == "table" then
     old_tag.gps = new_gps or ""
-    -- Do NOT store chart_tag (userdata) in persistent storage - causes multiplayer desyncs.
-    -- Chart tag lookups are handled at runtime by Cache.Lookups.get_chart_tag_by_gps()
-    old_tag.chart_tag = nil
-    -- OWNERSHIP PRESERVATION: Explicitly preserve owner_name if provided
+    old_tag.chart_tag = nil -- never persist chart_tag
+    -- Always set owner_name if provided, and log
     if preserve_owner_name then
       old_tag.owner_name = preserve_owner_name
-      ErrorHandler.debug_log("Explicitly preserved owner_name during tag move", {
+      ErrorHandler.debug_log("[OWNER][Tag.update_gps_and_surface_mapping] owner_name set during tag move", {
         old_gps = old_gps,
         new_gps = new_gps,
         owner_name = preserve_owner_name
       })
+    else
+      ErrorHandler.debug_log("[OWNER][Tag.update_gps_and_surface_mapping] No owner_name provided to preserve", {
+        old_gps = old_gps,
+        new_gps = new_gps,
+        current_owner = old_tag.owner_name
+      })
     end
+  else
+    ErrorHandler.debug_log("[OWNER][Tag.update_gps_and_surface_mapping] old_tag is not a table", {
+      old_gps = old_gps,
+      new_gps = new_gps,
+      preserve_owner_name = preserve_owner_name
+    })
   end
 
   ErrorHandler.debug_log("Updated tag object GPS (shared helper)", {

@@ -1,4 +1,5 @@
 ---@diagnostic disable: undefined-global
+-- Table to track GPS strings currently being moved (suppresses invalid tag warning)
 
 -- Data Structure (v2.0+):
 -- storage = {
@@ -33,8 +34,6 @@
 -- Runtime cache for rehydrated favorites (Performance optimization)
 -- Caches rehydrated favorites for 1 second (60 ticks at 60 UPS)
 -- Invalidated on tag changes to ensure freshness
-local rehydrated_favorites_cache = {}
--- Structure: [player_index .. "_" .. surface_index] = { favorites = {...}, tick = number }
 
 local BasicHelpers = require("core.utils.basic_helpers")
 local Constants = require("constants")
@@ -44,7 +43,10 @@ local HistoryItem = require("core.teleport.history_item")
 local Lookups = require("core.cache.lookups")
 local SettingsCache = require("core.cache.settings")
 
+local rehydrated_favorites_cache = {}
+local gps_move_in_progress = {}
 local Cache = {}
+Cache.gps_move_in_progress = gps_move_in_progress
 
 -- Optional GUI observer module (guarded require at top-of-file to avoid runtime requires)
 local _ok_gui_observer, GuiObserver = pcall(require, "core.events.gui_observer")
@@ -621,16 +623,45 @@ end
 --- @param gps string
 --- @return Tag|nil
 function Cache.get_tag_by_gps(player, gps)
+  if ErrorHandler and ErrorHandler.debug_log then
+    ErrorHandler.debug_log("[DEEP][get_tag_by_gps] entry", {
+      player = player and player.name or "<nil>",
+      gps = gps
+    })
+  end
   if not player then return nil end
   if not BasicHelpers.is_valid_gps(gps) then return nil end
   local surface_index = player.surface.index
 
   local tag_cache = Cache.get_surface_tags(surface_index --[[@as integer]])
-  if not tag_cache then return nil end
+  if not tag_cache then
+    if ErrorHandler and ErrorHandler.debug_log then
+      ErrorHandler.debug_log("[DEEP][get_tag_by_gps] tag_cache is nil", {
+        player = player and player.name or "<nil>",
+        gps = gps,
+        surface_index = surface_index
+      })
+    end
+    return nil
+  end
 
   local match_tag = tag_cache[gps]
   if not match_tag then
-    Cache.notify_observers_safe("invalid_chart_tag", { player = player, gps = gps })
+    -- Deep Debug log: trace when invalid tag warning is triggered
+    if ErrorHandler and ErrorHandler.debug_log then
+      ErrorHandler.debug_log("[DEEP][get_tag_by_gps] Tag not found", {
+        player = player and player.name or "<nil>",
+        gps = gps,
+        move_in_progress = gps_move_in_progress[gps],
+        stack = debug and debug.traceback and debug.traceback() or "<no traceback>",
+        pfaves = player and Cache.get_player_favorites(player, surface_index) or nil,
+        tag_cache_keys = tag_cache and (function() local t = {}; for k,_ in pairs(tag_cache) do t[#t+1]=k end; return t end)() or nil
+      })
+    end
+    -- Suppress warning if this GPS is being moved
+    if not gps_move_in_progress[gps] then
+      Cache.notify_observers_safe("invalid_chart_tag", { player = player, gps = gps })
+    end
     return nil
   end
 
@@ -656,8 +687,17 @@ function Cache.get_tag_by_gps(player, gps)
     return result
   end
 
-  -- Notify player if chart_tag is invalid
-  Cache.notify_observers_safe("invalid_chart_tag", { player = player, gps = gps })
+  if ErrorHandler and ErrorHandler.debug_log then
+    ErrorHandler.debug_log("[DEBUG][get_tag_by_gps] Chart tag invalid after lookup", {
+      player = player and player.name or "<nil>",
+      gps = gps,
+      move_in_progress = gps_move_in_progress[gps],
+      stack = debug and debug.traceback and debug.traceback() or "<no traceback>"
+    })
+  end
+  if not gps_move_in_progress[gps] then
+    Cache.notify_observers_safe("invalid_chart_tag", { player = player, gps = gps })
+  end
   return nil
 end
 

@@ -13,6 +13,7 @@
 -- This ensures all clients receive the same game actions and maintain synchronized state.
 -- See update_chart_tag_fields() for the implementation of this pattern.
 
+
 local tag_editor = require("gui.tag_editor.tag_editor")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local Cache = require("core.cache.cache")
@@ -22,6 +23,7 @@ local GPSUtils = require("core.utils.gps_utils")
 local Constants = require("constants")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local PlayerFavorites = require("core.favorite.player_favorites")
+local FavoriteUtils = require("core.favorite.favorite_utils")
 local LocaleUtils = require("core.utils.locale_utils")
 local ErrorHandler = require("core.utils.error_handler")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
@@ -33,6 +35,7 @@ local ChartTagHelpers = require("core.events.chart_tag_helpers")
 local SharedUtils = require("core.control.control_shared_utils")
 local TeleportStrategy = require("core.utils.teleport_strategy")
 local Enum = require("prototypes.enums.enum")
+local Tag = require("core.tag.tag")
 
 
 local M = {}
@@ -253,6 +256,10 @@ local function close_tag_editor(player)
 end
 
 local function handle_confirm_btn(player, element, tag_data)
+    -- Mark this GPS as being moved (suppresses invalid tag warning for old GPS)
+    if tag_data and tag_data.gps then
+      Cache.gps_move_in_progress[tag_data.gps] = true
+    end
   ErrorHandler.debug_log("[TAG_EDITOR] handle_confirm_btn: entry", {
     gps = tag_data and tag_data.gps,
     is_favorite = tag_data and tag_data.is_favorite
@@ -278,6 +285,7 @@ local function handle_confirm_btn(player, element, tag_data)
       LocaleUtils.get_error_string(player, "tag_requires_icon_or_text"))
   end
 
+
   local surface_index = player.surface.index
   local tags = Cache.get_surface_tags(surface_index)
   local tag = tag_data.tag or {}
@@ -291,13 +299,29 @@ local function handle_confirm_btn(player, element, tag_data)
   if not tag.chart_tag and tag_data.chart_tag then
     tag.chart_tag = tag_data.chart_tag
   end
+
   -- Determine if this is a new tag based on whether we opened the editor on an existing tag or chart tag
   -- If tag_data.tag OR tag_data.chart_tag exists, we're editing; if neither, we're creating
   local is_new_tag = not tag_data.tag and not tag_data.chart_tag
-  
-  -- Set owner_name if this is a new tag or if owner_name is not set
-  if is_new_tag or not tag.owner_name then
-    tag.owner_name = player.name
+
+  -- Guarantee Tag object exists in cache and has owner_name
+  if tag.gps then
+    if not tags[tag.gps] then
+      tags[tag.gps] = Tag.new(tag.gps, {}, player.name)
+      ErrorHandler.debug_log("[OWNER][handle_confirm_btn] Created new Tag object with owner_name in tag editor", {
+        gps = tag.gps,
+        owner_name = player.name
+      })
+    end
+    -- Always set owner_name if missing
+    if not tags[tag.gps].owner_name then
+      tags[tag.gps].owner_name = player.name
+      ErrorHandler.debug_log("[OWNER][handle_confirm_btn] Set owner_name on Tag object in tag editor", {
+        gps = tag.gps,
+        owner_name = player.name
+      })
+    end
+    tag.owner_name = tags[tag.gps].owner_name
   end
 
   update_chart_tag_fields(tag, tag_data, text, icon, player)
@@ -311,13 +335,16 @@ local function handle_confirm_btn(player, element, tag_data)
   if tag.chart_tag and tag.chart_tag.valid then
     refreshed_tag.chart_tag = tag.chart_tag
   end
-  
+
+  -- Ensure owner_name is always set before saving
+  refreshed_tag.owner_name = refreshed_tag.owner_name or player.name
   tag_data.tag = refreshed_tag
 
   ErrorHandler.debug_log("[TAG_EDITOR] handle_confirm_btn: about to save tag to cache", {
     gps = tag.gps,
     tag_present = tag ~= nil,
     chart_tag_present = tag and tag.chart_tag ~= nil,
+    owner_name = refreshed_tag.owner_name,
     icon_present = tag and tag.chart_tag and (function()
       local valid_check_success, is_valid = pcall(function() return tag.chart_tag.valid end)
       return valid_check_success and is_valid and tag.chart_tag.icon ~= nil or false
@@ -338,6 +365,7 @@ local function handle_confirm_btn(player, element, tag_data)
   -- Chart tags are LuaObject references that are client-specific and cause desyncs
   -- Use Cache.Lookups.get_chart_tag_by_gps() to retrieve chart tags at runtime
 
+
   -- Handle favorite operations only on confirm
   if is_favorite then
     -- Check for available slot before proceeding
@@ -347,49 +375,101 @@ local function handle_confirm_btn(player, element, tag_data)
       return show_tag_editor_error(player, tag_data,
         LocaleUtils.get_error_string(player, "favorite_slots_full") or error_msg)
     end
-
     refreshed_tag.faved_by_players[player.index] = player.index
-    -- Notify favorites bar to update after adding favorite
-    ErrorHandler.debug_log("[TAG_EDITOR] ========== FAVORITE ADDED START ==========", {
-      player = player.name,
-      player_index = player.index,
-      gps = refreshed_tag.gps,
-      tick = game.tick
-    })
-    SharedUtils.notify_observer("favorite_added", {
-      player = player,
-      gps = refreshed_tag.gps,
-      tag = refreshed_tag
-    })
-    ErrorHandler.debug_log("[TAG_EDITOR] favorite_added notification sent, should be deferred to next tick", {
-      current_tick = game.tick
-    })
     -- Invalidate rehydrated favorites cache for this player-surface
     Cache.invalidate_rehydrated_favorites(player, player.surface.index)
   else
     local player_favorites = PlayerFavorites.new(player)
     player_favorites:remove_favorite(refreshed_tag.gps)
     refreshed_tag.faved_by_players[player.index] = nil
-    -- Notify favorites bar to update after removing favorite
-    ErrorHandler.debug_log("[TAG_EDITOR] Sending favorite_removed notification", {
-      player = player.name,
-      gps = refreshed_tag.gps
-    })
-    SharedUtils.notify_observer("favorite_removed", {
-      player = player,
-      gps = refreshed_tag.gps,
-      tag = refreshed_tag
-    })
     -- Invalidate rehydrated favorites cache for this player-surface
     Cache.invalidate_rehydrated_favorites(player, player.surface.index)
   end
+
+
+
+  -- Confirm all favorite slots and tags are updated to the new GPS before notifying observers
+  local function is_data_synced()
+    local player_favorites = PlayerFavorites.new(player)
+    local all_synced = true
+    for i, fav in ipairs(player_favorites.favorites) do
+      if fav and not FavoriteUtils.is_blank_favorite(fav) then
+        if fav.gps ~= refreshed_tag.gps then
+          ErrorHandler.debug_log("[TAG_EDITOR][SYNC CHECK] Slot not synced", {slot=i, fav_gps=fav.gps, expected=refreshed_tag.gps})
+          all_synced = false
+        end
+        if fav.tag and fav.tag.gps ~= refreshed_tag.gps then
+          ErrorHandler.debug_log("[TAG_EDITOR][SYNC CHECK] Tag in slot not synced", {slot=i, tag_gps=fav.tag.gps, expected=refreshed_tag.gps})
+          all_synced = false
+        end
+      end
+    end
+    return all_synced
+  end
+
+  local function deferred_notify_with_sync_check(max_attempts, attempt)
+    attempt = attempt or 1
+    if is_data_synced() or attempt >= max_attempts then
+      if not is_data_synced() then
+        ErrorHandler.debug_log("[TAG_EDITOR][SYNC CHECK] Data not fully synced after max attempts, proceeding anyway", {attempt=attempt})
+      end
+      if is_favorite then
+        ErrorHandler.debug_log("[TAG_EDITOR] ========== FAVORITE ADDED START (deferred, sync confirmed) ==========", {
+          player = player.name,
+          player_index = player.index,
+          gps = refreshed_tag.gps,
+          tick = game.tick
+        })
+        SharedUtils.notify_observer("favorite_added", {
+          player = player,
+          gps = refreshed_tag.gps,
+          tag = refreshed_tag
+        })
+        ErrorHandler.debug_log("[TAG_EDITOR] favorite_added notification sent (deferred, sync confirmed)", {
+          current_tick = game.tick
+        })
+      else
+        ErrorHandler.debug_log("[TAG_EDITOR] Sending favorite_removed notification (deferred, sync confirmed)", {
+          player = player.name,
+          gps = refreshed_tag.gps
+        })
+        SharedUtils.notify_observer("favorite_removed", {
+          player = player,
+          gps = refreshed_tag.gps,
+          tag = refreshed_tag
+        })
+      end
+
+      SharedUtils.notify_observer("favorites_gps_updated", {
+        player_index = player.index,
+        old_gps = tag_data.gps,
+        new_gps = refreshed_tag.gps
+      })
+      SharedUtils.notify_observer("cache_updated", {
+        type = "favorites_gps_updated",
+        player_index = player.index,
+        old_gps = tag_data.gps,
+        new_gps = refreshed_tag.gps
+      })
+    else
+      -- Try again next tick, up to max_attempts
+      script.on_nth_tick(game.tick + 1, function(event)
+        deferred_notify_with_sync_check(max_attempts, attempt + 1)
+        script.on_nth_tick(game.tick + 1, nil)
+      end)
+    end
+  end
+
+  -- Start sync check with up to 3 attempts (3 ticks max)
+  deferred_notify_with_sync_check(3, 1)
+
 
   -- After updating faved_by_players, re-sanitize and persist the tag
   local sanitized_tag = Cache.sanitize_for_storage(refreshed_tag)
   tags[refreshed_tag.gps] = sanitized_tag
   tag_data.tag = sanitized_tag
 
-  -- Notify observers of tag creation or modification
+  -- Now notify observers of tag creation or modification (UI refresh will be deferred)
   local event_type = is_new_tag and "tag_created" or "tag_modified"
   ErrorHandler.debug_log("[TAG_EDITOR] handle_confirm_btn: Notifying observers", {
     event_type = event_type,
@@ -417,6 +497,11 @@ local function handle_confirm_btn(player, element, tag_data)
     player = player and player.name or "<nil>",
     gps = tag.gps
   })
+
+  -- Clear move-in-progress flag for this GPS (move complete)
+  if tag_data and tag_data.gps then
+    Cache.gps_move_in_progress[tag_data.gps] = nil
+  end
   
   -- GUI refresh handled by deferred notification on next tick (multiplayer-safe)
   -- Build throttle prevents double-builds, 1-tick delay (16.67ms at 60 UPS) is imperceptible

@@ -82,7 +82,8 @@ function PlayerFavorites:remove_favorite(gps)
       -- Notify GUI observer for immediate bar update
       GuiObserver.GuiEventBus.notify("favorite_removed", {
         player_index = self.player_index,
-        gps = gps
+        gps = gps,
+        slot = i
       })
       return true
     end
@@ -121,10 +122,11 @@ function PlayerFavorites:add_favorite(gps)
       favorites[i].gps = gps
       favorites[i].locked = false
       Cache.set_player_favorites(self.player, favorites)
-      -- Notify GUI observer for immediate bar update
+      -- Notify GUI observer for immediate bar update (include slot index)
       GuiObserver.GuiEventBus.notify("favorite_added", {
         player_index = self.player_index,
-        gps = gps
+        gps = gps,
+        slot = i
       })
       return true
     end
@@ -175,6 +177,11 @@ function PlayerFavorites:toggle_favorite_lock(slot)
   fav.locked = not fav.locked
   favorites[slot] = fav
   Cache.set_player_favorites(self.player, favorites)
+  -- Notify GUI observer that this slot was updated (lock toggled)
+  GuiObserver.GuiEventBus.notify("favorite_updated", {
+    player_index = self.player_index,
+    slot = slot
+  })
   return true
 end
 
@@ -227,6 +234,15 @@ function PlayerFavorites:reorder_favorites(source_slot, target_slot)
   end
   self.favorites = new_favorites
   Cache.set_player_favorites(self.player, new_favorites)
+  -- Notify GUI observer for both affected slots after reorder
+  GuiObserver.GuiEventBus.notify("favorite_updated", {
+    player_index = self.player_index,
+    slot = source_slot
+  })
+  GuiObserver.GuiEventBus.notify("favorite_updated", {
+    player_index = self.player_index,
+    slot = target_slot
+  })
   return true
 end
 
@@ -295,21 +311,7 @@ function PlayerFavorites:update_gps_coordinates(old_gps, new_gps)
     if player and player.valid then
       Cache.set_player_favorites(player, self.favorites)
     end
-
-    -- Notify observers of GPS update
-    GuiObserver.GuiEventBus.notify("favorites_gps_updated", {
-      player_index = self.player_index,
-      old_gps = old_gps,
-      new_gps = new_gps
-    })
-
-    -- CRITICAL: Trigger cache_updated to rebuild favorites bar
-    GuiObserver.GuiEventBus.notify("cache_updated", {
-      type = "favorites_gps_updated",
-      player_index = self.player_index,
-      old_gps = old_gps,
-      new_gps = new_gps
-    })
+    -- Do NOT notify observers here; defer to after all updates in handle_confirm_btn
   end
 
   return any_updated

@@ -2,12 +2,13 @@
 -- These mocks are used by tests to avoid requiring real mod infrastructure
 
 local favorite_utils_mock = {}
+local Constants = require("constants")
 
 favorite_utils_mock.MAX_FAVORITE_SLOTS = 10
 
 favorite_utils_mock.rehydrate_favorite = function(favorite_data)
     return {
-        gps = favorite_data.gps or "1000000.1000000.1",
+        gps = favorite_data.gps or (Constants and Constants.settings and Constants.settings.BLANK_GPS) or "1000000.1000000.1",
         name = favorite_data.name or "",
         surface = favorite_data.surface or "nauvis",
         locked = favorite_data.locked or false,

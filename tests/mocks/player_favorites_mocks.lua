@@ -5,15 +5,16 @@ local PlayerFavoritesMocks = {}
 
 -- Mock favorite data generator
 local defines = require("tests.mocks.factorio_defines_mock")
+local Constants = require("constants")
 
 local function create_mock_favorite(index, gps, name)
-    return {
-        gps = gps or "1000000.1000000.1",
-        name = name or ("Test Favorite " .. tostring(index)),
-        surface = "nauvis",
-        locked = false,
-        hidden = false
-    }
+  return {
+    gps = gps or (Constants and Constants.settings and Constants.settings.BLANK_GPS) or "1000000.1000000.1",
+    name = name or ("Test Favorite " .. tostring(index)),
+    surface = "nauvis",
+    locked = false,
+    hidden = false
+  }
 end
 
 -- Mock storage data generator
@@ -67,7 +68,7 @@ function PlayerFavoritesMocks.mock_player(index, name, surface_index)
     add_favorite = function(self, gps, name)
       local favs = self:get_favorites()
       local fav = {
-        gps = gps or "1000000.1000000.1", 
+        gps = gps or (Constants and Constants.settings and Constants.settings.BLANK_GPS) or "1000000.1000000.1", 
         name = name or ("Test Favorite " .. #favs.favorites + 1),
         surface = "nauvis",
         locked = false,

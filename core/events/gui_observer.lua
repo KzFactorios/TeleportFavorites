@@ -442,11 +442,18 @@ end
 ---@param event_data table
 function NotificationObserver:update(event_data)
   if not self:is_valid() or not event_data then return end
-  if event_data.player and event_data.player.valid then
-    -- Create proper localized string table
-    local warning = {type = "invalid_chart_tag", text = {"tf-gui.invalid_chart_tag_warning"}}
-    PlayerHelpers.safe_player_print(event_data.player, warning)
+  if ErrorHandler and ErrorHandler.debug_log then
+    ErrorHandler.debug_log("[DEEP][NotificationObserver:update] called", {
+      player = event_data.player and event_data.player.name or "<nil>",
+      player_valid = event_data.player and event_data.player.valid or false,
+      gps = event_data.gps,
+      event_data = event_data,
+      event_data_full = event_data
+    })
   end
+  -- [2026-04] Chart tag move triggers this warning after vanilla move events.
+  -- To avoid confusing the player with unnecessary alerts, this notification is now suppressed.
+  -- The underlying tag is already handled by vanilla; no further action is needed here.
 end
 
 --- Clean up all observers
@@ -499,7 +506,14 @@ function DataObserver:update(event_data)
   -- PERFORMANCE: Use targeted slot refresh when bar already exists,
   -- fall back to full build only when the bar structure is missing
   local success, err = pcall(function()
-    fave_bar.refresh_slots(player)
+    if event_data and event_data.slot then
+      -- Targeted update for a single slot (avoids full rebuild)
+      fave_bar.mark_slot_dirty(player, event_data.slot)
+      fave_bar.partial_rehydrate(player)
+    else
+      -- Fallback: refresh entire slots row
+      fave_bar.refresh_slots(player)
+    end
   end)
   
   if not success then

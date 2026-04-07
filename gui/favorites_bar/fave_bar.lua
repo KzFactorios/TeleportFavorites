@@ -299,9 +299,35 @@ function fave_bar.build(player, force_show)
         slots_frame.visible = false
       end
     else
+
       -- Only build slots and set visibility if favorites are enabled
       local surface_index = player.surface.index
       local pfaves = Cache.get_player_favorites(player, surface_index)
+
+      -- FAILSAFE: Remove any slots referencing an old GPS that is no longer valid
+      local valid_gps_set = {}
+      -- Build set of all valid GPS from tag cache
+      local tag_cache = Cache.get_surface_tags(surface_index)
+      if tag_cache then
+        for gps, tag in pairs(tag_cache) do
+          valid_gps_set[gps] = true
+        end
+      end
+      local changed = false
+      for i = 1, #pfaves do
+        local fav = pfaves[i]
+        if fav and fav.gps and not valid_gps_set[fav.gps] and not FavoriteUtils.is_blank_favorite(fav) then
+          ErrorHandler.debug_log("[FAVE_BAR][FAILSAFE] Clearing stale favorite slot referencing invalid GPS", {
+            slot = i,
+            fav_gps = fav.gps
+          })
+          pfaves[i] = FavoriteUtils.get_blank_favorite()
+          changed = true
+        end
+      end
+      if changed then
+        Cache.set_player_favorites(player, pfaves)
+      end
 
       -- Show the visibility toggle button
       if _toggle_button and _toggle_button.valid then
@@ -546,7 +572,19 @@ function fave_bar.update_single_slot(player, slot_index)
   local surface_index = player.surface.index
   local pfaves = Cache.get_player_favorites(player, surface_index)
   if not pfaves then return end -- Safety check for nil pfaves
+
   local fav = pfaves[slot_index]
+
+  -- Deep Debug: Log full favorite slot state before rehydration
+  if ErrorHandler and ErrorHandler.debug_log then
+    ErrorHandler.debug_log("[DEEP][fave_bar.update_single_slot] before rehydrate", {
+      player = player and player.name or "<nil>",
+      slot = slot_index,
+      fav_gps = fav and fav.gps or "<nil>",
+      fav_full = fav,
+      pfaves_snapshot = pfaves
+    })
+  end
 
   -- Rehydrate favorite for correct icon and tag references
   local rehydrated_fav
@@ -555,6 +593,18 @@ function fave_bar.update_single_slot(player, slot_index)
   end
   if not rehydrated_fav then
     rehydrated_fav = FavoriteUtils.get_blank_favorite()
+  end
+
+  -- Deep Debug: Log full favorite slot state after rehydration
+  if ErrorHandler and ErrorHandler.debug_log then
+    ErrorHandler.debug_log("[DEEP][fave_bar.update_single_slot] after rehydrate", {
+      player = player and player.name or "<nil>",
+      slot = slot_index,
+      fav_gps = rehydrated_fav and rehydrated_fav.gps or "<nil>",
+      tag_gps = rehydrated_fav and rehydrated_fav.tag and rehydrated_fav.tag.gps or "<nil>",
+      rehydrated_fav_full = rehydrated_fav,
+      pfaves_snapshot = pfaves
+    })
   end
 
   fav = rehydrated_fav
@@ -637,6 +687,40 @@ function fave_bar.update_toggle_state(player, slots_visible)
   if slots_frame then
     slots_frame.visible = slots_visible
   end
+end
+
+-- Dirty-slot tracking for targeted partial rehydrates
+local dirty_slots = {}
+
+--- Mark a single slot as dirty for a player so it can be partially rehydrated
+---@param player LuaPlayer
+---@param slot_index number
+function fave_bar.mark_slot_dirty(player, slot_index)
+  if not ValidationUtils.validate_player(player) then return end
+  if type(slot_index) ~= "number" then return end
+  local pidx = player.index
+  dirty_slots[pidx] = dirty_slots[pidx] or {}
+  dirty_slots[pidx][slot_index] = true
+end
+
+--- Partially rehydrate any dirty slots for the player and clear the dirty set
+---@param player LuaPlayer
+function fave_bar.partial_rehydrate(player)
+  if not ValidationUtils.validate_player(player) then return end
+  local pidx = player.index
+  local set = dirty_slots[pidx]
+  if not set then return end
+  for slot_index, _ in pairs(set) do
+    local ok, err = pcall(function()
+      fave_bar.update_single_slot(player, slot_index)
+    end)
+    if not ok then
+      if ErrorHandler and ErrorHandler.warn_log then
+        ErrorHandler.warn_log("[FAVE_BAR] partial_rehydrate failed", { player = player.name, slot = slot_index, error = err })
+      end
+    end
+  end
+  dirty_slots[pidx] = nil
 end
 
 

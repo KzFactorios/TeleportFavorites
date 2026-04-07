@@ -12,7 +12,7 @@ local TeleportHistory = require("core.teleport.teleport_history")
 -- Initialize logging immediately using single source of truth
 ErrorHandler.initialize(Constants.settings.DEFAULT_LOG_LEVEL)
 -- Force runtime log level to production to avoid verbose debug output during normal play
-ErrorHandler.set_log_level("production")
+ErrorHandler.set_log_level("debug")
 ErrorHandler.debug_log("[CONTROL] control.lua loaded, logger active", { level = Constants.settings.DEFAULT_LOG_LEVEL })
 
 
@@ -28,7 +28,7 @@ local function custom_on_init()
   -- Initialize debug system first
   ErrorHandler.initialize(Constants.settings.DEFAULT_LOG_LEVEL)
   -- Ensure production by default on init
-  ErrorHandler.set_log_level("production")
+  ErrorHandler.set_log_level("debug")
   
   -- Register teleport history remote interface
   TeleportHistory.register_remote_interface()

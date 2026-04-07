@@ -356,7 +356,17 @@ function handlers.on_chart_tag_added(event)
     local gps = GPSUtils.gps_from_map_position(chart_tag.position, tonumber(surface_index) or 1)
     if gps then
       local tag = Cache.get_tag_by_gps(player, gps)
-      if tag and type(tag) == "table" then
+      local surface_tags = Cache.get_surface_tags(surface_index)
+      if not tag then
+        -- Create and store a new Tag object with owner_name
+        local TagClass = require("core.tag.tag")
+        tag = TagClass.new(gps, {}, player.name)
+        surface_tags[gps] = tag
+        ErrorHandler.debug_log("[OWNER][on_chart_tag_added] Created new Tag object with owner_name", {
+          gps = gps,
+          owner_name = player.name
+        })
+      else
         tag.owner_name = player.name
         ErrorHandler.debug_log("Stored tag owner on creation", {
           gps = gps,
@@ -388,6 +398,13 @@ function handlers.on_chart_tag_modified(event)
   local old_gps, new_gps = ChartTagHelpers.extract_gps(event, player)
   if old_gps then
     local old_tag = Cache.get_tag_by_gps(player, old_gps)
+    ErrorHandler.debug_log("[OWNER][on_chart_tag_modified] old_tag lookup before move", {
+      player = player.name,
+      old_gps = old_gps,
+      old_tag_found = old_tag ~= nil,
+      old_tag_full = old_tag,
+      old_tag_owner_name = old_tag and old_tag.owner_name or "<nil>"
+    })
     if old_tag and type(old_tag) == "table" and old_tag.owner_name then
       original_owner_name = old_tag.owner_name
       -- Find the player object by name
@@ -403,6 +420,12 @@ function handlers.on_chart_tag_modified(event)
         has_player_object = (original_owner ~= nil),
         old_gps = old_gps
       })
+    else
+      ErrorHandler.debug_log("[OWNER][on_chart_tag_modified] No owner_name found in old_tag before move", {
+        player = player.name,
+        old_gps = old_gps,
+        old_tag_full = old_tag
+      })
     end
   end
 
@@ -416,6 +439,15 @@ function handlers.on_chart_tag_modified(event)
       player_who_moved = player.name,
       old_player_index = event.old_player_index,
       original_owner_name = original_owner_name
+    })
+  end
+
+  -- FINAL FALLBACK: If still no owner, set to the player moving the tag
+  if not original_owner_name then
+    original_owner_name = player.name
+    ErrorHandler.debug_log("[OWNER][on_chart_tag_modified] No owner found, defaulting to mover", {
+      player_who_moved = player.name,
+      assigned_owner_name = original_owner_name
     })
   end
 

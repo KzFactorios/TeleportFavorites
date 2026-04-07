@@ -4,6 +4,7 @@
 
 local Cache = require("core.cache.cache")
 local FavoriteUtils = require("core.favorite.favorite_utils")
+local ErrorHandler = require("core.utils.error_handler")
 
 local FavoriteRehydration = {}
 
@@ -17,7 +18,23 @@ function FavoriteRehydration.rehydrate_favorite_at_runtime(player, fav)
     return FavoriteUtils.get_blank_favorite()
   end
 
+  if ErrorHandler and ErrorHandler.debug_log then
+    ErrorHandler.debug_log("[DEEP][rehydrate_favorite_at_runtime] entry", {
+      player = player and player.name or "<nil>",
+      fav_gps = fav and fav.gps or "<nil>",
+      fav_full = fav
+    })
+  end
   local tag = Cache.get_tag_by_gps(player, fav.gps)
+  if ErrorHandler and ErrorHandler.debug_log then
+    ErrorHandler.debug_log("[DEEP][rehydrate_favorite_at_runtime] after get_tag_by_gps", {
+      player = player and player.name or "<nil>",
+      fav_gps = fav and fav.gps or "<nil>",
+      tag_found = tag ~= nil,
+      tag_gps = tag and tag.gps or "<nil>",
+      tag_full = tag
+    })
+  end
   local locked = fav.locked or false
   local new_fav = FavoriteUtils.new(fav.gps, locked, tag)
   -- chart_tag is already attached transiently by Cache.get_tag_by_gps()
