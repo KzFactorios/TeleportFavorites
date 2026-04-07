@@ -44,3 +44,4 @@ luac.out
 *.code-workspace
 
 .emmyrc.json
+script-output/

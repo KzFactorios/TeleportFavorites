@@ -1,0 +1,9 @@
+---
+description: "Rules for UI construction and the GuiBase helper pattern"
+globs: "gui/**/*.lua"
+---
+# GUI Architecture
+- **Builders**: Use `GuiBase` helpers (e.g., `create_frame`, `create_button`). Never use `player.gui.add` directly.
+- **Naming**: Elements must follow `tp_fav_{context}_{purpose}_{type}`.
+- **State**: GUI elements must be passive observers of `storage`. Do not store unique state in UI elements.
+- **Performance**: Use the "Dirty-Player" pattern via `GuiEventBus._dirty_players`. Process updates on `on_nth_tick(2)`.

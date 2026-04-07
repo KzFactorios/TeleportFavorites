@@ -1,0 +1,10 @@
+---
+description: "Enforce Factorio-specific Lua 5.2 constraints and loading policies"
+globs: "**/*.lua"
+---
+# Lua Engine Standards
+- **Require Policy**: ALL `require()` calls must be at the absolute top-of-file. Never call inside functions/conditionals.
+- **No Hoisting**: Declare all locals and functions BEFORE they are referenced.
+- **Determinism**: Use `ipairs` for numeric arrays and `pairs` for dictionaries. Never use `next()` on Factorio userdata.
+- **Validation**: Every Factorio object access must be preceded by a `.valid` check.
+- **Reference**: Follow the standards in @project_specs.md.

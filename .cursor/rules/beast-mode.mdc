@@ -1,0 +1,12 @@
+---
+description: "Behavioral guardrails for autonomous, surgical agent action"
+globs: "**/*"
+---
+# Agent Behavioral Standards (Beast Mode)
+- **Autonomy**: Work until the task is complete. Do not yield mid-task for "permission" unless genuinely blocked.
+- **Trace First**: Before writing code, trace data flow from `storage` to the GUI. Check `core/cache/` for existing lookups.
+- **Surgical Precision**: Only modify requested blocks. Do not "clean up" or refactor surrounding code unless explicitly asked.
+- **Incremental Planning**: Start every complex task with a markdown checklist: `[ ] [File] Action`.
+- **Validation**: Every Factorio object access must be preceded by a `.valid` check.
+- **Edge Case Focus**: Always account for: "Player Disconnected," "Surface Changed," and "Invalid Object."
+- **Terminal Proficiency**: Use PowerShell syntax (`;`, backticks, Get-ChildItem) for all terminal commands.

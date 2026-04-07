@@ -1,0 +1,43 @@
+# Factorio 2.0 (Space Age) & TeleportFavorites Ruleset
+
+## 0. Agent Behavioral Guardrails (Beast Mode)
+- **Autonomy**: Work until the task is complete. Do not yield mid-task for "permission" unless blocked.
+- **Trace First**: Trace data flow from `storage` to the GUI before writing code. Check `core/cache/` for existing lookups.
+- **Surgical Precision**: Only modify requested blocks. Do not "clean up" or refactor surrounding code unless asked.
+- **Incremental Planning**: Start complex tasks with a checklist: `[ ] [File] Action`.
+- **Validation**: Every Factorio object access must be preceded by a `.valid` check.
+
+## 1. Lua & Factorio Engine Policy (CRITICAL)
+- **Top-Level Require**: All `require()` calls MUST be at the absolute top of the file. Never call `require()` inside functions or conditionals.
+- **No Hoisting**: Define all local functions and tables BEFORE they are referenced.
+- **Iteration (Multiplayer Safety)**: Use `ipairs()` for numeric arrays and `pairs()` for dictionaries. Factorio's `pairs()` is deterministic (key insertion order). Never use `next()` on Factorio userdata.
+- **Tick Performance**: Use `on_nth_tick(N, ...)` with `N >= 2`. Never use `on_tick(1)`. Register handlers PERMANENTLY at startup.
+
+## 2. Data Schema & Persistence
+- **Use `storage`**: Use the Factorio 2.0 `storage` table; the `global` table is forbidden.
+- **No Userdata in Storage**: Never store LuaPlayer, LuaSurface, or LuaChartTag objects. Store GPS strings or indices instead.
+- **Canonical GPS String**: Format is `"xxx.yyy.s"`. Coordinates are padded/signed (e.g., `-005.010.1`). Use `Constants.settings.GPS_PAD_NUMBER` and `core/utils/gps_utils.lua` for conversion.
+- **Source of Truth**: GUI must always be an observer of `storage` state, never hold its own state.
+
+## 3. Architecture & GUI Patterns
+- **GUI Builders**: Never use `player.gui.add`. Use `GuiBase` helpers (e.g., `create_frame`, `create_button`).
+- **Tag Validation Pattern**: 1. `position_can_be_tagged()` check -> 2. `force.add_chart_tag()` -> 3. `destroy()` immediately if final validation fails.
+- **Surface Awareness**: Every function must handle surface identity (Nauvis vs. Planets/Platforms).
+- **History Toggle**: Trigger via `Ctrl + Shift + T`. Must be non-blocking (do not set `player.opened`).
+
+## 4. Permissions & Game Rules
+- **Ownership**: The initial creator is the owner (`last_user`). Ownership persists through edits.
+- **Permission Checks**: Always use `AdminUtils` helpers. Regular players can only Edit/Move/Delete if they are the Owner. Admins can override any tag.
+- **Deletion Safety**: Regular players cannot delete a tag if other players have it favorited.
+- **Admin Audit**: All admin overrides MUST be logged via `AdminUtils.log_admin_action`.
+
+## 5. Tooling, PowerShell & Testing
+- **Windows Terminal**: Use `;` for chaining and backtick (`` ` ``) for continuation. Use `Get-ChildItem` (not `ls`) and `Select-String` (not `grep`).
+- **Linter**: After changes, run `lua .scripts/require_lint.lua --check .`.
+- **Sanitization**: All tables written to `storage` must pass through `Cache.sanitize_for_storage(obj)`.
+- **Testing**: Specs go in `tests/specs/*_spec.lua`. Every test MUST include:
+    ```lua
+    require("test_bootstrap")
+    require("mocks.factorio_test_env")
+    ```
+- **Changelog**: Follow strict Factorio format (`Version: 0.0.0`, `Date: YYYY-MM-DD`) with 2-space indentation.

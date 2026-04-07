@@ -1,0 +1,9 @@
+---
+description: "Security and ownership rules for tag management"
+globs: "**/*.lua"
+---
+# Permissions & Game Rules
+- **Ownership**: Creator-based ownership is strict. Persistence is managed in `chart_tag.last_user`.
+- **Checks**: Use `AdminUtils` for all permission logic. Admins always override.
+- **Audit**: All admin overrides must be logged via `AdminUtils.log_admin_action`.
+- **Visuals**: Disable (do not hide) buttons that violate permissions; provide explanatory tooltips.
