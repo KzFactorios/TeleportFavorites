@@ -250,11 +250,19 @@ function handlers.process_deferred_init_queue()
   _deferred_init_queue = {}
 end
 
---- Enqueue a player for deferred initialization
---- on_nth_tick(60) is permanently registered at load time; it processes whatever is in the queue
+--- Enqueue a player for deferred initialization.
+--- Deduplicates: if the player is already queued (e.g. on_player_created + on_player_joined_game
+--- both fire for new games), update the existing entry rather than adding a duplicate.
+--- on_nth_tick(60) is permanently registered at load time; it processes whatever is in the queue.
 ---@param player_index uint
 ---@param is_rejoin boolean
 local function enqueue_deferred_init(player_index, is_rejoin)
+  for _, entry in ipairs(_deferred_init_queue) do
+    if entry.player_index == player_index then
+      entry.is_rejoin = is_rejoin
+      return
+    end
+  end
   table.insert(_deferred_init_queue, { player_index = player_index, is_rejoin = is_rejoin })
 end
 
