@@ -326,7 +326,7 @@ function DebugCommands.on_debug_level_button_click(event)
   local valid = ValidationUtils.validate_gui_element(element)
   if not valid then return end
   local player = game.players[event.player_index]
-  if not basic_helpers.is_valid_player(player) then return end
+  if not BasicHelpers.is_valid_player(player) then return end
   local level_str = string.match(element.name, "tf_debug_set_level_(%d+)") -- Parse level from button name
   if not level_str then return end
   local level = tonumber(level_str)

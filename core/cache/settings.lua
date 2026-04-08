@@ -176,6 +176,7 @@ function Settings.invalidate_player_cache(player)
   
   if player and player.index then
     player_settings_cache[player.index] = nil
+    Settings.invalidate_max_slots_cache(player.index)
   end
 end
 
