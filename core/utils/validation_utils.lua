@@ -11,14 +11,6 @@ local constants = require("constants")
 local ValidationUtils = {}
 
 
---- Standard player validation pattern used across event handlers
----@param player LuaPlayer|nil
----@return boolean is_valid
----@return string? error_message
-function ValidationUtils.validate_player(player)
-  return ValidationUtils.validate_factorio_object(player, "Player")
-end
-
 --- Validate if an icon is valid for chart tag creation
 --- This handles various icon formats from choose-elem-button and string formats
 ---@param icon any Icon data from choose-elem-button or other sources

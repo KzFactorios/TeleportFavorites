@@ -70,10 +70,6 @@ function basic_helpers.is_locked_favorite(fav)
   return fav and fav.locked == true
 end
 
-function basic_helpers.is_blank_favorite(fav)
-  local blank = Constants and Constants.settings and Constants.settings.BLANK_GPS or "1000000.1000000.1"
-  return not fav or fav.gps == nil or fav.gps == "" or fav.gps == blank
-end
 --- Truncates a string containing rich text tags, counting each tag as 3 display spaces
 --- @param text string
 --- @param max_display number
@@ -167,12 +163,16 @@ end
 -- SAFE VALIDATION HELPERS (from safe_helpers.lua)
 -- ===========================
 
---- Ultra-safe player validation (no dependencies)
---- Returns true only if player exists and is valid
+--- Returns true only if player exists and is valid.
+--- The optional second return value carries an error description; callers that
+--- only need the boolean can ignore it (Lua silently discards extra returns).
 ---@param player any
 ---@return boolean is_valid
+---@return string? error_message
 function basic_helpers.is_valid_player(player)
-  return player ~= nil and player.valid == true
+  if player == nil then return false, "Player is nil" end
+  if not player.valid then return false, "Player is not valid" end
+  return true
 end
 
 --- Ultra-safe element validation (no dependencies)

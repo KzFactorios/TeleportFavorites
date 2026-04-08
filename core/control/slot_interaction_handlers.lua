@@ -28,7 +28,7 @@ local SlotInteractionHandlers = {}
 ---@param fav table The favorite to check
 ---@return boolean can_drag
 function SlotInteractionHandlers.can_start_drag(fav)
-  return fav and not BasicHelpers.is_blank_favorite(fav) and not BasicHelpers.is_locked_favorite(fav)
+  return fav and not FavoriteUtils.is_blank_favorite(fav) and not BasicHelpers.is_locked_favorite(fav)
 end
 
 --- Handle teleportation to a favorite

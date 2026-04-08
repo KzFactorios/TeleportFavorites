@@ -511,13 +511,6 @@ end
 
 -- Shared favorite button handler using centralized helpers
 local function handle_favorite_btn(player, tag_data)
-  if not BasicHelpers.is_valid_player(player) then
-    ErrorHandler.debug_log("Handle favorite button - invalid player", {
-      player_exists = player ~= nil,
-      player_valid = player and player.valid
-    })
-    return
-  end
   tag_data = tag_data or {}
   if type(tag_data.is_favorite) ~= "boolean" then
     tag_data.is_favorite = false
@@ -626,7 +619,6 @@ local function handle_delete_btn(player, tag_data)
   ErrorHandler.debug_log("Tag editor handle_delete_btn called", {
     player_name = player and player.name or "<unknown>"
   })
-  if not BasicHelpers.is_valid_player(player) then return end
   GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
   Cache.set_tag_editor_delete_mode(player, true)
   local frame, confirm_btn, cancel_btn = tag_editor.build_confirmation_dialog(player, {

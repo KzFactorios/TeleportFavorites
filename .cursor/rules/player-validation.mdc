@@ -1,0 +1,49 @@
+---
+description: "Canonical player validity guard, call patterns, and when guards are necessary vs. redundant"
+globs: "**/*.lua"
+---
+# Player Validation Rules
+
+## Canonical function
+
+Always use `BasicHelpers.is_valid_player(player)` to check whether a player object is usable.
+
+```lua
+-- bool-only (most common)
+if not BasicHelpers.is_valid_player(player) then return end
+
+-- with error message (use when the message is logged or surfaced to the caller)
+local ok, err = BasicHelpers.is_valid_player(player)
+if not ok then
+  ErrorHandler.debug_log("...", { error = err })
+  return false
+end
+```
+
+The second return value (`string?`) is optional — callers that only check the boolean can ignore it.
+
+## When a guard is necessary
+
+Place a guard when the player reference arrives from an **untrusted source**:
+
+- `game.players[event.player_index]` — index may be stale or the player may have disconnected
+- `game.get_player(...)` — may return nil
+- Public/remote API entry points — callers outside the mod cannot be trusted
+- Functions annotated `LuaPlayer|nil` — nil is an explicit contract
+
+## When a guard is redundant
+
+Do **not** add a guard to a private helper that is only called from a single path that already validated the player immediately above. Examples of this redundant pattern:
+
+```lua
+-- BAD: on_some_event validates at line N, then calls private_fn which re-validates
+local player = game.players[event.player_index]
+if not BasicHelpers.is_valid_player(player) then return end
+private_fn(player)  -- redundant guard inside private_fn is noise
+
+-- GOOD: private helpers trust their callers; guards live at the boundary
+```
+
+## Inline guards
+
+The raw inline form `if not player or not player.valid then` is acceptable **only** in files that do not import `BasicHelpers` and where adding the import would create a new dependency. In all other files use the canonical function.

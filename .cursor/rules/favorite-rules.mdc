@@ -1,0 +1,32 @@
+---
+description: "Invariants for favorite slot state, the canonical blank check, and tag-deletion cleanup"
+globs: "core/favorite/**/*.lua, core/tag/**/*.lua, gui/favorites_bar/**/*.lua, core/control/slot_interaction_handlers.lua"
+---
+# Favorite Slot Rules
+
+## Canonical blank check
+Always use `FavoriteUtils.is_blank_favorite(fav)` — never `BasicHelpers.is_blank_favorite` (removed).
+
+A slot is blank **only when GPS is blank/nil AND `locked == false`**.  
+A locked slot is **never** blank, even if its GPS is the sentinel value.
+
+```lua
+-- ❌ BAD — ignores locked state
+if not fav or fav.gps == nil or fav.gps == BLANK_GPS then ...
+
+-- ✅ GOOD
+if FavoriteUtils.is_blank_favorite(fav) then ...
+```
+
+## Auto-assign skips locked slots
+`FavoriteUtils.is_blank_favorite` already excludes locked slots, so no extra `and not fav.locked` guard is needed when scanning for the first available slot.
+
+## Tag deletion must clear lock
+When a chart tag is deleted, the matching favorite slot must have **both** its GPS reset to `BLANK_GPS` and its `locked` field set to `false`.
+
+The canonical path is `tag_destroy_helper.cleanup_player_favorites(tag)`, which is called unconditionally (not gated on `faved_by_players`) so it catches stale tracking arrays.
+
+`prune_stale_favorites(player, surface_index, pfaves)` in `fave_bar.lua` is the GUI-side safety net that runs at build time and enforces the same invariant.
+
+## Lock toggle guard
+`toggle_favorite_lock` must reject blank slots using `FavoriteUtils.is_blank_favorite` so that a slot with blank GPS and `locked == true` (an illegal state) can still be unlocked.

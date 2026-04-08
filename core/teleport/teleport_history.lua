@@ -6,7 +6,7 @@
 
 local Cache = require("core.cache.cache")
 local GPSUtils = require("core.utils.gps_utils")
-local ValidationUtils = require("core.utils.validation_utils")
+local BasicHelpers = require("core.utils.basic_helpers")
 local HistoryItem = require("core.teleport.history_item")
 local ErrorHandler = require("core.utils.error_handler")
 
@@ -43,7 +43,7 @@ end
 ---@param surface_index integer
 ---@param index integer|string
 function TeleportHistory.remove_history_item(player, surface_index, index)
-	if not ValidationUtils.validate_player(player) then return end
+	if not BasicHelpers.is_valid_player(player) then return end
 	local hist = Cache.get_player_teleport_history(player, surface_index)
 	local stack = hist.stack
 	if not stack or #stack == 0 then return end
@@ -80,7 +80,7 @@ end
 ---@param player LuaPlayer
 ---@param gps string GPS location to record
 function TeleportHistory.add_gps(player, gps)
-	local valid = ValidationUtils.validate_player(player)
+	local valid = BasicHelpers.is_valid_player(player)
 	if not valid or not gps then return end
 
 	local surface_index = GPSUtils.get_surface_index_from_gps(gps)
@@ -118,7 +118,7 @@ end
 ---@param from_gps string|nil GPS where the player departed from (may be nil if unknown)
 ---@param to_gps string GPS where the player teleported to
 function TeleportHistory.add_teleport(player, from_gps, to_gps)
-	if not ValidationUtils.validate_player(player) then return end
+	if not BasicHelpers.is_valid_player(player) then return end
 	if not to_gps then return end
 
 	local is_sequential = Cache.get_sequential_history_mode(player)
@@ -146,7 +146,7 @@ end
 
 -- Set pointer to specific index (for teleport history modal navigation)
 function TeleportHistory.set_pointer(player, surface_index, index)
-	if not ValidationUtils.validate_player(player) then return end
+	if not BasicHelpers.is_valid_player(player) then return end
 	local hist = Cache.get_player_teleport_history(player, surface_index)
 	local stack = hist.stack
 

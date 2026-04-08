@@ -30,12 +30,61 @@ local Cache = require("core.cache.cache")
 local Enum = require("prototypes.enums.enum")
 local ProfilerExport = require("core.utils.profiler_export")
 local BasicHelpers = require("core.utils.basic_helpers")
-local ValidationUtils = require("core.utils.validation_utils")
 local teleport_history_modal = require("gui.teleport_history_modal.teleport_history_modal")
 
 local fave_bar = {}
 
 local last_build_tick = {}
+
+-- Forward declarations for local functions used in fave_bar.build before they are defined.
+local get_slot_label_text
+local try_update_slots_in_place
+
+--- Scan a player's favorites array for entries whose GPS no longer exists in the
+--- surface tag cache, replace them with blank slots, and persist the change.
+--- Returns true when at least one slot was cleared.
+---@param player LuaPlayer
+---@param surface_index uint
+---@param pfaves table|nil
+---@return boolean changed
+local function prune_stale_favorites(player, surface_index, pfaves)
+  if not pfaves then return false end
+  local tag_cache = Cache.get_surface_tags(surface_index)
+  local valid_gps = {}
+  if tag_cache then
+    for gps in pairs(tag_cache) do valid_gps[gps] = true end
+  end
+  local changed = false
+  for i = 1, #pfaves do
+    local fav = pfaves[i]
+    if fav and fav.gps and not valid_gps[fav.gps] and not FavoriteUtils.is_blank_favorite(fav) then
+      ErrorHandler.debug_log("[FAVE_BAR][FAILSAFE] Clearing stale favorite slot referencing invalid GPS", {
+        slot = i, fav_gps = fav.gps
+      })
+      pfaves[i] = FavoriteUtils.get_blank_favorite()
+      changed = true
+    end
+  end
+  if changed then Cache.set_player_favorites(player, pfaves) end
+  return changed
+end
+
+--- Normalize a SignalID-style icon table so that Factorio's "virtual-signal" type is
+--- always spelled with a hyphen.  Chart tags may carry legacy variants "virtual" or
+--- "virtual_signal"; returns a shallow copy with the type fixed, or the original table
+--- unchanged when no normalization is needed.  Non-table values are returned as-is.
+---@param icon any
+---@return any
+local function normalize_icon_type(icon)
+  if type(icon) ~= "table" then return icon end
+  if icon.type == "virtual" or icon.type == "virtual_signal" then
+    local copy = {}
+    for k, v in pairs(icon) do copy[k] = v end
+    copy.type = "virtual-signal"
+    return copy
+  end
+  return icon
+end
 
 -- DEBUG: Log module load time
 if ErrorHandler and ErrorHandler.debug_log then
@@ -50,7 +99,7 @@ end
 ---@param player LuaPlayer Player to get favorites bar frame for
 ---@return LuaGuiElement? fave_bar_frame The favorites bar frame or nil if not found
 local function _get_fave_bar_frame(player)
-  if not ValidationUtils.validate_player(player) then return nil end
+  if not BasicHelpers.is_valid_player(player) then return nil end
   local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   if not main_flow or not main_flow.valid then return nil end
   return GuiValidation.find_child_by_name(main_flow, "fave_bar_frame")
@@ -68,7 +117,7 @@ end
 --- Function to show/hide the entire favorites bar based on surface type and controller
 ---@param player LuaPlayer Player whose favorites bar visibility should be updated
 function fave_bar.update_fave_bar_visibility(player)
-  if not ValidationUtils.validate_player(player) then return end
+  if not BasicHelpers.is_valid_player(player) then return end
 
   local fave_bar_frame = _get_fave_bar_frame(player)
   if not fave_bar_frame or not fave_bar_frame.valid then return end
@@ -88,10 +137,42 @@ function fave_bar.update_fave_bar_visibility(player)
   fave_bar_frame.visible = is_planet and is_supported_mode and not is_restricted_mode
 end
 
+--- Returns true when a progressive bar build is pending for this player.
+--- Used to guard synchronous fave_bar.build calls during the startup window.
+---@param player_index uint
+---@return boolean
+local function is_build_in_flight(player_index)
+  if not storage or not storage._tf_slot_build_queue then return false end
+  for _, entry in ipairs(storage._tf_slot_build_queue) do
+    if entry.player_index == player_index then return true end
+  end
+  return false
+end
+
+--- Remove all build-queue entries for a player (cancels any in-flight progressive build).
+--- Iterates in reverse so table.remove doesn't shift unvisited indices.
+---@param player_index uint
+local function cancel_progressive_build_for(player_index)
+  if not storage or not storage._tf_slot_build_queue then return end
+  for i = #storage._tf_slot_build_queue, 1, -1 do
+    if storage._tf_slot_build_queue[i].player_index == player_index then
+      table.remove(storage._tf_slot_build_queue, i)
+    end
+  end
+end
+
 --- Event handler for controller changes
 ---@param event table Player controller change event
 function fave_bar.on_player_controller_changed(event)
   if not event or not event.player_index then return end
+  -- Before tick 60 the deferred init queue hasn't fired yet.
+  -- Factorio fires on_player_controller_changed at tick 0 AND again at tick 2
+  -- as the character is fully initialized, but the bar must not be built
+  -- synchronously here — it costs ~30 ms and is torn down moments later.
+  -- Also skip when a progressive build is still mid-flight (e.g. exactly tick 60
+  -- when on_nth_tick(60) just enqueued chrome1) — the build will complete on its own.
+  if game.tick < 60 then return end
+  if is_build_in_flight(event.player_index) then return end
   local player = game.players[event.player_index]
   if not player or not player.valid then return end
 
@@ -117,48 +198,58 @@ function fave_bar.on_player_controller_changed(event)
   end
 end
 
--- Build the favorites bar to visually match the quickbar top row
----@diagnostic disable: assign-type-mismatch, param-type-mismatch
-function fave_bar.build_quickbar_style(player, parent) -- Add a horizontal flow to contain the toggle and slots row
-  local bar_flow = GuiBase.create_hflow(parent, Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW)
+--- Create the 3 toggle buttons (history, mode, visibility) and the slots frame
+--- inside an existing toggle_container and bar_flow.  Shared between the
+--- synchronous build_quickbar_style path and the progressive chrome2 stage.
+--- Visibility of individual buttons is NOT set here — each caller manages that
+--- according to current player settings.
+---@param tog_cont LuaGuiElement  TOGGLE_CONTAINER frame
+---@param bar_flow LuaGuiElement  FAVE_BAR_FLOW hflow (parent of the slots frame)
+---@param player LuaPlayer
+---@return LuaGuiElement slots_frame
+---@return LuaGuiElement toggle_btn
+---@return LuaGuiElement hist_btn
+---@return LuaGuiElement mode_btn
+local function create_toggle_chrome(tog_cont, bar_flow, player)
+  local player_data = Cache.get_player_data(player)
+  local is_seq = player_data.sequential_history_mode or false
 
-  local toggle_container = GuiBase.create_frame(bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER, "horizontal",
-    "tf_fave_toggle_container")
-
-  -- Add history toggle button inside the history container
-  local history_toggle_button = GuiBase.create_sprite_button(
-    toggle_container,
+  local hist_btn = GuiBase.create_sprite_button(tog_cont,
     Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_TOGGLE_BUTTON,
     Enum.SpriteEnum.SCROLL_HISTORY,
     { "tf-gui.teleport_history_tooltip" },
-    "tf_fave_history_toggle_button"
-  )
+    "tf_fave_history_toggle_button")
 
-  -- Add history mode toggle button (standard vs sequential)
-  local is_sequential = Cache.get_sequential_history_mode(player)
-  local mode_sprite = is_sequential and Enum.SpriteEnum.SEQUENTIAL_HISTORY_MODE or Enum.SpriteEnum.STD_HISTORY_MODE
-  local mode_tooltip = is_sequential and { "tf-gui.history_mode_sequential_tooltip" } or { "tf-gui.history_mode_std_tooltip" }
-  local history_mode_toggle = GuiBase.create_sprite_button(
-    toggle_container,
+  local mode_btn = GuiBase.create_sprite_button(tog_cont,
     Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_MODE_TOGGLE_BUTTON,
-    mode_sprite,
-    mode_tooltip,
-    "tf_fave_history_toggle_button"
-  )
+    is_seq and Enum.SpriteEnum.SEQUENTIAL_HISTORY_MODE or Enum.SpriteEnum.STD_HISTORY_MODE,
+    is_seq and { "tf-gui.history_mode_sequential_tooltip" } or { "tf-gui.history_mode_std_tooltip" },
+    "tf_fave_history_toggle_button")
 
-  ---@type LocalisedString
-  local toggle_tooltip = { "tf-gui.toggle_fave_bar" }
-  local player_data = Cache.get_player_data(player)
-  local slots_visible = player_data and player_data.fave_bar_slots_visible
-  if slots_visible == nil then slots_visible = true end -- Additional safety default
+  local slots_vis = player_data.fave_bar_slots_visible
+  if slots_vis == nil then
+    slots_vis = true
+    player_data.fave_bar_slots_visible = true
+  end
 
-  local toggle_visibility_button = GuiElementBuilders.create_visibility_toggle_button(
-    toggle_container, Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_BUTTON, slots_visible, toggle_tooltip)
+  local toggle_btn = GuiElementBuilders.create_visibility_toggle_button(
+    tog_cont, Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_BUTTON, slots_vis,
+    { "tf-gui.toggle_fave_bar" })
 
-  -- Add slots frame to the same flow for proper layout
-  local slots_frame = GuiBase.create_frame(bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW, "horizontal",
-    "tf_fave_slots_row")
-  return bar_flow, slots_frame, toggle_visibility_button, toggle_container, history_toggle_button, history_mode_toggle
+  local slots_frame = GuiBase.create_frame(bar_flow,
+    Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW, "horizontal", "tf_fave_slots_row")
+
+  return slots_frame, toggle_btn, hist_btn, mode_btn
+end
+
+-- Build the favorites bar to visually match the quickbar top row
+---@diagnostic disable: assign-type-mismatch, param-type-mismatch
+function fave_bar.build_quickbar_style(player, parent)
+  local bar_flow = GuiBase.create_hflow(parent, Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW)
+  local toggle_container = GuiBase.create_frame(bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER,
+    "horizontal", "tf_fave_toggle_container")
+  local slots_frame, toggle_btn, hist_btn, mode_btn = create_toggle_chrome(toggle_container, bar_flow, player)
+  return bar_flow, slots_frame, toggle_btn, toggle_container, hist_btn, mode_btn
 end
 
 local function get_fave_bar_gui_refs(player)
@@ -169,7 +260,7 @@ local function get_fave_bar_gui_refs(player)
   return main_flow, bar_frame, bar_flow, slots_frame
 end
 
-function fave_bar.build(player, force_show)
+function fave_bar.build(player, force_show, deferred_slots)
   
   ErrorHandler.debug_log("[FAVE_BAR] ========== BUILD CALLED ==========", {
     player = player and player.name or "<no player>",
@@ -177,7 +268,7 @@ function fave_bar.build(player, force_show)
     tick = game.tick
   })
   
-  if not ValidationUtils.validate_player(player) then 
+  if not BasicHelpers.is_valid_player(player) then 
     ErrorHandler.debug_log("[FAVE_BAR] Build skipped - invalid player")
     return 
   end
@@ -200,6 +291,9 @@ function fave_bar.build(player, force_show)
   })
 
   local tick = game and game.tick or 0
+  local prev_build_tick = last_build_tick[player.index]
+  last_build_tick[player.index] = tick  -- always record; used for slot-rebuild debouncing below
+
   local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   local bar_frame = main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
   -- Always recreate bar_frame if missing or invalid
@@ -207,15 +301,16 @@ function fave_bar.build(player, force_show)
     bar_frame = GuiBase.create_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR, "vertical", "tf_fave_bar_frame")
   end
   if not force_show then
-    if last_build_tick[player.index] == tick and bar_frame and bar_frame.valid then
+    if prev_build_tick == tick and bar_frame and bar_frame.valid then
       return
     end
-    last_build_tick[player.index] = tick
   end
 
   local success, result = pcall(function()
     ProfilerExport.start_section("fb_settings_lookup")
     local player_settings = Cache.Settings.get_player_settings(player)
+    -- Fetch player_data once; reused everywhere below to avoid repeated init_player_data calls.
+    local player_data = Cache.get_player_data(player)
     ProfilerExport.stop_section("fb_settings_lookup")
 
     -- Handle case where both favorites and teleport history are disabled
@@ -232,9 +327,9 @@ function fave_bar.build(player, force_show)
       return
     end
 
-    -- Use shared vertical flow
+    -- main_flow was already fetched before the pcall; reuse the captured upvalue.
+    -- Do NOT call get_or_create_gui_flow_from_gui_top again here.
     ProfilerExport.start_section("fb_structure_check")
-    local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
 
     -- PERFORMANCE: Only destroy and recreate if GUI structure needs to change
     -- Check if existing frame is valid AND has child elements
@@ -288,8 +383,9 @@ function fave_bar.build(player, force_show)
     end
     if _history_mode_toggle and _history_mode_toggle.valid then
       _history_mode_toggle.visible = history_enabled
-      -- Always refresh sprite/tooltip to reflect current mode state
-      local is_sequential = Cache.get_sequential_history_mode(player)
+      -- Always refresh sprite/tooltip to reflect current mode state.
+      -- Use already-fetched player_data instead of a second get_player_data call.
+      local is_sequential = player_data.sequential_history_mode or false
       _history_mode_toggle.sprite = is_sequential and Enum.SpriteEnum.SEQUENTIAL_HISTORY_MODE or Enum.SpriteEnum.STD_HISTORY_MODE
       _history_mode_toggle.tooltip = is_sequential and { "tf-gui.history_mode_sequential_tooltip" } or { "tf-gui.history_mode_std_tooltip" }
     end
@@ -311,30 +407,14 @@ function fave_bar.build(player, force_show)
       local surface_index = player.surface.index
       local pfaves = Cache.get_player_favorites(player, surface_index)
 
-      -- FAILSAFE: Remove any slots referencing an old GPS that is no longer valid
+      -- FAILSAFE: Remove any slots referencing an old GPS that is no longer valid.
+      -- Skip during the 3-tick startup window: GPS state cannot change between tick 0 and tick 2.
       ProfilerExport.start_section("fb_gps_validation")
-      local valid_gps_set = {}
-      -- Build set of all valid GPS from tag cache
-      local tag_cache = Cache.get_surface_tags(surface_index)
-      if tag_cache then
-        for gps, tag in pairs(tag_cache) do
-          valid_gps_set[gps] = true
-        end
-      end
-      local changed = false
-      for i = 1, #pfaves do
-        local fav = pfaves[i]
-        if fav and fav.gps and not valid_gps_set[fav.gps] and not FavoriteUtils.is_blank_favorite(fav) then
-          ErrorHandler.debug_log("[FAVE_BAR][FAILSAFE] Clearing stale favorite slot referencing invalid GPS", {
-            slot = i,
-            fav_gps = fav.gps
-          })
-          pfaves[i] = FavoriteUtils.get_blank_favorite()
-          changed = true
-        end
-      end
-      if changed then
-        Cache.set_player_favorites(player, pfaves)
+      local recently_built_for_gps = prev_build_tick ~= nil
+        and tick >= prev_build_tick
+        and (tick - prev_build_tick) < 3
+      if not recently_built_for_gps then
+        prune_stale_favorites(player, surface_index, pfaves)
       end
       ProfilerExport.stop_section("fb_gps_validation")
 
@@ -343,30 +423,65 @@ function fave_bar.build(player, force_show)
         _toggle_button.visible = true
       end
 
-      -- Set slots visibility based on player's saved preference
+      -- Set slots visibility based on player's saved preference.
+      -- Reuse the player_data already fetched at the top of this pcall block.
       if slots_frame and slots_frame.valid then
-        local player_data = Cache.get_player_data(player)
         local slots_visible = player_data.fave_bar_slots_visible
-        -- Default to true for new players or when preference not set
-        if slots_visible == nil then 
+        if slots_visible == nil then
           slots_visible = true
-          player_data.fave_bar_slots_visible = true -- Save the default
+          player_data.fave_bar_slots_visible = true
         end
         slots_frame.visible = slots_visible
       end
 
-      -- Build slot buttons (destroy existing ones first for non-rebuild path)
+      -- Update slot buttons: try in-place mutation first (fast path, no DOM destroy/recreate).
+      -- Fall back to destroy+rebuild only when structure changes (slot count, label mode).
       ProfilerExport.start_section("fb_buttons_row")
-      if slots_frame and slots_frame.valid then
-        local children = slots_frame.children
-        for i = #children, 1, -1 do
-          local child = children[i]
-          if child and child.valid then
-            child.destroy()
+      -- Startup debounce: if slots were already built very recently (within 3 ticks of init),
+      -- skip the update entirely.  Player actions (teleport, settings) happen far later.
+      local recently_built = prev_build_tick ~= nil
+        and tick >= prev_build_tick
+        and (tick - prev_build_tick) < 3
+      local slots_already_current = recently_built
+        and slots_frame and slots_frame.valid
+        and #slots_frame.children > 0
+      if not slots_already_current then
+        if deferred_slots then
+          -- Progressive startup build: clear the frame and enqueue slot filling across ticks.
+          -- Any previous deferred entries for this player are replaced.
+          storage._tf_slot_build_queue = storage._tf_slot_build_queue or {}
+          cancel_progressive_build_for(player.index)
+          if slots_frame and slots_frame.valid then
+            local children = slots_frame.children
+            for i = #children, 1, -1 do
+              if children[i] and children[i].valid then children[i].destroy() end
+            end
+          end
+          table.insert(storage._tf_slot_build_queue, {
+            player_index    = player.index,
+            surface_index   = player.surface.index,
+            next_slot       = 1,
+            expected_built  = 0,  -- how many slots should be in the frame right now
+          })
+        else
+          -- Immediate build: synchronous destroy + rebuild (used for in-game updates).
+          -- Cancel any pending deferred build for this player since we're doing it now.
+          cancel_progressive_build_for(player.index)
+          local slots_updated = slots_frame and slots_frame.valid
+            and #slots_frame.children > 0
+            and try_update_slots_in_place(slots_frame, player, pfaves)
+          if not slots_updated then
+            if slots_frame and slots_frame.valid then
+              local children = slots_frame.children
+              for i = #children, 1, -1 do
+                local child = children[i]
+                if child and child.valid then child.destroy() end
+              end
+            end
+            fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves)
           end
         end
       end
-      fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves)
       ProfilerExport.stop_section("fb_buttons_row")
 
       -- Do NOT update toggle state in pdata here! Only the event handler should do that.
@@ -380,7 +495,10 @@ function fave_bar.build(player, force_show)
     return fave_bar_frame
   end)
   if not success then
-    ErrorHandler.debug_log("Favorites bar build failed", {
+    -- Always log at warn level (not debug) so this is visible in production mode.
+    log("[TeleportFavorites][FAVE_BAR] build() pcall failed for player="
+      .. tostring(player and player.name) .. " error=" .. tostring(result))
+    ErrorHandler.warn_log("Favorites bar build failed", {
       player = player and player.name,
       error = result
     })
@@ -396,7 +514,7 @@ end
 ---@param fav table|nil Rehydrated favorite object
 ---@param mode string "off", "short", or "long"
 ---@return string label_text Truncated text or empty string
-local function get_slot_label_text(fav, mode)
+get_slot_label_text = function(fav, mode)
   if mode == "off" then return "" end
   if not fav or FavoriteUtils.is_blank_favorite(fav) then return "" end
   local text = ""
@@ -416,6 +534,159 @@ local function get_slot_label_text(fav, mode)
 end
 
 
+--- Attempt to update all slot buttons in place (no destroy/recreate).
+--- Returns true on success; false means structure changed and a full rebuild is needed.
+try_update_slots_in_place = function(slots_frame, player, pfaves)
+  local max_slots = Cache.Settings.get_player_max_favorite_slots(player) or 10
+  local label_mode = Cache.Settings.get_player_slot_label_mode(player)
+  local use_labels = label_mode ~= "off"
+  local children = slots_frame.children
+
+  -- Slot count or label structure mismatch — caller must rebuild.
+  if #children ~= max_slots then
+    log("[TeleportFavorites][FAVE_BAR] try_update_slots_in_place: count mismatch children="
+      .. tostring(#children) .. " max_slots=" .. tostring(max_slots) .. " use_labels=" .. tostring(use_labels))
+    return false
+  end
+
+  -- Rehydrate all favorites up front (same as the build path).
+  local rehydrated = {}
+  for i = 1, max_slots do
+    local fav = pfaves and pfaves[i] or nil
+    local r = fav and FavoriteRehydration.rehydrate_favorite_at_runtime(player, fav) or nil
+    rehydrated[i] = r or FavoriteUtils.get_blank_favorite()
+  end
+
+  for i = 1, max_slots do
+    local fav = rehydrated[i]
+    local child = children[i]
+    if not child or not child.valid then return false end
+
+    -- Locate button and optional label inside wrapper or directly in frame.
+    local btn, label_el
+    if use_labels then
+      if child.type ~= "flow" then
+        log("[TeleportFavorites][FAVE_BAR] try_update_slots_in_place: child type mismatch slot="
+          .. tostring(i) .. " type=" .. tostring(child.type) .. " expected=flow")
+        return false
+      end
+      btn = child["fave_bar_slot_" .. i]
+      label_el = child["fave_bar_slot_label_" .. i]
+    else
+      btn = child
+    end
+    if not btn or not btn.valid then return false end
+
+    if FavoriteUtils.is_blank_favorite(fav) then
+      btn.sprite = ""
+      btn.tooltip = { "tf-gui.favorite_slot_empty" }
+      btn.style = "tf_slot_button_smallfont"
+      local ls = btn["slot_lock_sprite_" .. i]
+      if ls and ls.valid then ls.destroy() end
+    else
+      local icon = nil
+      if fav.tag and fav.tag.chart_tag then
+        if fav.tag.chart_tag.valid then
+          icon = fav.tag.chart_tag.icon
+        else
+          btn.sprite = ""
+          btn.tooltip = { "tf-gui.favorite_slot_empty" }
+          goto next_slot
+        end
+      end
+    local btn_icon = GuiValidation.get_validated_sprite_path(normalize_icon_type(icon),
+      { fallback = Enum.SpriteEnum.PIN, log_context = { slot = i, fav_gps = fav.gps } })
+      local style = fav.locked and "tf_slot_button_locked" or "tf_slot_button_smallfont"
+      if btn_icon == "tf_tag_in_map_view_small" then style = "tf_slot_button_smallfont_map_pin" end
+
+      btn.sprite = btn_icon
+      btn.tooltip = GuiHelpers.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }
+      btn.style = style
+
+      local ls = btn["slot_lock_sprite_" .. i]
+      if fav.locked then
+        if not ls or not ls.valid then
+          btn.add { type = "sprite", name = "slot_lock_sprite_" .. i,
+                    sprite = Enum.SpriteEnum.LOCK, style = "tf_fave_bar_slot_lock_sprite" }
+        end
+      else
+        if ls and ls.valid then ls.destroy() end
+      end
+    end
+
+    if label_el and label_el.valid then
+      label_el.caption = get_slot_label_text(fav, label_mode)
+    end
+
+    ::next_slot::
+  end
+
+  return true
+end
+
+-- Build properties (icon, tooltip, style, locked) for a single slot's button.
+local function get_slot_btn_props(i, fav)
+  if fav and not FavoriteUtils.is_blank_favorite(fav) then
+    local icon = nil
+    if fav.tag and fav.tag.chart_tag then
+      if fav.tag.chart_tag.valid then
+        icon = fav.tag.chart_tag.icon
+      else
+        return nil, { "tf-gui.favorite_slot_empty" }, "slot_button", false
+      end
+    end
+    local btn_icon = GuiValidation.get_validated_sprite_path(normalize_icon_type(icon),
+      { fallback = Enum.SpriteEnum.PIN, log_context = { slot = i, fav_gps = fav.gps, fav_tag = fav.tag } })
+    local style = fav.locked and "tf_slot_button_locked" or "tf_slot_button_smallfont"
+    if btn_icon == "tf_tag_in_map_view_small" then style = "tf_slot_button_smallfont_map_pin" end
+    return btn_icon, GuiHelpers.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }, style, fav.locked
+  else
+    return "", { "tf-gui.favorite_slot_empty" }, "tf_slot_button_smallfont", false
+  end
+end
+
+-- Add one slot button (and optional label wrapper) to slots_frame.
+-- Shared by build_favorite_buttons_row and the deferred progressive builder.
+local function build_single_slot(parent, player, pfaves, i, use_labels, label_mode)
+  local fav_raw = pfaves and pfaves[i] or nil
+  -- Skip rehydration entirely for blank slots — it only creates an identical blank table.
+  local fav
+  if fav_raw and not FavoriteUtils.is_blank_favorite(fav_raw) then
+    fav = FavoriteRehydration.rehydrate_favorite_at_runtime(player, fav_raw)
+          or FavoriteUtils.get_blank_favorite()
+  else
+    fav = FavoriteUtils.get_blank_favorite()
+  end
+
+  local btn_icon, tooltip, style, locked = get_slot_btn_props(i, fav)
+
+  local btn_parent = parent
+  if use_labels then
+    btn_parent = parent.add {
+      type      = "flow",
+      name      = "fave_bar_slot_wrapper_" .. i,
+      direction = "vertical",
+      style     = "tf_fave_bar_slot_wrapper",
+    }
+  end
+
+  local btn = GuiHelpers.create_slot_button(btn_parent, "fave_bar_slot_" .. i, tostring(btn_icon), tooltip, { style = style })
+  if btn and btn.valid then
+    local num_style = locked and "tf_fave_bar_locked_slot_number" or "tf_fave_bar_slot_number"
+    GuiBase.create_label(btn, "tf_fave_bar_slot_number_" .. tostring(i), tostring(i), num_style)
+    if locked then
+      btn.add { type = "sprite", name = "slot_lock_sprite_" .. tostring(i),
+                sprite = Enum.SpriteEnum.LOCK, style = "tf_fave_bar_slot_lock_sprite" }
+    end
+    if use_labels then
+      GuiBase.create_label(btn_parent, "fave_bar_slot_label_" .. i,
+                           get_slot_label_text(fav, label_mode), "tf_fave_bar_slot_label")
+    end
+  else
+    ErrorHandler.warn_log("[FAVE_BAR] Failed to create slot button", { slot = i, icon = btn_icon })
+  end
+end
+
 local function build_favorite_buttons_row(parent, player, pfaves)
   if not parent or not parent.valid then
     ErrorHandler.warn_log("[FAVE_BAR] build_favorite_buttons_row called with invalid parent", {
@@ -426,91 +697,11 @@ local function build_favorite_buttons_row(parent, player, pfaves)
   end
 
   local max_slots = Cache.Settings.get_player_max_favorite_slots(player) or 10
-
-  -- Rehydrate all favorites for correct icon and tag references
-  local rehydrated_pfaves = {}
-  for i = 1, max_slots do
-    local fav = pfaves and pfaves[i] or nil
-    if fav then
-      local rehydrated = FavoriteRehydration.rehydrate_favorite_at_runtime(player, fav)
-      rehydrated_pfaves[i] = rehydrated or FavoriteUtils.get_blank_favorite()
-    else
-      rehydrated_pfaves[i] = FavoriteUtils.get_blank_favorite()
-    end
-  end
-
-  local function get_slot_btn_props(i, fav)
-    if fav and not FavoriteUtils.is_blank_favorite(fav) then
-      local icon = nil
-      if fav.tag and fav.tag.chart_tag then
-        if fav.tag.chart_tag.valid then
-          icon = fav.tag.chart_tag.icon
-        else
-          return nil, { "tf-gui.favorite_slot_empty" }, "slot_button", false
-        end
-      end
-      local norm_icon = icon
-      if type(icon) == "table" and icon.type == "virtual" then
-        norm_icon = {}
-        for k, v in pairs(icon) do norm_icon[k] = v end
-        norm_icon.type = "virtual_signal"
-      end
-      local sprite_icon = norm_icon
-      if type(norm_icon) == "table" and norm_icon.type == "virtual_signal" then
-        sprite_icon = {}
-        for k, v in pairs(norm_icon) do sprite_icon[k] = v end
-        sprite_icon.type = "virtual-signal"
-      end
-      local btn_icon = GuiValidation.get_validated_sprite_path(sprite_icon,
-        { fallback = Enum.SpriteEnum.PIN, log_context = { slot = i, fav_gps = fav.gps, fav_tag = fav.tag } })
-      local style = fav.locked and "tf_slot_button_locked" or "tf_slot_button_smallfont"
-      if btn_icon == "tf_tag_in_map_view_small" then style = "tf_slot_button_smallfont_map_pin" end
-      return btn_icon, GuiHelpers.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }, style, fav.locked
-    else
-      return "", { "tf-gui.favorite_slot_empty" }, "tf_slot_button_smallfont", false
-    end
-  end
-
   local label_mode = Cache.Settings.get_player_slot_label_mode(player)
   local use_labels = label_mode ~= "off"
 
   for i = 1, max_slots do
-    local fav = rehydrated_pfaves[i]
-    local btn_icon, tooltip, style, locked = get_slot_btn_props(i, fav)
-
-    -- When labels are enabled, wrap button + label in a vertical flow
-    local btn_parent = parent
-    if use_labels then
-      local wrapper = parent.add {
-        type = "flow",
-        name = "fave_bar_slot_wrapper_" .. i,
-        direction = "vertical",
-        style = "tf_fave_bar_slot_wrapper"
-      }
-      btn_parent = wrapper
-    end
-
-    local btn = GuiHelpers.create_slot_button(btn_parent, "fave_bar_slot_" .. i, tostring(btn_icon), tooltip, { style = style })
-    if btn and btn.valid then
-      local number_label_style = locked and "tf_fave_bar_locked_slot_number" or "tf_fave_bar_slot_number"
-      local slot_num = i
-      GuiBase.create_label(btn, "tf_fave_bar_slot_number_" .. tostring(i), tostring(slot_num), number_label_style)
-      if locked then
-        btn.add {
-          type = "sprite",
-          name = "slot_lock_sprite_" .. tostring(i),
-          sprite = Enum.SpriteEnum.LOCK,
-          style = "tf_fave_bar_slot_lock_sprite"
-        }
-      end
-      -- Add text label below button when labels are enabled
-      if use_labels then
-        local label_text = get_slot_label_text(fav, label_mode)
-        GuiBase.create_label(btn_parent, "fave_bar_slot_label_" .. i, label_text, "tf_fave_bar_slot_label")
-      end
-    else
-      ErrorHandler.warn_log("[FAVE_BAR] Failed to create slot button", { slot = i, icon = btn_icon })
-    end
+    build_single_slot(parent, player, pfaves, i, use_labels, label_mode)
   end
 
   return parent
@@ -523,12 +714,13 @@ fave_bar.build_favorite_buttons_row = build_favorite_buttons_row
 --- This is the preferred entry point for observer-driven updates.
 ---@param player LuaPlayer
 function fave_bar.refresh_slots(player)
-  if not ValidationUtils.validate_player(player) then return end
+  if not BasicHelpers.is_valid_player(player) then return end
   local _, _, bar_flow, slots_frame = get_fave_bar_gui_refs(player)
   if bar_flow and bar_flow.valid and slots_frame and slots_frame.valid then
     fave_bar.update_slot_row(player, bar_flow)
-  else
-    -- Bar structure missing — fall back to full build
+  elseif not is_build_in_flight(player.index) then
+    -- Bar structure missing and no progressive build pending — fall back to full build.
+    -- If a progressive build is in-flight, skip: it will complete on the next on_nth_tick(2).
     fave_bar.build(player)
   end
 end
@@ -536,7 +728,7 @@ end
 -- Update only the slots row without rebuilding the entire bar
 -- parent: the bar_flow container (parent of fave_bar_slots_flow)
 function fave_bar.update_slot_row(player, parent_flow)
-  if not ValidationUtils.validate_player(player) then return end
+  if not BasicHelpers.is_valid_player(player) then return end
   if not parent_flow or not parent_flow.valid then return end
 
   local slots_frame = GuiValidation.find_child_by_name(parent_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW)
@@ -566,7 +758,7 @@ end
 ---@param player LuaPlayer
 ---@param slot_index number Slot index (1-based)
 function fave_bar.update_single_slot(player, slot_index)
-  if not ValidationUtils.validate_player(player) then return end
+  if not BasicHelpers.is_valid_player(player) then return end
   local _, _, _, slots_frame = get_fave_bar_gui_refs(player)
   if not slots_frame then return end
 
@@ -635,20 +827,7 @@ function fave_bar.update_single_slot(player, slot_index)
         return
       end
     end
-    local norm_icon = icon
-    if type(icon) == "table" and icon.type == "virtual" then
-      norm_icon = {}
-      for k, v in pairs(icon) do norm_icon[k] = v end
-      norm_icon.type = "virtual_signal"
-    end
-    -- Patch: For sprite path, use 'virtual-signal' (hyphen) for Factorio GUI
-    local sprite_icon = norm_icon
-    if type(norm_icon) == "table" and norm_icon.type == "virtual_signal" then
-      sprite_icon = {}
-      for k, v in pairs(norm_icon) do sprite_icon[k] = v end
-      sprite_icon.type = "virtual-signal" -- hyphen for sprite path
-    end
-    slot_button.sprite = GuiValidation.get_validated_sprite_path(sprite_icon,
+    slot_button.sprite = GuiValidation.get_validated_sprite_path(normalize_icon_type(icon),
       { fallback = Enum.SpriteEnum.PIN, log_context = { slot = slot_index, fav_gps = fav.gps, fav_tag = fav.tag } })
     ---@type LocalisedString
     slot_button.tooltip = GuiHelpers.build_favorite_tooltip(fav, { slot = slot_index })
@@ -672,7 +851,7 @@ end
 ---@param player LuaPlayer
 ---@param slots_visible boolean Whether slots should be visible
 function fave_bar.update_toggle_state(player, slots_visible)
-  if not ValidationUtils.validate_player(player) then return end
+  if not BasicHelpers.is_valid_player(player) then return end
 
   -- Ensure slots_visible is a proper boolean
   if slots_visible == nil then slots_visible = true end
@@ -707,7 +886,7 @@ local dirty_slots = {}
 ---@param player LuaPlayer
 ---@param slot_index number
 function fave_bar.mark_slot_dirty(player, slot_index)
-  if not ValidationUtils.validate_player(player) then return end
+  if not BasicHelpers.is_valid_player(player) then return end
   if type(slot_index) ~= "number" then return end
   local pidx = player.index
   dirty_slots[pidx] = dirty_slots[pidx] or {}
@@ -717,7 +896,7 @@ end
 --- Partially rehydrate any dirty slots for the player and clear the dirty set
 ---@param player LuaPlayer
 function fave_bar.partial_rehydrate(player)
-  if not ValidationUtils.validate_player(player) then return end
+  if not BasicHelpers.is_valid_player(player) then return end
   local pidx = player.index
   local set = dirty_slots[pidx]
   if not set then return end
@@ -736,6 +915,205 @@ end
 
 
 
+
+-- ============================================================
+-- Progressive startup bar builder
+-- ============================================================
+-- Factorio GUI element creation costs ~0.87 ms per element via the C++ API.
+-- Building the full bar (6 chrome + 30 slot elements) synchronously would cost
+-- ~31 ms on one tick. Instead, initialization is split into stages processed
+-- SLOT_BATCH_SIZE elements per on_nth_tick(2) call so no single tick exceeds ~5 ms.
+--
+-- Stages in storage._tf_slot_build_queue:
+--   stage = "chrome"  → build bar chrome (toggle buttons, slots frame) in one tick
+--   stage = "slots"   → add SLOT_BATCH_SIZE slot buttons per tick until done
+--
+-- In-game updates (teleport, settings change) call fave_bar.build() synchronously
+-- and bypass this queue entirely.
+
+-- Each slot creates 2 GUI elements (sprite-button + slot-number label inside it).
+-- 2 slots × 2 elements = 4 GUI adds ≈ 3.5 ms — safely under the 5 ms target.
+-- Increasing this causes 8+ ms spikes per batch tick.
+local SLOT_BATCH_SIZE = 2
+
+--- Called from process_deferred_init_queue (at tick 60+).
+--- Creates the bare outer frame (1 element) and enqueues chrome + slots for later ticks.
+function fave_bar.enqueue_progressive_build(player)
+  if not BasicHelpers.is_valid_player(player) then return end
+
+  -- Create the empty outer frame so the bar area is reserved in the UI.
+  local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
+  if not main_flow then return end
+  local bar_frame = main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
+  if not bar_frame or not bar_frame.valid then
+    bar_frame = GuiBase.create_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR, "vertical", "tf_fave_bar_frame")
+  end
+  if not bar_frame or not bar_frame.valid then return end
+
+  -- Cancel any existing deferred build for this player.
+  storage._tf_slot_build_queue = storage._tf_slot_build_queue or {}
+  cancel_progressive_build_for(player.index)
+
+  -- Enqueue chrome1 first; it chains chrome1 → chrome2 → slots automatically.
+  table.insert(storage._tf_slot_build_queue, {
+    player_index  = player.index,
+    surface_index = player.surface.index,
+    stage         = "chrome1",
+  })
+  last_build_tick[player.index] = game.tick
+end
+
+--- Called on every on_nth_tick(2); processes one stage per call.
+function fave_bar.process_slot_build_queue()
+  if not storage or not storage._tf_slot_build_queue then return end
+  if #storage._tf_slot_build_queue == 0 then return end
+
+  local entry  = storage._tf_slot_build_queue[1]
+  local player = game.players[entry.player_index]
+  if not player or not player.valid then
+    table.remove(storage._tf_slot_build_queue, 1)
+    return
+  end
+
+  -- ── Chrome stage 1: bar_flow + toggle_container  (~2 GUI adds ≈ 1.7 ms) ──────
+  -- Splitting the 6-element chrome build across two ticks keeps each tick
+  -- well under the 5 ms target.  chrome1 → chrome2 → slots.
+  if entry.stage == "chrome1" then
+    ProfilerExport.start_section("pb_chrome1")
+    local player_settings = Cache.Settings.get_player_settings(player)
+    if not player_settings.favorites_on and not player_settings.enable_teleport_history then
+      ProfilerExport.stop_section("pb_chrome1")
+      table.remove(storage._tf_slot_build_queue, 1)
+      return
+    end
+    if BasicHelpers.is_restricted_controller(player) then
+      ProfilerExport.stop_section("pb_chrome1")
+      table.remove(storage._tf_slot_build_queue, 1)
+      return
+    end
+
+    local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
+    local bar_frame = main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
+    if not bar_frame or not bar_frame.valid then
+      ProfilerExport.stop_section("pb_chrome1")
+      table.remove(storage._tf_slot_build_queue, 1)
+      return
+    end
+
+    local existing_flow = bar_frame[Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW]
+    if existing_flow and existing_flow.valid then existing_flow.destroy() end
+
+    GuiBase.create_hflow(bar_frame, Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW)
+    local bar_flow = bar_frame[Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW]
+    if bar_flow and bar_flow.valid then
+      GuiBase.create_frame(bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER,
+        "horizontal", "tf_fave_toggle_container")
+    end
+
+    ProfilerExport.stop_section("pb_chrome1")
+    storage._tf_slot_build_queue[1] = {
+      player_index  = entry.player_index,
+      surface_index = entry.surface_index,
+      stage         = "chrome2",
+    }
+    return
+  end
+
+  -- ── Chrome stage 2: 3 buttons + slots frame + GPS validation (~4 adds ≈ 3.5 ms) ─
+  if entry.stage == "chrome2" then
+    ProfilerExport.start_section("pb_chrome2")
+    local player_settings = Cache.Settings.get_player_settings(player)
+    local main_flow  = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
+    local bar_frame  = main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
+    local bar_flow   = bar_frame and bar_frame[Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW]
+    local tog_cont   = bar_flow  and bar_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER]
+    if not bar_frame or not bar_frame.valid or not bar_flow or not tog_cont then
+      ProfilerExport.stop_section("pb_chrome2")
+      table.remove(storage._tf_slot_build_queue, 1)
+      return
+    end
+
+    local history_enabled = player_settings.enable_teleport_history
+    local slots_frame, _toggle_btn, _hist_btn, _mode_btn = create_toggle_chrome(tog_cont, bar_flow, player)
+    if _hist_btn  and _hist_btn.valid  then _hist_btn.visible  = history_enabled end
+    if _mode_btn  and _mode_btn.valid  then _mode_btn.visible  = history_enabled end
+    if _toggle_btn and _toggle_btn.valid then _toggle_btn.visible = true end
+
+    local surface_index = entry.surface_index
+    local pfaves        = Cache.get_player_favorites(player, surface_index)
+    prune_stale_favorites(player, surface_index, pfaves)
+
+    if slots_frame and slots_frame.valid then slots_frame.visible = slots_vis end
+
+    ProfilerExport.stop_section("pb_chrome2")
+    storage._tf_slot_build_queue[1] = {
+      player_index   = entry.player_index,
+      surface_index  = surface_index,
+      stage          = "slots",
+      next_slot      = 1,
+      expected_built = 0,
+    }
+    return
+  end
+
+  -- ── Legacy chrome stage (kept for queue entries created before the split) ──
+  if entry.stage == "chrome" then
+    -- Re-queue as the new two-stage chrome.
+    storage._tf_slot_build_queue[1] = {
+      player_index  = entry.player_index,
+      surface_index = entry.surface_index,
+      stage         = "chrome1",
+    }
+    return
+  end
+
+  -- ── Slots stage ────────────────────────────────────────────────────────────
+  ProfilerExport.start_section("pb_slots")
+  local main_flow   = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
+  local bar_frame   = main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
+  local bar_flow    = bar_frame and bar_frame[Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW]
+  local slots_frame = bar_flow  and bar_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW]
+
+  if not slots_frame or not slots_frame.valid then
+    ProfilerExport.stop_section("pb_slots")
+    table.remove(storage._tf_slot_build_queue, 1)
+    return
+  end
+
+  if #slots_frame.children ~= entry.expected_built then
+    ProfilerExport.stop_section("pb_slots")
+    table.remove(storage._tf_slot_build_queue, 1)
+    return
+  end
+
+  local max_slots  = Cache.Settings.get_player_max_favorite_slots(player) or 30
+  local pfaves     = Cache.get_player_favorites(player, entry.surface_index)
+  local label_mode = Cache.Settings.get_player_slot_label_mode(player)
+  local use_labels = label_mode ~= "off"
+  local start_idx  = entry.next_slot
+  local end_idx    = math.min(start_idx + SLOT_BATCH_SIZE - 1, max_slots)
+
+  for i = start_idx, end_idx do
+    build_single_slot(slots_frame, player, pfaves, i, use_labels, label_mode)
+  end
+
+  ProfilerExport.stop_section("pb_slots")
+
+  if end_idx >= max_slots then
+    table.remove(storage._tf_slot_build_queue, 1)
+    last_build_tick[entry.player_index] = game.tick
+  else
+    entry.next_slot      = end_idx + 1
+    entry.expected_built = end_idx
+  end
+end
+
+--- Clear the build queue on save-load (stale GUI references, fresh state needed).
+function fave_bar.on_load_cleanup()
+  if storage then
+    storage._tf_slot_build_queue = {}
+  end
+end
 
 -- DEBUG: Log all keys in fave_bar at module load time
 if ErrorHandler and ErrorHandler.debug_log then

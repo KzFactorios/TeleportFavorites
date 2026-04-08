@@ -137,19 +137,12 @@ function EventRegistrationDispatcher.register_core_events(script)
   }
   core_events[defines.events.on_player_left_game] = {
     handler = function(event)
-      -- Get the leaving player before handling chart tag ownership
-      local leaving_player = game.players[event.player_index]
-
       ChartTagOwnershipManager.on_player_left_game(event)
     end,
     name = "on_player_left_game"
   }
   core_events[defines.events.on_player_removed] = {
     handler = function(event)
-      -- Get the removed player before handling chart tag ownership
-      local removed_player = game.players[event.player_index]
-
-      -- Handle chart tag ownership reset
       ChartTagOwnershipManager.on_player_removed(event)
     end,
     name = "on_player_removed"
@@ -303,11 +296,14 @@ function EventRegistrationDispatcher.register_core_events(script)
   -- Dynamic registration/deregistration at runtime causes script-event-mismatch when clients join.
   -- Each handler uses a flag guard to no-op when inactive (negligible UPS cost).
   
-  -- Permanent on_nth_tick(2): Processes deferred GUI notifications when queue has items
+  -- Permanent on_nth_tick(2): deferred GUI notifications + progressive startup slot building.
   script.on_nth_tick(2, function()
     if GuiObserver.GuiEventBus._deferred_tick_active then
+      ProfilerExport.start_section("deferred_notifications")
       GuiObserver.GuiEventBus.process_deferred_notifications()
+      ProfilerExport.stop_section("deferred_notifications")
     end
+    fave_bar.process_slot_build_queue()
   end)
   
   -- Permanent on_nth_tick(60): Processes deferred player initialization queue

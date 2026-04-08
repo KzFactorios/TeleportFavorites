@@ -56,7 +56,7 @@ function ChartTagUtils.find_closest_chart_tag_to_position(player, cursor_positio
   end
   
   -- Get click radius from player settings
-  local click_radius = Cache.Settings.get_chart_tag_click_radius(player)
+  local click_radius = Cache.Settings.get_chart_tag_click_radius()
 
   -- Initialize min_distance and closest_tag
   local min_distance = math.huge

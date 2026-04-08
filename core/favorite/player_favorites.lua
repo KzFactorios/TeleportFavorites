@@ -117,7 +117,7 @@ function PlayerFavorites:add_favorite(gps)
   -- Find first available (blank and unlocked) slot
   for i = 1, max_slots do
     local fav = favorites[i] or FavoriteUtils.get_blank_favorite()
-    if BasicHelpers.is_blank_favorite(fav) and not (fav.locked == true) then
+    if FavoriteUtils.is_blank_favorite(fav) then
       favorites[i] = FavoriteUtils.get_blank_favorite()
       favorites[i].gps = gps
       favorites[i].locked = false
@@ -171,7 +171,7 @@ function PlayerFavorites:toggle_favorite_lock(slot)
   if not fav then
     return false, "favorite_not_found"
   end
-  if BasicHelpers.is_blank_favorite(fav) then
+  if FavoriteUtils.is_blank_favorite(fav) then
     return false, "cannot_lock_blank_slot"
   end
   fav.locked = not fav.locked
@@ -212,7 +212,7 @@ function PlayerFavorites:reorder_favorites(source_slot, target_slot)
     new_favorites[i] = FavoriteUtils.copy(favorites[i] or FavoriteUtils.get_blank_favorite())
   end
   -- Blank-seeking cascade algorithm
-  if BasicHelpers.is_blank_favorite(tgt_fav) then
+  if FavoriteUtils.is_blank_favorite(tgt_fav) then
   new_favorites[target_slot] = FavoriteUtils.copy(src_fav or FavoriteUtils.get_blank_favorite())
     new_favorites[source_slot] = FavoriteUtils.get_blank_favorite()
   elseif math.abs(source_slot - target_slot) == 1 then

@@ -174,7 +174,6 @@ end
 ---@param preserve_state boolean|nil If true, do not clear modal dialog state in cache
 function teleport_history_modal.destroy(player, preserve_state)
   if not BasicHelpers.is_valid_player(player) then return end
-  if not player or not player.valid then return end
   -- Always clear modal dialog state when closing teleport history modal (should never block input)
   Cache.set_modal_dialog_state(player, nil)
 

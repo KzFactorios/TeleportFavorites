@@ -131,74 +131,48 @@ function GuiEventBus.notify(event_type, event_data, defer_to_tick)
   end
 end
 
---- Process deferred GUI notifications (called on_tick)
-function GuiEventBus.process_deferred_notifications()
-  -- Initialize queue if needed
-  GuiEventBus._deferred_queue = GuiEventBus._deferred_queue or {}
-  
-  if #GuiEventBus._deferred_queue == 0 then
-    -- Mark deferred tick as inactive (handler remains registered for multiplayer safety)
-    GuiEventBus._deferred_tick_active = false
-    return
-  end
-  
-  -- Process all deferred notifications
-  local error_count = 0
-  
-  while #GuiEventBus._deferred_queue > 0 do
-    local notification = table.remove(GuiEventBus._deferred_queue, 1)
+--- Drain every notification in `queue`, calling each matching observer via pcall.
+--- Errors are logged with `log_label` but do not abort remaining notifications.
+---@param queue table   Mutable array of {type, data, timestamp} notifications
+---@param log_label string  Prefix for warn_log on pcall failure
+local function drain_queue(queue, log_label)
+  while #queue > 0 do
+    local notification = table.remove(queue, 1)
     local observers = GuiEventBus._observers[notification.type] or {}
-    
     for _, observer in ipairs(observers) do
       if observer and observer.update then
         local success, err = pcall(observer.update, observer, notification.data)
         if not success then
-          error_count = error_count + 1
-          ErrorHandler.warn_log("Deferred observer update failed", {
-            event_type = notification.type,
+          ErrorHandler.warn_log(log_label, {
+            event_type    = notification.type,
             observer_type = observer.observer_type or "unknown",
-            error = err
+            error         = err
           })
         end
       end
     end
   end
-  
+end
+
+--- Process deferred GUI notifications (called on_nth_tick(2)).
+function GuiEventBus.process_deferred_notifications()
+  GuiEventBus._deferred_queue = GuiEventBus._deferred_queue or {}
+  if #GuiEventBus._deferred_queue == 0 then
+    GuiEventBus._deferred_tick_active = false
+    return
+  end
+  drain_queue(GuiEventBus._deferred_queue, "Deferred observer update failed")
   -- Queue is now drained — mark inactive (handler stays registered for multiplayer safety)
   GuiEventBus._deferred_tick_active = false
 end
 
---- Process queued notifications
+--- Process immediate (non-deferred) notifications.
+--- CRITICAL: _processing flag prevents re-entrant calls when multiple notify()
+--- calls fire in the same tick (e.g. favorite_added → tag_modified → cache_updated).
 function GuiEventBus.process_notifications()
-  -- Initialize queue if needed
   GuiEventBus._notification_queue = GuiEventBus._notification_queue or {}
-  
-  -- CRITICAL: Set processing flag to TRUE at the start to prevent recursive calls
-  -- This prevents multiple process_notifications() calls in the same tick when
-  -- multiple notify() calls happen in sequence (e.g., favorite_added, tag_modified, cache_updated)
   GuiEventBus._processing = true
-  
-  local error_count = 0
-  
-  while #GuiEventBus._notification_queue > 0 do
-    local notification = table.remove(GuiEventBus._notification_queue, 1)
-    local observers = GuiEventBus._observers[notification.type] or {}
-    
-    for _, observer in ipairs(observers) do
-      if observer and observer.update then
-        local success, err = pcall(observer.update, observer, notification.data)
-        if not success then
-          error_count = error_count + 1
-          ErrorHandler.warn_log("Observer update failed", {
-            event_type = notification.type,
-            observer_type = observer.observer_type or "unknown",
-            error = err
-          })
-        end
-      end
-    end
-  end
-  
+  drain_queue(GuiEventBus._notification_queue, "Observer update failed")
   GuiEventBus._processing = false
 end
 
@@ -260,105 +234,82 @@ function GuiEventBus.cleanup_player_observers(player)
   end
 end
 
---- Aggressive cleanup: Remove observers older than specified ticks
----@param max_age_ticks number Maximum age in ticks before cleanup (default: 30 minutes = 108000 ticks)
+--- Remove invalid and age-expired observers in a single pass, then drop empty
+--- event-type buckets.  Permanent observer types (data, notification, tag_editor)
+--- are never removed for age — only invalid-player observers are purged for those.
+--- The age branch is currently inert for all registered permanent types; it acts as
+--- a safety net for any future short-lived observer types that may be added.
+---@param max_age_ticks number? Maximum age before a non-permanent observer is removed (default: 108000 = 30 min)
+---@return number total_cleaned
 function GuiEventBus.cleanup_old_observers(max_age_ticks)
-  if not game then return 0 end -- Safety check
-  
-  max_age_ticks = max_age_ticks or 108000 -- 30 minutes default (reduced from 1 hour)
+  if not game then return 0 end
+  max_age_ticks = max_age_ticks or 108000
   local current_tick = game.tick or 0
-  if current_tick == 0 then return 0 end -- Not ready for timing checks
-  
+  if current_tick == 0 then return 0 end
+
+  -- Permanent types are never evicted by age — only by invalidity.
+  local permanent = { data = true, notification = true, tag_editor = true }
+
   local total_cleaned = 0
-  
+
   for event_type, observers in pairs(GuiEventBus._observers) do
-    local cleaned_count = 0
     for i = #observers, 1, -1 do
       local observer = observers[i]
-      -- Skip any nil observers
-      if type(observer) == "table" and observer.is_valid then
-        local should_remove = false
-        
-        -- Remove if observer is invalid
-        if not observer:is_valid() then
-          should_remove = true
-        
-        -- CRITICAL FIX: Do NOT remove permanent observers (data, favorite, notification, tag_editor)
-        -- These observers should persist as long as the player is valid
-        -- Only remove temporary observers based on age (if we ever add them)
-        elseif observer.observer_type and 
-               observer.observer_type ~= "data" and 
-               observer.observer_type ~= "favorite" and
-               observer.observer_type ~= "notification" and
-               observer.observer_type ~= "tag_editor" and
-               observer.created_tick and 
-               observer.created_tick > 0 and 
-               (current_tick - observer.created_tick) > max_age_ticks then
-          should_remove = true
-        
-        -- MULTIPLAYER FIX: Removed player.connected check - it's client-specific!
-        -- Only clean up observers with invalid players, not disconnected ones.
-        -- Disconnected players will be cleaned up when they're removed from the game.
-        end
-        
-        if should_remove then
-          table.remove(observers, i)
-          cleaned_count = cleaned_count + 1
-          
-          -- Log what type of observer was removed for debugging
-          ErrorHandler.debug_log("Observer removed during cleanup", {
-            event_type = event_type,
-            observer_type = observer.observer_type or "unknown",
-            reason = not observer:is_valid() and "invalid" or "age_limit",
-            observer_age_ticks = observer.created_tick and (current_tick - observer.created_tick) or "unknown"
-          })
-        end
+      local should_remove = false
+      local reason
+
+      if type(observer) ~= "table" or not observer.is_valid then
+        should_remove = true
+        reason = "nil_or_malformed"
+      elseif not observer:is_valid() then
+        should_remove = true
+        reason = "invalid_player"
+      elseif not permanent[observer.observer_type]
+          and observer.created_tick
+          and observer.created_tick > 0
+          and (current_tick - observer.created_tick) > max_age_ticks then
+        should_remove = true
+        reason = "age_limit"
       end
-    end
-    total_cleaned = total_cleaned + cleaned_count
-  end
-  
-  if total_cleaned > 0 then
-    ErrorHandler.debug_log("Cleaned up old observers", {
-      max_age_ticks = max_age_ticks,
-      cleaned_count = total_cleaned,
-      current_tick = current_tick
-    })
-  end
-  
-  return total_cleaned
-end
 
---- Schedule regular periodic cleanup (independent of notification processing)
---- This ensures memory cleanup even during quiet periods
---- Called via on_nth_tick(108000) — runs every 30 minutes
-function GuiEventBus.schedule_periodic_cleanup()
-  -- Ensure game exists and has valid tick counter
-  if not (game and type(game.tick) == "number") then
-    return
-  end
-
-  GuiEventBus.ensure_initialized()
-
-  -- Single pass: clean up invalid observers and empty event types
-  for event_type, observers in pairs(GuiEventBus._observers) do
-    for i = #observers, 1, -1 do
-      local observer = observers[i]
-      if not observer
-        or not observer.is_valid
-        or not observer:is_valid()
-        or (observer.player and not observer.player.valid) then
+      if should_remove then
         table.remove(observers, i)
+        total_cleaned = total_cleaned + 1
+        ErrorHandler.debug_log("Observer removed during cleanup", {
+          event_type    = event_type,
+          observer_type = type(observer) == "table" and observer.observer_type or "unknown",
+          reason        = reason,
+        })
       end
     end
+    -- Drop empty buckets in the same pass.
     if #observers == 0 then
       GuiEventBus._observers[event_type] = nil
     end
   end
+
+  if total_cleaned > 0 then
+    ErrorHandler.debug_log("Periodic observer cleanup complete", {
+      cleaned_count  = total_cleaned,
+      current_tick   = current_tick,
+      max_age_ticks  = max_age_ticks,
+    })
+  end
+
+  return total_cleaned
+end
+
+--- Scheduled cleanup entry point — called via on_nth_tick(108000) every 30 minutes.
+--- Delegates entirely to cleanup_old_observers for a single-pass sweep.
+function GuiEventBus.schedule_periodic_cleanup()
+  if not (game and type(game.tick) == "number") then return end
+  GuiEventBus.ensure_initialized()
+  GuiEventBus.cleanup_old_observers()
 end
 
 ---@class BaseGuiObserver
 ---@field player LuaPlayer
+---@field player_index uint|nil
 ---@field observer_type string
 ---@field created_tick uint
 local BaseGuiObserver = {}
@@ -371,8 +322,11 @@ BaseGuiObserver.__index = BaseGuiObserver
 function BaseGuiObserver:new(player, observer_type)
   local obj = setmetatable({}, self)
   obj.player = player
+  -- player_index is stored separately so GuiEventBus.subscribe() can dedup
+  -- without touching the LuaPlayer object (which may be userdata).
+  obj.player_index  = player and player.index or nil
   obj.observer_type = observer_type or "base"
-  obj.created_tick = game and game.tick or 0 -- Fallback to 0 if game not ready
+  obj.created_tick  = game and game.tick or 0
   return obj
 end
 
@@ -391,38 +345,6 @@ function BaseGuiObserver:update(event_data)
   })
 end
 
----@class FavoriteObserver : BaseGuiObserver
-local FavoriteObserver = setmetatable({}, { __index = BaseGuiObserver })
-FavoriteObserver.__index = FavoriteObserver
-
---- Create favorite observer
----@param player LuaPlayer
----@return FavoriteObserver
-function FavoriteObserver:new(player)
-  local obj = BaseGuiObserver:new(player, "favorite")
-  setmetatable(obj, self)
-  ---@cast obj FavoriteObserver
-  return obj
-end
-
---- Handle favorite-related events
----@param event_data table
-function FavoriteObserver:update(event_data)
-  ErrorHandler.debug_log("[FAVORITE OBSERVER] update called", {
-    class = "FavoriteObserver",
-    method = "update",
-    player = self.player and self.player.name or "<nil>",
-    event_type = event_data and event_data.type or "<nil>",
-    player_index = event_data and event_data.player_index or "<nil>"
-  })
-  if not self:is_valid() or not event_data then return end
-  -- Only handle events for this player
-  if event_data.player_index and event_data.player_index ~= self.player.index then
-    return
-  end
-  -- Only handle non-favorites-bar events here (e.g., for other GUIs if needed)
-  -- Do not call fave_bar.build here for tag_collection_changed or cache_updated
-end
 
 ---@class NotificationObserver : BaseGuiObserver
 local NotificationObserver = setmetatable({}, { __index = BaseGuiObserver })
@@ -601,7 +523,6 @@ return {
   GuiEventBus = GuiEventBus,
   BaseGuiObserver = BaseGuiObserver,
   BaseObserver = BaseGuiObserver, -- Alias for backward compatibility with tests
-  FavoriteObserver = FavoriteObserver,
   DataObserver = DataObserver,
   NotificationObserver = NotificationObserver,
   process_deferred_notifications = function() return GuiEventBus.process_deferred_notifications() end

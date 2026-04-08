@@ -116,11 +116,16 @@ local function safe_destroy_with_cleanup(tag, chart_tag)
   
   -- THIRD: Clean up tag-related data
   if tag then
-    if has_any_favorites(tag) then
+    -- Always scan all players' favorites for this GPS — clears the slot and its
+    -- lock state even when faved_by_players is empty/stale.
+    if tag_gps then
       cleanup_player_favorites(tag)
+    end
+    -- Clean up the faved_by_players tracking array when it exists.
+    if has_any_favorites(tag) then
       cleanup_faved_by_players(tag)
     end
-    
+
     -- FOURTH: Storage removal using the stored GPS
     if tag_gps then
       Cache.remove_stored_tag(tag_gps)

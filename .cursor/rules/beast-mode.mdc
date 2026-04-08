@@ -10,3 +10,4 @@ globs: "**/*"
 - **Validation**: Every Factorio object access must be preceded by a `.valid` check.
 - **Edge Case Focus**: Always account for: "Player Disconnected," "Surface Changed," and "Invalid Object."
 - **Terminal Proficiency**: Use PowerShell syntax (`;`, backticks, Get-ChildItem) for all terminal commands.
+- **Code Quality**: Suggest code quality reviews every so often in the coding cycle

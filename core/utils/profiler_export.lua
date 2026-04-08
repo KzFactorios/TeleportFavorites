@@ -143,13 +143,20 @@ function M.stop_profiler_capture(player_index)
     .. "Ticks elapsed: " .. tostring(elapsed) .. " (" .. tostring(math.floor(elapsed / 60)) .. "s at 60 UPS)\n\n"
 
   -- Build LocalisedString payload: overall profiler + any named sections.
-  -- Factorio hard-caps any LocalisedString array at 20 parameters.
-  -- Strategy: pack sections into chunks of up to 18 entries each (18 sections + 1 "" = 19 ≤ 20).
-  -- The outer sections array holds those chunks: { "", title, chunk1, chunk2, ... } also ≤ 20.
-  local CHUNK_MAX = 18
+  -- Factorio hard-caps any single LocalisedString array at 20 parameters.
+  -- Strategy: payload = { "", header, overall_block, sections_title, chunk1, chunk2, ... }
+  --   payload slots 1-4 are fixed (5 elements including ""); remaining 15 slots hold section chunks.
+  --   Each chunk: { "", entry1, ..., entry17 } = 18 elements ≤ 20.
+  --   Max sections = 15 chunks × 17 entries = 255 (far more than needed).
+  local PAYLOAD_FIXED = 5   -- "", header, "== Overall ==\n", profiler, "\n"
+  local PAYLOAD_TITLE = 1   -- "\n== Startup Sections ==\n"
+  local PAYLOAD_MAX   = 20  -- Factorio hard cap
+  local CHUNK_ENTRIES = 17  -- entries per chunk (+ 1 leading "" = 18 elements ≤ 20)
+  local CHUNK_SLOTS   = PAYLOAD_MAX - PAYLOAD_FIXED - PAYLOAD_TITLE  -- 14 chunk slots
+
   local payload = { "", header, "== Overall ==\n", profiler, "\n" }
   if #section_results > 0 then
-    local sections_outer = { "", "\n== Startup Sections ==\n" }
+    table.insert(payload, "\n== Startup Sections ==\n")
     local current_chunk = { "" }
     for _, sec in ipairs(section_results) do
       local sec_elapsed = sec.end_tick - sec.start_tick
@@ -158,15 +165,16 @@ function M.stop_profiler_capture(player_index)
         sec.name, sec.start_tick, sec.end_tick, sec_elapsed, math.floor(sec_elapsed / 60)
       )
       table.insert(current_chunk, { "", label, sec.profiler, "\n" })
-      if #current_chunk > CHUNK_MAX then
-        table.insert(sections_outer, current_chunk)
+      if #current_chunk > CHUNK_ENTRIES then
+        if #payload < PAYLOAD_MAX then
+          table.insert(payload, current_chunk)
+        end
         current_chunk = { "" }
       end
     end
-    if #current_chunk > 1 then
-      table.insert(sections_outer, current_chunk)
+    if #current_chunk > 1 and #payload < PAYLOAD_MAX then
+      table.insert(payload, current_chunk)
     end
-    table.insert(payload, sections_outer)
   end
 
   -- Embed start tick in filename so each run produces a distinct file.

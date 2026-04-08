@@ -8,8 +8,8 @@
 -- NOTE: This mod uses Tag.owner_name as the source of truth for ownership, NOT chart_tag.last_user
 
 
+local BasicHelpers = require("core.utils.basic_helpers")
 local ErrorHandler = require("core.utils.error_handler")
-local ValidationUtils = require("core.utils.validation_utils")
 
 
 ---@class AdminUtils
@@ -20,7 +20,7 @@ local AdminUtils = {}
 ---@param player LuaPlayer
 ---@return boolean is_admin True if player is admin, false otherwise
 function AdminUtils.is_admin(player)
-  local player_valid, player_error = ValidationUtils.validate_player(player)
+  local player_valid, player_error = BasicHelpers.is_valid_player(player)
   if not player_valid then
     ErrorHandler.debug_log("Chart tag edit permission check failed: invalid player", { error = player_error })
     return false
@@ -35,7 +35,7 @@ end
 ---@return boolean is_owner True if player is owner
 ---@return boolean is_admin_override True if admin override
 function AdminUtils.can_edit_chart_tag(player, tag)
-  local player_valid, player_error = ValidationUtils.validate_player(player)
+  local player_valid, player_error = BasicHelpers.is_valid_player(player)
   if not player_valid or not tag then
     return false, false, false
   end
@@ -56,7 +56,7 @@ end
 ---@return boolean is_admin_override True if admin override
 ---@return string|nil reason Reason for denial, or nil if allowed
 function AdminUtils.can_delete_chart_tag(player, tag)
-  local player_valid, player_error = ValidationUtils.validate_player(player)
+  local player_valid, player_error = BasicHelpers.is_valid_player(player)
   if not player_valid then
     return false, false, false, "Invalid player: " .. (player_error or "unknown error")
   end
@@ -98,7 +98,7 @@ end
 ---@param tag table|nil Tag object with owner_name
 ---@param additional_data table|nil
 function AdminUtils.log_admin_action(admin_player, action, tag, additional_data)
-  local player_valid, _ = ValidationUtils.validate_player(admin_player)
+  local player_valid = BasicHelpers.is_valid_player(admin_player)
   if not player_valid then return end
   local log_data = {
     admin_name = admin_player.name,

@@ -46,6 +46,7 @@ end
 local function custom_on_load()
   ProfilerExport.register_profiling_commands()
   ProfilerExport.on_load_cleanup()
+  require("gui.favorites_bar.fave_bar").on_load_cleanup()
   -- on_init does not run when loading a save; profiler must not start inside on_load (API limits). Defer to first tick.
   ProfilerExport.schedule_deferred_profile_apply()
 

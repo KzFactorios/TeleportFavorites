@@ -229,8 +229,6 @@ end
 
 local function init_player_favorites(player)
   local t0 = game and game.tick or 0
-  if not player or not player.valid then return {} end
-
   local pfaves = storage.players[player.index].surfaces[player.surface.index].favorites or {}
   -- Use the player's actual max slot setting instead of hardcoded default
   local seed_max = SettingsCache.get_player_max_favorite_slots(player)
@@ -312,74 +310,81 @@ end
 local function init_player_data(player)
   if not player or not player.valid then return {} end
 
-  -- Cache.init() removed - should be called externally, not recursively
   storage.players = storage.players or {}
   storage.players[player.index] = storage.players[player.index] or {}
   storage.players[player.index].surfaces = storage.players[player.index].surfaces or {}
 
   local player_data = storage.players[player.index]
-  player_data.surfaces[player.surface.index] = player_data.surfaces[player.surface.index] or {}
-  player_data.surfaces[player.surface.index].favorites = init_player_favorites(player)
-  player_data.surfaces[player.surface.index].teleport_history = player_data.surfaces[player.surface.index]
-      .teleport_history or { stack = {}, pointer = 0 }
+  local surf_idx    = player.surface and player.surface.index
 
+  -- ── Fast-path ────────────────────────────────────────────────────────────
+  -- Most calls come from already-initialised players on an already-initialised
+  -- surface.  Check the two sentinel flags first so we can return in O(1).
+  if player_data._pdata_ok and surf_idx and player_data._surfs_ok and player_data._surfs_ok[surf_idx] then
+    -- Always refresh the display name in case the player was renamed.
+    player_data.player_name = player.name or "Unknown"
+    return player_data
+  end
+  -- ─────────────────────────────────────────────────────────────────────────
+
+  -- ── Player-level one-time initialisation ─────────────────────────────────
+  if not player_data._pdata_ok then
+    -- MULTIPLAYER FIX: render_mode is client-specific and must never be persisted.
+    player_data.tag_editor_data     = player_data.tag_editor_data or Cache.create_tag_editor_data()
+    if player_data.fave_bar_slots_visible == nil then
+      player_data.fave_bar_slots_visible = true
+    end
+    if player_data.sequential_history_mode == nil then
+      player_data.sequential_history_mode = false
+    end
+    player_data.drag_favorite = player_data.drag_favorite or {
+      active = false, source_slot = nil, favorite = nil
+    }
+    player_data.modal_dialog = player_data.modal_dialog or {
+      active = false, dialog_type = nil
+    }
+    if player_data.last_max_favorite_slots == nil then
+      player_data.last_max_favorite_slots = SettingsCache.get_player_max_favorite_slots(player)
+    end
+    -- Persistent modal position default (uses Factorio API — only once ever)
+    local pos = player_data.history_modal_position
+    local needs_default = pos == nil
+      or (type(pos) == "table" and type(pos.x) == "number" and type(pos.y) == "number"
+          and pos.x == 0 and pos.y == 0)
+    if needs_default then
+      local screen_width  = (player.display_resolution and player.display_resolution.width  or 1920)
+      local screen_height = (player.display_resolution and player.display_resolution.height or 1080)
+      local scale = player.display_scale or 1
+      screen_width  = screen_width  / scale
+      screen_height = screen_height / scale
+      local center_x = (screen_width  - 350) / 2
+      local center_y = (screen_height - 200) / 2
+      player_data.history_modal_position = { x = center_x * 0.6, y = center_y * 0.5 }
+    end
+    player_data._pdata_ok = true
+  end
+  -- ─────────────────────────────────────────────────────────────────────────
+
+  -- Always keep the display name current.
   player_data.player_name = player.name or "Unknown"
-  -- MULTIPLAYER FIX: Removed player.render_mode from cache - it's client-specific state that should NEVER be persisted!
-  player_data.tag_editor_data = player_data.tag_editor_data or Cache.create_tag_editor_data()
-  player_data.fave_bar_slots_visible = player_data.fave_bar_slots_visible
-  if player_data.fave_bar_slots_visible == nil then
-    player_data.fave_bar_slots_visible = true -- Default: slots are visible, show EYELASH icon
-  end
 
-  if player_data.sequential_history_mode == nil then
-    player_data.sequential_history_mode = false
-  end
+  -- ── Surface-level one-time initialisation ────────────────────────────────
+  if surf_idx then
+    player_data.surfaces[surf_idx] = player_data.surfaces[surf_idx] or {}
+    local sdata = player_data.surfaces[surf_idx]
 
-  player_data.drag_favorite = player_data.drag_favorite or {
-    active = false,
-    source_slot = nil,
-    favorite = nil
-  }
-
-  player_data.modal_dialog = player_data.modal_dialog or {
-    active = false,
-    dialog_type = nil
-  }
-
-  -- Initialize last_max_favorite_slots if missing so we can detect decreases later
-  if player_data.last_max_favorite_slots == nil then
-    local current_max = SettingsCache.get_player_max_favorite_slots(player)
-    player_data.last_max_favorite_slots = current_max
-  end
-
-  -- Persistent modal position
-  local pos = player_data.history_modal_position
-  local needs_default = false
-  if pos == nil then
-    needs_default = true
-  elseif type(pos) == "table" and type(pos.x) == "number" and type(pos.y) == "number" then
-    if pos.x == 0 and pos.y == 0 then
-      needs_default = true
+    player_data._surfs_ok = player_data._surfs_ok or {}
+    if not player_data._surfs_ok[surf_idx] then
+      -- init_player_favorites is the expensive call: Factorio API + 30-slot loop.
+      -- Only run it the first time for each surface.
+      sdata.favorites = init_player_favorites(player)
+      sdata.teleport_history = sdata.teleport_history or { stack = {}, pointer = 0 }
+      player_data._surfs_ok[surf_idx] = true
     end
   end
-  if needs_default then
-    -- Default: auto-center, then 50% towards the top and 60% towards the left
-    local screen_width = player.display_resolution and player.display_resolution.width or 1920
-    local screen_height = player.display_resolution and player.display_resolution.height or 1080
-    local scale = player.display_scale or 1
-    screen_width = screen_width / scale
-    screen_height = screen_height / scale
-    local modal_width = 350
-    local modal_height = 200
-    local center_x = (screen_width - modal_width) / 2
-    local center_y = (screen_height - modal_height) / 2
-    local final_x = center_x * 0.6
-    local final_y = center_y * 0.5
-    player_data.history_modal_position = { x = final_x, y = final_y }
-  end
+  -- ─────────────────────────────────────────────────────────────────────────
 
   return player_data
-
 end
 
 --- Get sequential history mode for a player (true = sequential, false = standard).

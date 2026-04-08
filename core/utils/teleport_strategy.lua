@@ -19,9 +19,6 @@ local TeleportStrategy = {}
 ---@param gps string
 ---@return boolean, string
 local function validate_prerequisites(player, gps)
-  if not player or not player.valid then
-    return false, LocaleUtils.get_error_string(player, "player_missing")
-  end
   if not player.character then
     return false, LocaleUtils.get_error_string(player, "player_character_missing")
   end

@@ -35,7 +35,6 @@ local ProfilerExport = require("core.utils.profiler_export")
 --- Called during save/load and player (re)join to prevent stale/orphaned GUI frames
 ---@param player LuaPlayer
 local function close_all_mod_screens(player)
-  if not player or not player.valid then return end
   ControlTagEditor.close_tag_editor(player)
   GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
   GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL)
@@ -90,11 +89,6 @@ end
 local handlers = {}
 
 local function register_gui_observers(player)
-  if not player or not player.valid then
-    ErrorHandler.warn_log("Attempted to register observers for invalid player")
-    return
-  end
-
   ErrorHandler.debug_log("Starting GUI observer registration", {
     player = player.name,
     player_index = player.index
@@ -199,19 +193,23 @@ function handlers.on_load()
 end
 
 --- Handle mod configuration changes (mod update, added/removed mods)
---- Destroys and rebuilds all fave bars to ensure new GUI elements are created
+--- Destroys the stale fave bar for each player so the progressive build can
+--- reconstruct it cleanly.  The actual rebuild is deferred to the
+--- process_deferred_init_queue path (on_nth_tick 60) which is always
+--- triggered by the on_player_joined_game events that fire right after
+--- on_configuration_changed for every connected player.
+--- We deliberately do NOT call fave_bar.build() here because that would be a
+--- full synchronous build (~44 ms for 30 slots) before the first game tick.
 function handlers.on_configuration_changed(data)
-  ErrorHandler.debug_log("[CONFIG_CHANGED] Configuration changed, rebuilding all fave bars")
+  ErrorHandler.debug_log("[CONFIG_CHANGED] Configuration changed, clearing stale fave bars")
   for _, player in pairs(game.players) do
     if player.valid then
-      -- Ensure player data is initialized (get_player_data calls init internally)
       Cache.get_player_data(player)
-      -- Destroy existing fave bar so it gets fully rebuilt with new elements
       local main_flow = player.gui.top[Enum.UIEnums.GUI.Shared.MAIN_GUI_FLOW]
       if main_flow and main_flow.valid then
         GuiValidation.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
       end
-      fave_bar.build(player, true)
+      -- Progressive rebuild is handled by process_deferred_init_queue at tick 60.
     end
   end
 end
@@ -231,19 +229,35 @@ local _deferred_init_queue = {}
 --- Process all queued player initializations
 --- on_nth_tick(60) stays permanently registered for multiplayer safety; it no-ops when queue is empty
 function handlers.process_deferred_init_queue()
+  -- Skip tick 0: on_nth_tick(60) fires on tick 0 (0 % 60 == 0) before any player input is
+  -- visible, and the GUI API costs here would spike the very first frame. Deferring to tick 60
+  -- (~1 s) keeps tick 0 under 2 ms without any perceptible UX impact.
+  if game.tick == 0 then return end
   if #_deferred_init_queue == 0 then return end
   for _, entry in ipairs(_deferred_init_queue) do
     local deferred_player = game.players[entry.player_index]
     if deferred_player and deferred_player.valid then
+      ProfilerExport.start_section("deferred_cache_reset")
       Cache.reset_transient_player_states(deferred_player)
-      -- Close any stale mod GUIs from previous session (tag editor, modals, etc.)
-      close_all_mod_screens(deferred_player)
+      ProfilerExport.stop_section("deferred_cache_reset")
+
+      -- Close stale mod GUIs only on rejoin — a brand-new player has nothing open.
+      ProfilerExport.start_section("deferred_close_screens")
       if entry.is_rejoin then
+        close_all_mod_screens(deferred_player)
         gui_observer.GuiEventBus.cleanup_player_observers(deferred_player)
       end
+      ProfilerExport.stop_section("deferred_close_screens")
+
+      ProfilerExport.start_section("deferred_register_observers")
       register_gui_observers(deferred_player)
+      ProfilerExport.stop_section("deferred_register_observers")
+
+      -- Create only the empty outer bar frame now (1 element, ~1 ms).
+      -- Chrome (toggle buttons, slots container) and all slot buttons are built
+      -- progressively via storage._tf_slot_build_queue on subsequent on_nth_tick(2) calls.
       ProfilerExport.start_section("fave_bar_build")
-      fave_bar.build(deferred_player, true)
+      fave_bar.enqueue_progressive_build(deferred_player)
       ProfilerExport.stop_section("fave_bar_build")
     end
   end
@@ -253,13 +267,21 @@ end
 --- Enqueue a player for deferred initialization.
 --- Deduplicates: if the player is already queued (e.g. on_player_created + on_player_joined_game
 --- both fire for new games), update the existing entry rather than adding a duplicate.
+--- IMPORTANT: never upgrade is_rejoin from false → true. on_player_created enqueues with false;
+--- on_player_joined_game fires afterward for the same player on new games and must not overwrite it,
+--- because the player is genuinely new (no stale screens to close, no observers to clean up).
+--- True rejoins (loaded saves) only trigger on_player_joined_game, so they always create a fresh
+--- entry with is_rejoin=true.
 --- on_nth_tick(60) is permanently registered at load time; it processes whatever is in the queue.
 ---@param player_index uint
 ---@param is_rejoin boolean
 local function enqueue_deferred_init(player_index, is_rejoin)
   for _, entry in ipairs(_deferred_init_queue) do
     if entry.player_index == player_index then
-      entry.is_rejoin = is_rejoin
+      -- Only allow downgrade (true → false), never upgrade (false → true).
+      if not is_rejoin then
+        entry.is_rejoin = false
+      end
       return
     end
   end
@@ -299,7 +321,7 @@ function handlers.on_open_tag_editor_custom_input(event)
     local cursor_position = event.cursor_position
     local chart_tag = cursor_position and cursor_position.x and cursor_position.y and
         TagEditorEventHelpers.find_nearby_chart_tag(cursor_position, player.surface.index,
-          Cache.Settings.get_chart_tag_click_radius(player))
+          Cache.Settings.get_chart_tag_click_radius())
 
     if chart_tag and chart_tag.valid then
       local gps = GPSUtils.gps_from_map_position(chart_tag.position,
@@ -361,7 +383,7 @@ function handlers.on_chart_tag_added(event)
         player_name = player.name,
         position = chart_tag.position
       })
-      local new_chart_tag, position_pair = TagEditorEventHelpers.normalize_and_replace_chart_tag(chart_tag, player)
+      TagEditorEventHelpers.normalize_and_replace_chart_tag(chart_tag, player)
     end
   end
 
@@ -411,8 +433,11 @@ function handlers.on_chart_tag_modified(event)
   local original_owner = nil
   local original_owner_name = nil
 
+  -- Extract GPS once up-front (correct order: new first, old second).
+  -- extract_gps returns (new_gps, old_gps) — see chart_tag_helpers.lua.
+  local new_gps, old_gps = ChartTagHelpers.extract_gps(event, player)
+
   -- Try to get owner from our stored Tag object first
-  local old_gps, new_gps = ChartTagHelpers.extract_gps(event, player)
   if old_gps then
     local old_tag = Cache.get_tag_by_gps(player, old_gps)
     ErrorHandler.debug_log("[OWNER][on_chart_tag_modified] old_tag lookup before move", {
@@ -505,8 +530,6 @@ function handlers.on_chart_tag_modified(event)
       end
     end
   end
-
-  local new_gps, old_gps = ChartTagHelpers.extract_gps(event, player)
 
   -- Check if this tag is currently open in the tag editor and update it
   local tag_editor_data = Cache.get_tag_editor_data(player)

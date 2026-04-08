@@ -23,6 +23,10 @@ local player_settings_cache = {}
 -- Internal: Cache invalidation interval (in ticks)
 local CACHE_INVALIDATION_INTERVAL = 3600 -- 1 minute at 60 UPS
 
+-- Internal: Cache for max-favorite-slots per player (rarely changes — only via settings menu)
+-- Uses the same 1-minute TTL as the broader settings cache.
+local max_slots_cache = {}
+
 -- Internal: Safe access to player mod settings
 local function get_player_mod_settings(player)
   if not BasicHelpers.is_valid_player(player) then
@@ -75,49 +79,58 @@ local function build_fresh_settings(player)
   return settings_table
 end
 
---- Get a number setting for a player with safe defaults and range validation
---- @param player LuaPlayer|nil
---- @param setting_name string
---- @param default number
---- @param min_value number|nil
---- @param max_value number|nil
---- @return number
-function Settings.get_number_setting(player, setting_name, default, min_value, max_value)
-  local global_settings = get_global_settings(player)
-  if not global_settings then
-    return default
-  end
 
-  -- TODO debate on wether or not to have a player-specific setting
-  
-  return default
-end
-
---- Get per-player max favorite slots as a number (10, 20, or 30)
+--- Get per-player max favorite slots as a number (10, 20, or 30).
+--- Result is cached for CACHE_INVALIDATION_INTERVAL ticks; the setting only
+--- changes when the player explicitly visits the mod-settings menu.
 --- @param player LuaPlayer|nil
 --- @return integer
 function Settings.get_player_max_favorite_slots(player)
   local default_slots = math.floor(tonumber(Constants.settings.DEFAULT_MAX_FAVORITE_SLOTS) or 10)
+  local player_index  = player and player.index
+
+  -- Fast-path: serve from cache when still fresh.
+  if player_index then
+    local cached = max_slots_cache[player_index]
+    if cached then
+      local tick = game and game.tick or 0
+      if (tick - cached.tick) < CACHE_INVALIDATION_INTERVAL then
+        return cached.value
+      end
+    end
+  end
+
   local setting_key = Constants and Constants.settings and Constants.settings.MAX_FAVORITE_SLOTS_SETTING or nil
   if not setting_key then return default_slots end
 
   local global_settings = get_global_settings(player)
   if not global_settings then return default_slots end
 
-  local s = global_settings[setting_key]
+  local s     = global_settings[setting_key]
   local value = s and s.value or nil
+  local result = default_slots
   if type(value) == "string" then
     local n = tonumber(value)
-    if n == 10 or n == 20 or n == 30 then
-      return math.floor(n)
-    end
+    if n == 10 or n == 20 or n == 30 then result = math.floor(n) end
   elseif type(value) == "number" then
     local n = math.floor(value)
-    if n == 10 or n == 20 or n == 30 then
-      return n
-    end
+    if n == 10 or n == 20 or n == 30 then result = n end
   end
-  return default_slots
+
+  if player_index then
+    max_slots_cache[player_index] = { value = result, tick = game and game.tick or 0 }
+  end
+  return result
+end
+
+--- Invalidate the max-slots cache for a player (call after settings-changed event).
+--- @param player_index integer|nil  nil = clear all
+function Settings.invalidate_max_slots_cache(player_index)
+  if player_index then
+    max_slots_cache[player_index] = nil
+  else
+    max_slots_cache = {}
+  end
 end
 
 --- Returns a table of all per-player mod settings with caching
@@ -147,16 +160,11 @@ function Settings.get_player_settings(player)
   return fresh_settings
 end
 
---- Get the chart tag click radius for a player (with fallback to default)
---- Specialized method that uses global settings instead of player mod settings
---- @param player LuaPlayer|nil
---- @return number click_radius
-function Settings.get_chart_tag_click_radius(player)
-  local default = 10 -- Safe fallback
-  if Constants and Constants.settings and Constants.settings.CHART_TAG_CLICK_RADIUS then
-    default = math.floor(tonumber(Constants.settings.CHART_TAG_CLICK_RADIUS) or 10)
-  end
-  return Settings.get_number_setting(player, "chart-tag-click-radius", default, 1, 50)
+--- Returns the chart tag click radius in tiles.
+--- Controlled by Constants.settings.CHART_TAG_CLICK_RADIUS; not user-configurable.
+--- @return number
+function Settings.get_chart_tag_click_radius()
+  return math.floor(tonumber(Constants.settings.CHART_TAG_CLICK_RADIUS) or 10)
 end
 
 --- Invalidate cached settings for a specific player
