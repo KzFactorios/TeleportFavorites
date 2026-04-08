@@ -11,10 +11,10 @@
 --   CursorUtils.end_drag_favorite(player): End drag and reset player state.
 --   CursorUtils.is_dragging_favorite(player): Check if player is currently dragging a favorite.
 
-local ErrorHandler = require("core.utils.error_handler")
+local Deps = require("deps")
+local BasicHelpers, ErrorHandler, Cache =
+  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache
 local FavoriteUtils = require("core.favorite.favorite_utils")
-local Cache = require("core.cache.cache")
-local BasicHelpers = require("core.utils.basic_helpers")
 
 local CursorUtils = {}
 

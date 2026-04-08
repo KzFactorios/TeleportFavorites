@@ -4,18 +4,16 @@
 -- TeleportFavorites Factorio Mod
 -- Centralized GUI event dispatcher for all mod GUI interactions.
 
+local Deps = require("deps")
+local BasicHelpers, ErrorHandler, Cache, Constants, Enum =
+  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.Constants, Deps.Enum
 local control_fave_bar = require("core.control.control_fave_bar")
 local control_tag_editor = require("core.control.control_tag_editor")
 local DebugCommands = require("core.commands.debug_commands")
-local Constants = require("constants")
-local Enum = require("prototypes.enums.enum")
-local ErrorHandler = require("core.utils.error_handler")
-local Cache = require("core.cache.cache")
 local GuiValidation = require("core.utils.gui_validation")
 local PlayerHelpers = require("core.utils.player_helpers")
 local CursorUtils = require("core.utils.cursor_utils")
 local FavoriteUtils = require("core.favorite.favorite_utils")
-local BasicHelpers = require("core.utils.basic_helpers")
 
 local M = {}
 

@@ -8,8 +8,8 @@
 -- NOTE: This mod uses Tag.owner_name as the source of truth for ownership, NOT chart_tag.last_user
 
 
-local BasicHelpers = require("core.utils.basic_helpers")
-local ErrorHandler = require("core.utils.error_handler")
+local Deps = require("deps")
+local BasicHelpers, ErrorHandler = Deps.BasicHelpers, Deps.ErrorHandler
 
 
 ---@class AdminUtils

@@ -4,23 +4,22 @@
 -- TeleportFavorites Factorio Mod
 -- Manages the favorites bar GUI and slot interactions, including drag-and-drop and multiplayer-safe favorites management.
 
+local Deps = require("deps")
+local BasicHelpers, ErrorHandler, Cache, Enum =
+  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.Enum
 local FavoriteUtils = require("core.favorite.favorite_utils")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local PlayerHelpers = require("core.utils.player_helpers")
 local fave_bar = require("gui.favorites_bar.fave_bar")
-local ErrorHandler = require("core.utils.error_handler")
 local SlotInteractionHandlers = require("core.control.slot_interaction_handlers")
 local GameHelpers = require("core.utils.game_helpers")
 local SharedUtils = require("core.control.control_shared_utils")
 local CursorUtils = require("core.utils.cursor_utils")
 local GuiHelpers = require("core.utils.gui_helpers")
 local GuiValidation = require("core.utils.gui_validation")
-local Cache = require("core.cache.cache")
-local BasicHelpers = require("core.utils.basic_helpers")
 local TeleportHistoryModal = require("gui.teleport_history_modal.teleport_history_modal")
 local TeleportHistory = require("core.teleport.teleport_history")
 local TeleportStrategy = require("core.utils.teleport_strategy")
-local Enum = require("prototypes.enums.enum")
 
 local M = {}
 

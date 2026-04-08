@@ -3,17 +3,14 @@
 -- gui/teleport_history_modal/teleport_history_modal.lua
 -- TeleportFavorites Factorio Mod
 -- Modal Teleport History interface for viewing and navigating teleport history.
-local BasicHelpers = require("core.utils.basic_helpers")
-local Cache = require("core.cache.cache")
-local Enum = require("prototypes.enums.enum")
-local ErrorHandler = require("core.utils.error_handler")
-local GPSUtils = require("core.utils.gps_utils")
+local Deps = require("deps")
+local BasicHelpers, ErrorHandler, Cache, Constants, GPSUtils, Enum =
+  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.Constants, Deps.GpsUtils, Deps.Enum
 local GuiBase = require("gui.gui_base")
 local GuiValidation = require("core.utils.gui_validation")
 local HistoryItem = require("core.teleport.history_item")
 local Lookups = require("core.cache.lookups")
 local TeleportHistory = require("core.teleport.teleport_history")
-local Constants = require("constants")
 local icon_typing = require("core.cache.icon_typing")
 
 

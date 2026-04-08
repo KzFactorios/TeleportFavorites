@@ -5,23 +5,20 @@
 -- Centralized event handler implementations for TeleportFavorites.
 -- Handles Factorio events, multiplayer/surface-aware updates, helpers, error handling, validation, and API for all event types.
 
+local Deps = require("deps")
+local BasicHelpers, ErrorHandler, Cache, Constants, GPSUtils, Enum =
+  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.Constants, Deps.GpsUtils, Deps.Enum
 local TagClass = require("core.tag.tag")
 local AdminUtils = require("core.utils.admin_utils")
-local BasicHelpers = require("core.utils.basic_helpers")
 local ControlTagEditor = require("core.control.control_tag_editor")
 local GameHelpers = require("core.utils.game_helpers")
-local Cache = require("core.cache.cache")
-local Constants = require("constants")
 local PositionUtils = require("core.utils.position_utils")
-local GPSUtils = require("core.utils.gps_utils")
-local ErrorHandler = require("core.utils.error_handler")
 local CursorUtils = require("core.utils.cursor_utils")
 local tag_editor = require("gui.tag_editor.tag_editor")
 local TagEditorEventHelpers = require("core.events.tag_editor_event_helpers")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local GuiValidation = require("core.utils.gui_validation")
 local fave_bar = require("gui.favorites_bar.fave_bar")
-local Enum = require("prototypes.enums.enum")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local teleport_history_modal = require("gui.teleport_history_modal.teleport_history_modal")
 local ChartTagHelpers = require("core.events.chart_tag_helpers")

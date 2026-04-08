@@ -25,9 +25,9 @@
 --   └── create_textbox(parent, name, text, style, icon_selector)
 
 
-local ErrorHandler = require("core.utils.error_handler")
-local Enum = require("prototypes.enums.enum")
-local BasicHelpers = require("core.utils.basic_helpers")
+local Deps = require("deps")
+local BasicHelpers, ErrorHandler, Enum =
+  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Enum
 
 
 local GuiBase = {}

@@ -17,19 +17,17 @@
 --          ├─ fave_bar_slot_1 (sprite-button)
 --          └─ fave_bar_slot_label_1 (label)
 
+local Deps = require("deps")
+local BasicHelpers, ErrorHandler, Cache, Constants, Enum =
+  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.Constants, Deps.Enum
 local GuiBase = require("gui.gui_base")
 local GuiElementBuilders = require("core.utils.gui_element_builders")
 local ErrorMessageHelpers = require("core.utils.error_message_helpers")
-local Constants = require("constants")
-local ErrorHandler = require("core.utils.error_handler")
 local FavoriteUtils = require("core.favorite.favorite_utils")
 local FavoriteRehydration = require("core.favorite.favorite_rehydration")
 local GuiValidation = require("core.utils.gui_validation")
 local GuiHelpers = require("core.utils.gui_helpers")
-local Cache = require("core.cache.cache")
-local Enum = require("prototypes.enums.enum")
 local ProfilerExport = require("core.utils.profiler_export")
-local BasicHelpers = require("core.utils.basic_helpers")
 local teleport_history_modal = require("gui.teleport_history_modal.teleport_history_modal")
 
 local fave_bar = {}

@@ -5,14 +5,13 @@
 -- Helper functions for tag editor event handling, extracted from handlers.lua.
 -- Specialized functions: tag data creation/lookup, chart tag normalization/replacement, position/GPS validation, tag editor opening validation.
 
-local Cache = require("core.cache.cache")
+local Deps = require("deps")
+local BasicHelpers, Cache, GPSUtils, Enum =
+  Deps.BasicHelpers, Deps.Cache, Deps.GpsUtils, Deps.Enum
 local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
-local GPSUtils = require("core.utils.gps_utils")
 local PositionUtils = require("core.utils.position_utils")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
-local Enum = require("prototypes.enums.enum")
-local BasicHelpers = require("core.utils.basic_helpers")
 
 ---@class TagEditorEventHelpers
 local TagEditorEventHelpers = {}

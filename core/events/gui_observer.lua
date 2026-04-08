@@ -2,11 +2,11 @@
 
 
 -- Dependencies must be required first, with strict order based on dependencies
-local ErrorHandler = require("core.utils.error_handler")
-local BasicHelpers = require("core.utils.basic_helpers")
+local Deps = require("deps")
+local BasicHelpers, ErrorHandler, Enum =
+  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Enum
 local PlayerHelpers = require("core.utils.player_helpers")
 local GuiHelpers = require("core.utils.gui_helpers")
-local Enum = require("prototypes.enums.enum")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 
 

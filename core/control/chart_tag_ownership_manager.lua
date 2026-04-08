@@ -13,8 +13,8 @@
 -- even when the player is offline, kicked, or banned. Only permanent removal
 -- via on_player_removed triggers ownership cleanup.
 
-local Cache = require("core.cache.cache")
-local ErrorHandler = require("core.utils.error_handler")
+local Deps = require("deps")
+local ErrorHandler, Cache = Deps.ErrorHandler, Deps.Cache
 
 
 --- Ensure Cache is initialized before accessing Lookups

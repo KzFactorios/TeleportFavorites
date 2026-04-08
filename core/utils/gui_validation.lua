@@ -4,9 +4,9 @@
 -- TeleportFavorites Factorio Mod
 -- Provides validation and safety utilities for GUI elements and operations.
 
-local Logger = require("core.utils.error_handler")
+local Deps = require("deps")
+local BasicHelpers, Logger = Deps.BasicHelpers, Deps.ErrorHandler
 local Enum = require("prototypes.enums.ui_enums")
-local BasicHelpers = require("core.utils.basic_helpers")
 
 ---@class GuiValidation
 local GuiValidation = {}

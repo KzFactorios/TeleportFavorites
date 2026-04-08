@@ -9,12 +9,12 @@
 
 ---@diagnostic disable: undefined-global
 
-local basic_helpers = require("core.utils.basic_helpers")
+local Deps = require("deps")
+local BasicHelpers, ErrorHandler, Cache =
+  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache
 local ValidationUtils = require("core.utils.validation_utils")
-local Cache = require("core.cache.cache")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local DebugConfig = require("core.utils.debug_config")
-local ErrorHandler = require("core.utils.error_handler")
 local PlayerHelpers = require("core.utils.player_helpers")
 local GuiHelpers = require("core.utils.gui_helpers")
 local GuiValidation = require("core.utils.gui_validation")
@@ -361,7 +361,7 @@ DebugCommands.tf_trigger_settings_event_handler = function(cmd) return tf_trigge
 DebugCommands.tf_check_events_handler = function(cmd) return tf_check_events_handler(DebugCommands._deps, cmd) end
 
 function DebugCommands.register_commands()
-  basic_helpers.register_module_commands(DebugCommands, {
+  BasicHelpers.register_module_commands(DebugCommands, {
   { "tf_debug_level",       "Set debug level (0-4)",                     "tf_debug_level_handler" },
   { "tf_debug_info",        "Show current debug configuration",          "tf_debug_info_handler" },
   { "tf_debug_production",  "Enable production mode (minimal logging)",  "tf_debug_production_handler" },

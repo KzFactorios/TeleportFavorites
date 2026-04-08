@@ -14,27 +14,24 @@
 -- See update_chart_tag_fields() for the implementation of this pattern.
 
 
+local Deps = require("deps")
+local BasicHelpers, ErrorHandler, Cache, Constants, GPSUtils, Enum =
+  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.Constants, Deps.GpsUtils, Deps.Enum
 local tag_editor = require("gui.tag_editor.tag_editor")
 local fave_bar = require("gui.favorites_bar.fave_bar")
-local Cache = require("core.cache.cache")
 local GuiValidation = require("core.utils.gui_validation")
 local PlayerHelpers = require("core.utils.player_helpers")
-local GPSUtils = require("core.utils.gps_utils")
-local Constants = require("constants")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local FavoriteUtils = require("core.favorite.favorite_utils")
 local LocaleUtils = require("core.utils.locale_utils")
-local ErrorHandler = require("core.utils.error_handler")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
 local ValidationUtils = require("core.utils.validation_utils")
 local AdminUtils = require("core.utils.admin_utils")
-local BasicHelpers = require("core.utils.basic_helpers")
 local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
 local ChartTagHelpers = require("core.events.chart_tag_helpers")
 local SharedUtils = require("core.control.control_shared_utils")
 local TeleportStrategy = require("core.utils.teleport_strategy")
-local Enum = require("prototypes.enums.enum")
 local Tag = require("core.tag.tag")
 
 

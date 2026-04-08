@@ -5,10 +5,10 @@
 -- Centralized, recursion-safe destruction for tags and chart_tags, with multiplayer and transaction safety.
 
 -- Weak tables to track objects being destroyed
-local Cache = require("core.cache.cache")
+local Deps = require("deps")
+local ErrorHandler, Cache, Constants =
+  Deps.ErrorHandler, Deps.Cache, Deps.Constants
 local FavoriteUtils = require("core.favorite.favorite_utils")
-local ErrorHandler = require("core.utils.error_handler")
-local Constants = require("constants")
 
 local destroying_tags = setmetatable({}, { __mode = "k" })
 local destroying_chart_tags = setmetatable({}, { __mode = "k" })

@@ -4,10 +4,10 @@
 -- TeleportFavorites Factorio Mod
 -- Tag model and utilities for managing teleportation tags, chart tags, and player favorites.
 
-local ErrorHandler = require("core.utils.error_handler")
+local Deps = require("deps")
+local ErrorHandler, Cache, GPSUtils =
+  Deps.ErrorHandler, Deps.Cache, Deps.GpsUtils
 local TeleportStrategy = require("core.utils.teleport_strategy")
-local Cache = require("core.cache.cache")
-local GPSUtils = require("core.utils.gps_utils")
 
 
 ---@class Tag

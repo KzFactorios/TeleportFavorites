@@ -4,13 +4,11 @@
 -- TeleportFavorites Factorio Mod
 -- Strategy pattern implementation for extensible teleportation logic and scenario handling.
 
-local GPSUtils = require("core.utils.gps_utils")
-local ErrorHandler = require("core.utils.error_handler")
+local Deps = require("deps")
+local BasicHelpers, ErrorHandler, Cache, Constants, GPSUtils =
+  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.Constants, Deps.GpsUtils
 local LocaleUtils = require("core.utils.locale_utils")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
-local BasicHelpers = require("core.utils.basic_helpers")
-local Cache = require("core.cache.cache")
-local Constants = require("constants")
 
 local TeleportStrategy = {}
 

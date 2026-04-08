@@ -5,18 +5,16 @@
 -- Features: safe handler registration, error handling, logging, extensible pattern, no global namespace pollution.
 -- Usage: register default/custom handlers, all handlers receive Factorio event object.
 
-local Cache = require("core.cache.cache")
+local Deps = require("deps")
+local BasicHelpers, ErrorHandler, Cache, GPSUtils, Enum =
+  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.GpsUtils, Deps.Enum
 local FavoriteUtils = require("core.favorite.favorite_utils")
 local TeleportHistory = require("core.teleport.teleport_history")
-local BasicHelpers = require("core.utils.basic_helpers")
-local GPSUtils = require("core.utils.gps_utils")
 local GuiElementBuilders = require("core.utils.gui_element_builders")
 local GuiValidation = require("core.utils.gui_validation")
-local ErrorHandler = require("core.utils.error_handler")
 local PlayerHelpers = require("core.utils.player_helpers")
 local TeleportStrategy = require("core.utils.teleport_strategy")
 local teleport_history_modal = require("gui.teleport_history_modal.teleport_history_modal")
-local Enum = require("prototypes.enums.enum")
 
 
 local M = {}

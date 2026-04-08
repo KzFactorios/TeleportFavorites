@@ -5,9 +5,9 @@
 -- Blocks all player input when modal dialogs are active to ensure proper modal behavior.
 -- Intercepts key input events and prevents them from executing when a modal dialog is open.
 
-local Cache = require("core.cache.cache")
-local BasicHelpers = require("core.utils.basic_helpers")
-local ErrorHandler = require("core.utils.error_handler")
+local Deps = require("deps")
+local BasicHelpers, ErrorHandler, Cache =
+  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache
 
 local ModalInputBlocker = {}
 

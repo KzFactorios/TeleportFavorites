@@ -35,10 +35,10 @@
 -- Caches rehydrated favorites for 1 second (60 ticks at 60 UPS)
 -- Invalidated on tag changes to ensure freshness
 
-local BasicHelpers = require("core.utils.basic_helpers")
-local Constants = require("constants")
+local Deps = require("base_deps")
+local BasicHelpers, Constants, GPSUtils =
+  Deps.BasicHelpers, Deps.Constants, Deps.GpsUtils
 local FavoriteUtils = require("core.favorite.favorite_utils")
-local GPSUtils = require("core.utils.gps_utils")
 local HistoryItem = require("core.teleport.history_item")
 local Lookups = require("core.cache.lookups")
 local SettingsCache = require("core.cache.settings")

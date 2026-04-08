@@ -2,9 +2,9 @@
 
 -- Includes position validation, normalization, correction, tagging checks, water/space detection, safe landing, and walkability.
 
-local basic_helpers = require("core.utils.basic_helpers")
-local ErrorHandler = require("core.utils.error_handler")
-local Logger = require("core.utils.error_handler")
+local Deps = require("deps")
+local BasicHelpers, ErrorHandler = Deps.BasicHelpers, Deps.ErrorHandler
+local Logger = ErrorHandler
 
 ---@class PositionUtils
 local PositionUtils = {}
@@ -25,7 +25,7 @@ function PositionUtils.normalize_position(map_position)
         return nil
       end
       if x == nil or y == nil then return nil end
-      if basic_helpers.is_whole_number(x) and basic_helpers.is_whole_number(y) then
+      if BasicHelpers.is_whole_number(x) and BasicHelpers.is_whole_number(y) then
         return {x = x, y = y}
       end
       return {x = math.floor(x), y = math.floor(y)}
@@ -51,7 +51,7 @@ function PositionUtils.needs_normalization(map_position)
       return false
     end
     if x == nil or y == nil then return false end
-    return not (basic_helpers.is_whole_number(x) and basic_helpers.is_whole_number(y))
+    return not (BasicHelpers.is_whole_number(x) and BasicHelpers.is_whole_number(y))
   end
   return false
 end
@@ -63,8 +63,8 @@ function PositionUtils.create_position_pair(position)
   return {
     old = { x = position.x, y = position.y },
     new = {
-      x = basic_helpers.normalize_index(position.x),
-      y = basic_helpers.normalize_index(position.y)
+      x = BasicHelpers.normalize_index(position.x),
+      y = BasicHelpers.normalize_index(position.y)
     }
   }
 end

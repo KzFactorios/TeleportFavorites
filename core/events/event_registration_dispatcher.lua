@@ -5,10 +5,10 @@
 -- Centralized event registration dispatcher for all mod events, with safe wrappers and unified API.
 
 
-local ErrorHandler = require("core.utils.error_handler")
-local Constants = require("constants")
+local Deps = require("deps")
+local ErrorHandler, Cache, Constants, Enum =
+  Deps.ErrorHandler, Deps.Cache, Deps.Constants, Deps.Enum
 local icon_typing = require("core.cache.icon_typing")
-local Cache = require("core.cache.cache")
 local gui_event_dispatcher = require("core.events.gui_event_dispatcher")
 local custom_input_dispatcher = require("core.events.custom_input_dispatcher")
 local fave_bar = require("gui.favorites_bar.fave_bar")
@@ -18,9 +18,7 @@ local handlers = require("core.events.handlers")
 local GuiHelpers = require("core.utils.gui_helpers")
 local ModalInputBlocker = require("core.events.modal_input_blocker")
 local GuiValidation = require("core.utils.gui_validation")
-local Enum = require("prototypes.enums.enum")
 local ChartTagOwnershipManager = require("core.control.chart_tag_ownership_manager")
-
 local GuiObserver = require("core.events.gui_observer")
 local DebugCommands = require("core.commands.debug_commands")
 local ProfilerExport = require("core.utils.profiler_export")

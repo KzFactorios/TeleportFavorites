@@ -2,8 +2,8 @@
 -- TeleportFavorites Factorio Mod
 -- Favorite class for representing a player's favorite teleport location, with GPS, locked state, and tag helpers.
 
-local Constants = require("constants")
-local basic_helpers = require("core.utils.basic_helpers")
+local Deps = require("base_deps")
+local BasicHelpers, Constants = Deps.BasicHelpers, Deps.Constants
 
 ---@class Favorite
 ---@field gps string GPS coordinates in 'xxx.yyy.s' format
@@ -72,7 +72,7 @@ end
 ---@return Favorite?
 function FavoriteUtils.copy(fav)
   if type(fav) ~= "table" then return nil end
-  local copy = FavoriteUtils.new(fav.gps, fav.locked, fav.tag and basic_helpers.deep_copy(fav.tag) or nil)
+  local copy = FavoriteUtils.new(fav.gps, fav.locked, fav.tag and BasicHelpers.deep_copy(fav.tag) or nil)
   for k, v in pairs(fav) do
     if copy[k] == nil then copy[k] = v end
   end

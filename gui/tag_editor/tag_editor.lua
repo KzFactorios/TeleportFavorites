@@ -20,14 +20,14 @@
 -- │  └─ cancel_button (button)
 -- └─ error_row (label, visible on error)
 
-local Enum = require("prototypes.enums.enum")
+local Deps = require("deps")
+local BasicHelpers, Cache, Enum =
+  Deps.BasicHelpers, Deps.Cache, Deps.Enum
 local GuiBase = require("gui.gui_base")
 local GuiValidation = require("core.utils.gui_validation")
 local GuiElementBuilders = require("core.utils.gui_element_builders")
 local ErrorMessageHelpers = require("core.utils.error_message_helpers")
-local BasicHelpers = require("core.utils.basic_helpers")
 local ValidationUtils = require("core.utils.validation_utils")
-local Cache = require("core.cache.cache")
 local AdminUtils = require("core.utils.admin_utils")
 local PlayerFavorites = require("core.favorite.player_favorites")
 

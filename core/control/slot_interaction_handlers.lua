@@ -4,16 +4,15 @@
 -- TeleportFavorites Factorio Mod
 -- Specialized handlers for slot interactions in the favorites bar: teleportation, lock toggling, drag-and-drop, and tag editing.
 
+local Deps = require("deps")
+local BasicHelpers, ErrorHandler, Cache, GPSUtils =
+  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.GpsUtils
 local FavoriteRehydration = require("core.favorite.favorite_rehydration")
 local FavoriteUtils = require("core.favorite.favorite_utils")
-local BasicHelpers = require("core.utils.basic_helpers")
 local fave_bar = require("gui.favorites_bar.fave_bar")
-local Cache = require("core.cache.cache")
 local tag_editor = require("gui.tag_editor.tag_editor")
 local GuiValidation = require("core.utils.gui_validation")
 local GuiHelpers = require("core.utils.gui_helpers")
-local GPSUtils = require("core.utils.gps_utils")
-local ErrorHandler = require("core.utils.error_handler")
 local LocaleUtils = require("core.utils.locale_utils")
 local PlayerHelpers = require("core.utils.player_helpers")
 local CursorUtils = require("core.utils.cursor_utils")

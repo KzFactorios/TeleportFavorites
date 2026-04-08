@@ -4,8 +4,8 @@
 local control_tag_editor = require("core.control.control_tag_editor")
 local control_fave_bar = require("core.control.control_fave_bar")
 local event_registration_dispatcher = require("core.events.event_registration_dispatcher")
-local Constants = require("constants")
-local ErrorHandler = require("core.utils.error_handler")
+local Deps = require("deps")
+local ErrorHandler, Constants = Deps.ErrorHandler, Deps.Constants
 local handlers = require("core.events.handlers")
 local TeleportHistory = require("core.teleport.teleport_history")
 local ProfilerExport = require("core.utils.profiler_export")

@@ -2,9 +2,9 @@
 -- TeleportFavorites Factorio Mod
 -- Handles runtime rehydration of favorites by restoring chart_tag references from cache, avoiding circular dependencies.
 
-local Cache = require("core.cache.cache")
+local Deps = require("deps")
+local ErrorHandler, Cache = Deps.ErrorHandler, Deps.Cache
 local FavoriteUtils = require("core.favorite.favorite_utils")
-local ErrorHandler = require("core.utils.error_handler")
 
 local FavoriteRehydration = {}
 

@@ -4,11 +4,10 @@
 -- TeleportFavorites Factorio Mod
 -- Manages player teleport history stack, pointer navigation, and GPS string conversion for history modal.
 
-local Cache = require("core.cache.cache")
-local GPSUtils = require("core.utils.gps_utils")
-local BasicHelpers = require("core.utils.basic_helpers")
+local Deps = require("deps")
+local BasicHelpers, ErrorHandler, Cache, GPSUtils =
+  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.GpsUtils
 local HistoryItem = require("core.teleport.history_item")
-local ErrorHandler = require("core.utils.error_handler")
 
 
 local HISTORY_STACK_SIZE = 128 -- Only 128 allowed for now (TBA for future options)

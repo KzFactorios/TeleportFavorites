@@ -14,10 +14,9 @@
 
 ---@diagnostic disable: undefined-global
 
-local basic_helpers = require("core.utils.basic_helpers")
-local GPSUtils = require("core.utils.gps_utils")
-local ErrorHandler = require("core.utils.error_handler")
-local BasicHelpers = require("core.utils.basic_helpers")
+local Deps = require("base_deps")
+local BasicHelpers, ErrorHandler, GPSUtils =
+  Deps.BasicHelpers, Deps.ErrorHandler, Deps.GpsUtils
 
 -- Handles the non-persistent in-game data cache for runtime lookups.
 local Lookups = {}
@@ -36,7 +35,7 @@ local function ensure_cache()
 end
 
 local function ensure_surface_cache(surface_index)
-  local surface_idx = basic_helpers.normalize_index(surface_index)
+  local surface_idx = BasicHelpers.normalize_index(surface_index)
   if not surface_idx then
     error("Invalid surface index: " .. tostring(surface_index))
   end
@@ -97,7 +96,7 @@ local function clear_surface_cache_chart_tags(surface_index)
   if not surface_index then
     error("Invalid surface index: " .. tostring(surface_index))
   end
-  local surface_idx = basic_helpers.normalize_index(surface_index)
+  local surface_idx = BasicHelpers.normalize_index(surface_index)
   local cache = ensure_cache()
   if cache.surfaces[surface_idx] then
     cache.surfaces[surface_idx].chart_tags = nil  -- Set to nil to trigger refetch
@@ -109,7 +108,7 @@ end
 --- @param surface_index number|string
 --- @return LuaCustomChartTag[] -- Returns an array of LuaCustomChartTag objects
 local function get_chart_tag_cache(surface_index)
-  local surface_idx = basic_helpers.normalize_index(surface_index)
+  local surface_idx = BasicHelpers.normalize_index(surface_index)
   local surface_cache = ensure_surface_cache(surface_idx)
   return surface_cache.chart_tags or {}
 end

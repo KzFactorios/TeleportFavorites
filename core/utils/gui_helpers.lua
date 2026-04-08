@@ -5,10 +5,10 @@
 -- Consolidated GUI utilities for accessibility, formatting, and styling.
 -- Combines gui_accessibility, gui_formatting, and gui_styling for maintainability.
 
+local Deps = require("deps")
+local BasicHelpers, GPSUtils = Deps.BasicHelpers, Deps.GpsUtils
 local GuiValidation = require("core.utils.gui_validation")
 local GuiBase = require("gui.gui_base")
-local GPSUtils = require("core.utils.gps_utils")
-local BasicHelpers = require("core.utils.basic_helpers")
 
 local GuiHelpers = {}
 

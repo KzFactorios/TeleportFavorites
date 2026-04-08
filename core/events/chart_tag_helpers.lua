@@ -6,10 +6,10 @@
 -- Specialized functions: modification validation, removal protection, GPS extraction, tag/favorites updating, position notifications, permission checking.
 -- Consolidated from chart_tag_modification_helpers.lua and chart_tag_removal_helpers.lua for better organization and reduced file count.
 
+local Deps = require("deps")
+local ErrorHandler, Cache, GPSUtils =
+  Deps.ErrorHandler, Deps.Cache, Deps.GpsUtils
 local AdminUtils = require("core.utils.admin_utils")
-local Cache = require("core.cache.cache")
-local ErrorHandler = require("core.utils.error_handler")
-local GPSUtils = require("core.utils.gps_utils")
 local LocaleUtils = require("core.utils.locale_utils")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local PlayerHelpers = require("core.utils.player_helpers")
