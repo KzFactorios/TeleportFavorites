@@ -103,12 +103,20 @@ function M.stop_profiler_capture(player_index)
   end
 
   local elapsed = 0
+  local start_tick = active_profiler_started_tick or 0
   if active_profiler_started_tick then
     elapsed = game.tick - active_profiler_started_tick
   end
 
-  local header = "TeleportFavorites profile report\nTicks measured: " .. tostring(elapsed) .. "\n\n"
-  local filename = profile_file_name()
+  local header = "TeleportFavorites profile report\n"
+    .. "Started at:    tick " .. tostring(start_tick) .. "\n"
+    .. "Stopped at:    tick " .. tostring(game.tick) .. "\n"
+    .. "Ticks elapsed: " .. tostring(elapsed) .. " (" .. tostring(math.floor(elapsed / 60)) .. "s at 60 UPS)\n\n"
+
+  -- Embed start tick in filename so each run produces a distinct file.
+  local base = profile_file_name()
+  local stem, ext = base:match("^(.+)(%.[^%.]+)$")
+  local filename = stem and (stem .. "-t" .. tostring(start_tick) .. ext) or (base .. "-t" .. tostring(start_tick))
   write_profiler_file(profiler, header, filename)
 
   active_profiler = nil
