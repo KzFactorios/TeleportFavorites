@@ -579,8 +579,6 @@ try_update_slots_in_place = function(slots_frame, player, pfaves)
       btn.sprite = ""
       btn.tooltip = { "tf-gui.favorite_slot_empty" }
       btn.style = "tf_slot_button_smallfont"
-      local ls = btn["slot_lock_sprite_" .. i]
-      if ls and ls.valid then ls.destroy() end
     else
       local icon = nil
       if fav.tag and fav.tag.chart_tag then
@@ -592,24 +590,14 @@ try_update_slots_in_place = function(slots_frame, player, pfaves)
           goto next_slot
         end
       end
-    local btn_icon = GuiValidation.get_validated_sprite_path(normalize_icon_type(icon),
-      { fallback = Enum.SpriteEnum.PIN, log_context = { slot = i, fav_gps = fav.gps } })
+      local btn_icon = GuiValidation.get_validated_sprite_path(normalize_icon_type(icon),
+        { fallback = Enum.SpriteEnum.PIN, log_context = { slot = i, fav_gps = fav.gps } })
       local style = fav.locked and "tf_slot_button_locked" or "tf_slot_button_smallfont"
       if btn_icon == "tf_tag_in_map_view_small" then style = "tf_slot_button_smallfont_map_pin" end
 
       btn.sprite = btn_icon
       btn.tooltip = GuiHelpers.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }
       btn.style = style
-
-      local ls = btn["slot_lock_sprite_" .. i]
-      if fav.locked then
-        if not ls or not ls.valid then
-          btn.add { type = "sprite", name = "slot_lock_sprite_" .. i,
-                    sprite = Enum.SpriteEnum.LOCK, style = "tf_fave_bar_slot_lock_sprite" }
-        end
-      else
-        if ls and ls.valid then ls.destroy() end
-      end
     end
 
     if label_el and label_el.valid then
@@ -656,7 +644,7 @@ local function build_single_slot(parent, player, pfaves, i, use_labels, label_mo
     fav = FavoriteUtils.get_blank_favorite()
   end
 
-  local btn_icon, tooltip, style, locked = get_slot_btn_props(i, fav)
+  local btn_icon, tooltip, style = get_slot_btn_props(i, fav)
 
   local btn_parent = parent
   if use_labels then
@@ -670,12 +658,7 @@ local function build_single_slot(parent, player, pfaves, i, use_labels, label_mo
 
   local btn = GuiHelpers.create_slot_button(btn_parent, "fave_bar_slot_" .. i, tostring(btn_icon), tooltip, { style = style })
   if btn and btn.valid then
-    local num_style = locked and "tf_fave_bar_locked_slot_number" or "tf_fave_bar_slot_number"
-    GuiBase.create_label(btn, "tf_fave_bar_slot_number_" .. tostring(i), tostring(i), num_style)
-    if locked then
-      btn.add { type = "sprite", name = "slot_lock_sprite_" .. tostring(i),
-                sprite = Enum.SpriteEnum.LOCK, style = "tf_fave_bar_slot_lock_sprite" }
-    end
+    GuiBase.create_label(btn, "tf_fave_bar_slot_number_" .. tostring(i), tostring(i), "tf_fave_bar_slot_number")
     if use_labels then
       GuiBase.create_label(btn_parent, "fave_bar_slot_label_" .. i,
                            get_slot_label_text(fav, label_mode), "tf_fave_bar_slot_label")
@@ -822,17 +805,23 @@ function fave_bar.update_single_slot(player, slot_index)
         slot_button.sprite = ""
         ---@diagnostic disable-next-line: assign-type-mismatch
         slot_button.tooltip = { "tf-gui.favorite_slot_empty" }
+        slot_button.style = "tf_slot_button_smallfont"
         return
       end
     end
-    slot_button.sprite = GuiValidation.get_validated_sprite_path(normalize_icon_type(icon),
+    local validated_icon = GuiValidation.get_validated_sprite_path(normalize_icon_type(icon),
       { fallback = Enum.SpriteEnum.PIN, log_context = { slot = slot_index, fav_gps = fav.gps, fav_tag = fav.tag } })
+    local style = fav.locked and "tf_slot_button_locked" or "tf_slot_button_smallfont"
+    if validated_icon == "tf_tag_in_map_view_small" then style = "tf_slot_button_smallfont_map_pin" end
+    slot_button.sprite = validated_icon
     ---@type LocalisedString
     slot_button.tooltip = GuiHelpers.build_favorite_tooltip(fav, { slot = slot_index })
+    slot_button.style = style
   else
     slot_button.sprite = ""
     ---@diagnostic disable-next-line: assign-type-mismatch
     slot_button.tooltip = { "tf-gui.favorite_slot_empty" }
+    slot_button.style = "tf_slot_button_smallfont"
   end
 
   -- Update slot label text if wrapper exists
@@ -1041,6 +1030,9 @@ function fave_bar.process_slot_build_queue()
     local pfaves        = Cache.get_player_favorites(player, surface_index)
     prune_stale_favorites(player, surface_index, pfaves)
 
+    local player_data = Cache.get_player_data(player)
+    local slots_vis   = player_data and player_data.fave_bar_slots_visible
+    if slots_vis == nil then slots_vis = true end
     if slots_frame and slots_frame.valid then slots_frame.visible = slots_vis end
 
     ProfilerExport.stop_section("pb_chrome2")

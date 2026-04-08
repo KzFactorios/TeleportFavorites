@@ -261,14 +261,6 @@ data:extend({
   },
   {
     type = "sprite",
-    name = "tf_slot_lock",
-    filename = "__TeleportFavorites__/graphics/icons8-lock-a50.png",
-    width = 24,
-    height = 24,
-    flags = { "gui-icon" }
-  },
-  {
-    type = "sprite",
     name = "tf_eye",
     filename = "__TeleportFavorites__/graphics/icons8-eye-50.png",
     width = 50,

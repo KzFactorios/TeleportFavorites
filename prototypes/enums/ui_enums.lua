@@ -79,7 +79,6 @@ UIEnums.Sprites = {
 
   -- Interface elements
   LIST_VIEW = "utility/list_view",
-  LOCK = "tf_slot_lock",
   EYE = "tf_eye",
   EYELASH = "tf_eyelash",
   PIN = "tf_tag_in_map_view_small",

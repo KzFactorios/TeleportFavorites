@@ -94,19 +94,10 @@ gui_style.tf_slot_button_smallfont_map_pin = {
 
 gui_style.tf_slot_button_locked = {
     type = "button_style",
-    parent = "slot_button_in_shallow_frame",
+    parent = "tf_slot_button_smallfont",
     default_graphical_set = {
-        base = { position = { 0, 0 }, corner_size = 8, tint = { r = .3, g = .3, b = .3, a = .4 } }
+        base = { position = { 0, 0 }, corner_size = 8, tint = { r = 0.85, g = 0.3, b = 0.3, a = 0.45 } }
     },
-    size = { 40, 40 },
-    top_padding = 1,
-    right_padding = 4,
-    bottom_padding = 4,
-    left_padding = 4,
-    top_margin = 0,
-    right_margin = 0,
-    bottom_margin = 0,
-    left_margin = 0
 }
 
 gui_style.tf_fave_bar_slot_number = {
@@ -116,18 +107,6 @@ gui_style.tf_fave_bar_slot_number = {
     horizontal_align = "center",
     width = 25,
     top_padding = 18
-}
-
-gui_style.tf_fave_bar_locked_slot_number = {
-    type = "label_style",
-    parent = "tf_fave_bar_slot_number",
-    top_padding = 20
-}
-
-gui_style.tf_fave_bar_slot_lock_sprite = {
-    type = "image_style",
-    top_padding = -3,
-    left_padding = -5
 }
 
 gui_style.tf_fave_bar_slot_wrapper = {
