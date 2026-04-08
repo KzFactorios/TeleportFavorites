@@ -51,7 +51,7 @@ function M.start_profiler_capture(player_index)
   end
 
   local ok, prof_or_err = pcall(function()
-    return helpers.create_profiler(true)
+    return helpers.create_profiler() -- no arg = start running immediately
   end)
   if not ok or not prof_or_err then
     log("[TeleportFavorites] helpers.create_profiler failed: " .. tostring(prof_or_err))

@@ -10,7 +10,7 @@ local handlers = require("core.events.handlers")
 local TeleportHistory = require("core.teleport.teleport_history")
 local ProfilerExport = require("core.utils.profiler_export")
 
--- Initialize logging immediately using single source of truth
+-- Initialize logging immediately using single source of truth (a)
 ErrorHandler.initialize(Constants.settings.DEFAULT_LOG_LEVEL)
 
 local gui_observer = nil

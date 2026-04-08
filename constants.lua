@@ -1,5 +1,5 @@
 -- constants.lua
--- Defines mod constants for TeleportFavorites.
+-- Defines mod constants for TeleportFavorites. (a)
 -- This is the central configuration point for the mod with values used throughout the codebase.
 
 ---@class Constants
