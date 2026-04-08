@@ -28,6 +28,7 @@ local GuiValidation = require("core.utils.gui_validation")
 local GuiHelpers = require("core.utils.gui_helpers")
 local Cache = require("core.cache.cache")
 local Enum = require("prototypes.enums.enum")
+local ProfilerExport = require("core.utils.profiler_export")
 local BasicHelpers = require("core.utils.basic_helpers")
 local ValidationUtils = require("core.utils.validation_utils")
 local teleport_history_modal = require("gui.teleport_history_modal.teleport_history_modal")
@@ -213,7 +214,9 @@ function fave_bar.build(player, force_show)
   end
 
   local success, result = pcall(function()
+    ProfilerExport.start_section("fb_settings_lookup")
     local player_settings = Cache.Settings.get_player_settings(player)
+    ProfilerExport.stop_section("fb_settings_lookup")
 
     -- Handle case where both favorites and teleport history are disabled
     if not player_settings.favorites_on and not player_settings.enable_teleport_history then
@@ -230,6 +233,7 @@ function fave_bar.build(player, force_show)
     end
 
     -- Use shared vertical flow
+    ProfilerExport.start_section("fb_structure_check")
     local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
 
     -- PERFORMANCE: Only destroy and recreate if GUI structure needs to change
@@ -246,8 +250,10 @@ function fave_bar.build(player, force_show)
     if needs_rebuild then
       GuiValidation.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
     end
+    ProfilerExport.stop_section("fb_structure_check")
 
     -- Create frame only if needed, otherwise reuse existing
+    ProfilerExport.start_section("fb_frame_create")
     local fave_bar_frame
     if needs_rebuild then
       -- Outer frame for the bar (matches quickbar background)
@@ -270,6 +276,7 @@ function fave_bar.build(player, force_show)
       _history_toggle_button = _toggle_container and _toggle_container[Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_TOGGLE_BUTTON]
       _history_mode_toggle = _toggle_container and _toggle_container[Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_MODE_TOGGLE_BUTTON]
     end
+    ProfilerExport.stop_section("fb_frame_create")
 
     -- Handle visibility based on settings
     local favorites_enabled = player_settings.favorites_on
@@ -305,6 +312,7 @@ function fave_bar.build(player, force_show)
       local pfaves = Cache.get_player_favorites(player, surface_index)
 
       -- FAILSAFE: Remove any slots referencing an old GPS that is no longer valid
+      ProfilerExport.start_section("fb_gps_validation")
       local valid_gps_set = {}
       -- Build set of all valid GPS from tag cache
       local tag_cache = Cache.get_surface_tags(surface_index)
@@ -328,6 +336,7 @@ function fave_bar.build(player, force_show)
       if changed then
         Cache.set_player_favorites(player, pfaves)
       end
+      ProfilerExport.stop_section("fb_gps_validation")
 
       -- Show the visibility toggle button
       if _toggle_button and _toggle_button.valid then
@@ -347,6 +356,7 @@ function fave_bar.build(player, force_show)
       end
 
       -- Build slot buttons (destroy existing ones first for non-rebuild path)
+      ProfilerExport.start_section("fb_buttons_row")
       if slots_frame and slots_frame.valid then
         local children = slots_frame.children
         for i = #children, 1, -1 do
@@ -357,6 +367,7 @@ function fave_bar.build(player, force_show)
         end
       end
       fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves)
+      ProfilerExport.stop_section("fb_buttons_row")
 
       -- Do NOT update toggle state in pdata here! Only the event handler should do that.
 
