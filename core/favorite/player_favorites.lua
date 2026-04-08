@@ -6,11 +6,28 @@
 
 
 local Deps = require("deps")
-local BasicHelpers, Cache, Constants =
-  Deps.BasicHelpers, Deps.Cache, Deps.Constants
+local BasicHelpers, Cache =
+  Deps.BasicHelpers, Deps.Cache
 local FavoriteUtils = require("core.favorite.favorite_utils")
 local GuiObserver = require("core.events.gui_observer")
 
+
+local function is_invalid_gps(gps)
+  return not gps or type(gps) ~= "string" or gps == ""
+end
+
+local function notify_fave(self, event_name, extra)
+  local payload = extra or {}
+  payload.player_index = self.player_index
+  GuiObserver.GuiEventBus.notify(event_name, payload)
+end
+
+local function check_favorites_array(favorites, max_slots)
+  if not favorites or #favorites < max_slots then
+    return false, "favorites_array_invalid"
+  end
+  return true
+end
 
 --- PlayerFavorites class for managing a player's favorite collection
 ---@class PlayerFavorites
@@ -67,24 +84,16 @@ end
 ---@return boolean success, string? error_message
 function PlayerFavorites:remove_favorite(gps)
   local max_slots = Cache.Settings.get_player_max_favorite_slots(self.player)
-  if not gps or type(gps) ~= "string" or gps == "" then
-    return false, "invalid_gps"
-  end
+  if is_invalid_gps(gps) then return false, "invalid_gps" end
   local favorites = self.favorites
-  if not favorites or #favorites < max_slots then
-    return false, "favorites_array_invalid"
-  end
+  local ok, err = check_favorites_array(favorites, max_slots)
+  if not ok then return false, err end
   for i = 1, max_slots do
     local fav = favorites[i]
     if fav and fav.gps == gps then
       favorites[i] = FavoriteUtils.get_blank_favorite()
       Cache.set_player_favorites(self.player, favorites)
-      -- Notify GUI observer for immediate bar update
-      GuiObserver.GuiEventBus.notify("favorite_removed", {
-        player_index = self.player_index,
-        gps = gps,
-        slot = i
-      })
+      notify_fave(self, "favorite_removed", { gps = gps, slot = i })
       return true
     end
   end
@@ -96,9 +105,7 @@ end
 ---@return boolean success, string? error_message
 function PlayerFavorites:add_favorite(gps)
   local max_slots = Cache.Settings.get_player_max_favorite_slots(self.player)
-  if not gps or type(gps) ~= "string" or gps == "" then
-    return false, "invalid_gps"
-  end
+  if is_invalid_gps(gps) then return false, "invalid_gps" end
   local favorites = self.favorites
   if not favorites or #favorites ~= max_slots then
     -- initialize the player's favorites array
@@ -122,12 +129,7 @@ function PlayerFavorites:add_favorite(gps)
       favorites[i].gps = gps
       favorites[i].locked = false
       Cache.set_player_favorites(self.player, favorites)
-      -- Notify GUI observer for immediate bar update (include slot index)
-      GuiObserver.GuiEventBus.notify("favorite_added", {
-        player_index = self.player_index,
-        gps = gps,
-        slot = i
-      })
+      notify_fave(self, "favorite_added", { gps = gps, slot = i })
       return true
     end
   end
@@ -138,9 +140,7 @@ end
 ---@param gps string GPS string to search for
 ---@return Favorite|nil favorite_entry The favorite entry if found, or nil
 function PlayerFavorites:get_favorite_by_gps(gps)
-  if not gps or type(gps) ~= "string" or gps == "" then
-    return nil
-  end
+  if is_invalid_gps(gps) then return nil end
   local max_slots = Cache.Settings.get_player_max_favorite_slots(self.player)
   local favorites = self.favorites
   if not favorites or #favorites < max_slots then
@@ -164,9 +164,8 @@ function PlayerFavorites:toggle_favorite_lock(slot)
     return false, "slot_out_of_range"
   end
   local favorites = self.favorites
-  if not favorites or #favorites < max_slots then
-    return false, "favorites_array_invalid"
-  end
+  local ok, err = check_favorites_array(favorites, max_slots)
+  if not ok then return false, err end
   local fav = favorites[slot]
   if not fav then
     return false, "favorite_not_found"
@@ -175,13 +174,8 @@ function PlayerFavorites:toggle_favorite_lock(slot)
     return false, "cannot_lock_blank_slot"
   end
   fav.locked = not fav.locked
-  favorites[slot] = fav
   Cache.set_player_favorites(self.player, favorites)
-  -- Notify GUI observer that this slot was updated (lock toggled)
-  GuiObserver.GuiEventBus.notify("favorite_updated", {
-    player_index = self.player_index,
-    slot = slot
-  })
+  notify_fave(self, "favorite_updated", { slot = slot })
   return true
 end
 
@@ -198,9 +192,8 @@ function PlayerFavorites:reorder_favorites(source_slot, target_slot)
     return false, "slot_out_of_range"
   end
   local favorites = self.favorites
-  if not favorites or #favorites < max_slots then
-    return false, "favorites_array_invalid"
-  end
+  local ok, err = check_favorites_array(favorites, max_slots)
+  if not ok then return false, err end
   local src_fav = favorites[source_slot]
   local tgt_fav = favorites[target_slot]
   if BasicHelpers.is_locked_favorite(src_fav) or BasicHelpers.is_locked_favorite(tgt_fav) then
@@ -220,7 +213,6 @@ function PlayerFavorites:reorder_favorites(source_slot, target_slot)
   else
     -- Cascade: evacuate source, shift items toward blank
     local direction = source_slot < target_slot and 1 or -1
-    local range_start, range_end = source_slot, target_slot
     if direction == 1 then
       for i = source_slot, target_slot - 1 do
         new_favorites[i] = FavoriteUtils.copy(new_favorites[i + 1])
@@ -234,15 +226,8 @@ function PlayerFavorites:reorder_favorites(source_slot, target_slot)
   end
   self.favorites = new_favorites
   Cache.set_player_favorites(self.player, new_favorites)
-  -- Notify GUI observer for both affected slots after reorder
-  GuiObserver.GuiEventBus.notify("favorite_updated", {
-    player_index = self.player_index,
-    slot = source_slot
-  })
-  GuiObserver.GuiEventBus.notify("favorite_updated", {
-    player_index = self.player_index,
-    slot = target_slot
-  })
+  notify_fave(self, "favorite_updated", { slot = source_slot })
+  notify_fave(self, "favorite_updated", { slot = target_slot })
   return true
 end
 
@@ -261,20 +246,8 @@ function PlayerFavorites.update_gps_for_all_players(old_gps, new_gps, acting_pla
   for player_index, player in pairs(game.players) do
     if player and player.valid and player_index ~= acting_player_index then
       local favorites = PlayerFavorites.new(player)
-      -- Only update if the player's favorite is still old_gps (not already updated)
-      local needs_update = false
-      for i = 1, #favorites.favorites do
-        local fav = favorites.favorites[i]
-        if fav and fav.gps == old_gps then
-          needs_update = true
-          break
-        end
-      end
-      if needs_update then
-        local was_updated = favorites:update_gps_coordinates(old_gps, new_gps)
-        if was_updated then
-          table.insert(affected_players, player)
-        end
+      if favorites:update_gps_coordinates(old_gps, new_gps) then
+        table.insert(affected_players, player)
       end
     end
   end
@@ -329,6 +302,19 @@ function PlayerFavorites:available_slots()
     end
   end
   return count
+end
+
+-- ===========================
+-- FAVORITE REHYDRATION (from favorite_rehydration.lua)
+-- ===========================
+
+function PlayerFavorites.rehydrate_favorite_at_runtime(player, fav)
+  if not player then return FavoriteUtils.get_blank_favorite() end
+  if not fav or type(fav) ~= "table" or not fav.gps or fav.gps == "" or FavoriteUtils.is_blank_favorite(fav) then
+    return FavoriteUtils.get_blank_favorite()
+  end
+  local tag = Cache.get_tag_by_gps(player, fav.gps)
+  return FavoriteUtils.new(fav.gps, fav.locked or false, tag)
 end
 
 return PlayerFavorites

@@ -60,12 +60,11 @@ end
 --- Clean up faved_by_players array for the tag
 ---@param tag table Tag object with faved_by_players array
 local function cleanup_faved_by_players(tag)
-  if not tag.faved_by_players or (( type(_G.game.players) ~= "userdata") and (type(tag.faved_by_players) ~= "table")) then 
+  if not tag.faved_by_players or type(tag.faved_by_players) ~= "table" then
     ErrorHandler.debug_log("No faved_by_players to cleanup")
     return 
   end
   
-  local original_count = #tag.faved_by_players
   for i = #tag.faved_by_players, 1, -1 do
     for _, player in pairs(_G.game.players) do
       if tag.faved_by_players[i] == player.index then

@@ -9,11 +9,8 @@ local BasicHelpers, ErrorHandler, Cache, Enum =
   Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.Enum
 local FavoriteUtils = require("core.favorite.favorite_utils")
 local PlayerFavorites = require("core.favorite.player_favorites")
-local PlayerHelpers = require("core.utils.player_helpers")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local SlotInteractionHandlers = require("core.control.slot_interaction_handlers")
-local GameHelpers = require("core.utils.game_helpers")
-local SharedUtils = require("core.control.control_shared_utils")
 local CursorUtils = require("core.utils.cursor_utils")
 local GuiHelpers = require("core.utils.gui_helpers")
 local GuiValidation = require("core.utils.gui_validation")
@@ -66,7 +63,7 @@ local function handle_favorite_slot_click(event, player, favorites)
     })
     if event.button == defines.mouse_button_type.right then
       CursorUtils.end_drag_favorite(player)
-      GameHelpers.player_print(player, { "tf-gui.fave_bar_drag_canceled" })
+      BasicHelpers.player_print(player, { "tf-gui.fave_bar_drag_canceled" })
       return
     end
     if event.button == defines.mouse_button_type.left then
@@ -76,8 +73,8 @@ local function handle_favorite_slot_click(event, player, favorites)
       end
       local target_fav = favorites.favorites[slot]
       if target_fav and BasicHelpers.is_locked_favorite(target_fav) then
-        GameHelpers.player_print(player, SharedUtils.lstr("tf-gui.fave_bar_locked_cant_target", slot))
-        GameHelpers.safe_play_sound(player, { path = "utility/cannot_build" })
+        BasicHelpers.player_print(player, { "tf-gui.fave_bar_locked_cant_target", slot })
+        BasicHelpers.safe_play_sound(player, { path = "utility/cannot_build" })
         CursorUtils.end_drag_favorite(player)
         return
       end
@@ -91,7 +88,7 @@ local function handle_favorite_slot_click(event, player, favorites)
   if not fav then
     ErrorHandler.warn_log("[FAVE_BAR] Slot data missing or nil",
       { slot = slot, player = player and player.name or "<nil>" })
-    GameHelpers.player_print(player,
+    BasicHelpers.player_print(player,
       "[TeleportFavorites] ERROR: Favorite slot data missing. Please refresh your favorites bar.")
     return
   end
@@ -99,7 +96,7 @@ local function handle_favorite_slot_click(event, player, favorites)
   if not fav.gps or type(fav.gps) ~= "string" or fav.gps == "" then
     ErrorHandler.warn_log("[FAVE_BAR] Favorite slot GPS invalid",
       { slot = slot, fav = fav, player = player and player.name or "<nil>" })
-    GameHelpers.player_print(player,
+    BasicHelpers.player_print(player,
       "[TeleportFavorites] ERROR: Favorite slot GPS is invalid. Please update or remove this favorite.")
     return
   end
@@ -153,7 +150,7 @@ local function handle_map_right_click(event, player)
         ErrorHandler.debug_log("[FAVE_BAR] Right-click detected on map during drag, canceling drag operation",
           { player = player.name })
         CursorUtils.end_drag_favorite(player)
-        GameHelpers.player_print(player, { "tf-gui.fave_bar_drag_canceled" })
+        BasicHelpers.player_print(player, { "tf-gui.fave_bar_drag_canceled" })
         return true
       end
     end
@@ -164,27 +161,6 @@ local function handle_map_right_click(event, player)
     return false
   end
   return err == true
-end
-
---- Handle favorites bar GUI click events
----@param event table The GUI click event containing element, player_index, button, etc.
-local function log_click_event(event, player)
-  ErrorHandler.debug_log("[FAVE_BAR] on_fave_bar_gui_click entry point", {
-    element_name = event.element.name,
-    player = player.name,
-    raw_button_value = event.button,
-    button_type = event.button == 1 and "LEFT_CLICK" or
-        event.button == 2 and "RIGHT_CLICK" or
-        event.button == 3 and "MIDDLE_CLICK" or "UNKNOWN_" .. tostring(event.button),
-    defines_values = {
-      left = defines.mouse_button_type.left,
-      right = defines.mouse_button_type.right,
-      middle = defines.mouse_button_type.middle
-    },
-    shift_pressed = event.shift,
-    control_pressed = event.control,
-    is_dragging = CursorUtils.is_dragging_favorite(player)
-  })
 end
 
 --- Handle history toggle button click (opens/closes teleport history modal)
@@ -326,7 +302,7 @@ local function on_teleport_history_modal_gui_click(event)
         if player and player.valid then
           ---@type any
           local msg = { "tf-gui.teleport_failed", error_message }
-          PlayerHelpers.safe_player_print(player, msg)
+          BasicHelpers.safe_player_print(player, msg)
         end
       end
     end
@@ -359,17 +335,20 @@ local function on_history_confirm_dialog_click(event)
 end
 
 local function on_fave_bar_gui_click(event)
-  ErrorHandler.debug_log("[FAVE_BAR] on_fave_bar_gui_click called", {
-    element_name = event.element and event.element.name or "<nil>",
-    player_index = event.player_index
-  })
   local element = event.element
   if not BasicHelpers.is_valid_element(element) then return end
   local player = game.players[event.player_index]
   if not BasicHelpers.is_valid_player(player) then return end
   ---@cast player LuaPlayer
 
-  log_click_event(event, player)
+  ErrorHandler.debug_log("[FAVE_BAR] on_fave_bar_gui_click", {
+    element_name = element.name,
+    player = player.name,
+    button = event.button == 1 and "LEFT" or event.button == 2 and "RIGHT" or "OTHER",
+    shift = event.shift,
+    control = event.control,
+    is_dragging = CursorUtils.is_dragging_favorite(player)
+  })
 
   -- Get player favorites instance
   local favorites = PlayerFavorites.new(player)
@@ -394,7 +373,6 @@ local function on_fave_bar_gui_click(event)
 end
 
 M.on_fave_bar_gui_click = on_fave_bar_gui_click
-M.on_fave_bar_gui_click_impl = on_fave_bar_gui_click
 M.on_teleport_history_modal_gui_click = on_teleport_history_modal_gui_click
 M.on_history_confirm_dialog_click = on_history_confirm_dialog_click
 

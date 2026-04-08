@@ -180,11 +180,6 @@ function Settings.invalidate_player_cache(player)
   end
 end
 
---- Clear all cached settings (useful for testing or major setting changes)
-function Settings.clear_all_caches()
-  player_settings_cache = {}
-end
-
 --- Legacy compatibility layer for existing code
 --- @deprecated Use Settings.get_player_settings instead
 --- @param player LuaPlayer|nil

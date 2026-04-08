@@ -6,8 +6,8 @@
 -- Lookups = {
 --   surfaces = {
 --     [surface_index] = {
---       chart_tags = { LuaCustomChartTag, ... },
---       chart_tags_mapped_by_gps = { [gps_string] = LuaCustomChartTag }
+--       chart_tags      = { LuaCustomChartTag, ... },            -- full list (lazy, tag editor only)
+--       gps_point_cache = { [gps_string] = LuaCustomChartTag|false }  -- per-GPS area-query cache
 --     }, ...
 --   }
 -- }
@@ -18,15 +18,17 @@ local Deps = require("base_deps")
 local BasicHelpers, ErrorHandler, GPSUtils =
   Deps.BasicHelpers, Deps.ErrorHandler, Deps.GpsUtils
 
--- Handles the non-persistent in-game data cache for runtime lookups.
 local Lookups = {}
 Lookups.__index = Lookups
 local CACHE_KEY = "Lookups"
 
---- Ensure the cache.surfaces table exists in global (non-persistent)
---- This is a local function and should never be called from outside this module.
---- It initializes the cache if it doesn't exist, ensuring a consistent structure.
---- @return table
+-- Half-tile bounding box used for targeted area queries.
+-- Keeps the query tight enough to avoid catching adjacent tags while tolerating
+-- the integer-rounding done by gps_from_map_position.
+local GPS_EPSILON = 0.25
+
+--- Ensure the top-level cache table exists in _G.
+---@return table cache
 local function ensure_cache()
   _G[CACHE_KEY] = _G[CACHE_KEY] or {}
   local cache = _G[CACHE_KEY]
@@ -34,6 +36,11 @@ local function ensure_cache()
   return cache
 end
 
+--- Initialises the surface-level cache tables for surface_index.
+--- Does NOT perform a full find_chart_tags() scan; that cost is deferred to
+--- get_chart_tag_cache() which is only called by the tag editor / click-detection paths.
+---@param surface_index number|string
+---@return table surface_cache
 local function ensure_surface_cache(surface_index)
   local surface_idx = BasicHelpers.normalize_index(surface_index)
   if not surface_idx then
@@ -41,57 +48,32 @@ local function ensure_surface_cache(surface_index)
   end
   local cache = ensure_cache()
   cache.surfaces[surface_idx] = cache.surfaces[surface_idx] or {}
-
-  -- Lazy loading: only fetch chart tags if cache doesn't exist or is empty
-  if not cache.surfaces[surface_idx].chart_tags or #cache.surfaces[surface_idx].chart_tags == 0 then
-    local surface = game.surfaces[surface_idx]
-    if surface then
-      cache.surfaces[surface_idx].chart_tags = game.forces["player"].find_chart_tags(surface) or {}
-    else
-      cache.surfaces[surface_idx].chart_tags = {}
-    end
-  end
-  
-  -- Lazy loading: only rebuild GPS mapping if not exists
-  if not cache.surfaces[surface_idx].chart_tags_mapped_by_gps then
-    cache.surfaces[surface_idx].chart_tags_mapped_by_gps = {}
-    
-    -- Only build GPS mapping if we have chart tags
-    local chart_tags = cache.surfaces[surface_idx].chart_tags
-    if chart_tags and #chart_tags > 0 then
-      -- Rebuild the GPS mapping using functional approach
-      local function build_gps_mapping(chart_tag)
-        if chart_tag and chart_tag.valid and chart_tag.position and surface_idx then
-          -- Ensure surface_idx is properly typed as uint
-          local surface_index_uint = tonumber(surface_idx) --[[@as uint]]
-          -- Cast to number for gps_from_map_position function
-          local surface_index_number = surface_index_uint --[[@as number]]
-          local gps = GPSUtils.gps_from_map_position(chart_tag.position, surface_index_number)
-          if gps and gps ~= "" then
-            cache.surfaces[surface_idx].chart_tags_mapped_by_gps[gps] = chart_tag
-          end
-        end
-      end
-
-      -- Process each chart tag with the mapping function
-      for _, chart_tag in ipairs(chart_tags) do
-        build_gps_mapping(chart_tag)
-      end
-    end
-  end
-
+  cache.surfaces[surface_idx].gps_point_cache =
+    cache.surfaces[surface_idx].gps_point_cache or {}
   return cache.surfaces[surface_idx]
 end
 
---- Static method to be called once at the start of the game or when the mod is loaded.
---- It ensures that the global Lookups cache is initialized and ready for use.
---- @return table
+--- O(1) targeted area query for a single map position.
+--- find_chart_tags(surface, area) uses Factorio's spatial index; with a half-tile
+--- bounding box it returns at most the one tag sitting at that position.
+---@param surface LuaSurface
+---@param pos MapPosition
+---@return LuaCustomChartTag|nil
+local function lookup_chart_tag_by_area(surface, pos)
+  local tags = game.forces["player"].find_chart_tags(surface, {
+    left_top     = { x = pos.x - GPS_EPSILON, y = pos.y - GPS_EPSILON },
+    right_bottom = { x = pos.x + GPS_EPSILON, y = pos.y + GPS_EPSILON },
+  })
+  return tags[1]
+end
+
+---@return table
 local function init()
   return ensure_cache()
 end
 
---- Static method to clear the Lookups.surfaces[surface_index].charts tags and it's map
---- It is useful when the chart tags for a surface have changed and need to be rebuilt.
+--- Invalidate all chart-tag caches for a surface (called on tag add/remove/modify).
+---@param surface_index number|string
 local function clear_surface_cache_chart_tags(surface_index)
   if not surface_index then
     error("Invalid surface index: " .. tostring(surface_index))
@@ -99,22 +81,30 @@ local function clear_surface_cache_chart_tags(surface_index)
   local surface_idx = BasicHelpers.normalize_index(surface_index)
   local cache = ensure_cache()
   if cache.surfaces[surface_idx] then
-    cache.surfaces[surface_idx].chart_tags = nil  -- Set to nil to trigger refetch
-    cache.surfaces[surface_idx].chart_tags_mapped_by_gps = nil  -- Set to nil to trigger rebuild
+    cache.surfaces[surface_idx].chart_tags              = nil
+    cache.surfaces[surface_idx].chart_tags_mapped_by_gps = nil
+    cache.surfaces[surface_idx].gps_point_cache         = nil
   end
 end
 
---- Ensure the surfaces cache exists and initializes it if not.
---- @param surface_index number|string
---- @return LuaCustomChartTag[] -- Returns an array of LuaCustomChartTag objects
+--- Returns the full list of chart tags for a surface (lazy, O(all_tags) scan).
+--- Only called by the tag editor and click-detection; never during startup hydration.
+---@param surface_index number|string
+---@return LuaCustomChartTag[]
 local function get_chart_tag_cache(surface_index)
-  local surface_idx = BasicHelpers.normalize_index(surface_index)
+  local surface_idx   = BasicHelpers.normalize_index(surface_index)
   local surface_cache = ensure_surface_cache(surface_idx)
+  if not surface_cache.chart_tags or #surface_cache.chart_tags == 0 then
+    local surface = game.surfaces[surface_idx]
+    surface_cache.chart_tags =
+      surface and game.forces["player"].find_chart_tags(surface) or {}
+  end
   return surface_cache.chart_tags or {}
 end
 
---- Static method to fetch a LuaCustomChartTag by gps (O(1) lookup)
---- uses the
+--- Returns a LuaCustomChartTag by GPS string using a per-GPS area query (O(1)).
+--- Results are stored in gps_point_cache; `false` means "queried, not found".
+--- The full-surface scan path (get_chart_tag_cache) is intentionally not touched here.
 ---@param gps string
 ---@return LuaCustomChartTag|nil
 local function get_chart_tag_by_gps(gps)
@@ -124,75 +114,62 @@ local function get_chart_tag_by_gps(gps)
   if not surface then return nil end
 
   local surface_cache = ensure_surface_cache(surface_index)
-  if not surface_cache then return nil end
-  local match_chart_tag = surface_cache.chart_tags_mapped_by_gps[gps] or nil
-  
-  -- Optimized debug logging: early return if debug disabled, avoid expensive pcall in hot path
+  local point_cache   = surface_cache.gps_point_cache
+
+  local cached = point_cache[gps]
+  if cached ~= nil then
+    -- false == "looked up previously, no tag at this GPS"
+    if cached == false then return nil end
+    local ok, is_valid = pcall(function() return cached.valid end)
+    if ok and is_valid then return cached end
+    -- Stale: the tag was destroyed since the last lookup — re-query
+    point_cache[gps] = nil
+  end
+
+  -- Cache miss: single O(1) area query
+  local pos = GPSUtils.map_position_from_gps(gps)
+  local tag = pos and lookup_chart_tag_by_area(surface, pos) or nil
+  point_cache[gps] = tag or false
+
   if ErrorHandler.should_log_debug() then
     ErrorHandler.debug_log("[LOOKUPS] get_chart_tag_by_gps", {
-      gps = gps,
-      surface_index = surface_index,
-      chart_tag_found = match_chart_tag ~= nil,
-      chart_tag_valid = match_chart_tag and match_chart_tag.valid or false,
-      chart_tag_has_icon = match_chart_tag and match_chart_tag.valid and match_chart_tag.icon ~= nil or false
+      gps             = gps,
+      surface_index   = surface_index,
+      chart_tag_found = tag ~= nil,
+      chart_tag_valid = tag and tag.valid or false,
     })
   end
-  
-  -- Return nil if chart tag is invalid
-  if not match_chart_tag then
-    return nil
-  end
-  
-  -- Safely check chart tag validity
-  local valid_check_success, is_valid = pcall(function() return match_chart_tag.valid end)
-  if not valid_check_success or not is_valid then
-    return nil
-  end
-  
-  return match_chart_tag
+
+  return tag
 end
 
---- Selectivly remove a chart tag from the cache by GPS.
---- This is useful when a chart tag is deleted or modified and we want to ensure the cache is up-to-date.
+--- Destroy a chart tag by GPS and invalidate the surface cache.
 ---@param gps string
 local function remove_chart_tag_from_cache_by_gps(gps)
   if not gps or gps == "" then return end
   local chart_tag = get_chart_tag_by_gps(gps)
   if not chart_tag then return end
-  
-  -- Only destroy the chart_tag if it's still valid (prevent double-destroy)
-  -- Wrap in pcall to handle cases where chart_tag becomes invalid between check and destroy
+
   if chart_tag.valid then
-    local success, error_msg = pcall(function()
-      chart_tag.destroy()
-    end)
+    local success, error_msg = pcall(function() chart_tag.destroy() end)
     if not success then
-      ErrorHandler.debug_log("Chart tag destroy failed in cache cleanup, but continuing", { error = error_msg })
+      ErrorHandler.debug_log("Chart tag destroy failed in cache cleanup, but continuing",
+        { error = error_msg })
     end
   end
-  
-  -- Reset the surface_cache_chart_tags regardless of chart_tag destruction success
+
   local surface_index = GPSUtils.get_surface_index_from_gps(gps)
   clear_surface_cache_chart_tags(surface_index)
-end
-
---- Clear all lookup caches across all surfaces
---- This is useful when doing a complete cache reset
-local function clear_all_caches()
-  _G[CACHE_KEY] = nil
-  ensure_cache()
 end
 
 ---@class Lookups
 ---@field get_chart_tag_by_gps fun(gps: string): LuaCustomChartTag|nil
 return {
-  init = init,
-  get_chart_tag_cache = get_chart_tag_cache,
-  get_surface_chart_tags = get_chart_tag_cache, -- Alias for consistency
-  get_chart_tag_by_gps = get_chart_tag_by_gps,
+  init                          = init,
+  get_chart_tag_cache           = get_chart_tag_cache,
+  get_chart_tag_by_gps          = get_chart_tag_by_gps,
   clear_surface_cache_chart_tags = clear_surface_cache_chart_tags,
-  invalidate_surface_chart_tags = clear_surface_cache_chart_tags, -- Alias for consistency
+  invalidate_surface_chart_tags  = clear_surface_cache_chart_tags,
   remove_chart_tag_from_cache_by_gps = remove_chart_tag_from_cache_by_gps,
-  clear_all_caches = clear_all_caches,
-  ensure_surface_cache = ensure_surface_cache,
+  ensure_surface_cache          = ensure_surface_cache,
 }

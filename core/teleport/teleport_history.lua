@@ -7,7 +7,7 @@
 local Deps = require("deps")
 local BasicHelpers, Cache, GPSUtils =
   Deps.BasicHelpers, Deps.Cache, Deps.GpsUtils
-local HistoryItem = require("core.teleport.history_item")
+local HistoryItem = Cache.HistoryItem
 
 
 local HISTORY_STACK_SIZE = 128 -- Only 128 allowed for now (TBA for future options)

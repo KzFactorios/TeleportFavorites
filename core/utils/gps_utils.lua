@@ -6,6 +6,7 @@
 -- Provides GPS string parsing, validation, conversion, position normalization, and multiplayer-safe operations.
 
 local BasicHelpers = require("core.utils.basic_helpers")
+local ErrorHandler = require("core.utils.error_handler")
 local Constants = require("constants")
 
 local padlen, BLANK_GPS = Constants.settings.GPS_PAD_NUMBER, Constants.settings.BLANK_GPS
@@ -137,6 +138,120 @@ function GPSUtils.position_can_be_tagged(player, map_position)
     return false, "You are trying to create a tag in uncharted territory"
   end
   
+  return true
+end
+
+-- ===========================
+-- POSITION UTILS (from position_utils.lua)
+-- ===========================
+
+--- Extract x/y from a MapPosition (handles both {x,y} and {[1],[2]} formats)
+---@param map_position MapPosition
+---@return number|nil x, number|nil y
+local function get_xy(map_position)
+  if type(map_position) ~= "table" then return nil, nil end
+  if map_position.x ~= nil and map_position.y ~= nil then
+    return map_position.x, map_position.y
+  elseif type(map_position[1]) == "number" and type(map_position[2]) == "number" then
+    return map_position[1], map_position[2]
+  end
+  return nil, nil
+end
+
+--- Normalize a map position to whole numbers
+---@param map_position MapPosition
+---@return MapPosition|nil
+function GPSUtils.normalize_position(map_position)
+  if not map_position then return nil end
+  local x, y = get_xy(map_position)
+  if x == nil or y == nil then return nil end
+  if BasicHelpers.is_whole_number(x) and BasicHelpers.is_whole_number(y) then
+    return { x = x, y = y }
+  end
+  return { x = math.floor(x), y = math.floor(y) }
+end
+
+--- Check if a map position needs normalization (x or y not whole number)
+---@param map_position MapPosition
+---@return boolean
+function GPSUtils.needs_normalization(map_position)
+  if not map_position then return false end
+  local x, y = get_xy(map_position)
+  if x == nil or y == nil then return false end
+  return not (BasicHelpers.is_whole_number(x) and BasicHelpers.is_whole_number(y))
+end
+
+--- Create old/new position pair for tracking position changes
+---@param position MapPosition
+---@return table
+function GPSUtils.create_position_pair(position)
+  return {
+    old = { x = position.x, y = position.y },
+    new = {
+      x = BasicHelpers.normalize_index(position.x),
+      y = BasicHelpers.normalize_index(position.y)
+    }
+  }
+end
+
+--- Get the tile name at a normalized position, or nil if unreachable
+---@param surface LuaSurface
+---@param position MapPosition
+---@return string|nil
+local function get_tile_name(surface, position)
+  if not surface or not surface.get_tile then return nil end
+  local norm = GPSUtils.normalize_position(position)
+  if not norm then return nil end
+  local tile = surface.get_tile(norm.x, norm.y)
+  if not tile or not tile.valid then return nil end
+  return tile.name:lower()
+end
+
+--- Check if a tile at a position is water
+---@param surface LuaSurface
+---@param position MapPosition
+---@return boolean
+function GPSUtils.is_water_tile(surface, position)
+  local name = get_tile_name(surface, position)
+  return name ~= nil and (name:find("water") ~= nil or name:find("deepwater") ~= nil
+    or name:find("shallow%-water") ~= nil)
+end
+
+--- Check if a tile at a position is space/void
+---@param surface LuaSurface
+---@param position MapPosition
+---@return boolean
+function GPSUtils.is_space_tile(surface, position)
+  local name = get_tile_name(surface, position)
+  return name ~= nil and (name:find("space") ~= nil or name:find("void") ~= nil
+    or name == "out-of-map" or name == "space-platform")
+end
+
+--- Check if a position is walkable (not water, not space)
+---@param surface LuaSurface
+---@param position MapPosition
+---@return boolean
+function GPSUtils.is_walkable_position(surface, position)
+  if not surface or not position then
+    ErrorHandler.debug_log("[WALKABLE] Invalid surface or position",
+      { surface = surface and surface.name, position = position })
+    return false
+  end
+  local norm_pos = GPSUtils.normalize_position(position)
+  if not norm_pos or norm_pos.x == nil or norm_pos.y == nil then
+    ErrorHandler.debug_log("[WALKABLE] Invalid normalized position", { position = position })
+    return false
+  end
+  local tile = surface.get_tile(norm_pos.x, norm_pos.y)
+  ErrorHandler.debug_log("[WALKABLE] Tile info", {
+    surface = surface.name, orig_x = position.x, orig_y = position.y,
+    norm_x = norm_pos.x, norm_y = norm_pos.y,
+    tile_name = tile and tile.name or "<nil>",
+    tile_valid = tile and tile.valid or false
+  })
+  if not tile or not tile.valid then return false end
+  if GPSUtils.is_water_tile(surface, norm_pos) then return false end
+  if GPSUtils.is_space_tile(surface, norm_pos) then return false end
   return true
 end
 

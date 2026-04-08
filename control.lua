@@ -14,13 +14,6 @@ local fave_bar = require("gui.favorites_bar.fave_bar")
 -- Initialize logging immediately using single source of truth
 ErrorHandler.initialize(Constants.settings.DEFAULT_LOG_LEVEL)
 
-local gui_observer = nil
-
-
--- Optional modules - load safely
-local success, module = pcall(require, "core.events.gui_observer")
-if success then gui_observer = module end
-
 -- Custom on_init to allow easy toggling of intro cutscene skip
 local function custom_on_init()
   ProfilerExport.register_profiling_commands()
@@ -70,17 +63,10 @@ script.on_configuration_changed(function(data)
   ProfilerExport.apply_profile_mode_from_constants()
 end)
 
--- KEEP THIS CODE for development (disabled in production)
--- Instantly skip any cutscene (including intro) for all players
---script.on_event(defines.events.on_cutscene_started, function(event)
--- Cutscene skipping disabled due to API compatibility issues
--- If needed in development, uncomment and implement for faster testing
---  local player = game.players[event.player_index]
---  player.exit_cutscene()
---end)
-
-
-ErrorHandler.debug_log("[CONTROL] Registering all mod events through centralized dispatcher", {})
+-- (registration logged below only in debug builds)
+if ErrorHandler.should_log_debug and ErrorHandler.should_log_debug() then
+  ErrorHandler.debug_log("[CONTROL] Registering all mod events through centralized dispatcher", {})
+end
 event_registration_dispatcher.register_all_events(script)
 
 -- The dispatcher registers on_tick permanently (no-op after first tick) for observer setup.
@@ -90,8 +76,3 @@ event_registration_dispatcher.register_all_events(script)
 
 
 
--- TURN THIS OFF BEFORE DEPLOYMENT TO AVOID - Cannot join. The following mod event handlers are not identical between you and the server.
--- This indicates that the following mods are not multiplayer (save/load) safe. (See the log file for more details):
-
--- TODO TODO TODO TODO TODO
---if script.active_mods["gvv"] then require("__gvv__.gvv")() end

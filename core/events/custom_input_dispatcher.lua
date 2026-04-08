@@ -12,7 +12,6 @@ local FavoriteUtils = require("core.favorite.favorite_utils")
 local TeleportHistory = require("core.teleport.teleport_history")
 local GuiElementBuilders = require("core.utils.gui_element_builders")
 local GuiValidation = require("core.utils.gui_validation")
-local PlayerHelpers = require("core.utils.player_helpers")
 local TeleportStrategy = require("core.utils.teleport_strategy")
 local teleport_history_modal = require("gui.teleport_history_modal.teleport_history_modal")
 
@@ -44,7 +43,7 @@ local function handle_teleport_to_favorite_slot(event, slot_number)
     favorites = favorites
   })
   if not favorites then
-    PlayerHelpers.safe_player_print(player, "tf-gui.no_favorites_available")
+    BasicHelpers.safe_player_print(player, "tf-gui.no_favorites_available")
     ErrorHandler.debug_log("No favorites available for player", { player = player.name, surface_index = surface_index })
     return
   end
@@ -58,7 +57,7 @@ local function handle_teleport_to_favorite_slot(event, slot_number)
   if not favorite or FavoriteUtils.is_blank_favorite(favorite) then
     ErrorHandler.debug_log("Favorite slot empty or blank",
       { player = player.name, slot = slot_number, favorite = favorite })
-    PlayerHelpers.safe_player_print(player, "tf-gui.favorite_slot_empty")
+    BasicHelpers.safe_player_print(player, "tf-gui.favorite_slot_empty")
     return
   end
 
@@ -137,16 +136,6 @@ local default_custom_input_handlers = {
       teleport_history_modal.build(player)
     end
   end,
-  [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "1"] = function(event) handle_teleport_to_favorite_slot(event, 1) end,
-  [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "2"] = function(event) handle_teleport_to_favorite_slot(event, 2) end,
-  [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "3"] = function(event) handle_teleport_to_favorite_slot(event, 3) end,
-  [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "4"] = function(event) handle_teleport_to_favorite_slot(event, 4) end,
-  [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "5"] = function(event) handle_teleport_to_favorite_slot(event, 5) end,
-  [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "6"] = function(event) handle_teleport_to_favorite_slot(event, 6) end,
-  [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "7"] = function(event) handle_teleport_to_favorite_slot(event, 7) end,
-  [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "8"] = function(event) handle_teleport_to_favorite_slot(event, 8) end,
-  [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "9"] = function(event) handle_teleport_to_favorite_slot(event, 9) end,
-  [Enum.EventEnum.TELEPORT_TO_FAVORITE .. "10"] = function(event) handle_teleport_to_favorite_slot(event, 10) end,
   ["teleport_history-prev"] = function(event)
     navigate_history(event, function(hist) return math.max(1, hist.pointer - 1) end)
   end,
@@ -185,6 +174,12 @@ local default_custom_input_handlers = {
     end
   end,
 }
+
+for i = 1, 10 do
+  local slot = i
+  default_custom_input_handlers[Enum.EventEnum.TELEPORT_TO_FAVORITE .. slot] =
+    function(event) handle_teleport_to_favorite_slot(event, slot) end
+end
 
 --- Create a safe wrapper for handler functions with error handling
 local function create_safe_handler(handler, handler_name)
@@ -233,7 +228,7 @@ local function create_safe_handler(handler, handler_name)
       if event.player_index then
         local player = game.get_player(event.player_index)
         if player and player.valid then
-          PlayerHelpers.error_message_to_player(player, "Input handler error occurred")
+          BasicHelpers.error_message_to_player(player, "Input handler error occurred")
         end
       end
     end

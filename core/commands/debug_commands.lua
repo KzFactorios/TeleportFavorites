@@ -12,12 +12,74 @@
 local Deps = require("deps")
 local BasicHelpers, ErrorHandler, Cache =
   Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache
-local ValidationUtils = require("core.utils.validation_utils")
 local fave_bar = require("gui.favorites_bar.fave_bar")
-local DebugConfig = require("core.utils.debug_config")
-local PlayerHelpers = require("core.utils.player_helpers")
+local PlayerHelpers = BasicHelpers
 local GuiHelpers = require("core.utils.gui_helpers")
 local GuiValidation = require("core.utils.gui_validation")
+
+-- ===========================
+-- DEBUG CONFIG (from debug_config.lua)
+-- ===========================
+
+---@class DebugConfig
+local DebugConfig = {}
+
+DebugConfig.LEVELS = { NONE = 0, ERROR = 1, WARN = 2, INFO = 3, DEBUG = 4, TRACE = 5 }
+
+local _current_debug_level = nil
+
+local function detect_environment()
+  local is_debug = script and script.mod_name and (storage and storage._tf_debug_mode) == true
+  return is_debug and DebugConfig.LEVELS.DEBUG or DebugConfig.LEVELS.WARN
+end
+
+function DebugConfig.get_level()
+  if not _current_debug_level then _current_debug_level = detect_environment() end
+  return _current_debug_level
+end
+
+function DebugConfig.set_level(level)
+  if level >= DebugConfig.LEVELS.NONE and level <= DebugConfig.LEVELS.TRACE then
+    _current_debug_level = level
+  end
+end
+
+function DebugConfig.should_log(level)
+  if not level then return false end
+  if not _current_debug_level then _current_debug_level = detect_environment() end
+  return level <= _current_debug_level
+end
+
+function DebugConfig.get_level_name(level)
+  level = level or _current_debug_level
+  local names = {
+    [0] = "NONE", [1] = "ERROR", [2] = "WARN", [3] = "INFO", [4] = "DEBUG", [5] = "TRACE"
+  }
+  return names[level] or "UNKNOWN"
+end
+
+function DebugConfig.enable_production_mode()
+  DebugConfig.set_level(DebugConfig.LEVELS.WARN)
+end
+
+function DebugConfig.enable_debug_mode()
+  DebugConfig.set_level(DebugConfig.LEVELS.DEBUG)
+end
+
+function DebugConfig.log(level, message, data)
+  if not DebugConfig.should_log(level) then return end
+  local level_name = DebugConfig.get_level_name(level)
+  local prefixed = "[" .. level_name .. "] " .. message
+  if level <= DebugConfig.LEVELS.ERROR then
+    ErrorHandler.raise({ key = "debug.error_level_log", default = prefixed }, data)
+  else
+    ErrorHandler.debug_log(prefixed, data)
+  end
+end
+
+function DebugConfig.initialize()
+  _current_debug_level = detect_environment()
+end
 
 local DebugCommands = {}
 
@@ -31,7 +93,7 @@ local function get_deps(deps)
     FaveBar = deps.FaveBar or fave_bar,
     GuiHelpers = deps.GuiHelpers or GuiHelpers,
     GuiValidation = deps.GuiValidation or GuiValidation,
-    BasicHelpers = deps.BasicHelpers or basic_helpers,
+    BasicHelpers = deps.BasicHelpers or BasicHelpers,
     Cache = deps.Cache or Cache,
   }
 end
@@ -39,11 +101,17 @@ end
 DebugCommands._deps = get_deps()
 
 
+local function player_from_command(command)
+  local player = game.players[command.player_index]
+  if not BasicHelpers.is_valid_player(player) then return nil end
+  return player
+end
+
 -- All handlers now take explicit deps as first argument for testability
 local function tf_debug_level_handler(deps, command)
   local DebugConfig = deps.DebugConfig
   local PlayerHelpers = deps.PlayerHelpers
-  local player = game.players[command.player_index]
+  local player = player_from_command(command)
   if not player then return end
   local level = tonumber(command.parameter)
   if not level then
@@ -65,7 +133,7 @@ end
 local function tf_debug_info_handler(deps, command)
   local DebugConfig = deps.DebugConfig
   local PlayerHelpers = deps.PlayerHelpers
-  local player = game.players[command.player_index]
+  local player = player_from_command(command)
   if not player then return end
   PlayerHelpers.safe_player_print(player, "=== TeleportFavorites Debug Info ===")
   PlayerHelpers.safe_player_print(player,
@@ -79,30 +147,23 @@ local function tf_debug_info_handler(deps, command)
   end
 end
 
-local function tf_debug_production_handler(deps, command)
-  local DebugConfig = deps.DebugConfig
-  local PlayerHelpers = deps.PlayerHelpers
-  local player = game.players[command.player_index]
-  if not player then return end
-  DebugConfig.enable_production_mode()
-  PlayerHelpers.safe_player_print(player, "Production mode enabled (debug level: " .. DebugConfig.get_level_name() .. ")")
+local function make_mode_handler(enable_fn, label)
+  return function(deps, command)
+    local player = player_from_command(command)
+    if not player then return end
+    enable_fn()
+    deps.PlayerHelpers.safe_player_print(player, label .. " (debug level: " .. deps.DebugConfig.get_level_name() .. ")")
+  end
 end
-
-local function tf_debug_debug_handler(deps, command)
-  local DebugConfig = deps.DebugConfig
-  local PlayerHelpers = deps.PlayerHelpers
-  local player = game.players[command.player_index]
-  if not player then return end
-  DebugConfig.enable_debug_mode()
-  PlayerHelpers.safe_player_print(player, "Debug mode enabled (debug level: " .. DebugConfig.get_level_name() .. ")")
-end
+local tf_debug_production_handler = make_mode_handler(DebugConfig.enable_production_mode, "Production mode enabled")
+local tf_debug_debug_handler      = make_mode_handler(DebugConfig.enable_debug_mode,      "Debug mode enabled")
 
 -- Handler for /tf_log_level command - changes log level during gameplay
 local function tf_log_level_handler(deps, command)
   local Logger = deps.Logger
   local DebugConfig = deps.DebugConfig
   local PlayerHelpers = deps.PlayerHelpers
-  local player = game.players[command.player_index]
+  local player = player_from_command(command)
   if not player then return end
   
   local level = command.parameter
@@ -143,7 +204,7 @@ local function tf_test_controller_handler(deps, command)
   local FaveBar = deps.FaveBar
   local GuiHelpers = deps.GuiHelpers
   local GuiValidation = deps.GuiValidation
-  local player = game.players[command.player_index]
+  local player = player_from_command(command)
   if not player then return end
   PlayerHelpers.debug_print_to_player(player, "tf_test_controller_handler")
   PlayerHelpers.safe_player_print(player, "=== CONTROLLER TEST ===")
@@ -169,7 +230,7 @@ local function tf_force_build_bar_handler(deps, command)
   local FaveBar = deps.FaveBar
   local GuiHelpers = deps.GuiHelpers
   local GuiValidation = deps.GuiValidation
-  local player = game.players[command.player_index]
+  local player = player_from_command(command)
   if not player then return end
   PlayerHelpers.debug_print_to_player(player, "tf_force_build_bar_handler")
   PlayerHelpers.safe_player_print(player, "Force building favorites bar...")
@@ -183,7 +244,7 @@ end
 local function tf_test_settings_handler(deps, command)
   local PlayerHelpers = deps.PlayerHelpers
 
-  local player = game.players[command.player_index]
+  local player = player_from_command(command)
   if not player then return end
 
   PlayerHelpers.safe_player_print(player, "=== TeleportFavorites Settings Test ===")
@@ -249,7 +310,7 @@ end
 local function tf_trigger_settings_event_handler(deps, command)
   local PlayerHelpers = deps.PlayerHelpers
 
-  local player = game.players[command.player_index]
+  local player = player_from_command(command)
   if not player then return end
 
   PlayerHelpers.safe_player_print(player, "=== Manually Triggering Settings Event ===")
@@ -295,7 +356,7 @@ end
 local function tf_check_events_handler(deps, command)
   local PlayerHelpers = deps.PlayerHelpers
 
-  local player = game.players[command.player_index]
+  local player = player_from_command(command)
   if not player then return end
 
   PlayerHelpers.safe_player_print(player, "=== Event Registration Check ===")
@@ -323,7 +384,7 @@ function DebugCommands.on_debug_level_button_click(event)
   local PlayerHelpers = DebugCommands._deps.PlayerHelpers
   local BasicHelpers = DebugCommands._deps.BasicHelpers
   local element = event.element
-  local valid = ValidationUtils.validate_gui_element(element)
+  local valid = GuiValidation.validate_gui_element(element)
   if not valid then return end
   local player = game.players[event.player_index]
   if not BasicHelpers.is_valid_player(player) then return end
@@ -380,3 +441,5 @@ function DebugCommands.register_commands()
 end
 
 return DebugCommands
+
+

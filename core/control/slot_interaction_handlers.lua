@@ -7,17 +7,15 @@
 local Deps = require("deps")
 local BasicHelpers, ErrorHandler, Cache, GPSUtils =
   Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.GpsUtils
-local FavoriteRehydration = require("core.favorite.favorite_rehydration")
+local PlayerFavorites = require("core.favorite.player_favorites")
 local FavoriteUtils = require("core.favorite.favorite_utils")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local tag_editor = require("gui.tag_editor.tag_editor")
 local GuiValidation = require("core.utils.gui_validation")
 local GuiHelpers = require("core.utils.gui_helpers")
-local LocaleUtils = require("core.utils.locale_utils")
-local PlayerHelpers = require("core.utils.player_helpers")
 local CursorUtils = require("core.utils.cursor_utils")
 local TeleportStrategy = require("core.utils.teleport_strategy")
-local SharedUtils = require("core.control.control_shared_utils")
+
 local TeleportHistoryModal = require("gui.teleport_history_modal.teleport_history_modal")
 
 
@@ -58,16 +56,12 @@ function SlotInteractionHandlers.handle_teleport(event, player, fav, slot, did_d
         return false
       end
 
-      local ok, result, gps_string = pcall(function()
-        local success, gps_string = TeleportStrategy.teleport_to_gps(player, fav.gps)
-        -- If teleport succeeded and history modal is open, refresh it        
-        if success and TeleportHistoryModal.is_open(player) then
-          TeleportHistoryModal.update_history_list(player)
-        end
-        return true, success, gps_string
-      end)
-      if not ok or not result then
-        ErrorHandler.warn_log("[SLOT_INTERACTION] Teleport failed: " .. tostring(gps_string),
+      local ok, teleport_success, error_msg = pcall(TeleportStrategy.teleport_to_gps, player, fav.gps)
+      if ok and teleport_success and TeleportHistoryModal.is_open(player) then
+        TeleportHistoryModal.update_history_list(player)
+      end
+      if not ok or not teleport_success then
+        ErrorHandler.warn_log("[SLOT_INTERACTION] Teleport failed: " .. tostring(error_msg),
           { slot = slot, fav = fav, player = player and player.name or "<nil>" })
         return false
       end
@@ -88,9 +82,9 @@ function SlotInteractionHandlers.handle_toggle_lock(event, player, fav, slot, fa
   if event.button == defines.mouse_button_type.left and event.control then
     local success, error_msg = favorites:toggle_favorite_lock(slot)
     if not success then
-      PlayerHelpers.error_message_to_player(player,
-        LocaleUtils.get_error_string(player, "failed_toggle_lock",
-          { error_msg or LocaleUtils.get_error_string(player, "unknown_error") }))
+      BasicHelpers.error_message_to_player(player,
+        BasicHelpers.get_error_string(player, "failed_toggle_lock",
+          { error_msg or BasicHelpers.get_error_string(player, "unknown_error") }))
       return false
     end
 
@@ -133,7 +127,7 @@ function SlotInteractionHandlers.handle_shift_left_click(event, player, fav, slo
       })
       return success
     elseif BasicHelpers.is_locked_favorite(fav) then
-      PlayerHelpers.safe_player_print(player, SharedUtils.lstr("tf-gui.fave_bar_locked_cant_drag", slot))
+      BasicHelpers.safe_player_print(player, { "tf-gui.fave_bar_locked_cant_drag", slot })
       return true -- Prevent further processing like teleportation
     end
   end
@@ -147,7 +141,7 @@ function SlotInteractionHandlers.open_tag_editor_from_favorite(player, favorite)
   if not favorite then return end
 
   -- Rehydrate the favorite to ensure all runtime fields are present
-  favorite = FavoriteRehydration.rehydrate_favorite_at_runtime(player, favorite)
+  favorite = PlayerFavorites.rehydrate_favorite_at_runtime(player, favorite)
 
   -- Create initial tag data from favorite
   local icon = ""
@@ -194,7 +188,7 @@ function SlotInteractionHandlers.handle_request_to_open_tag_editor(event, player
       ErrorHandler.debug_log("[SLOT_HANDLERS] Right-click detected during drag, canceling drag operation",
         { player = player.name })
       CursorUtils.end_drag_favorite(player)
-      PlayerHelpers.safe_player_print(player, { "tf-gui.fave_bar_drag_canceled" })
+      BasicHelpers.safe_player_print(player, { "tf-gui.fave_bar_drag_canceled" })
       return true
     end
 
@@ -223,9 +217,9 @@ end
 function SlotInteractionHandlers.reorder_favorites(player, favorites, drag_index, slot)
   local success, error_msg = favorites:reorder_favorites(drag_index, slot)
   if not success then
-    PlayerHelpers.error_message_to_player(player,
-      LocaleUtils.get_error_string(player, "failed_reorder_favorite",
-        { error_msg or LocaleUtils.get_error_string(player, "unknown_error") }))
+    BasicHelpers.error_message_to_player(player,
+      BasicHelpers.get_error_string(player, "failed_reorder_favorite",
+        { error_msg or BasicHelpers.get_error_string(player, "unknown_error") }))
     CursorUtils.end_drag_favorite(player)
     return false
   end

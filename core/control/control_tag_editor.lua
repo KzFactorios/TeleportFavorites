@@ -2,38 +2,21 @@
 
 -- core/control/control_tag_editor.lua
 -- TeleportFavorites Factorio Mod
--- Handles tag editor GUI events, modal dialogs, tag creation/editing/deletion, and multiplayer-safe tag management.
+-- Handles tag editor GUI events: click dispatch, text change, elem change.
+-- Heavy-lifting (chart tag create/update/delete) lives in control_tag_editor_core.lua.
 --
 -- CRITICAL MULTIPLAYER SAFETY PATTERN:
 -- LuaChartTag objects CANNOT be directly modified in multiplayer without causing desynchronization.
--- Direct property assignment (chart_tag.text = "foo", chart_tag.icon = {...}) works in single-player
--- but causes CRC mismatches and desyncs in multiplayer because each client has independent state.
---
--- CORRECT PATTERN: Destroy and recreate chart tags instead of modifying them.
--- This ensures all clients receive the same game actions and maintain synchronized state.
--- See update_chart_tag_fields() for the implementation of this pattern.
-
+-- Direct property assignment (chart_tag.text = "foo", chart_tag.icon = {...}) causes CRC mismatches.
+-- CORRECT PATTERN: Destroy and recreate chart tags instead. See control_tag_editor_core.lua.
 
 local Deps = require("deps")
-local BasicHelpers, ErrorHandler, Cache, Constants, GPSUtils, Enum =
-  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.Constants, Deps.GpsUtils, Deps.Enum
+local BasicHelpers, ErrorHandler, Cache, GPSUtils, Enum =
+  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.GpsUtils, Deps.Enum
 local tag_editor = require("gui.tag_editor.tag_editor")
-local fave_bar = require("gui.favorites_bar.fave_bar")
 local GuiValidation = require("core.utils.gui_validation")
-local PlayerHelpers = require("core.utils.player_helpers")
-local tag_destroy_helper = require("core.tag.tag_destroy_helper")
-local PlayerFavorites = require("core.favorite.player_favorites")
-local FavoriteUtils = require("core.favorite.favorite_utils")
-local LocaleUtils = require("core.utils.locale_utils")
-local ChartTagUtils = require("core.utils.chart_tag_utils")
-local ValidationUtils = require("core.utils.validation_utils")
-local AdminUtils = require("core.utils.admin_utils")
-local ChartTagSpecBuilder = require("core.utils.chart_tag_spec_builder")
-local ChartTagHelpers = require("core.events.chart_tag_helpers")
-local SharedUtils = require("core.control.control_shared_utils")
 local TeleportStrategy = require("core.utils.teleport_strategy")
-local Tag = require("core.tag.tag")
-
+local Core = require("core.control.control_tag_editor_core")
 
 local M = {}
 
@@ -45,607 +28,67 @@ function M.on_gui_closed(event)
   if not event.element or not event.element.valid then return end
 
   local gui_frame = GuiValidation.get_gui_frame_by_element(event.element)
-  if gui_frame and (gui_frame.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR or 
+  if gui_frame and (gui_frame.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR or
                     gui_frame.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM) then
-    M.close_tag_editor(player)
+    Core.close_tag_editor(player)
     return
   end
 
   local tag_editor_frame = Cache.get_player_data(player).tag_editor_frame
   if tag_editor_frame and tag_editor_frame.valid and event.element == tag_editor_frame then
-    M.close_tag_editor(player)
+    Core.close_tag_editor(player)
     return
   end
 end
 
--- Shared error message update using centralized helper
-local function show_tag_editor_error(player, tag_data, message)
-  tag_data.error_message = message
-  BasicHelpers.update_error_message(tag_editor.update_error_message, player, message)
-  Cache.set_tag_editor_data(player, tag_data)
-end
-
--- Change function signature to accept tag_data
-local function update_chart_tag_fields(tag, tag_data, text, icon, player)
-  -- Get or create chart tag
-  -- CRITICAL FIX: Fetch fresh chart_tag from cache using GPS to avoid stale references
-  -- After destroy-and-recreate operations, both tag.chart_tag and tag_data.chart_tag can be stale
-  local map_position = GPSUtils.map_position_from_gps(tag.gps)
-
-  if not map_position then
-    ErrorHandler.warn_log("Cannot update chart tag: invalid GPS position", {
-      gps = tag.gps
-    })
-    return
-  end
-  
-  -- Fetch fresh chart_tag from cache using GPS lookup
-  local chart_tag = Cache.Lookups.get_chart_tag_by_gps(tag.gps) or tag_data.chart_tag or tag.chart_tag
-  
-  if chart_tag and chart_tag.valid then
-    -- Check permissions using AdminUtils with Tag object (uses Tag.owner_name)
-    local can_edit, is_owner, is_admin_override = AdminUtils.can_edit_chart_tag(player, tag)
-    if not can_edit then
-      ErrorHandler.warn_log("Player cannot edit chart tag: insufficient permissions", {
-        player_name = player.name,
-        tag_owner = tag.owner_name or "",
-        is_admin = AdminUtils.is_admin(player)
-      })
-      return
-    end
-    -- Log admin action if this is an admin override
-    if is_admin_override then
-      AdminUtils.log_admin_action(player, "edit_chart_tag", tag, {
-        old_text = chart_tag.text or "",
-        new_text = text or "",
-        old_icon = chart_tag.icon,
-        new_icon = icon
-      })
-    end
-
-    -- MULTIPLAYER FIX: Destroy and recreate instead of direct modification
-    -- Direct property assignment on LuaChartTag causes desync in multiplayer
-    local surface_index = chart_tag.surface and chart_tag.surface.index or player.surface.index
-    local force = chart_tag.force
-    local surface = chart_tag.surface
-    local position = chart_tag.position
-    
-    -- Store old chart tag data before destroying
-    local old_gps = GPSUtils.gps_from_map_position(position, surface_index)
-    
-    ErrorHandler.debug_log("Destroying chart tag for multiplayer-safe recreation", {
-      player_name = player.name,
-      position = position,
-      old_text = chart_tag.text or "",
-      old_icon = chart_tag.icon,
-      tag_owner = tag.owner_name or ""
-    })
-    
-    -- Destroy the old chart tag
-    chart_tag.destroy()
-    
-    -- Invalidate cache after destroying
-    Cache.Lookups.invalidate_surface_chart_tags(surface_index)
-    
-    -- Create new chart tag with updated properties (ownership already in Tag.owner_name)
-    local chart_tag_spec = ChartTagSpecBuilder.build(position, nil, player, text)
-    if ValidationUtils.has_valid_icon(icon) then
-      chart_tag_spec.icon = icon
-    else
-      chart_tag_spec.icon = nil
-    end
-    
-    local new_chart_tag = ChartTagUtils.safe_add_chart_tag(force, surface, chart_tag_spec, player)
-    if new_chart_tag and new_chart_tag.valid then
-      tag.chart_tag = new_chart_tag
-      tag_data.chart_tag = new_chart_tag
-      
-      -- Update cache after creation
-      Cache.Lookups.invalidate_surface_chart_tags(surface_index)
-      local refreshed_cache = Cache.Lookups.get_chart_tag_cache(surface_index)
-      
-      ErrorHandler.debug_log("Chart tag recreated for multiplayer safety", {
-        surface_index = surface_index,
-        chart_tags_in_cache = #refreshed_cache,
-        new_chart_tag_gps = GPSUtils.gps_from_map_position(new_chart_tag.position, surface_index),
-        tag_owner = tag.owner_name or ""
-      })
-      
-      -- Refresh chart_tag reference from cache
-      local gps = GPSUtils.gps_from_map_position(new_chart_tag.position, surface_index)
-      local refreshed_chart_tag = Cache.Lookups.get_chart_tag_by_gps(gps)
-      if refreshed_chart_tag and refreshed_chart_tag.valid then
-        tag.chart_tag = refreshed_chart_tag
-        tag_data.chart_tag = refreshed_chart_tag
-        tag_data.tag = tag
-      end
-      
-      -- CRITICAL MULTIPLAYER FIX: Update favorites bar for ALL players who have this tag favorited
-      -- The destroy-and-recreate pattern doesn't fire on_chart_tag_modified, so we need to manually
-      -- rebuild favorites bars for all affected players to show updated text/icon
-      ChartTagHelpers.update_tag_metadata(gps, new_chart_tag, player)
-    else
-      ErrorHandler.error_log("Failed to recreate chart tag after destruction", {
-        player_name = player.name,
-        position = position,
-        text = text,
-        icon = icon
-      })
-      return
-    end
-  else
-    -- Create new chart tag using ChartTagUtils - set ownership for final chart tag
-    local chart_tag_spec = ChartTagSpecBuilder.build(map_position, nil, player, text)
-    -- Always set icon (can be nil for empty icons)
-    if ValidationUtils.has_valid_icon(icon) then
-      chart_tag_spec.icon = icon
-    else
-      chart_tag_spec.icon = nil
-    end
-
-    local new_chart_tag = ChartTagUtils.safe_add_chart_tag(player.force, player.surface, chart_tag_spec, player)
-    if new_chart_tag and new_chart_tag.valid then
-      tag.chart_tag = new_chart_tag
-
-      -- CRITICAL: Invalidate cache after creating new chart tag
-      -- Add a small delay to ensure Factorio has registered the chart tag
-      local surface_index = player.surface.index
-      Cache.Lookups.invalidate_surface_chart_tags(surface_index)
-      -- Force immediate cache rebuild to ensure the new chart tag is included
-      local refreshed_cache = Cache.Lookups.get_chart_tag_cache(surface_index)
-      ErrorHandler.debug_log("Cache refreshed after chart tag creation", {
-        surface_index = surface_index,
-        chart_tags_in_cache = #refreshed_cache,
-        new_chart_tag_gps = GPSUtils.gps_from_map_position(new_chart_tag.position, surface_index)
-      })
-      -- Refresh chart_tag reference from cache
-      local gps = GPSUtils.gps_from_map_position(new_chart_tag.position, surface_index)
-      local refreshed_chart_tag = Cache.Lookups.get_chart_tag_by_gps(gps)
-      if refreshed_chart_tag and refreshed_chart_tag.valid then
-        tag.chart_tag = refreshed_chart_tag
-        tag_data.chart_tag = refreshed_chart_tag
-        tag_data.tag = tag
-      end
-    else
-      ErrorHandler.warn_log("Failed to create chart tag", {
-        gps = tag.gps,
-        text = text,
-        force_name = player.force and player.force.name or "unknown",
-        force_valid = player.force and player.force.valid or false,
-        surface_name = player.surface and player.surface.name or "unknown",
-        player_name = player.name
-      })
-      -- Show error to player
-      return show_tag_editor_error(player, tag_data,
-        LocaleUtils.get_error_string(player, "chart_tag_creation_failed") or "Failed to create map tag. You may not have permission to create tags on this surface.")
-    end
-  end
-
-  -- Notify observers of tag modification
-  SharedUtils.notify_observer("tag_modified", {
-    player = player,
-    gps = tag.gps,
-    tag = tag,
-    type = "tag_modified",
-    changes = {
-      text = text,
-      icon = icon
-    }
-  })
-end
-
--- Shared tag editor close using centralized helpers
-local function close_tag_editor(player)
-  local tag_data = Cache.get_tag_editor_data(player)
-  local was_move_mode = tag_data and tag_data.move_mode == true
-  if was_move_mode then
-    if BasicHelpers.is_valid_player(player) then
-      player.clear_cursor()
-    end
-    -- MULTIPLAYER FIX: Do NOT deregister on_player_selected_area / on_player_alt_selected_area here.
-    -- These events are permanently registered by ModalInputBlocker at load time.
-    -- Deregistering them at runtime causes script-event-mismatch when clients join multiplayer.
-    -- The ModalInputBlocker handler already checks move_mode state and ignores irrelevant events.
-  end
-  Cache.set_tag_editor_data(player, {})
-  GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
-  player.opened = nil
-end
-
-local function handle_confirm_btn(player, element, tag_data)
-    -- Mark this GPS as being moved (suppresses invalid tag warning for old GPS)
-    if tag_data and tag_data.gps then
-      Cache.gps_move_in_progress[tag_data.gps] = true
-    end
-  ErrorHandler.debug_log("[TAG_EDITOR] handle_confirm_btn: entry", {
-    gps = tag_data and tag_data.gps,
-    is_favorite = tag_data and tag_data.is_favorite
-  })
-  ErrorHandler.debug_log("[TAG_EDITOR] handle_confirm_btn called", {
-    player = player and player.name or "<nil>",
-    tag_data_gps = tag_data and tag_data.gps or "<nil>"
-  })
-  -- Get values directly from storage (tag_data), not from UI elements
-  local text = (tag_data.text or ""):gsub("%s+$", "")
-  local icon = tag_data.icon or ""
-  local is_favorite = tag_data.is_favorite
-  local max_len = Constants.settings.TAG_TEXT_MAX_LENGTH
-  if #text > max_len then
-    return show_tag_editor_error(player, tag_data,
-      LocaleUtils.get_error_string(player, "tag_text_length_exceeded", { tostring(max_len) }))
-  end
-
-  -- Require either text OR icon (not both empty)
-  local has_valid_icon = ValidationUtils.has_valid_icon(icon)
-  if text == "" and not has_valid_icon then
-    return show_tag_editor_error(player, tag_data,
-      LocaleUtils.get_error_string(player, "tag_requires_icon_or_text"))
-  end
-
-
-  local surface_index = player.surface.index
-  local tags = Cache.get_surface_tags(surface_index)
-  local tag = tag_data.tag or {}
-
-  -- Ensure tag has GPS coordinate from tag_data
-  if not tag.gps and tag_data.gps then
-    tag.gps = tag_data.gps
-  end
-
-  -- Ensure tag has chart_tag reference from tag_data if available
-  if not tag.chart_tag and tag_data.chart_tag then
-    tag.chart_tag = tag_data.chart_tag
-  end
-
-  -- Determine if this is a new tag based on whether we opened the editor on an existing tag or chart tag
-  -- If tag_data.tag OR tag_data.chart_tag exists, we're editing; if neither, we're creating
-  local is_new_tag = not tag_data.tag and not tag_data.chart_tag
-
-  -- Guarantee Tag object exists in cache and has owner_name
-  if tag.gps then
-    if not tags[tag.gps] then
-      tags[tag.gps] = Tag.new(tag.gps, {}, player.name)
-      ErrorHandler.debug_log("[OWNER][handle_confirm_btn] Created new Tag object with owner_name in tag editor", {
-        gps = tag.gps,
-        owner_name = player.name
-      })
-    end
-    -- Always set owner_name if missing
-    if not tags[tag.gps].owner_name then
-      tags[tag.gps].owner_name = player.name
-      ErrorHandler.debug_log("[OWNER][handle_confirm_btn] Set owner_name on Tag object in tag editor", {
-        gps = tag.gps,
-        owner_name = player.name
-      })
-    end
-    tag.owner_name = tags[tag.gps].owner_name
-  end
-
-  update_chart_tag_fields(tag, tag_data, text, icon, player)
-
-  -- After updating chart tag fields, re-fetch the tag object from cache to ensure latest chart_tag reference
-  local refreshed_tag = tags[tag.gps] or tag
-  refreshed_tag.faved_by_players = refreshed_tag.faved_by_players or {}
-  
-  -- CRITICAL FIX: update_chart_tag_fields() may have updated tag.chart_tag with new reference
-  -- We need to copy that updated chart_tag to refreshed_tag before saving to storage
-  if tag.chart_tag and tag.chart_tag.valid then
-    refreshed_tag.chart_tag = tag.chart_tag
-  end
-
-  -- Ensure owner_name is always set before saving
-  refreshed_tag.owner_name = refreshed_tag.owner_name or player.name
-  tag_data.tag = refreshed_tag
-
-  ErrorHandler.debug_log("[TAG_EDITOR] handle_confirm_btn: about to save tag to cache", {
-    gps = tag.gps,
-    tag_present = tag ~= nil,
-    chart_tag_present = tag and tag.chart_tag ~= nil,
-    owner_name = refreshed_tag.owner_name,
-    icon_present = tag and tag.chart_tag and (function()
-      local valid_check_success, is_valid = pcall(function() return tag.chart_tag.valid end)
-      return valid_check_success and is_valid and tag.chart_tag.icon ~= nil or false
-    end)(),
-    icon_info = tag and tag.chart_tag and (function()
-      local valid_check_success, is_valid = pcall(function() return tag.chart_tag.valid end)
-      if valid_check_success and is_valid and tag.chart_tag.icon then
-        return (tag.chart_tag.icon.type or "<no type>") .. "/" .. (tag.chart_tag.icon.name or "<no name>")
-      end
-      return nil
-    end)()
-  })
-  -- Ensure tag is written to persistent storage (sanitized)
-  local sanitized_tag = Cache.sanitize_for_storage(refreshed_tag)
-  tags[tag.gps] = sanitized_tag
-
-  -- MULTIPLAYER SAFETY: DO NOT store chart_tag userdata in storage!
-  -- Chart tags are LuaObject references that are client-specific and cause desyncs
-  -- Use Cache.Lookups.get_chart_tag_by_gps() to retrieve chart tags at runtime
-
-
-  -- Handle favorite operations only on confirm
-  if is_favorite then
-    -- Check for available slot before proceeding
-    local player_favorites = PlayerFavorites.new(player)
-    local _, error_msg = player_favorites:add_favorite(refreshed_tag.gps)
-    if error_msg then
-      return show_tag_editor_error(player, tag_data,
-        LocaleUtils.get_error_string(player, "favorite_slots_full") or error_msg)
-    end
-    refreshed_tag.faved_by_players[player.index] = player.index
-    -- Invalidate rehydrated favorites cache for this player-surface
-    Cache.invalidate_rehydrated_favorites(player, player.surface.index)
-  else
-    local player_favorites = PlayerFavorites.new(player)
-    player_favorites:remove_favorite(refreshed_tag.gps)
-    refreshed_tag.faved_by_players[player.index] = nil
-    -- Invalidate rehydrated favorites cache for this player-surface
-    Cache.invalidate_rehydrated_favorites(player, player.surface.index)
-  end
-
-
-
-  -- Confirm all favorite slots and tags are updated to the new GPS before notifying observers
-  local function is_data_synced()
-    local player_favorites = PlayerFavorites.new(player)
-    local all_synced = true
-    for i, fav in ipairs(player_favorites.favorites) do
-      if fav and not FavoriteUtils.is_blank_favorite(fav) then
-        if fav.gps ~= refreshed_tag.gps then
-          ErrorHandler.debug_log("[TAG_EDITOR][SYNC CHECK] Slot not synced", {slot=i, fav_gps=fav.gps, expected=refreshed_tag.gps})
-          all_synced = false
-        end
-        if fav.tag and fav.tag.gps ~= refreshed_tag.gps then
-          ErrorHandler.debug_log("[TAG_EDITOR][SYNC CHECK] Tag in slot not synced", {slot=i, tag_gps=fav.tag.gps, expected=refreshed_tag.gps})
-          all_synced = false
-        end
-      end
-    end
-    return all_synced
-  end
-
-  local function deferred_notify_with_sync_check(max_attempts, attempt)
-    attempt = attempt or 1
-    if is_data_synced() or attempt >= max_attempts then
-      if not is_data_synced() then
-        ErrorHandler.debug_log("[TAG_EDITOR][SYNC CHECK] Data not fully synced after max attempts, proceeding anyway", {attempt=attempt})
-      end
-      if is_favorite then
-        ErrorHandler.debug_log("[TAG_EDITOR] ========== FAVORITE ADDED START (deferred, sync confirmed) ==========", {
-          player = player.name,
-          player_index = player.index,
-          gps = refreshed_tag.gps,
-          tick = game.tick
-        })
-        SharedUtils.notify_observer("favorite_added", {
-          player = player,
-          gps = refreshed_tag.gps,
-          tag = refreshed_tag
-        })
-        ErrorHandler.debug_log("[TAG_EDITOR] favorite_added notification sent (deferred, sync confirmed)", {
-          current_tick = game.tick
-        })
-      else
-        ErrorHandler.debug_log("[TAG_EDITOR] Sending favorite_removed notification (deferred, sync confirmed)", {
-          player = player.name,
-          gps = refreshed_tag.gps
-        })
-        SharedUtils.notify_observer("favorite_removed", {
-          player = player,
-          gps = refreshed_tag.gps,
-          tag = refreshed_tag
-        })
-      end
-
-      SharedUtils.notify_observer("favorites_gps_updated", {
-        player_index = player.index,
-        old_gps = tag_data.gps,
-        new_gps = refreshed_tag.gps
-      })
-      SharedUtils.notify_observer("cache_updated", {
-        type = "favorites_gps_updated",
-        player_index = player.index,
-        old_gps = tag_data.gps,
-        new_gps = refreshed_tag.gps
-      })
-    else
-      -- Try again next tick, up to max_attempts
-      script.on_nth_tick(game.tick + 1, function(event)
-        deferred_notify_with_sync_check(max_attempts, attempt + 1)
-        script.on_nth_tick(game.tick + 1, nil)
-      end)
-    end
-  end
-
-  -- Start sync check with up to 3 attempts (3 ticks max)
-  deferred_notify_with_sync_check(3, 1)
-
-
-  -- After updating faved_by_players, re-sanitize and persist the tag
-  local sanitized_tag = Cache.sanitize_for_storage(refreshed_tag)
-  tags[refreshed_tag.gps] = sanitized_tag
-  tag_data.tag = sanitized_tag
-
-  -- Now notify observers of tag creation or modification (UI refresh will be deferred)
-  local event_type = is_new_tag and "tag_created" or "tag_modified"
-  ErrorHandler.debug_log("[TAG_EDITOR] handle_confirm_btn: Notifying observers", {
-    event_type = event_type,
-    player = player and player.name or "<nil>",
-    gps = tag.gps
-  })
-  SharedUtils.notify_observer(event_type, {
-    player = player,
-    gps = tag.gps,
-    tag = tag,
-    type = event_type,
-    is_new = is_new_tag
-  })
-  -- Fire multiplayer-safe tag collection changed event
-  SharedUtils.notify_observer("tag_collection_changed", {
-    gps = tag.gps
-  })
-  -- Fire cache_updated event for DataObserver
-  SharedUtils.notify_observer("cache_updated", {
-    type = "tag_editor_confirmed",
-    gps = tag.gps
-  })
-
-  ErrorHandler.debug_log("[TAG_EDITOR] handle_confirm_btn: after notify, about to close_tag_editor", {
-    player = player and player.name or "<nil>",
-    gps = tag.gps
-  })
-
-  -- Clear move-in-progress flag for this GPS (move complete)
-  if tag_data and tag_data.gps then
-    Cache.gps_move_in_progress[tag_data.gps] = nil
-  end
-  
-  -- GUI refresh handled by deferred notification on next tick (multiplayer-safe)
-  -- Build throttle prevents double-builds, 1-tick delay (16.67ms at 60 UPS) is imperceptible
-  
-  close_tag_editor(player)
-end
-
--- Shared favorite button handler using centralized helpers
+--- Toggle the favorite state in the tag editor
+---@param player LuaPlayer
+---@param tag_data table
 local function handle_favorite_btn(player, tag_data)
   tag_data = tag_data or {}
   if type(tag_data.is_favorite) ~= "boolean" then
     tag_data.is_favorite = false
   end
   tag_data.is_favorite = not tag_data.is_favorite
-  ErrorHandler.debug_log("[TAG_EDITOR] handle_favorite_btn: toggled", {
-    gps = tag_data and tag_data.gps,
-    is_favorite = tag_data and tag_data.is_favorite
-  })
   Cache.set_tag_editor_data(player, tag_data)
   BasicHelpers.update_state(tag_editor.update_favorite_state, player, tag_data.is_favorite)
 end
 
---- Close and clean up the delete confirmation dialog
+--- Show the delete confirmation dialog
 ---@param player LuaPlayer
-local function _dismiss_delete_confirm(player)
-  GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
-  Cache.set_modal_dialog_state(player, nil)
-end
-
-local function handle_delete_confirm(player)
-  -- Get the tag data from the tag_editor_data cache
-  local tag_data = Cache.get_tag_editor_data(player)
-  if not tag_data then
-    -- No cached data, just close the dialogs
-    _dismiss_delete_confirm(player)
-    close_tag_editor(player)
-    return
-  end
-
-  -- User confirmed deletion - execute deletion logic
-  local tag = tag_data.tag
-  if not tag then
-    -- Close both confirmation dialog and tag editor
-    _dismiss_delete_confirm(player)
-    close_tag_editor(player)
-    Cache.reset_tag_editor_delete_mode(player)
-    return
-  end
-
-  -- Use AdminUtils to validate deletion permissions (uses Tag.owner_name)
-  local can_delete, _is_owner, is_admin_override, reason = AdminUtils.can_delete_chart_tag(player, tag)
-
-  if not can_delete then
-    _dismiss_delete_confirm(player)
-    show_tag_editor_error(player, tag_data, reason or LocaleUtils.get_error_string(player, "tag_deletion_forbidden"))
-    Cache.reset_tag_editor_delete_mode(player)
-    return
-  end
-
-  -- Log admin action if this is an admin override
-  if is_admin_override then
-    AdminUtils.log_admin_action(player, "delete_chart_tag", tag, {
-      had_other_favorites = tag.faved_by_players and #tag.faved_by_players > 1,
-      override_reason = "admin_privileges"
-    })
-  end
-
-  -- Store tag info for observers before deletion
-  local tag_gps = tag.gps
-
-  -- Remove favorite for this GPS before destroying tag
-  local player_favorites = PlayerFavorites.new(player)
-  player_favorites:remove_favorite(tag_gps)
-
-  tag_destroy_helper.destroy_tag_and_chart_tag(tag, tag.chart_tag)
-
-  -- Notify observers of tag deletion
-  SharedUtils.notify_observer("tag_deleted", {
-    player = player,
-    gps = tag_gps,
-    type = "tag_deleted",
-    deleted_by = player.name
-  })
-  -- Fire multiplayer-safe tag collection changed event
-  SharedUtils.notify_observer("tag_collection_changed", {
-    gps = tag_gps
-  })
-  -- Notify favorites bar observer to refresh UI after deletion
-  SharedUtils.notify_observer("favorite_removed", {
-    player = player,
-    gps = tag_gps,
-    tag = tag
-  })
-
-  -- Invalidate rehydrated favorites cache for all players on this surface
-  -- Tag deletion may affect multiple players' favorites
-  Cache.invalidate_rehydrated_favorites(nil, player.surface.index)
-
-  -- Close both dialogs
-  _dismiss_delete_confirm(player)
-  close_tag_editor(player)
- 
-  Cache.reset_tag_editor_delete_mode(player)
-end
-
--- User cancelled deletion - close confirmation dialog and return to tag editor
-local function handle_delete_cancel(player)
-  _dismiss_delete_confirm(player)
-  player.opened = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
-  Cache.reset_tag_editor_delete_mode(player)
-end
-
--- Shared delete button handler using centralized helpers
+---@param tag_data table
 local function handle_delete_btn(player, tag_data)
-  ErrorHandler.debug_log("Tag editor handle_delete_btn called", {
-    player_name = player and player.name or "<unknown>"
-  })
   GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
   Cache.set_tag_editor_delete_mode(player, true)
-  local frame, confirm_btn, cancel_btn = tag_editor.build_confirmation_dialog(player, {
-    message = { "tf-gui.confirm_delete_message" }
-  })
+  tag_editor.build_confirmation_dialog(player, { message = { "tf-gui.confirm_delete_message" } })
   Cache.set_modal_dialog_state(player, "delete_confirmation")
   player.opened = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
-  ErrorHandler.debug_log("Confirmation dialog opened successfully", {
-    player_name = player.name,
-    frame_lua_type = type(frame),
-    modal_state_set = true
-  })
 end
 
+--- Cancel deletion and return to tag editor
+---@param player LuaPlayer
+local function handle_delete_cancel(player)
+  Core.dismiss_delete_confirm(player)
+  player.opened = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+  Cache.set_tag_editor_delete_mode(player, false)
+end
+
+--- Teleport player to tag position and close editor
+---@param player LuaPlayer
+---@param map_position MapPosition
 local function handle_teleport_btn(player, map_position)
-  if not player or not map_position then 
+  if not player or not map_position then
     ErrorHandler.warn_log("Invalid teleport parameters", {
       player_valid = player and player.valid or false,
       map_position_provided = map_position ~= nil
     })
-    return 
-  end
-  
-  if not player.valid then
-    ErrorHandler.warn_log("Player invalid during teleport", {
-      player_name = "invalid_player"
-    })
     return
   end
-  
+  if not player.valid then
+    ErrorHandler.warn_log("Player invalid during teleport", { player_name = "invalid_player" })
+    return
+  end
+
   local gps = GPSUtils.gps_from_map_position(map_position, player.surface.index)
   if not gps or gps == "" then
     ErrorHandler.warn_log("Failed to create GPS from map position", {
@@ -656,17 +99,17 @@ local function handle_teleport_btn(player, map_position)
     })
     return
   end
-  
+
   TeleportStrategy.teleport_to_gps(player, gps)
-  close_tag_editor(player)
+  Core.close_tag_editor(player)
 end
 
---- Tag editor GUI click handler for shared dispatcher
+--- Tag editor GUI click dispatcher
+---@param event table on_gui_click event
 local function on_tag_editor_gui_click(event)
   local element = event.element
   if not BasicHelpers.is_valid_element(element) then return end
 
-  -- Ignore right-clicks except for delete button
   if event.button == defines.mouse_button_type.right and element.name ~= "tag_editor_delete_button" then
     return
   end
@@ -678,7 +121,6 @@ local function on_tag_editor_gui_click(event)
   local success, result = pcall(function()
     return Cache.get_tag_editor_data(player)
   end)
-
   if success and result then
     tag_data = result
   else
@@ -690,18 +132,12 @@ local function on_tag_editor_gui_click(event)
     tag_data = {}
   end
 
-  -- Robust close for all close/cancel buttons
   if element.name == "tag_editor_title_row_close" then
-    close_tag_editor(player)
+    Core.close_tag_editor(player)
     return
   elseif element.name == "tag_editor_confirm_button" then
-    -- Accept all button clicks for confirm button
-    return handle_confirm_btn(player, element, tag_data)
+    return Core.handle_confirm_btn(player, element, tag_data)
   elseif element.name == "tag_editor_delete_button" then
-    -- Accept any mouse button click for delete button
-    ErrorHandler.debug_log("Tag editor delete button clicked", {
-      button = event.button
-    })
     return handle_delete_btn(player, tag_data)
   elseif element.name == "tag_editor_is_favorite_button" then
     return handle_favorite_btn(player, tag_data)
@@ -724,99 +160,82 @@ local function on_tag_editor_gui_click(event)
     end
     return handle_teleport_btn(player, tele_pos)
   elseif element.name == "tag_editor_icon_button" then
-    -- Icon selection changed - immediately save to storage
     local new_icon = element.elem_value or element.signal or ""
     tag_data.icon = new_icon
     Cache.set_tag_editor_data(player, tag_data)
-    -- Update confirm button state based on new icon selection
     BasicHelpers.update_state(tag_editor.update_confirm_button_state, player, tag_data)
     return
   elseif element.name == "tag_editor_rich_text_row" then
-    -- Handle clicks on the rich text row container - usually these are propagated clicks
-    -- from child elements, so we don't need to do anything special here
-    ErrorHandler.debug_log("Tag editor rich text row clicked", {
-      element_name = element.name,
-      player = player and player.name or "unknown"
-    })
     return
   end
-  -- Handle confirmation dialog buttons without checking button type
+
   if element.name == "tf_confirm_dialog_confirm_btn" then
-    return handle_delete_confirm(player)
+    return Core.handle_delete_confirm(player)
   elseif element.name == "tf_confirm_dialog_cancel_btn" then
     return handle_delete_cancel(player)
   end
-
-  ErrorHandler.debug_log("Tag editor GUI click handler: no matching element", {
-    element_name = element.name
-  })
 end
 
---- Handle text input changes - save immediately to storage
-local function on_tag_editor_gui_text_changed(event)
+--- Validate and resolve element + player from a tag_editor GUI event
+---@param event table
+---@return LuaGuiElement|nil, LuaPlayer|nil
+local function tag_editor_event_context(event)
   local element = event.element
-  if not BasicHelpers.is_valid_element(element) then return end
+  if not BasicHelpers.is_valid_element(element) then return nil, nil end
   local name = element.name or ""
-  if not name:find("tag_editor") then return end
-
+  if not name:find("tag_editor") then return nil, nil end
   local player = game.get_player(event.player_index)
-  if not BasicHelpers.is_valid_player(player) then return end
+  if not BasicHelpers.is_valid_player(player) then return nil, nil end
+  return element, player
+end
+
+--- Handle text input changes — save immediately to storage
+---@param event table on_gui_text_changed event
+local function on_tag_editor_gui_text_changed(event)
+  local element, player = tag_editor_event_context(event)
+  if not element then return end
 
   if element.name == "tag_editor_rich_text_input" then
     local tag_data = Cache.get_tag_editor_data(player) or {}
     local raw_text = element.text or ""
     local trimmed_text = raw_text:gsub("%s+$", "")
-    
-    -- Validate text length
-    local is_valid, error_msg = ValidationUtils.validate_text_length(trimmed_text, nil, "Chart tag text")
+
+    local is_valid, error_msg = GuiValidation.validate_text_length(trimmed_text, nil, "Chart tag text")
     if not is_valid then
-      -- Store error in tag_data and revert to previous valid text
       tag_data.error_message = error_msg
-      if tag_data.text then
-        element.text = tag_data.text
-      else
-        element.text = ""
-      end
+      element.text = tag_data.text or ""
     else
-      -- Clear any previous error and store the valid text
       tag_data.error_message = nil
       tag_data.text = trimmed_text
     end
-    
+
     Cache.set_tag_editor_data(player, tag_data)
-    
+
     if tag_data.error_message then
       tag_editor.update_error_message(player, tag_data.error_message)
     else
       tag_editor.update_error_message(player, nil)
     end
-    -- Update confirm button state based on new text content
     BasicHelpers.update_state(tag_editor.update_confirm_button_state, player, tag_data)
   end
 end
 
---- Handle element changes (for icon selection) - save immediately to storage
+--- Handle element changes (icon selection) — save immediately to storage
+---@param event table on_gui_elem_changed event
 local function on_tag_editor_gui_elem_changed(event)
-  local element = event.element
-  if not BasicHelpers.is_valid_element(element) then return end
-  local name = element.name or ""
-  if not name:find("tag_editor") then return end
-
-  local player = game.get_player(event.player_index)
-  if not BasicHelpers.is_valid_player(player) then return end
+  local element, player = tag_editor_event_context(event)
+  if not element then return end
 
   if element.name == "tag_editor_icon_button" then
     local tag_data = Cache.get_tag_editor_data(player) or {}
-    -- Get the new icon value from the element change event
     local new_icon = element.elem_value or ""
     tag_data.icon = new_icon
     Cache.set_tag_editor_data(player, tag_data)
-
     BasicHelpers.update_state(tag_editor.update_confirm_button_state, player, tag_data)
   end
 end
 
-M.close_tag_editor = close_tag_editor
+M.close_tag_editor = Core.close_tag_editor
 M.on_tag_editor_gui_click = on_tag_editor_gui_click
 M.on_tag_editor_gui_text_changed = on_tag_editor_gui_text_changed
 M.on_tag_editor_gui_elem_changed = on_tag_editor_gui_elem_changed

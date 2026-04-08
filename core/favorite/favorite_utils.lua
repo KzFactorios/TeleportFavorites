@@ -26,41 +26,13 @@ function FavoriteUtils.new(gps, locked, tag)
   }
 end
 
---- Toggle the locked state of this favorite
----@param fav Favorite
-function FavoriteUtils.toggle_locked(fav)
-  FavoriteUtils.update_property(fav, "locked")
-end
-
---- Generic state checking method for favorites
----@param fav Favorite? The favorite to check
----@param check_type string Type of check: "blank", "valid", "locked", "empty"
----@return boolean
-function FavoriteUtils.check_state(fav, check_type)
-  if check_type == "blank" then
-    if type(fav) ~= "table" then 
-      return false 
-    end
-    if next(fav) == nil then 
-      return true 
-    end
-    local is_blank = (fav.gps == "" or fav.gps == nil or fav.gps == (Constants.settings.BLANK_GPS --[[@as string]])) 
-      and (fav.locked == false or fav.locked == nil)
-    return is_blank
-  elseif check_type == "valid" then
-    return type(fav) == "table" and type(fav.gps) == "string" and fav.gps ~= "" and fav.gps ~= (Constants.settings.BLANK_GPS --[[@as string]])
-  elseif check_type == "locked" then
-    return type(fav) == "table" and fav.locked == true
-  elseif check_type == "empty" then
-    return type(fav) ~= "table" or next(fav) == nil
-  end
-  return false
-end
-
 ---@param fav Favorite?
 ---@return boolean
 function FavoriteUtils.is_blank_favorite(fav)
-  return FavoriteUtils.check_state(fav, "blank")
+  if type(fav) ~= "table" then return false end
+  if next(fav) == nil then return true end
+  return (fav.gps == "" or fav.gps == nil or fav.gps == (Constants.settings.BLANK_GPS --[[@as string]]))
+    and (fav.locked == false or fav.locked == nil)
 end
 
 ---@return Favorite
@@ -77,33 +49,6 @@ function FavoriteUtils.copy(fav)
     if copy[k] == nil then copy[k] = v end
   end
   return copy
-end
-
----@param a Favorite
----@param b Favorite
----@return boolean
-function FavoriteUtils.equals(a, b)
-  if type(a) ~= "table" or type(b) ~= "table" then return false end
-  return a.gps == b.gps and a.locked == b.locked and (a.tag and a.tag.text or nil) == (b.tag and b.tag.text or nil)
-end
-
---- Generic property update method for favorites
----@param fav Favorite The favorite to modify
----@param property string Property name ("gps", "locked", "tag")
----@param value any? New value for the property (nil for toggle operations on booleans)
-function FavoriteUtils.update_property(fav, property, value)
-  if property == "gps" and type(value) == "string" then
-    fav.gps = value
-  elseif property == "locked" then
-    if value ~= nil then
-      fav.locked = value
-    else
-      -- Toggle if no value provided
-      fav.locked = not fav.locked
-    end
-  elseif property == "tag" then
-    fav.tag = value
-  end
 end
 
 return FavoriteUtils

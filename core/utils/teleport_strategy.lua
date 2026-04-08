@@ -7,18 +7,16 @@
 local Deps = require("deps")
 local BasicHelpers, ErrorHandler, Cache, Constants, GPSUtils =
   Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.Constants, Deps.GpsUtils
-local LocaleUtils = require("core.utils.locale_utils")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
 
 local TeleportStrategy = {}
 
 
 ---@param player LuaPlayer
----@param gps string
 ---@return boolean, string
-local function validate_prerequisites(player, gps)
+local function validate_prerequisites(player)
   if not player.character then
-    return false, LocaleUtils.get_error_string(player, "player_character_missing")
+    return false, BasicHelpers.get_error_string(player, "player_character_missing")
   end
   return true, ""
 end
@@ -42,7 +40,7 @@ local function get_closest_chart_tag_gps(player, gps)
   end
 
   if chart_tag and chart_tag.position and type(chart_tag.position.x) == "number" and type(chart_tag.position.y) == "number" then
-  local surface_index = player.surface.index + 0
+  local surface_index = player.surface.index
   return GPSUtils.gps_from_map_position(chart_tag.position, surface_index)
   end
   return nil
@@ -69,7 +67,7 @@ function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history)
     return false, "invalid_gps"
   end
 
-  local valid, error_msg = validate_prerequisites(player, target_gps)
+  local valid, error_msg = validate_prerequisites(player)
   if not valid then
     ErrorHandler.warn_log("Safe teleport failed validation", { error = error_msg })
     return false, error_msg
@@ -79,7 +77,7 @@ function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history)
   local target_position = GPSUtils.map_position_from_gps(target_gps)
   local player_gps = nil
   if player.position and type(player.position.x) == "number" and type(player.position.y) == "number" then
-  local surface_index = player.surface.index + 0
+  local surface_index = player.surface.index
   player_gps = GPSUtils.gps_from_map_position(player.position, surface_index)
   end
   -- Short-circuit if player is already at the target GPS position (surface-aware, multiplayer-safe)
@@ -107,18 +105,14 @@ function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history)
       non_collide_position = player.surface.find_non_colliding_position("character", safe_target_position, search_radius, precision)
     end
 
-    if not non_collide_position or type(non_collide_position.x) ~= "number" or type(non_collide_position.y) ~= "number" then
-  ErrorHandler.error_log("TeleportStrategy", "Safe teleport failed: No valid safe landing position", {}, "teleport_to_gps")
-  BasicHelpers.safe_player_print(player, LocaleUtils.get_error_string(player, "no_safe_landing_position"))
-      return false, "no_safe_landing_position"
+    if non_collide_position and type(non_collide_position.x) == "number" and type(non_collide_position.y) == "number" then
+      working_gps = GPSUtils.gps_from_map_position(non_collide_position, tonumber(player.surface.index) or 1)
     end
-
-  working_gps = GPSUtils.gps_from_map_position(non_collide_position, tonumber(player.surface.index) or 1)
   end
 
   if not working_gps then
-  ErrorHandler.error_log("TeleportStrategy", "Safe teleport failed: No valid safe landing position", {}, "teleport_to_gps")
-  BasicHelpers.safe_player_print(player, LocaleUtils.get_error_string(player, "no_safe_landing_position"))
+    ErrorHandler.error_log("TeleportStrategy", "Safe teleport failed: No valid safe landing position", {}, "teleport_to_gps")
+    BasicHelpers.safe_player_print(player, BasicHelpers.get_error_string(player, "no_safe_landing_position"))
     return false, "no_safe_landing_position"
   end
 
@@ -126,7 +120,7 @@ function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history)
   local working_position = GPSUtils.map_position_from_gps(working_gps)
   if not working_position then
   ErrorHandler.error_log("TeleportStrategy", "Safe teleport failed: Invalid working position", {}, "teleport_to_gps")
-  BasicHelpers.safe_player_print(player, LocaleUtils.get_error_string(player, "invalid_working_position"))
+  BasicHelpers.safe_player_print(player, BasicHelpers.get_error_string(player, "invalid_working_position"))
     return false, "invalid_working_position"
   end
 

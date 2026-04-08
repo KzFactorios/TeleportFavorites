@@ -13,21 +13,12 @@ require("prototypes.styles.fave_bar")
 require("prototypes.styles.tag_editor")
 require("prototypes.styles.teleport_history_modal")
 
-local UIEnums = require("prototypes.enums.ui_enums")
+local UIEnums = require("prototypes.enums.enum")
 
 local Styles = {}
 local gui_style = data.raw["gui-style"].default
 
-function Styles.default_inner_glow(tint_value, scale_value)
-  return
-  {
-    position = { 183, 128 },
-    corner_size = 8,
-    tint = tint_value,
-    scale = scale_value,
-    draw_type = "inner"
-  }
-end
+local ORANGE_SHADOW = { r = 0.5, g = 0.3, b = 0.1, a = 0.5 }
 
 function Styles.default_glow(tint_value, scale_value)
   return
@@ -123,17 +114,17 @@ gui_style.slot_orange_favorite_on = {
   },
   hovered_graphical_set = {
     base = { position = { 202, 199 }, corner_size = 8 }, 
-    shadow = Styles.rounded_button_glow({ r = 0.5, g = 0.3, b = 0.1, a = 0.5 }),
-    glow = Styles.default_glow(UIEnums.Colors.ORANGE_BUTTON_GLOW_COLOR, 0.5)
+    shadow = Styles.rounded_button_glow(ORANGE_SHADOW),
+    glow = Styles.default_glow(UIEnums.ColorEnum.ORANGE_BUTTON_GLOW_COLOR, 0.5)
   },
   clicked_graphical_set = {
     base = { position = { 202, 199 }, corner_size = 8, tint = { r = 1, g = 1, b = 1, a = .2 } }, 
-    shadow = Styles.rounded_button_glow(UIEnums.Colors.DEFAULT_DIRT_COLOR)
+    shadow = Styles.rounded_button_glow(UIEnums.ColorEnum.DEFAULT_DIRT_COLOR)
   },
   disabled_graphical_set = {
     -- originally hovered_graphical_set
     base = { position = { 236, 216 }, corner_size = 8 }, 
-    shadow = Styles.rounded_button_glow(UIEnums.Colors.DEFAULT_DIRT_COLOR),
+    shadow = Styles.rounded_button_glow(UIEnums.ColorEnum.DEFAULT_DIRT_COLOR),
   },
 }
 
@@ -143,23 +134,23 @@ gui_style.tf_orange_button = {
   default_graphical_set =
   {
     base = { position = { 34, 17 }, corner_size = 8 },
-    shadow = Styles.rounded_button_glow({ r = 0.5, g = 0.3, b = 0.1, a = 0.5 })
+    shadow = Styles.rounded_button_glow(ORANGE_SHADOW)
   },
   hovered_graphical_set =
   {
     base = { position = { 202, 199 }, corner_size = 8 },
-    shadow = Styles.rounded_button_glow({ r = 0.5, g = 0.3, b = 0.1, a = 0.5 }),
+    shadow = Styles.rounded_button_glow(ORANGE_SHADOW),
     glow = Styles.default_glow({ r = 1, g = 0.5, b = 0, a = 0.5 }, 0.5)
   },
   clicked_graphical_set =
   {
     base = { position = { 352, 17 }, corner_size = 8 },
-    shadow = Styles.rounded_button_glow({ r = 0.5, g = 0.3, b = 0.1, a = 0.5 })
+    shadow = Styles.rounded_button_glow(ORANGE_SHADOW)
   },
   disabled_graphical_set =
   {
     base = { position = { 368, 17 }, corner_size = 8 },
-    shadow = Styles.rounded_button_glow({ r = 0.5, g = 0.3, b = 0.1, a = 0.5 })
+    shadow = Styles.rounded_button_glow(ORANGE_SHADOW)
   }
 }
 

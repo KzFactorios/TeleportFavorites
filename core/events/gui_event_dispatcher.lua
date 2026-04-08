@@ -10,7 +10,7 @@ local BasicHelpers, ErrorHandler, Cache, Constants, Enum =
 local control_fave_bar = require("core.control.control_fave_bar")
 local control_tag_editor = require("core.control.control_tag_editor")
 local DebugCommands = require("core.commands.debug_commands")
-local GameHelpers = require("core.utils.game_helpers")
+
 local GuiValidation = require("core.utils.gui_validation")
 local CursorUtils = require("core.utils.cursor_utils")
 local FavoriteUtils = require("core.favorite.favorite_utils")
@@ -55,9 +55,6 @@ function M.register_gui_handlers(script)
     -- Ignore these clicks everywhere EXCEPT on a fave bar slot button
     if event.button == defines.mouse_button_type.right and event.shift then return end
     if event.button == defines.mouse_button_type.left and event.shift and not is_fave_bar_slot_button(event.element) then return end
-
-    ErrorHandler.debug_log("[DISPATCH] shared_on_gui_click called",
-      { event_type = "on_gui_click", element = event and event.element and event.element.name or "<none>" })
 
     if _tf_gui_click_guard then return end
 
@@ -126,7 +123,7 @@ function M.register_gui_handlers(script)
             raw_button = event.button
           })
           CursorUtils.end_drag_favorite(player)
-          GameHelpers.player_print(player, { "tf-gui.fave_bar_drag_canceled" })
+          BasicHelpers.player_print(player, { "tf-gui.fave_bar_drag_canceled" })
 
           -- Set a flag to prevent tag editor opening on this tick
           if not player_data.suppress_tag_editor then
@@ -196,44 +193,8 @@ function M.register_gui_handlers(script)
         error = tostring(e),
         event_player_index = event and event.player_index
       })
-
-      if log then
-        local el = event and event.element
-        local ename, etype = "<no element>", "<no type>"
-        -- Safely check if element is valid before accessing properties
-        if el and type(el) == "userdata" then
-          pcall(function()
-            ---@diagnostic disable-next-line: undefined-field
-            if el.valid then
-              ---@diagnostic disable-next-line: undefined-field
-              ename = el.name or "<no name>"
-              ---@diagnostic disable-next-line: undefined-field
-              etype = el.type or "<no type>"
-            else
-              ename = "<invalid element>"
-              etype = "<invalid element>"
-            end
-          end)
-        end
-
-        for k, v in pairs(event or {}) do
-          if type(v) ~= "table" and type(v) ~= "userdata" then
-            ErrorHandler.debug_log("GUI event property", {
-              property = tostring(k),
-              value = tostring(v)
-            })
-          end
-        end
-      end
     end)
     _tf_gui_click_guard = false
-    if not ok then
-      -- Log the error but don't re-throw it to prevent cascading errors
-      ErrorHandler.warn_log("GUI click handler failed", {
-        error = tostring(result),
-        event_player_index = event and event.player_index
-      })
-    end
   end
   script.on_event(defines.events.on_gui_click, shared_on_gui_click)
 

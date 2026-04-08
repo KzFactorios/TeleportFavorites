@@ -7,6 +7,8 @@ local _in_error_handler = false
 
 local ErrorHandler = {}
 
+local VALID_LEVELS = { debug = true, production = true, warn = true, error = true }
+
 local function send_error_to_player(player, error_key)
   if not BasicHelpers.is_valid_player(player) then return end
   local message_text = BasicHelpers.format_error_message(error_key)
@@ -19,12 +21,10 @@ function ErrorHandler.is_debug()
   return ErrorHandler._log_level == "debug"
 end
 
-function ErrorHandler.should_log_debug()
-  return ErrorHandler._log_level == "debug"
-end
+ErrorHandler.should_log_debug = ErrorHandler.is_debug
 
 function ErrorHandler.set_log_level(level)
-  if level and (level == "debug" or level == "production" or level == "warn" or level == "error") then
+  if level and VALID_LEVELS[level] then
     ErrorHandler._log_level = level
     -- Only log level changes in debug mode
     if ErrorHandler.is_debug() then
@@ -34,9 +34,7 @@ function ErrorHandler.set_log_level(level)
 end
 
 function ErrorHandler.initialize(log_level)
-  local space = "space"
-  ErrorHandler._initialized = true
-  if log_level and (log_level == "debug" or log_level == "production" or log_level == "warn" or log_level == "error") then
+  if log_level and VALID_LEVELS[log_level] then
     ErrorHandler._log_level = log_level
   end
   -- Only log initialization in debug mode
@@ -47,43 +45,28 @@ function ErrorHandler.initialize(log_level)
   end
 end
 
-function ErrorHandler.debug_log(message, context)
-  if not ErrorHandler.is_debug() then return end
+local function emit_log(prefix, message, context, require_debug)
+  if require_debug and not ErrorHandler.is_debug() then return end
   if _in_error_handler then return end
   _in_error_handler = true
-  local prefix = "[TeleFaves][DEBUG] "
-  local ok, err = pcall(function()
+  pcall(function()
     if context and type(context) == "table" then
-      local context_str = ""
-      for k, v in pairs(context) do
-        context_str = context_str .. tostring(k) .. "=" .. tostring(v) .. " "
-      end
-      log(prefix .. message .. " | Context: " .. context_str)
+      local s = ""
+      for k, v in pairs(context) do s = s .. tostring(k) .. "=" .. tostring(v) .. " " end
+      log(prefix .. message .. " | Context: " .. s)
     else
       log(prefix .. message)
     end
   end)
-  -- Do not attempt to log errors from within the logger itself
   _in_error_handler = false
 end
 
+function ErrorHandler.debug_log(message, context)
+  emit_log("[TeleFaves][DEBUG] ", message, context, true)
+end
+
 function ErrorHandler.warn_log(message, context)
-  if _in_error_handler then return end
-  _in_error_handler = true
-  local prefix = "[TeleFaves][WARN] "
-  local ok, err = pcall(function()
-    local context_str = ""
-    if context and type(context) == "table" then
-      for k, v in pairs(context) do
-        context_str = context_str .. tostring(k) .. "=" .. tostring(v) .. " "
-      end
-      log(prefix .. message .. " | Context: " .. context_str)
-    else
-      log(prefix .. message)
-    end
-  end)
-  -- Do not attempt to log errors from within the logger itself
-  _in_error_handler = false
+  emit_log("[TeleFaves][WARN] ", message, context, false)
 end
 
 function ErrorHandler.error_log(handler_name, error, event, event_type)
@@ -95,11 +78,7 @@ function ErrorHandler.error_log(handler_name, error, event, event_type)
     error = error,
     player_index = event and event.player_index
   }
-  local context_str = ""
-  for k, v in pairs(context) do
-    context_str = context_str .. tostring(k) .. "=" .. tostring(v) .. " "
-  end
-  pcall(function() log(msg .. " | Context: " .. context_str) end)
+  emit_log("", msg, context, false)
 
   -- Show player message for user-facing errors if applicable
   if event and event.player_index then

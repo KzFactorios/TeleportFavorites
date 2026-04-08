@@ -14,7 +14,6 @@
 
 
 local basic_helpers = {}
-local Constants = require("constants")
 
 
 function basic_helpers.pad(n, padlen)
@@ -83,18 +82,13 @@ function basic_helpers.truncate_rich_text(text, max_display)
     local tag_start, tag_end = string.find(text, "%[.-%]", i)
     if tag_start == i then
       -- Found a rich text tag at current position
-      if type(tag_start) == "number" and type(tag_end) == "number" then
-        if display_count + 3 > max_display then
-          out = out .. "..."
-          break
-        end
-        out = out .. string.sub(text, tag_start, tag_end)
-        display_count = display_count + 3
-        i = tag_end + 1
-      else
+      if display_count + 3 > max_display then
         out = out .. "..."
         break
       end
+      out = out .. string.sub(text, tag_start, tag_end)
+      display_count = display_count + 3
+      i = tag_end + 1
     else
       out = out .. string.sub(text, i, i)
       display_count = display_count + 1
@@ -229,24 +223,6 @@ function basic_helpers.register_module_commands(module, command_definitions)
   basic_helpers.register_commands(command_list)
 end
 
---- Deep comparison of two tables
----@param a table
----@param b table
----@return boolean are_equal
-function basic_helpers.tables_equal(a, b)
-  if a == b then return true end
-  if type(a) ~= "table" or type(b) ~= "table" then return false end
-  for k, v in pairs(a) do
-    if type(v) == "table" and type(b[k]) == "table" then
-      if not basic_helpers.tables_equal(v, b[k]) then return false end
-    elseif v ~= b[k] then
-      return false
-    end
-  end
-  for k in pairs(b) do if a[k] == nil then return false end end
-  return true
-end
-
 --- Create a deep copy of a table
 ---@param orig table
 ---@return table copied_table
@@ -279,6 +255,120 @@ end
 ---@return string formatted_message
 function basic_helpers.format_error_message(error_key)
   return "[TeleportFavorites] " .. tostring(error_key)
+end
+
+-- ===========================
+-- GAME HELPERS (from game_helpers.lua)
+-- ===========================
+
+--- Safely play a sound for a player
+---@param player LuaPlayer
+---@param sound table Sound spec (e.g. { path = "utility/..." })
+function basic_helpers.safe_play_sound(player, sound)
+  if player and player.valid and type(player.play_sound) == "function" and type(sound) == "table" then
+    local success, err = pcall(function() player.play_sound(sound, {}) end)
+    if not success then
+      log("[TeleportFavorites] Failed to play sound for player " ..
+        tostring(player.name) .. ": " .. tostring(err))
+    end
+  end
+end
+
+--- Safely print a localised message to a player via player.print
+---@param player LuaPlayer
+---@param message LocalisedString|string
+function basic_helpers.player_print(player, message)
+  if player and player.valid and type(player.print) == "function" then
+    pcall(function() player.print(message) end)
+  end
+end
+
+-- ===========================
+-- LOCALE UTILS (from locale_utils.lua)
+-- ===========================
+
+local _LOCALE_PREFIXES = {
+  gui = "tf-gui", error = "tf-error", command = "tf-command",
+  handler = "tf-handler", setting_name = "mod-setting-name",
+  setting_desc = "mod-setting-description"
+}
+
+function basic_helpers.substitute_parameters(text, params)
+  if not text or not params then return text or "" end
+  if type(params) == "table" then
+    for i, value in ipairs(params) do
+      text = text:gsub("__" .. i .. "__", tostring(value))
+    end
+    for key, value in pairs(params) do
+      if type(key) == "string" then text = text:gsub("__" .. key .. "__", tostring(value)) end
+    end
+  end
+  return text
+end
+
+function basic_helpers.get_fallback_string(category, key, params)
+  local fallbacks = {
+    gui = { confirm = "Confirm", cancel = "Cancel", close = "Close", delete_tag = "Delete Tag",
+            teleport_success = "Teleported successfully!", teleport_failed = "Teleportation failed" },
+    error = { driving_teleport_blocked = "Are you crazy? Trying to teleport while driving is strictly prohibited.",
+              player_missing = "Unable to teleport. Player is missing", unknown_error = "Unknown error",
+              move_mode_failed = "Move failed", invalid_location_chosen = "invalid location chosen" },
+    command = { nothing_to_undo = "No actions to undo" }
+  }
+  local fallback = fallbacks[category] and fallbacks[category][key]
+  if fallback then
+    return params and type(params) == "table" and basic_helpers.substitute_parameters(fallback, params) or fallback
+  end
+  return "[" .. (category or "unknown") .. ":" .. (key or "unknown") .. "]"
+end
+
+function basic_helpers.get_string(player, category, key, params)
+  if not basic_helpers.is_valid_player(player) then
+    return basic_helpers.get_fallback_string(category, key, params)
+  end
+  local prefix = _LOCALE_PREFIXES[category]
+  if not prefix then return key end
+  local locale_key = prefix .. "." .. key
+  if params and type(params) == "table" and #params > 0 then
+    return { locale_key, (table.unpack or unpack)(params) }
+  else
+    return { locale_key }
+  end
+end
+
+function basic_helpers.get_gui_string(player, key, params)
+  return basic_helpers.get_string(player, "gui", key, params)
+end
+
+function basic_helpers.get_error_string(player, key, params)
+  return basic_helpers.get_string(player, "error", key, params)
+end
+
+function basic_helpers.format_tag_position_change_notification(player, chart_tag, old_position, new_position)
+  if not basic_helpers.is_valid_player(player) then return "[LocaleUtils] Invalid player for notification" end
+  local tag_text = (chart_tag and chart_tag.text) or ""
+  local old_x = old_position and math.floor(old_position.x or 0) or 0
+  local old_y = old_position and math.floor(old_position.y or 0) or 0
+  local new_x = new_position and math.floor(new_position.x or 0) or 0
+  local new_y = new_position and math.floor(new_position.y or 0) or 0
+  return basic_helpers.get_gui_string(player, "tag_position_changed", {tag_text, old_x, old_y, new_x, new_y})
+end
+
+-- ===========================
+-- PLAYER HELPERS (from player_helpers.lua)
+-- ===========================
+
+function basic_helpers.error_message_to_player(player, error_key, _context)
+  if not basic_helpers.is_valid_player(player) then return end
+  local message_text = basic_helpers.format_error_message(error_key)
+  basic_helpers.safe_player_print(player, message_text)
+end
+
+function basic_helpers.with_valid_player(player_index, handler_fn, ...)
+  if not player_index then return nil end
+  local player = game.players[player_index]
+  if not basic_helpers.is_valid_player(player) then return nil end
+  return handler_fn(player, ...)
 end
 
 return basic_helpers

@@ -9,18 +9,23 @@
 local Deps = require("deps")
 local ErrorHandler, Cache, GPSUtils =
   Deps.ErrorHandler, Deps.Cache, Deps.GpsUtils
-local AdminUtils = require("core.utils.admin_utils")
-local LocaleUtils = require("core.utils.locale_utils")
+local BasicHelpers = Deps.BasicHelpers
+local ChartTagUtils = require("core.utils.chart_tag_utils")
 local PlayerFavorites = require("core.favorite.player_favorites")
-local PlayerHelpers = require("core.utils.player_helpers")
 local Tag = require("core.tag.tag")
 local fave_bar = require("gui.favorites_bar.fave_bar")
+
+local function rebuild_bars(players)
+  for _, p in ipairs(players) do
+    if p and p.valid then fave_bar.build(p) end
+  end
+end
 
 -- ========================================
 -- LOCAL FORMATTING UTILITIES
 -- ========================================
 
--- Notification formatting moved to LocaleUtils.format_tag_position_change_notification
+-- Notification formatting moved to BasicHelpers.format_tag_position_change_notification
 
 ---@class ChartTagHelpers
 local ChartTagHelpers = {}
@@ -55,20 +60,20 @@ function ChartTagHelpers.is_valid_tag_modification(event, player)
   local tag = old_gps and Cache.get_tag_by_gps(player, old_gps) or nil
   
   -- Check permissions using AdminUtils with Tag object (uses Tag.owner_name)
-  local can_edit, _is_owner, is_admin_override = AdminUtils.can_edit_chart_tag(player, tag)
+  local can_edit, _is_owner, is_admin_override = ChartTagUtils.can_edit_chart_tag(player, tag)
 
   if not can_edit then
     ErrorHandler.debug_log("Chart tag modification rejected: insufficient permissions", {
       player_name = player and player.name or nil,
       tag_owner = tag and tag.owner_name or "",
-      is_admin = AdminUtils.is_admin(player)
+      is_admin = ChartTagUtils.is_admin(player)
     })
     return false
   end
 
   -- Log admin action if this is an admin override
   if is_admin_override then
-    AdminUtils.log_admin_action(player, "modify_chart_tag", tag, {})
+    ChartTagUtils.log_admin_action(player, "modify_chart_tag", tag, {})
   end
 
   return true
@@ -157,13 +162,7 @@ function ChartTagHelpers.update_favorites_gps(old_gps, new_gps, acting_player)
     Cache.Lookups.invalidate_surface_chart_tags(tonumber(surface_index))
   end
 
-  -- MULTIPLAYER FIX: Rebuild favorites bar for ALL affected players
-  -- This ensures immediate GUI updates across all clients without requiring clicks
-  for _, affected_player in ipairs(all_affected_players) do
-    if affected_player and affected_player.valid then
-      fave_bar.build(affected_player)
-    end
-  end
+  rebuild_bars(all_affected_players)
 
   -- Notify all affected players (excluding the acting player from notifications)
   local notification_players = {}
@@ -179,10 +178,10 @@ function ChartTagHelpers.update_favorites_gps(old_gps, new_gps, acting_player)
     local chart_tag = Cache.Lookups.get_chart_tag_by_gps(new_gps)
     for _, affected_player in ipairs(notification_players) do
       if affected_player and affected_player.valid then
-        local position_msg = LocaleUtils.format_tag_position_change_notification(
+        local position_msg = BasicHelpers.format_tag_position_change_notification(
           affected_player, chart_tag, old_position or { x = 0, y = 0 }, new_position or { x = 0, y = 0 }
         )
-        PlayerHelpers.safe_player_print(affected_player, position_msg)
+        BasicHelpers.safe_player_print(affected_player, position_msg)
       end
     end
   end
@@ -213,12 +212,7 @@ function ChartTagHelpers.update_tag_metadata(gps, chart_tag, player)
     end
   end
 
-  -- Rebuild favorites bar for all affected players to show updated text/icon
-  for _, affected_player in ipairs(affected_players) do
-    if affected_player and affected_player.valid then
-      fave_bar.build(affected_player)
-    end
-  end
+  rebuild_bars(affected_players)
 
   ErrorHandler.debug_log("Updated tag metadata for all affected players", {
     gps = gps,
@@ -227,7 +221,5 @@ function ChartTagHelpers.update_tag_metadata(gps, chart_tag, player)
     acting_player = player.name
   })
 end
-
-ChartTagHelpers.ChartTagRemovalHelpers = ChartTagHelpers
 
 return ChartTagHelpers

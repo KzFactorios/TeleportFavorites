@@ -6,7 +6,8 @@
 
 local Deps = require("deps")
 local BasicHelpers, Logger = Deps.BasicHelpers, Deps.ErrorHandler
-local Enum = require("prototypes.enums.ui_enums")
+local Enum = require("prototypes.enums.enum")
+local constants = require("constants")
 
 ---@class GuiValidation
 local GuiValidation = {}
@@ -25,8 +26,7 @@ end
 ---@param element LuaGuiElement? Element to validate
 ---@return boolean is_valid True if element is valid
 function GuiValidation.validate_gui_element(element)
-  local is_valid = GuiValidation.validate_gui_runtime_element(element, "GUI element")
-  return is_valid
+  return (GuiValidation.validate_gui_runtime_element(element, "GUI element"))
 end
 
 --- Apply style properties to element with validation
@@ -113,9 +113,7 @@ function GuiValidation.get_gui_frame_by_element(element)
       if name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR or
           name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM or
           name == Enum.GuiEnum.GUI_FRAME.FAVE_BAR or
-          name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL or
-          -- Also detect Teleport History confirmation dialog frame
-          name == (Enum.GUI and Enum.GUI.TeleportHistory and Enum.GUI.TeleportHistory.CONFIRM_DIALOG_FRAME) then
+          name == Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL then
         return current
       end
     end
@@ -254,29 +252,39 @@ function GuiValidation.get_validated_sprite_path(icon, opts)
     debug_info.reason = "icon is not string or table"
   end
 
-  -- Extra debug: log the normalized sprite path and fallback usage
-  Logger.debug_log("[GUI_VALIDATION] Sprite path normalization", {
-    original_icon = icon,
-    normalized_sprite_path = sprite_path,
-    debug_info = debug_info
-  })
-
   local is_valid, error_msg = GuiValidation.validate_sprite(sprite_path)
   if not is_valid then
     debug_info.reason = (debug_info.reason or "") .. (error_msg and (": " .. error_msg) or "")
     sprite_path = fallback
     used_fallback = true
-
-    Logger.debug_log("[GUI_VALIDATION] Sprite validation failed, using fallback", {
-      attempted_sprite_path = sprite_path,
-      error_msg = error_msg,
-      fallback = fallback
-    })
   end
 
   debug_info.log_context = log_context
 
   return sprite_path, used_fallback, debug_info
 end
+
+-- ===========================
+-- VALIDATION UTILS (from validation_utils.lua)
+-- ===========================
+
+function GuiValidation.has_valid_icon(icon)
+  if not icon or icon == "" then return false end
+  if type(icon) == "string" then return true end
+  if type(icon) == "table" then return (icon.name ~= nil) or (icon.type ~= nil) end
+  return false
+end
+
+function GuiValidation.validate_text_length(text, max_length, field_name)
+  max_length = max_length or (constants.settings.CHART_TAG_TEXT_MAX_LENGTH --[[@as number]])
+  field_name = field_name or "Text"
+  if text == nil then text = "" end
+  if type(text) ~= "string" then return false, field_name .. " must be a string" end
+  if #text > max_length then
+    return false, field_name .. " exceeds maximum length of " .. max_length .. " characters"
+  end
+  return true, nil
+end
+
 
 return GuiValidation

@@ -2,7 +2,6 @@
 
 
 local gui_style = data.raw["gui-style"].default
-local line_height = 44
 
 
 --- put all new content below this line ---
@@ -181,17 +180,7 @@ gui_style.tf_error_label = {
   minimal_height = 54
 }
 
-gui_style.tf_tag_editor_error_label = {
-  type = "label_style",
-  parent = "label",
-  font = "default-bold",
-  font_color = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
-  horizontally_stretchable = "on",
-  vertically_stretchable = "on",
-  single_line = false,
-  minimal_width = 264,
-  minimal_height = 54
-}
+gui_style.tf_tag_editor_error_label = { type = "label_style", parent = "tf_error_label" }
 
 gui_style.tf_confirm_dialog_frame = {
   type = "frame_style",

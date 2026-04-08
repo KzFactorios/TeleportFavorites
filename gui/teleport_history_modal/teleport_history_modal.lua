@@ -8,10 +8,10 @@ local BasicHelpers, ErrorHandler, Cache, Constants, GPSUtils, Enum =
   Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.Constants, Deps.GpsUtils, Deps.Enum
 local GuiBase = require("gui.gui_base")
 local GuiValidation = require("core.utils.gui_validation")
-local HistoryItem = require("core.teleport.history_item")
+local HistoryItem = Cache.HistoryItem
 local Lookups = require("core.cache.lookups")
 local TeleportHistory = require("core.teleport.teleport_history")
-local icon_typing = require("core.cache.icon_typing")
+local ChartTagUtils = require("core.utils.chart_tag_utils")
 
 
 local teleport_history_modal = {}
@@ -55,23 +55,17 @@ end
 --- Build the teleport history modal dialog
 ---@param player LuaPlayer
 function teleport_history_modal.build(player)
-  -- Register observer to auto-refresh modal
-  TeleportHistory.register_observer(function(obs_player)
-    if obs_player and obs_player.valid and teleport_history_modal.is_open(obs_player) then
-      teleport_history_modal.update_history_list(obs_player)
-    end
-  end)
-  teleport_history_modal._observer_registered = true
-  ErrorHandler.debug_log("[MODAL] build called", { player = player and player.name or "<nil>" })
+  if not teleport_history_modal._observer_registered then
+    TeleportHistory.register_observer(function(obs_player)
+      if obs_player and obs_player.valid and teleport_history_modal.is_open(obs_player) then
+        teleport_history_modal.update_history_list(obs_player)
+      end
+    end)
+    teleport_history_modal._observer_registered = true
+  end
   if not BasicHelpers.is_valid_player(player) then return end
 
-  -- Hide modal based on shared helper (space platform/editor logic)
-  local should_hide = not BasicHelpers.is_planet_surface(player.surface)
-  if should_hide then
-    ErrorHandler.debug_log("[MODAL] not shown due to space platform/editor logic",
-      { player = player and player.name or "<nil>" })
-    return
-  end
+  if not BasicHelpers.is_planet_surface(player.surface) then return end
 
   -- Destroy any existing modal first
   teleport_history_modal.destroy(player, true)
@@ -120,9 +114,6 @@ function teleport_history_modal.build(player)
   -- Close button
   local close_button = GuiBase.create_icon_button(titlebar, "teleport_history_modal_close_button",
     Enum.SpriteEnum.CLOSE, { "tf-gui.close" }, "tf_frame_action_button")
-  if close_button and close_button.valid then
-  end
-
   -- Create content frame (following tag editor pattern)
   local content_frame = GuiBase.create_frame(modal_frame, "teleport_history_modal_content", "vertical",
     "tf_teleport_history_modal_content")
@@ -186,16 +177,9 @@ function teleport_history_modal.destroy(player, preserve_state)
   end
 end
 
--- Truncate chart tag text to constants max display chars, counting tags as 3 spaces
--- Use shared helper from BasicHelpers
-local function truncate_tag_text(text, max_display)
-  return BasicHelpers.truncate_rich_text(text, max_display)
-end
-
 --- Update the history list display
 ---@param player LuaPlayer
 function teleport_history_modal.update_history_list(player)
-  ErrorHandler.debug_log("[MODAL] update_history_list called", { player = player and player.name or "<nil>" })
   if not BasicHelpers.is_valid_player(player) then return end
 
   local modal_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]
@@ -218,14 +202,6 @@ function teleport_history_modal.update_history_list(player)
   local hist = Cache.get_player_teleport_history(player, surface_index)
   local stack = hist.stack
   local pointer = hist.pointer
-
-  -- Debug logging
-  ErrorHandler.debug_log("Teleport history debug", {
-    surface_index = surface_index,
-    stack_length = #stack,
-    pointer = pointer,
-    has_history = hist ~= nil
-  })
 
   if #stack == 0 then
     GuiBase.create_label(history_list, "empty_history_label",
@@ -264,7 +240,7 @@ function teleport_history_modal.update_history_list(player)
       local button_style = is_current and "tf_teleport_history_item_current" or "tf_teleport_history_item"
       local button_name = "teleport_history_item_" .. tostring(i)
       local chart_tag_text = chart_tag and chart_tag.text or ""
-      local truncated_text = truncate_tag_text(chart_tag_text, Constants.settings.TELEPORT_HISTORY_LABEL_MAX_DISPLAY)
+      local truncated_text = BasicHelpers.truncate_rich_text(chart_tag_text, Constants.settings.TELEPORT_HISTORY_LABEL_MAX_DISPLAY)
       local display_text = truncated_text .. "   " .. coords_string or entry.gps or "Invalid GPS" -- 3 spaces
 
       local success_button, item_button = pcall(function()
@@ -280,25 +256,7 @@ function teleport_history_modal.update_history_list(player)
           local coords_str = tostring(coords_string or entry.gps or "")
           item_button.tooltip = { "tf-gui.teleport_history_item_tooltip", coords_str }
         end)
-        if not tooltip_success then
-          ErrorHandler.debug_log("Failed to set teleport history button tooltip", {
-            display_text = display_text,
-            item_index = i
-          })
-        end
         item_button.tags = { teleport_history_index = i }
-        ErrorHandler.debug_log("Created teleport history item button", {
-          button_name = item_button.name,
-          button_tags = item_button.tags,
-          item_index = i
-        })
-      else
-        ErrorHandler.debug_log("Failed to create teleport history button", {
-          button_style = button_style,
-          display_text = display_text,
-          item_index = i,
-          error = item_button
-        })
       end
 
 
@@ -316,7 +274,7 @@ function teleport_history_modal.update_history_list(player)
       )
 
       if tag_icon and tag_icon.name then
-        local icon_rich_text = icon_typing.format_icon_as_rich_text(tag_icon)
+        local icon_rich_text = ChartTagUtils.format_icon_as_rich_text(tag_icon)
         GuiBase.create_label(item_button, "teleport_history_icon_label_" .. tostring(i), icon_rich_text,
           "tf_history_icon_label")
       end

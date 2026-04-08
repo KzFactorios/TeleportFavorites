@@ -5,9 +5,8 @@
 -- Tag model and utilities for managing teleportation tags, chart tags, and player favorites.
 
 local Deps = require("deps")
-local ErrorHandler, Cache, GPSUtils =
-  Deps.ErrorHandler, Deps.Cache, Deps.GpsUtils
-local TeleportStrategy = require("core.utils.teleport_strategy")
+local Cache, GPSUtils =
+  Deps.Cache, Deps.GpsUtils
 
 
 ---@class Tag
@@ -17,9 +16,6 @@ local TeleportStrategy = require("core.utils.teleport_strategy")
 ---@field owner_name string? # Name of the player who created/owns this tag
 local Tag = {}
 Tag.__index = Tag
-
-local destroying_tags = setmetatable({}, { __mode = "k" })
-local destroying_chart_tags = setmetatable({}, { __mode = "k" })
 
 --- Create a new Tag instance.
 ---@param gps string
@@ -38,55 +34,22 @@ end
 ---@param preserve_owner_name string|nil Optional: explicitly preserve this owner name during the move
 function Tag.update_gps_and_surface_mapping(old_gps, new_gps, chart_tag, player, preserve_owner_name)
   if not old_gps or not new_gps then return end
-  if not player or not player.valid then
-    ErrorHandler.debug_log("Cannot update tag: invalid player", { old_gps = old_gps, new_gps = new_gps })
-    return
-  end
+  if not player or not player.valid then return end
 
   -- Get or create tag object
-  local TagClass = Tag
   local old_tag = Cache.get_tag_by_gps(player, old_gps)
   if old_tag == nil and new_gps then
-    old_tag = TagClass.new(new_gps, {}, preserve_owner_name)
-    ErrorHandler.debug_log("[OWNER][Tag.update_gps_and_surface_mapping] Created new Tag object for new_gps (owner preserved)", {
-      new_gps = new_gps,
-      preserve_owner_name = preserve_owner_name
-    })
+    old_tag = Tag.new(new_gps, {}, preserve_owner_name)
   end
 
   -- Only update if old_tag is a table
   if type(old_tag) == "table" then
     old_tag.gps = new_gps or ""
     old_tag.chart_tag = nil -- never persist chart_tag
-    -- Always set owner_name if provided, and log
     if preserve_owner_name then
       old_tag.owner_name = preserve_owner_name
-      ErrorHandler.debug_log("[OWNER][Tag.update_gps_and_surface_mapping] owner_name set during tag move", {
-        old_gps = old_gps,
-        new_gps = new_gps,
-        owner_name = preserve_owner_name
-      })
-    else
-      ErrorHandler.debug_log("[OWNER][Tag.update_gps_and_surface_mapping] No owner_name provided to preserve", {
-        old_gps = old_gps,
-        new_gps = new_gps,
-        current_owner = old_tag.owner_name
-      })
     end
-  else
-    ErrorHandler.debug_log("[OWNER][Tag.update_gps_and_surface_mapping] old_tag is not a table", {
-      old_gps = old_gps,
-      new_gps = new_gps,
-      preserve_owner_name = preserve_owner_name
-    })
   end
-
-  ErrorHandler.debug_log("Updated tag object GPS (shared helper)", {
-    old_gps = old_gps or "",
-    new_gps = new_gps or "",
-    tag_gps_after_update = (type(old_tag) == "table" and old_tag.gps) or "",
-    chart_tag_position = chart_tag and chart_tag.position or "nil"
-  })
 
   -- Update the surface mapping table from old GPS to new GPS
   local surface_index = old_gps and GPSUtils.get_surface_index_from_gps(old_gps) or nil
@@ -96,21 +59,10 @@ function Tag.update_gps_and_surface_mapping(old_gps, new_gps, chart_tag, player,
     if type(surface_tags) == "table" and surface_tags[old_gps] then
       surface_tags[new_gps] = surface_tags[old_gps]
       surface_tags[old_gps] = nil
-      ErrorHandler.debug_log("Moved tag data in surface mapping (shared helper)", {
-        surface_index = surface_index,
-        old_gps = old_gps,
-        new_gps = new_gps
-      })
     end
     if type(surface_tags) == "table" and new_gps and type(old_tag) == "table" then
       surface_tags[new_gps] = old_tag
     end
-    ErrorHandler.debug_log("Ensured updated tag is stored at new GPS location (shared helper)", {
-      surface_index = surface_index,
-      new_gps = new_gps,
-      tag_gps = (type(old_tag) == "table" and old_tag.gps) or "",
-      tag_has_chart_tag = (type(old_tag) == "table" and old_tag.chart_tag ~= nil) or false
-    })
     -- Update the lookup table chart_tags_mapped_by_gps
     local CACHE_KEY = "Lookups"
     local runtime_cache = _G[CACHE_KEY]
@@ -126,11 +78,9 @@ function Tag.update_gps_and_surface_mapping(old_gps, new_gps, chart_tag, player,
     
     -- Invalidate rehydrated favorites cache for all players on this surface
     -- Tag GPS change affects all favorites pointing to this tag
-    Cache.invalidate_rehydrated_favorites(nil, uint_surface_index)
+    Cache.invalidate_rehydrated_favorites()
   end
 end
 
--- Ensure method is attached to Tag table for module export
-Tag.update_gps_and_surface_mapping = Tag.update_gps_and_surface_mapping
 
 return Tag

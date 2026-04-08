@@ -26,9 +26,7 @@ local BasicHelpers, Cache, Enum =
 local GuiBase = require("gui.gui_base")
 local GuiValidation = require("core.utils.gui_validation")
 local GuiElementBuilders = require("core.utils.gui_element_builders")
-local ErrorMessageHelpers = require("core.utils.error_message_helpers")
-local ValidationUtils = require("core.utils.validation_utils")
-local AdminUtils = require("core.utils.admin_utils")
+local ChartTagUtils = require("core.utils.chart_tag_utils")
 local PlayerFavorites = require("core.favorite.player_favorites")
 
 
@@ -36,6 +34,10 @@ local tag_editor = {}
 
 -- Sets up the tag editor UI, including all controls and their state
 -- This function now only sets state, tooltips, and styles. It does NOT create any elements.
+local function compute_can_confirm(tag_data)
+  return (tag_data.text and tag_data.text ~= "") or GuiValidation.has_valid_icon(tag_data.icon)
+end
+
 local function setup_tag_editor_ui(refs, tag_data, player)
   -- Determine ownership and delete permissions
   local tag = tag_data.tag
@@ -54,7 +56,7 @@ local function setup_tag_editor_ui(refs, tag_data, player)
   end
 
   -- Admin trumps - admins can always edit and delete
-  if AdminUtils.is_admin(player) then
+  if ChartTagUtils.is_admin(player) then
     is_owner = true
     can_delete = true
   end
@@ -81,17 +83,12 @@ local function setup_tag_editor_ui(refs, tag_data, player)
     GuiElementBuilders.set_button_state_and_tooltip(refs.delete_btn, is_owner and can_delete and not is_temp_tag, { "tf-gui.delete_tooltip" })
   end
 
-  -- Confirm button enabled if text input has content OR icon is selected
-  local has_text = tag_data.text and tag_data.text ~= ""
-  local has_icon = ValidationUtils.has_valid_icon(tag_data.icon)
-  local can_confirm = has_text or has_icon
-
-  GuiElementBuilders.set_button_state_and_tooltip(refs.confirm_btn, can_confirm, { "tf-gui.confirm_tooltip" })
+  GuiElementBuilders.set_button_state_and_tooltip(refs.confirm_btn, compute_can_confirm(tag_data), { "tf-gui.confirm_tooltip" })
 
   if refs.cancel_btn then refs.cancel_btn.tooltip = { "tf-gui.cancel_tooltip" } end
 
   -- Update error message display using centralized helper
-  tag_editor.update_error_message(refs.player, tag_data.error_message)
+  tag_editor.update_error_message(player, tag_data.error_message)
 end
 
 -- Confirmation dialog for destructive actions (e.g., tag deletion)
@@ -121,7 +118,7 @@ local function build_titlebar(parent)
   return titlebar, title_label
 end
 
-local function build_owner_row(parent, tag_data)
+local function build_owner_row(parent)
   -- Create a frame with a fixed height for the owner row
   local row_frame, label_flow, button_flow = GuiElementBuilders.create_label_button_row(
     parent, "tag_editor_owner_row_frame", "tf_owner_row_frame")
@@ -130,7 +127,7 @@ local function build_owner_row(parent, tag_data)
     "", "tf_tag_editor_owner_label")
   local delete_button = GuiElementBuilders.create_delete_button(button_flow, "tag_editor_delete_button", false)
 
-  return row_frame, label, nil, delete_button
+  return row_frame, label, delete_button
 end
 
 local function build_teleport_favorite_row(parent, tag_data)
@@ -144,7 +141,7 @@ local function build_teleport_favorite_row(parent, tag_data)
 end
 
 local function create_icon_button(row, tag_data)
-  local sprite_path, used_fallback, debug_info = GuiValidation.get_validated_sprite_path(tag_data.icon,
+  local sprite_path = GuiValidation.get_validated_sprite_path(tag_data.icon,
     { fallback = Enum.SpriteEnum.PIN, log_context = { context = "tag_editor", gps = tag_data.gps } })
   
   local icon_btn = GuiBase.create_element("choose-elem-button", row, {
@@ -173,7 +170,7 @@ end
 
 local function build_error_row(parent, tag_data)
   -- Use the centralized error message helper
-  local error_row_frame, error_label = ErrorMessageHelpers.show_or_update_error_row(
+  local error_row_frame, error_label = GuiElementBuilders.show_or_update_error_row(
     parent, "tag_editor_error_row_frame", "error_row_error_message", tag_data and tag_data.error_message)
   return error_row_frame, error_label
 end
@@ -232,8 +229,7 @@ function tag_editor.build(player)
 
   local tag_editor_content_frame = GuiBase.create_frame(tag_editor_outer_frame, "tag_editor_content_frame", "vertical",
     "tf_tag_editor_content_frame")
-  local tag_editor_owner_row, owner_label, _, delete_button = build_owner_row(tag_editor_content_frame,
-    tag_data) -- Simple owner lookup logic as requested
+  local tag_editor_owner_row, owner_label, delete_button = build_owner_row(tag_editor_content_frame)
 
   local owner_value = ""
   -- Use Tag.owner_name as the source of truth for ownership
@@ -289,12 +285,7 @@ function tag_editor.update_confirm_button_state(player, tag_data)
   local confirm_btn = GuiValidation.find_child_by_name(player.gui.screen, "tag_editor_confirm_button")
   if not confirm_btn then return end
 
-  -- Check if text input has content or icon is selected
-  local has_text = tag_data.text and tag_data.text ~= ""
-  local has_icon = ValidationUtils.has_valid_icon(tag_data.icon)
-  local can_confirm = has_text or has_icon
-
-  GuiValidation.set_button_state(confirm_btn, can_confirm)
+  GuiValidation.set_button_state(confirm_btn, compute_can_confirm(tag_data))
 end
 
 -- Partial update functions for specific UI elements without full rebuild
@@ -308,7 +299,7 @@ function tag_editor.update_error_message(player, message)
   if not outer_frame then return end
 
   -- Use the centralized error message helper
-  ErrorMessageHelpers.show_or_update_error_row(
+  GuiElementBuilders.show_or_update_error_row(
     outer_frame, "tag_editor_error_row_frame", "error_row_error_message", message)
 end
 

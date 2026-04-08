@@ -13,8 +13,6 @@
 require("prototypes.styles.init")
 require("prototypes.item.selection_tool")
 require("prototypes.input.teleport_favorite_inputs")
-local Enum = require("prototypes.enums.enum")
-
 ---@diagnostic disable-next-line: undefined-global, param-type-mismatch, missing-parameter, duplicate-set-field
 data:extend({
   {
@@ -76,76 +74,6 @@ data:extend({
     height = 32,
     scale = 0.5,
     flags = { "icon" }
-  },
-  {
-    type = "custom-input",
-    name = Enum.EventEnum.TELEPORT_TO_FAVORITE .. "1",
-    key_sequence = "CONTROL + 1",
-    consuming = "game-only",
-    order = "ca"
-  },
-  {
-    type = "custom-input",
-    name = Enum.EventEnum.TELEPORT_TO_FAVORITE .. "2",
-    key_sequence = "CONTROL + 2",
-    consuming = "game-only",
-    order = "cb"
-  },
-  {
-    type = "custom-input",
-    name = Enum.EventEnum.TELEPORT_TO_FAVORITE .. "3",
-    key_sequence = "CONTROL + 3",
-    consuming = "game-only",
-    order = "cc"
-  },
-  {
-    type = "custom-input",
-    name = Enum.EventEnum.TELEPORT_TO_FAVORITE .. "4",
-    key_sequence = "CONTROL + 4",
-    consuming = "game-only",
-    order = "cd"
-  },
-  {
-    type = "custom-input",
-    name = Enum.EventEnum.TELEPORT_TO_FAVORITE .. "5",
-    key_sequence = "CONTROL + 5",
-    consuming = "game-only",
-    order = "ce"
-  },
-  {
-    type = "custom-input",
-    name = Enum.EventEnum.TELEPORT_TO_FAVORITE .. "6",
-    key_sequence = "CONTROL + 6",
-    consuming = "game-only",
-    order = "cf"
-  },
-  {
-    type = "custom-input",
-    name = Enum.EventEnum.TELEPORT_TO_FAVORITE .. "7",
-    key_sequence = "CONTROL + 7",
-    consuming = "game-only",
-    order = "cg"
-  },
-  {
-    type = "custom-input",
-    name = Enum.EventEnum.TELEPORT_TO_FAVORITE .. "8",
-    key_sequence = "CONTROL + 8",
-    consuming = "game-only",
-    order = "ch"
-  },
-  {
-    type = "custom-input",
-    name = Enum.EventEnum.TELEPORT_TO_FAVORITE .. "9",
-    key_sequence = "CONTROL + 9",
-    consuming = "game-only",
-    order = "ci"
-  },
-  {
-    type = "custom-input",
-    name = Enum.EventEnum.TELEPORT_TO_FAVORITE .. "10",
-    key_sequence = "CONTROL + 0",
-    consuming = "game-only",
-    order = "cj"
   },
   {
     type = "custom-input",

@@ -56,13 +56,7 @@ gui_style.tf_fave_bar_visibility_on = {
     right_margin = 0,
 }
 
-gui_style.tf_fave_bar_visibility_off = {
-    type = "button_style",
-    parent = "tf_slot_button",
-    padding = 2,
-    left_margin = 0,
-    right_margin = 0,
-}
+gui_style.tf_fave_bar_visibility_off = { type = "button_style", parent = "tf_fave_bar_visibility_on" }
 
 gui_style.tf_slot_button_smallfont = {
     type = "button_style",
@@ -96,7 +90,7 @@ gui_style.tf_slot_button_locked = {
     type = "button_style",
     parent = "tf_slot_button_smallfont",
     default_graphical_set = {
-        base = { position = { 0, 0 }, corner_size = 8, tint = { r = 0.85, g = 0.3, b = 0.3, a = 0.45 } }
+        base = { position = { 0, 0 }, corner_size = 8, tint = { r = 0.98, g = 0.66, b = 0.22, a = 0.45 } }
     },
 }
 
