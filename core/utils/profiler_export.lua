@@ -16,6 +16,8 @@ local active_profiler = nil
 local active_profiler_started_tick = nil
 
 local STORAGE_END_KEY = "_tf_profile_end_tick"
+-- Start capture on first on_game_tick (not inside on_init/on_load): simulation timing + helpers.create_profiler are reliable there.
+local STORAGE_DEFER_APPLY_KEY = "_tf_defer_profile_apply"
 local commands_registered = false
 
 local function profiler_mode()
@@ -48,8 +50,16 @@ function M.start_profiler_capture(player_index)
     return false
   end
 
-  active_profiler = helpers.create_profiler(true)
+  local ok, prof_or_err = pcall(function()
+    return helpers.create_profiler(true)
+  end)
+  if not ok or not prof_or_err then
+    log("[TeleportFavorites] helpers.create_profiler failed: " .. tostring(prof_or_err))
+    return false
+  end
+  active_profiler = prof_or_err
   active_profiler_started_tick = game.tick
+  log("[TeleportFavorites] LuaProfiler capture started at tick " .. tostring(game.tick))
   return true
 end
 
@@ -124,10 +134,28 @@ function M.arm_profile_auto_stop_from_settings()
   end
 end
 
+--- New game + load: start profiler on first `on_game_tick` (not in on_init/on_load).
+function M.schedule_deferred_profile_apply()
+  if profiler_mode() ~= "profile" or not storage then
+    return
+  end
+  storage[STORAGE_DEFER_APPLY_KEY] = true
+  log("[TeleportFavorites] PROFILER_CONTROL_MODE=profile: deferred capture will start on first tick (new game or load).")
+end
+
 --- Call from the single mod on_tick handler (event_registration_dispatcher).
 ---@param event { tick: uint }
 function M.on_game_tick(event)
-  if not storage or not storage[STORAGE_END_KEY] then
+  if not storage then
+    return
+  end
+
+  if storage[STORAGE_DEFER_APPLY_KEY] then
+    storage[STORAGE_DEFER_APPLY_KEY] = nil
+    M.apply_profile_mode_from_constants()
+  end
+
+  if not storage[STORAGE_END_KEY] then
     return
   end
   if not active_profiler then
@@ -148,6 +176,9 @@ end
 --- Profiler userdata does not persist across save/load; clear scheduled stop.
 function M.on_load_cleanup()
   M.clear_profile_auto_stop()
+  if storage then
+    storage[STORAGE_DEFER_APPLY_KEY] = nil
+  end
   active_profiler = nil
   active_profiler_started_tick = nil
 end

@@ -25,7 +25,8 @@ local function custom_on_init()
   -- Initialize debug system first
   ErrorHandler.initialize(Constants.settings.DEFAULT_LOG_LEVEL)
   ProfilerExport.register_profiling_commands()
-  ProfilerExport.apply_profile_mode_from_constants()
+  -- Defer profiler start to first on_game_tick (helpers.create_profiler + arm are unreliable if run too early in on_init).
+  ProfilerExport.schedule_deferred_profile_apply()
 
   -- Register teleport history remote interface
   TeleportHistory.register_remote_interface()
@@ -44,6 +45,8 @@ end
 local function custom_on_load()
   ProfilerExport.register_profiling_commands()
   ProfilerExport.on_load_cleanup()
+  -- on_init does not run when loading a save; profiler must not start inside on_load (API limits). Defer to first tick.
+  ProfilerExport.schedule_deferred_profile_apply()
 
   -- Register teleport history remote interface
   TeleportHistory.register_remote_interface()
