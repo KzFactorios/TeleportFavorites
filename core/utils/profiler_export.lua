@@ -143,22 +143,30 @@ function M.stop_profiler_capture(player_index)
     .. "Ticks elapsed: " .. tostring(elapsed) .. " (" .. tostring(math.floor(elapsed / 60)) .. "s at 60 UPS)\n\n"
 
   -- Build LocalisedString payload: overall profiler + any named sections.
-  -- Factorio caps a single LocalisedString at 20 parameters, so nest each section as its own
-  -- sub-array (each sub-array counts as one parameter in the parent).
+  -- Factorio hard-caps any LocalisedString array at 20 parameters.
+  -- Strategy: pack sections into chunks of up to 18 entries each (18 sections + 1 "" = 19 ≤ 20).
+  -- The outer sections array holds those chunks: { "", title, chunk1, chunk2, ... } also ≤ 20.
+  local CHUNK_MAX = 18
   local payload = { "", header, "== Overall ==\n", profiler, "\n" }
   if #section_results > 0 then
-    -- One sub-array holds all sections; its entries are themselves sub-arrays (one per section).
-    local sections_ls = { "", "\n== Startup Sections ==\n" }
+    local sections_outer = { "", "\n== Startup Sections ==\n" }
+    local current_chunk = { "" }
     for _, sec in ipairs(section_results) do
       local sec_elapsed = sec.end_tick - sec.start_tick
       local label = string.format(
         "  [%-30s]  tick %d \xE2\x86\x92 %d  (%d ticks, ~%ds)\n    ",
         sec.name, sec.start_tick, sec.end_tick, sec_elapsed, math.floor(sec_elapsed / 60)
       )
-      -- Each section is its own nested LocalisedString: 4 params, well under the limit.
-      table.insert(sections_ls, { "", label, sec.profiler, "\n" })
+      table.insert(current_chunk, { "", label, sec.profiler, "\n" })
+      if #current_chunk > CHUNK_MAX then
+        table.insert(sections_outer, current_chunk)
+        current_chunk = { "" }
+      end
     end
-    table.insert(payload, sections_ls)
+    if #current_chunk > 1 then
+      table.insert(sections_outer, current_chunk)
+    end
+    table.insert(payload, sections_outer)
   end
 
   -- Embed start tick in filename so each run produces a distinct file.
