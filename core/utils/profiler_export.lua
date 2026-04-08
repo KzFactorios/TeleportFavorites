@@ -143,19 +143,22 @@ function M.stop_profiler_capture(player_index)
     .. "Ticks elapsed: " .. tostring(elapsed) .. " (" .. tostring(math.floor(elapsed / 60)) .. "s at 60 UPS)\n\n"
 
   -- Build LocalisedString payload: overall profiler + any named sections.
+  -- Factorio caps a single LocalisedString at 20 parameters, so nest each section as its own
+  -- sub-array (each sub-array counts as one parameter in the parent).
   local payload = { "", header, "== Overall ==\n", profiler, "\n" }
   if #section_results > 0 then
-    table.insert(payload, "\n== Startup Sections ==\n")
+    -- One sub-array holds all sections; its entries are themselves sub-arrays (one per section).
+    local sections_ls = { "", "\n== Startup Sections ==\n" }
     for _, sec in ipairs(section_results) do
       local sec_elapsed = sec.end_tick - sec.start_tick
       local label = string.format(
-        "  [%-30s]  tick %d → %d  (%d ticks, ~%ds)\n    ",
+        "  [%-30s]  tick %d \xE2\x86\x92 %d  (%d ticks, ~%ds)\n    ",
         sec.name, sec.start_tick, sec.end_tick, sec_elapsed, math.floor(sec_elapsed / 60)
       )
-      table.insert(payload, label)
-      table.insert(payload, sec.profiler)
-      table.insert(payload, "\n")
+      -- Each section is its own nested LocalisedString: 4 params, well under the limit.
+      table.insert(sections_ls, { "", label, sec.profiler, "\n" })
     end
+    table.insert(payload, sections_ls)
   end
 
   -- Embed start tick in filename so each run produces a distinct file.
