@@ -325,7 +325,8 @@ function EventRegistrationDispatcher.register_core_events(script)
       ErrorHandler.debug_log("[TICK] *** REGISTERING GUI OBSERVERS *** (first tick after load)", {
         tick = event.tick
       })
-      
+
+      ProfilerExport.start_section("first_tick_observers")
       -- Register observers for all existing players
       for _, player in pairs(game.players) do
         if player and player.valid then
@@ -337,10 +338,10 @@ function EventRegistrationDispatcher.register_core_events(script)
           })
         end
       end
-      ErrorHandler.debug_log("[TICK] GUI observers registered for all players", { tick = event.tick })
-      
-      -- Process any deferred notifications queued during this first tick
       GuiObserver.GuiEventBus.process_deferred_notifications()
+      ProfilerExport.stop_section("first_tick_observers")
+
+      ErrorHandler.debug_log("[TICK] GUI observers registered for all players", { tick = event.tick })
     end
     -- MULTIPLAYER FIX: Do NOT de-register on_tick here.
     -- Removing on_tick after the first tick causes a script-event-mismatch when a client

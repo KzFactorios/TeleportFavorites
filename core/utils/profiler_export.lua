@@ -15,6 +15,11 @@ local active_profiler = nil
 ---@type uint|nil
 local active_profiler_started_tick = nil
 
+-- Section profiling: named sub-profilers for startup phase breakdown.
+-- Each entry in section_results: { name=string, profiler=any, start_tick=uint, end_tick=uint }
+local section_profilers = {}
+local section_results = {}
+
 local STORAGE_END_KEY = "_tf_profile_end_tick"
 -- Start capture on first on_game_tick (not inside on_init/on_load): simulation timing + helpers.create_profiler are reliable there.
 local STORAGE_DEFER_APPLY_KEY = "_tf_defer_profile_apply"
@@ -63,12 +68,36 @@ function M.start_profiler_capture(player_index)
   return true
 end
 
+--- Begin timing a named section. No-op if no main profiler is active.
+---@param name string
+function M.start_section(name)
+  if not active_profiler then return end
+  if section_profilers[name] then return end
+  local ok, prof = pcall(function() return helpers.create_profiler() end)
+  if ok and prof then
+    section_profilers[name] = { profiler = prof, start_tick = game.tick }
+  end
+end
+
+--- Stop a named section and record its result for the final report.
+---@param name string
+function M.stop_section(name)
+  local entry = section_profilers[name]
+  if not entry then return end
+  pcall(function() entry.profiler.stop() end)
+  table.insert(section_results, {
+    name = name,
+    profiler = entry.profiler,
+    start_tick = entry.start_tick,
+    end_tick = game.tick,
+  })
+  section_profilers[name] = nil
+end
+
 --- Write profiler output; falls back to header-only text if embed/write fails.
----@param profiler any
----@param header string
+---@param payload table LocalisedString array
 ---@param filename string
-local function write_profiler_file(profiler, header, filename)
-  local payload = { "", header, profiler, "\n" }
+local function write_profiler_file(payload, filename)
   local ok, err = pcall(function()
     helpers.write_file(filename, payload, false)
   end)
@@ -79,7 +108,7 @@ local function write_profiler_file(profiler, header, filename)
   local ok2, err2 = pcall(function()
     helpers.write_file(
       filename,
-      header .. "(Could not embed LuaProfiler in file; see factorio-current.log.)\n",
+      payload[2] .. "(Could not embed LuaProfiler in file; see factorio-current.log.)\n",
       false
     )
   end)
@@ -113,14 +142,32 @@ function M.stop_profiler_capture(player_index)
     .. "Stopped at:    tick " .. tostring(game.tick) .. "\n"
     .. "Ticks elapsed: " .. tostring(elapsed) .. " (" .. tostring(math.floor(elapsed / 60)) .. "s at 60 UPS)\n\n"
 
+  -- Build LocalisedString payload: overall profiler + any named sections.
+  local payload = { "", header, "== Overall ==\n", profiler, "\n" }
+  if #section_results > 0 then
+    table.insert(payload, "\n== Startup Sections ==\n")
+    for _, sec in ipairs(section_results) do
+      local sec_elapsed = sec.end_tick - sec.start_tick
+      local label = string.format(
+        "  [%-30s]  tick %d → %d  (%d ticks, ~%ds)\n    ",
+        sec.name, sec.start_tick, sec.end_tick, sec_elapsed, math.floor(sec_elapsed / 60)
+      )
+      table.insert(payload, label)
+      table.insert(payload, sec.profiler)
+      table.insert(payload, "\n")
+    end
+  end
+
   -- Embed start tick in filename so each run produces a distinct file.
   local base = profile_file_name()
   local stem, ext = base:match("^(.+)(%.[^%.]+)$")
   local filename = stem and (stem .. "-t" .. tostring(start_tick) .. ext) or (base .. "-t" .. tostring(start_tick))
-  write_profiler_file(profiler, header, filename)
+  write_profiler_file(payload, filename)
 
   active_profiler = nil
   active_profiler_started_tick = nil
+  section_profilers = {}
+  section_results = {}
   profile_notify(player_index, "[TeleportFavorites] Profile saved to script-output/" .. filename)
   return true
 end
@@ -189,6 +236,8 @@ function M.on_load_cleanup()
   end
   active_profiler = nil
   active_profiler_started_tick = nil
+  section_profilers = {}
+  section_results = {}
 end
 
 function M.apply_profile_mode_from_constants()

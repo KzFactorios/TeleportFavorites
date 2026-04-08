@@ -10,7 +10,7 @@ local handlers = require("core.events.handlers")
 local TeleportHistory = require("core.teleport.teleport_history")
 local ProfilerExport = require("core.utils.profiler_export")
 
--- Initialize logging immediately using single source of truth (a)
+-- Initialize logging immediately using single source of truth
 ErrorHandler.initialize(Constants.settings.DEFAULT_LOG_LEVEL)
 
 local gui_observer = nil
@@ -25,8 +25,9 @@ local function custom_on_init()
   -- Initialize debug system first
   ErrorHandler.initialize(Constants.settings.DEFAULT_LOG_LEVEL)
   ProfilerExport.register_profiling_commands()
-  -- Defer profiler start to first on_game_tick (helpers.create_profiler + arm are unreliable if run too early in on_init).
-  ProfilerExport.schedule_deferred_profile_apply()
+  -- Start profiler immediately: storage + helpers.create_profiler are reliable in on_init for new games.
+  -- This lets sections inside handlers.on_init() be captured (Cache.init, player setup, etc.).
+  ProfilerExport.apply_profile_mode_from_constants()
 
   -- Register teleport history remote interface
   TeleportHistory.register_remote_interface()

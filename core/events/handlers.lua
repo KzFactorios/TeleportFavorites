@@ -26,6 +26,7 @@ local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local teleport_history_modal = require("gui.teleport_history_modal.teleport_history_modal")
 local ChartTagHelpers = require("core.events.chart_tag_helpers")
 local gui_observer = require("core.events.gui_observer")
+local ProfilerExport = require("core.utils.profiler_export")
 
 
 -- Helper functions for surface refresh and captions
@@ -146,16 +147,21 @@ function handlers.on_init()
     log("[TeleFaves][DEBUG] handlers.on_init() called (forced log)")
   end
   -- Initialize the GUI event bus first
+  ProfilerExport.start_section("gui_bus_init")
   gui_observer.GuiEventBus.ensure_initialized()
+  ProfilerExport.stop_section("gui_bus_init")
   ErrorHandler.debug_log("GUI Event Bus initialized during startup")
 
   -- Initialize cache system
   if Constants.settings.DEFAULT_LOG_LEVEL == "debug" then
     ErrorHandler.debug_log("[Cache] Cache.init() called during on_init")
   end
+  ProfilerExport.start_section("cache_init")
   Cache.init()
+  ProfilerExport.stop_section("cache_init")
 
   -- Set up each player - defer GUI build to reduce startup UPS spike
+  ProfilerExport.start_section("player_observer_setup")
   for _, player in pairs(game.players) do
     if Cache.get_player_data(player) == nil then
       if Constants.settings.DEFAULT_LOG_LEVEL == "debug" then
@@ -168,6 +174,7 @@ function handlers.on_init()
     register_gui_observers(player)
     -- Note: fave_bar.build() will be called when player joins via on_player_joined_game
   end
+  ProfilerExport.stop_section("player_observer_setup")
 
   if Constants.settings.DEFAULT_LOG_LEVEL == "debug" then
     ErrorHandler.debug_log("[INIT] Startup initialization complete - GUI build deferred to player join")
@@ -235,7 +242,9 @@ function handlers.process_deferred_init_queue()
         gui_observer.GuiEventBus.cleanup_player_observers(deferred_player)
       end
       register_gui_observers(deferred_player)
+      ProfilerExport.start_section("fave_bar_build")
       fave_bar.build(deferred_player, true)
+      ProfilerExport.stop_section("fave_bar_build")
     end
   end
   _deferred_init_queue = {}
