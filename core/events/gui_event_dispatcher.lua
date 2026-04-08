@@ -10,8 +10,8 @@ local BasicHelpers, ErrorHandler, Cache, Constants, Enum =
 local control_fave_bar = require("core.control.control_fave_bar")
 local control_tag_editor = require("core.control.control_tag_editor")
 local DebugCommands = require("core.commands.debug_commands")
+local GameHelpers = require("core.utils.game_helpers")
 local GuiValidation = require("core.utils.gui_validation")
-local PlayerHelpers = require("core.utils.player_helpers")
 local CursorUtils = require("core.utils.cursor_utils")
 local FavoriteUtils = require("core.favorite.favorite_utils")
 

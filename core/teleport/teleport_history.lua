@@ -5,8 +5,8 @@
 -- Manages player teleport history stack, pointer navigation, and GPS string conversion for history modal.
 
 local Deps = require("deps")
-local BasicHelpers, ErrorHandler, Cache, GPSUtils =
-  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.GpsUtils
+local BasicHelpers, Cache, GPSUtils =
+  Deps.BasicHelpers, Deps.Cache, Deps.GpsUtils
 local HistoryItem = require("core.teleport.history_item")
 
 
@@ -170,16 +170,12 @@ end
 function TeleportHistory.register_remote_interface()
 	if not remote.interfaces["TeleportFavorites_History"] then
 		remote.add_interface("TeleportFavorites_History", {
-			add_to_history = function(player_index, gps)
-				local player = game.players[player_index]
-				if not player or not player.valid then return end
-				TeleportHistory.add_gps(player, gps)
-			end,
-			add_teleport = function(player_index, from_gps, to_gps)
-				local player = game.players[player_index]
-				if not player or not player.valid then return end
-				TeleportHistory.add_teleport(player, from_gps, to_gps)
-			end,
+		add_to_history = function(player_index, gps)
+			TeleportHistory.add_gps(game.players[player_index], gps)
+		end,
+		add_teleport = function(player_index, from_gps, to_gps)
+			TeleportHistory.add_teleport(game.players[player_index], from_gps, to_gps)
+		end,
 		})
 	end
 end

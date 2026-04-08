@@ -23,8 +23,6 @@ if success then gui_observer = module end
 
 -- Custom on_init to allow easy toggling of intro cutscene skip
 local function custom_on_init()
-  -- Initialize debug system first
-  ErrorHandler.initialize(Constants.settings.DEFAULT_LOG_LEVEL)
   ProfilerExport.register_profiling_commands()
   -- Start profiler immediately: storage + helpers.create_profiler are reliable in on_init for new games.
   -- This lets sections inside handlers.on_init() be captured (Cache.init, player setup, etc.).
