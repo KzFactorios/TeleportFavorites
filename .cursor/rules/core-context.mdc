@@ -6,3 +6,4 @@ globs: "**/*.lua"
 We are targeting factorio v2.0+ exclusively. This is a v2.0+ mod. Disregard any factorio v1.0+ suggestions
 Before proposing any code change, read @project_specs.md.
 Verify that any new logic follows the established storage hierarchy and GPS padding rules defined there.
+For analyzing file sizes, please use the following command: ```python .scripts/analyze_lua_lines.py```
