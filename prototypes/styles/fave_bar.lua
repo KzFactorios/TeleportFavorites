@@ -90,17 +90,26 @@ gui_style.tf_slot_button_locked = {
     type = "button_style",
     parent = "tf_slot_button_smallfont",
     default_graphical_set = {
-        base = { position = { 0, 0 }, corner_size = 8, tint = { r = 0.98, g = 0.66, b = 0.22, a = 1 } }
+        base = { border = 4, position = {0, 736}, size = 80,
+                 tint = { r = 0.98, g = 0.66, b = 0.22, a = 0.9 } }
+    },
+    hovered_graphical_set = {
+        base = { border = 4, position = {80, 736}, size = 80,
+                 tint = { r = 0.98, g = 0.66, b = 0.22, a = 0.8 } }
+    },
+    clicked_graphical_set = {
+        base = { border = 4, position = {160, 736}, size = 80,
+                 tint = { r = 0.98, g = 0.66, b = 0.22, a = 0.8 } }
     },
 }
 
 gui_style.tf_fave_bar_slot_number = {
     type = "label_style",
     font = "tf_font_8",
-    font_color = { r = 0.98, g = 0.66, b = 0.22, a = 1 },
+    font_color = { r = 0.98, g = 0.66, b = 0.22, a = 0.9 },
     horizontal_align = "center",
     width = 25,
-    top_padding = 18
+    top_padding = 21
 }
 
 gui_style.tf_fave_bar_slot_wrapper = {

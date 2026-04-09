@@ -16,6 +16,7 @@ local handlers = require("core.events.handlers")
 local DebugCommands = require("core.commands.debug_commands")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
 local fave_bar = require("gui.favorites_bar.fave_bar")
+local tag_editor = require("gui.tag_editor.tag_editor")
 local GuiObserver = require("core.events.gui_observer")
 local ProfilerExport = require("core.utils.profiler_export")
 
@@ -320,6 +321,7 @@ local function register_core_events(script)
       ProfilerExport.stop_section("deferred_notifications")
     end
     fave_bar.process_slot_build_queue()
+    tag_editor.process_build_queue()
   end)
 
   script.on_nth_tick(60, function()

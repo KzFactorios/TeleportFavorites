@@ -199,31 +199,13 @@ local function build_last_row(parent)
   return row, confirm_btn
 end
 
--- Main builder for the tag editor, matching the full semantic/nested structure from .project/tag_editor.md
----
+--- Build the interior of the tag editor into an already-existing outer frame.
+--- Called from process_build_queue on the next on_nth_tick(2) after build().
 ---@param player LuaPlayer
-function tag_editor.build(player)
-  if not BasicHelpers.is_valid_player(player) then return end
-  local tag_data = Cache.get_player_data(player).tag_editor_data or Cache.create_tag_editor_data()
-  if not tag_data.gps or tag_data.gps == "" then
-    tag_data.gps = tag_data.move_gps or ""
-  end
-  -- Do NOT attempt to find or create chart tags here. Only use tag_data.tag and tag_data.chart_tag as provided.
-
+---@param tag_editor_outer_frame LuaGuiElement
+---@param tag_data table
+local function build_interior(player, tag_editor_outer_frame, tag_data)
   local gps = tag_data.gps
-  local parent = player.gui.screen
-  local outer = GuiValidation.find_child_by_name(parent, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
-  if outer ~= nil then outer.destroy() end
-
-  -- Create modal tag editor frame to block map interactions (idiomatic Factorio)
-  local tag_editor_outer_frame = parent.add {
-    type = "frame",
-    name = "tag_editor_frame", 
-    direction = "vertical",
-    style = "tf_tag_editor_outer_frame",
-    modal = true
-  }
-  tag_editor_outer_frame.auto_center = true
 
   local titlebar, title_label = build_titlebar(tag_editor_outer_frame)
 
@@ -232,12 +214,9 @@ function tag_editor.build(player)
   local tag_editor_owner_row, owner_label, delete_button = build_owner_row(tag_editor_content_frame)
 
   local owner_value = ""
-  -- Use Tag.owner_name as the source of truth for ownership
   if tag_data.tag and tag_data.tag.owner_name then
     owner_value = tag_data.tag.owner_name
   end
-  
-  -- Set the owner label using proper localization
   ---@diagnostic disable-next-line: assign-type-mismatch
   owner_label.caption = { "tf-gui.owner_label", owner_value or "" }
 
@@ -247,9 +226,8 @@ function tag_editor.build(player)
   local tag_editor_teleport_favorite_row, tag_editor_is_favorite_button, tag_editor_teleport_button =
       build_teleport_favorite_row(tag_editor_content_inner_frame, tag_data)
 
-  -- NOTE: The built-in Factorio signal/icon picker (used for icon selection) always requires the user to confirm their selection
-  -- with a checkmark button. There is no property or style that allows auto-accepting the selection on click; this is a limitation
-  -- of the Factorio engine as of 1.1.x.
+  -- NOTE: The built-in Factorio signal/icon picker always requires the user to confirm their
+  -- selection with a checkmark; auto-accepting is a Factorio engine limitation.
   local tag_editor_rich_text_row, tag_editor_icon_button, tag_editor_rich_text_input =
       build_rich_text_row(tag_editor_content_inner_frame, tag_data)
 
@@ -274,10 +252,71 @@ function tag_editor.build(player)
   }
 
   setup_tag_editor_ui(refs, tag_data, player)
-
-  player.opened = tag_editor_outer_frame or nil
-
   return refs
+end
+
+-- Main builder for the tag editor.
+-- Tick 0 (event handler): creates the outer modal frame and sets player.opened immediately
+-- so map interaction is blocked. Interior elements are enqueued for the next on_nth_tick(2).
+---@param player LuaPlayer
+function tag_editor.build(player)
+  if not BasicHelpers.is_valid_player(player) then return end
+  local tag_data = Cache.get_player_data(player).tag_editor_data or Cache.create_tag_editor_data()
+  if not tag_data.gps or tag_data.gps == "" then
+    tag_data.gps = tag_data.move_gps or ""
+  end
+  -- Do NOT attempt to find or create chart tags here. Only use tag_data.tag and tag_data.chart_tag as provided.
+
+  local parent = player.gui.screen
+  local outer = GuiValidation.find_child_by_name(parent, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+  if outer ~= nil then outer.destroy() end
+
+  -- Create outer modal frame immediately — this blocks map interaction and makes the editor
+  -- visible (as an empty shell) on this tick. Interior is built on the next on_nth_tick(2).
+  local tag_editor_outer_frame = parent.add {
+    type      = "frame",
+    name      = "tag_editor_frame",
+    direction = "vertical",
+    style     = "tf_tag_editor_outer_frame",
+    modal     = true,
+  }
+  tag_editor_outer_frame.auto_center = true
+  player.opened = tag_editor_outer_frame
+
+  -- Enqueue interior build for the next on_nth_tick(2).
+  storage._tf_tag_editor_build_queue = storage._tf_tag_editor_build_queue or {}
+  -- Cancel any existing queued build for this player (e.g. rapid re-open).
+  for i = #storage._tf_tag_editor_build_queue, 1, -1 do
+    if storage._tf_tag_editor_build_queue[i].player_index == player.index then
+      table.remove(storage._tf_tag_editor_build_queue, i)
+    end
+  end
+  table.insert(storage._tf_tag_editor_build_queue, {
+    player_index = player.index,
+    tag_data     = tag_data,
+  })
+end
+
+--- Called from on_nth_tick(2). Pops one queued tag editor build and fills in the interior.
+function tag_editor.process_build_queue()
+  if not storage or not storage._tf_tag_editor_build_queue then return end
+  if #storage._tf_tag_editor_build_queue == 0 then return end
+
+  local entry = table.remove(storage._tf_tag_editor_build_queue, 1)
+  local player = game.players[entry.player_index]
+  if not player or not player.valid then return end
+
+  -- If the outer frame was closed before we got here, discard.
+  local outer = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TAG_EDITOR]
+  if not outer or not outer.valid then return end
+
+  build_interior(player, outer, entry.tag_data)
+end
+
+--- Clear the build queue on save-load (stale GUI refs; must NOT mutate storage).
+function tag_editor.on_load_cleanup()
+  -- Intentionally blank: storage is not accessible during on_load.
+  -- Stale queue entries self-discard in process_build_queue when the frame is gone.
 end
 
 -- Helper function to update confirm button state based on current tag data

@@ -106,8 +106,13 @@ local function handle_favorite_slot_click(event, player, favorites)
   if SlotInteractionHandlers.handle_toggle_lock(event, player, fav, slot, favorites) then return end
   if SlotInteractionHandlers.handle_teleport(event, player, fav, slot, false) then return end
 
-  SlotInteractionHandlers.handle_request_to_open_tag_editor(event, player, fav, slot)
-  fave_bar.update_single_slot(player, slot)
+  -- update_single_slot is skipped when the tag editor opened: it would call
+  -- rehydrate_favorite_at_runtime again for the same slot that was already rehydrated
+  -- inside open_tag_editor_from_favorite, wasting a chart tag lookup per open.
+  local editor_opened = SlotInteractionHandlers.handle_request_to_open_tag_editor(event, player, fav, slot)
+  if not editor_opened then
+    fave_bar.update_single_slot(player, slot)
+  end
 end
 
 --- Handle toggle button for favorites bar visibility

@@ -98,23 +98,3 @@ gui_style.tf_teleport_history_empty_label = {
     horizontally_stretchable = "on",
     font_color = { r = 0.7, g = 0.7, b = 0.7, a = 1 },
 }
-
-gui_style.tf_teleport_history_date_label = {
-    type = "label_style",
-    parent = "label",
-    font = "tf_font_8",
-    horizontally_stretchable = "on",
-    horizontal_align = "right",
-    right_padding = 4,
-    font_color = { r = 0.4, g = 0.4, b = 0.4, a = 1 }, 
-    width = 60,
-}
-
-gui_style.tf_history_icon_label = {
-    type = "label_style",
-    font = "tf_font_9",
-    top_padding = -2,
-    left_padding = 64,
-    horizontally_stretchable = "off",
-    vertically_stretchable = "off",
-}

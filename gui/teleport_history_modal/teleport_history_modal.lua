@@ -12,6 +12,7 @@ local HistoryItem = Cache.HistoryItem
 local Lookups = require("core.cache.lookups")
 local TeleportHistory = require("core.teleport.teleport_history")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
+local ProfilerExport = require("core.utils.profiler_export")
 
 
 local teleport_history_modal = {}
@@ -55,6 +56,7 @@ end
 --- Build the teleport history modal dialog
 ---@param player LuaPlayer
 function teleport_history_modal.build(player)
+  ProfilerExport.start_section("thm_build")
   if not teleport_history_modal._observer_registered then
     TeleportHistory.register_observer(function(obs_player)
       if obs_player and obs_player.valid and teleport_history_modal.is_open(obs_player) then
@@ -63,9 +65,15 @@ function teleport_history_modal.build(player)
     end)
     teleport_history_modal._observer_registered = true
   end
-  if not BasicHelpers.is_valid_player(player) then return end
+  if not BasicHelpers.is_valid_player(player) then
+    ProfilerExport.stop_section("thm_build")
+    return
+  end
 
-  if not BasicHelpers.is_planet_surface(player.surface) then return end
+  if not BasicHelpers.is_planet_surface(player.surface) then
+    ProfilerExport.stop_section("thm_build")
+    return
+  end
 
   -- Destroy any existing modal first
   teleport_history_modal.destroy(player, true)
@@ -92,7 +100,8 @@ function teleport_history_modal.build(player)
       player_valid = player and player.valid,
       screen_valid = player.gui and player.gui.screen and player.gui.screen.valid
     })
-    return 
+    ProfilerExport.stop_section("thm_build")
+    return
   end
 
   -- Create custom titlebar with close button
@@ -154,6 +163,7 @@ function teleport_history_modal.build(player)
     modal_frame.location = { x = pos.x, y = pos.y }
   end
 
+  ProfilerExport.stop_section("thm_build")
   return modal_frame
 end
 
@@ -180,13 +190,23 @@ end
 --- Update the history list display
 ---@param player LuaPlayer
 function teleport_history_modal.update_history_list(player)
-  if not BasicHelpers.is_valid_player(player) then return end
+  ProfilerExport.start_section("thm_update_list")
+  if not BasicHelpers.is_valid_player(player) then
+    ProfilerExport.stop_section("thm_update_list")
+    return
+  end
 
   local modal_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]
-  if not modal_frame or not modal_frame.valid then return end
+  if not modal_frame or not modal_frame.valid then
+    ProfilerExport.stop_section("thm_update_list")
+    return
+  end
 
   local history_list = GuiValidation.find_child_by_name(modal_frame, "teleport_history_list")
-  if not history_list or not history_list.valid then return end
+  if not history_list or not history_list.valid then
+    ProfilerExport.stop_section("thm_update_list")
+    return
+  end
 
   -- Clear existing list items in deterministic order
   -- CRITICAL: Use deterministic iteration, not pairs() - prevents multiplayer desyncs
@@ -206,6 +226,7 @@ function teleport_history_modal.update_history_list(player)
   if #stack == 0 then
     GuiBase.create_label(history_list, "empty_history_label",
       { "tf-gui.teleport_history_empty" }, "tf_teleport_history_empty_label")
+    ProfilerExport.stop_section("thm_update_list")
     return
   end
 
@@ -236,12 +257,23 @@ function teleport_history_modal.update_history_list(player)
         trash_button.tags = { teleport_history_index = i }
       end
 
-      -- Add GPS button - gps button has children
+      -- Build composite caption: [icon] tag_text   coords  [dim date]
       local button_style = is_current and "tf_teleport_history_item_current" or "tf_teleport_history_item"
       local button_name = "teleport_history_item_" .. tostring(i)
       local chart_tag_text = chart_tag and chart_tag.text or ""
       local truncated_text = BasicHelpers.truncate_rich_text(chart_tag_text, Constants.settings.TELEPORT_HISTORY_LABEL_MAX_DISPLAY)
-      local display_text = truncated_text .. "   " .. coords_string or entry.gps or "Invalid GPS" -- 3 spaces
+
+      local icon_prefix = ""
+      if tag_icon and tag_icon.name then
+        icon_prefix = ChartTagUtils.format_icon_as_rich_text(tag_icon) .. " "
+      end
+
+      local date_string = ""
+      local ok, result = pcall(HistoryItem.get_locale_time, player, entry)
+      if ok then date_string = result end
+
+      local display_text = icon_prefix .. truncated_text .. "   " .. (coords_string or entry.gps or "Invalid GPS")
+        .. "  [font=tf_font_8][color=0.4,0.4,0.4]" .. date_string .. "[/color][/font]"
 
       local success_button, item_button = pcall(function()
         return GuiBase.create_button(
@@ -258,26 +290,6 @@ function teleport_history_modal.update_history_list(player)
         end)
         item_button.tags = { teleport_history_index = i }
       end
-
-
-      -- Add verbose date label inline
-      local date_string = nil
-      local ok, result = pcall(function()
-        return HistoryItem.get_locale_time(player, entry)
-      end)
-      if ok then date_string = result else date_string = "" end
-      GuiBase.create_label(
-        item_button,
-        "teleport_history_date_label_" .. tostring(i),
-        date_string,
-        "tf_teleport_history_date_label"
-      )
-
-      if tag_icon and tag_icon.name then
-        local icon_rich_text = ChartTagUtils.format_icon_as_rich_text(tag_icon)
-        GuiBase.create_label(item_button, "teleport_history_icon_label_" .. tostring(i), icon_rich_text,
-          "tf_history_icon_label")
-      end
     else
       ErrorHandler.debug_log("Invalid HistoryItem in history stack", {
         index = i,
@@ -286,6 +298,7 @@ function teleport_history_modal.update_history_list(player)
       })
     end
   end
+  ProfilerExport.stop_section("thm_update_list")
 end
 
 return teleport_history_modal
