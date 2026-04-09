@@ -96,6 +96,8 @@ end
 local function _destroy_fave_bar(player)
   local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   if main_flow and main_flow.valid then
+    local ph = main_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.LOADER_PLACEHOLDER]
+    if ph and ph.valid then ph.destroy() end
     GuiValidation.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
   end
 end
@@ -330,21 +332,96 @@ end
 -- ============================================================
 
 local helpers = {
-  is_build_in_flight          = is_build_in_flight,
-  normalize_icon_type         = normalize_icon_type,
-  get_fave_bar_gui_refs       = get_fave_bar_gui_refs,
-  get_slot_label_text         = get_slot_label_text,
-  get_slot_btn_props          = get_slot_btn_props,
-  build_single_slot           = build_single_slot,
+  is_build_in_flight           = is_build_in_flight,
+  normalize_icon_type          = normalize_icon_type,
+  get_fave_bar_gui_refs        = get_fave_bar_gui_refs,
+  get_slot_label_text          = get_slot_label_text,
+  get_slot_btn_props           = get_slot_btn_props,
+  build_single_slot            = build_single_slot,
   cancel_progressive_build_for = cancel_progressive_build_for,
-  prune_stale_favorites       = prune_stale_favorites,
-  last_build_tick             = last_build_tick,
-  create_toggle_chrome        = create_toggle_chrome,
-  _destroy_fave_bar           = _destroy_fave_bar,
+  prune_stale_favorites        = prune_stale_favorites,
+  last_build_tick              = last_build_tick,
+  create_toggle_chrome         = create_toggle_chrome,
+  _destroy_fave_bar            = _destroy_fave_bar,
+  GuiElementBuilders           = GuiElementBuilders,
 }
 
 fave_bar_slots_extend(fave_bar, helpers)
 fave_bar_progressive_extend(fave_bar, helpers)
+
+-- Loader sprite is removed immediately (delay=0) so it is gone before the first bar frame element appears.
+local FAVE_BAR_LOADER_DELAY_TICKS = 0
+
+--- Remove loader placeholder sprite from main GUI flow if present.
+---@param player LuaPlayer
+function fave_bar.destroy_loader_placeholder(player)
+  if not BasicHelpers.is_valid_player(player) then return end
+  local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
+  if not main_flow or not main_flow.valid then return end
+  local ph = main_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.LOADER_PLACEHOLDER]
+  if ph and ph.valid then
+    ph.destroy()
+  end
+end
+
+function fave_bar.flush_loader_placeholder_defer_if_ready()
+  if not storage or not storage._tf_loader_placeholder_defer then return end
+  local list = storage._tf_loader_placeholder_defer
+  if #list == 0 then return end
+  local now = game.tick
+  for i = #list, 1, -1 do
+    local e = list[i]
+    if now >= e.until_tick then
+      local p = game.get_player(e.player_index)
+      if p and p.valid then
+        fave_bar.destroy_loader_placeholder(p)
+        fave_bar.enqueue_blank_bar(p)
+      end
+      table.remove(list, i)
+    end
+  end
+end
+
+--- First paint: loader sprite where the bar will appear; after a few ticks, progressive build runs.
+---@param player LuaPlayer
+function fave_bar.begin_bar_with_loader_placeholder(player)
+  if not BasicHelpers.is_valid_player(player) then return end
+  if BasicHelpers.is_restricted_controller(player) then return end
+  local player_settings = Cache.Settings.get_player_settings(player)
+  if not player_settings.favorites_on and not player_settings.enable_teleport_history then
+    fave_bar.enqueue_blank_bar(player)
+    return
+  end
+  fave_bar.destroy_loader_placeholder(player)
+  local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
+  if not main_flow or not main_flow.valid then return end
+  local ph = main_flow.add({
+    type = "sprite",
+    name = Enum.GuiEnum.FAVE_BAR_ELEMENT.LOADER_PLACEHOLDER,
+    sprite = "tf_fave_bar_loader_sprite",
+    index = 1,
+  })
+  if ph and ph.valid then
+    ph.style.minimal_width = 128
+    ph.style.minimal_height = 40
+    ph.style.maximal_height = 40
+  end
+  storage._tf_loader_placeholder_defer = storage._tf_loader_placeholder_defer or {}
+  local until_tick = game.tick + FAVE_BAR_LOADER_DELAY_TICKS
+  for _, row in ipairs(storage._tf_loader_placeholder_defer) do
+    if row.player_index == player.index then
+      row.until_tick = until_tick
+      return
+    end
+  end
+  table.insert(storage._tf_loader_placeholder_defer, { player_index = player.index, until_tick = until_tick })
+end
+
+local _process_slot_build_queue = fave_bar.process_slot_build_queue
+function fave_bar.process_slot_build_queue()
+  fave_bar.flush_loader_placeholder_defer_if_ready()
+  _process_slot_build_queue()
+end
 
 if ErrorHandler and ErrorHandler.debug_log then
   local keys = {}

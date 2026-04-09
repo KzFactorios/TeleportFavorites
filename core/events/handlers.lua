@@ -148,7 +148,7 @@ function handlers.process_deferred_init_queue()
       register_gui_observers(deferred_player)
       ProfilerExport.stop_section("deferred_register_observers")
 
-      -- The blank bar was pre-built by enqueue_blank_bar (called in on_player_joined/created).
+      -- The blank bar is queued by begin_bar_with_loader_placeholder (join/created); progressive build runs shortly after.
       -- Skip hydration when there is nothing to fill in:
       --   • is_rejoin=false  → brand-new player, no favorites exist yet
       --   • no non-blank favorites on the current surface → blank bar is already correct
@@ -195,10 +195,25 @@ local function enqueue_deferred_init(player_index, is_rejoin)
   table.insert(_deferred_init_queue, { player_index = player_index, is_rejoin = is_rejoin })
 end
 
+--- Single-player save load (and adding this mod to a save) does not fire `on_player_joined_game`.
+--- Mirror the join path once per session so the fave bar is queued before `process_deferred_init_queue`.
+--- `enqueue_deferred_init(..., true)` dedupes with `on_player_created`/`on_player_joined_game` without
+--- overwriting `is_rejoin = false` for brand-new players.
+--- We call enqueue_blank_bar directly (skipping the loader sprite) because the bar frame is hidden
+--- until the build completes — the loader visual is invisible and its creation cost (~1 ms) is wasted.
+function handlers.ensure_fave_bar_for_session_players()
+  for _, player in pairs(game.players) do
+    if player and player.valid and BasicHelpers.is_valid_player(player) then
+      enqueue_deferred_init(player.index, true)
+      fave_bar.enqueue_blank_bar(player)
+    end
+  end
+end
+
 function handlers.on_player_created(event)
   with_valid_player(event.player_index, function(player)
     enqueue_deferred_init(player.index, false)
-    fave_bar.enqueue_blank_bar(player)
+    fave_bar.begin_bar_with_loader_placeholder(player)
   end)
 end
 
@@ -209,7 +224,7 @@ function handlers.on_player_joined_game(event)
       player_index = player.index
     })
     enqueue_deferred_init(player.index, true)
-    fave_bar.enqueue_blank_bar(player)
+    fave_bar.begin_bar_with_loader_placeholder(player)
   end)
 end
 

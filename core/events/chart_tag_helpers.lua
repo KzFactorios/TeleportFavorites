@@ -124,9 +124,10 @@ function ChartTagHelpers.update_tag_and_cleanup(old_gps, new_gps, event, player,
 
   local modified_chart_tag = event.tag
 
-  if modified_chart_tag and modified_chart_tag.valid then
-    local surface_index = GPSUtils.get_context_surface_index(modified_chart_tag, player)
-    Cache.Lookups.invalidate_surface_chart_tags(surface_index)
+  -- Tag moved: old_gps entry is now stale; surgical eviction.
+  -- new_gps will be re-queried on next access and cached afresh.
+  if old_gps then
+    Cache.Lookups.evict_chart_tag_cache_entry(old_gps)
   end
 
   -- Use new shared helper for tag mutation and surface mapping, preserving ownership
@@ -157,9 +158,8 @@ function ChartTagHelpers.update_favorites_gps(old_gps, new_gps, acting_player)
     if acting_player_updated and not acting_player_already_included then
       table.insert(all_affected_players, acting_player)
     end
-    -- Invalidate chart tag lookups for the surface
-    local surface_index = GPSUtils.get_surface_index_from_gps(new_gps)
-    Cache.Lookups.invalidate_surface_chart_tags(tonumber(surface_index))
+    -- Tag moved: evict the old GPS entry; new GPS will be cached on next access.
+    Cache.Lookups.evict_chart_tag_cache_entry(old_gps)
   end
 
   rebuild_bars(all_affected_players)
@@ -196,9 +196,8 @@ function ChartTagHelpers.update_tag_metadata(gps, chart_tag, player)
   if not gps or not chart_tag or not chart_tag.valid then return end
   if not player or not player.valid then return end
 
-  -- Invalidate chart tag cache for the surface
-  local surface_index = GPSUtils.get_context_surface_index(chart_tag, player)
-  Cache.Lookups.invalidate_surface_chart_tags(tonumber(surface_index))
+  -- Text/icon change: the cached LuaCustomChartTag pointer is still valid (same object);
+  -- Factorio reads .text and .icon live, so no cache action needed.
 
   -- Find all players who have this tag favorited
   local affected_players = {}

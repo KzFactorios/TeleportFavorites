@@ -298,11 +298,16 @@ local function register_core_events(script)
       ChartTagUtils.reset_icon_type_lookup()
       ErrorHandler.debug_log("icon_typing table reset (every 15 minutes)")
     end)
+    -- GPS point cache sweep: evicts TTL-expired entries for active surfaces only.
+    -- Per-surface next_sweep_at clock pauses while no players are on that surface.
+    script.on_nth_tick(Cache.Lookups.SWEEP_TICKS, function()
+      Cache.Lookups.sweep_expired_entries()
+    end)
   end)
   if not nth_ok then
     ErrorHandler.warn_log("Failed to register periodic cleanup or icon_typing reset", { error = nth_err })
   else
-    ErrorHandler.debug_log("Registered periodic GUI observer cleanup and icon_typing reset")
+    ErrorHandler.debug_log("Registered periodic GUI observer cleanup, icon_typing reset, and GPS cache sweep")
   end
 
   -- MULTIPLAYER FIX: All on_nth_tick and on_tick handlers are registered permanently.
@@ -336,7 +341,12 @@ local function register_core_events(script)
           })
         end
       end
-      GuiObserver.GuiEventBus.process_deferred_notifications()
+      -- SP save load / mod added to save: no on_player_joined_game — queue fave bar like a rejoin.
+      ProfilerExport.start_section("session_fave_bar_init")
+      handlers.ensure_fave_bar_for_session_players()
+      ProfilerExport.stop_section("session_fave_bar_init")
+      -- process_deferred_notifications is intentionally NOT called here.
+      -- on_nth_tick(2) drains it at tick 2, keeping tick-0 cost lower.
       ProfilerExport.stop_section("first_tick_observers")
       ErrorHandler.debug_log("[TICK] GUI observers registered for all players", { tick = event.tick })
     end

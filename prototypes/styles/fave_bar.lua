@@ -90,7 +90,7 @@ gui_style.tf_slot_button_locked = {
     type = "button_style",
     parent = "tf_slot_button_smallfont",
     default_graphical_set = {
-        base = { position = { 0, 0 }, corner_size = 8, tint = { r = 0.98, g = 0.66, b = 0.22, a = 0.45 } }
+        base = { position = { 0, 0 }, corner_size = 8, tint = { r = 0.98, g = 0.66, b = 0.22, a = 1 } }
     },
 }
 

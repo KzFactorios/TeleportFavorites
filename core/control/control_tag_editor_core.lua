@@ -96,8 +96,10 @@ function M.update_chart_tag_fields(tag, tag_data, text, icon, player)
       tag_owner = tag.owner_name or ""
     })
 
+    -- Surgical eviction: old GPS entry is now stale (same position, tag destroyed).
+    local old_gps_pre = GPSUtils.gps_from_map_position(position, surface_index)
     chart_tag.destroy()
-    Cache.Lookups.invalidate_surface_chart_tags(surface_index)
+    if old_gps_pre then Cache.Lookups.evict_chart_tag_cache_entry(old_gps_pre) end
 
     local chart_tag_spec = ChartTagUtils.build_spec(position, nil, player, text)
     if GuiValidation.has_valid_icon(icon) then
@@ -111,17 +113,13 @@ function M.update_chart_tag_fields(tag, tag_data, text, icon, player)
       tag.chart_tag = new_chart_tag
       tag_data.chart_tag = new_chart_tag
 
-      Cache.Lookups.invalidate_surface_chart_tags(surface_index)
-      local refreshed_cache = Cache.Lookups.get_chart_tag_cache(surface_index)
-
+      local gps = GPSUtils.gps_from_map_position(new_chart_tag.position, surface_index)
       ErrorHandler.debug_log("Chart tag recreated for multiplayer safety", {
         surface_index = surface_index,
-        chart_tags_in_cache = #refreshed_cache,
-        new_chart_tag_gps = GPSUtils.gps_from_map_position(new_chart_tag.position, surface_index),
+        new_chart_tag_gps = gps,
         tag_owner = tag.owner_name or ""
       })
 
-      local gps = GPSUtils.gps_from_map_position(new_chart_tag.position, surface_index)
       local refreshed_chart_tag = Cache.Lookups.get_chart_tag_by_gps(gps)
       if refreshed_chart_tag and refreshed_chart_tag.valid then
         tag.chart_tag = refreshed_chart_tag
@@ -153,14 +151,11 @@ function M.update_chart_tag_fields(tag, tag_data, text, icon, player)
       tag.chart_tag = new_chart_tag
 
       local surface_index = player.surface.index
-      Cache.Lookups.invalidate_surface_chart_tags(surface_index)
-      local refreshed_cache = Cache.Lookups.get_chart_tag_cache(surface_index)
-      ErrorHandler.debug_log("Cache refreshed after chart tag creation", {
-        surface_index = surface_index,
-        chart_tags_in_cache = #refreshed_cache,
-        new_chart_tag_gps = GPSUtils.gps_from_map_position(new_chart_tag.position, surface_index)
-      })
       local gps = GPSUtils.gps_from_map_position(new_chart_tag.position, surface_index)
+      ErrorHandler.debug_log("Chart tag created", {
+        surface_index = surface_index,
+        new_chart_tag_gps = gps
+      })
       local refreshed_chart_tag = Cache.Lookups.get_chart_tag_by_gps(gps)
       if refreshed_chart_tag and refreshed_chart_tag.valid then
         tag.chart_tag = refreshed_chart_tag

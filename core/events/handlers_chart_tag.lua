@@ -88,8 +88,11 @@ local function normalize_and_replace_chart_tag(chart_tag, player)
       player and player.force or chart_tag.force,
       chart_tag.surface, chart_tag_spec, player)
     if new_chart_tag and new_chart_tag.valid then
+      -- Compute GPS of the fractional position before destroying so we can evict it.
+      local old_gps = GPSUtils.gps_from_map_position(position, surface_index)
       chart_tag.destroy()
-      Cache.Lookups.invalidate_surface_chart_tags(surface_index)
+      -- Surgical eviction: old fractional GPS entry is now stale.
+      if old_gps then Cache.Lookups.evict_chart_tag_cache_entry(old_gps) end
       return new_chart_tag, position_pair
     end
   end

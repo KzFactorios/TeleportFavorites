@@ -68,7 +68,9 @@ end
 ---@class ChartTagUtils
 local ChartTagUtils = {}
 
---- Find chart tag at a specific position
+--- Find chart tag at a specific position using a bounded area query.
+--- Replaces the former full-surface scan: Factorio's spatial index returns only tags
+--- within the bounding box, so this is O(tags in box) instead of O(all tags on surface).
 ---@param player LuaPlayer Player context
 ---@param cursor_position MapPosition Position to check
 ---@return LuaCustomChartTag? chart_tag Found chart tag or nil
@@ -78,43 +80,31 @@ function ChartTagUtils.find_closest_chart_tag_to_position(player, cursor_positio
   -- MULTIPLAYER FIX: render_mode is client-specific and causes desyncs.
   -- Removed render_mode gate from this data lookup function.
   -- Caller is responsible for context validation (event handlers, UI layer).
-  -- Get surface index from player's current surface
-  local surface_index = player.surface and player.surface.index or nil
-  if not surface_index then return nil end
+  local surface = player.surface
+  if not surface or not surface.valid then return nil end
 
-  -- First check the cache to see if we have chart tags loaded
-  local force_tags = Cache.Lookups.get_chart_tag_cache(surface_index)
-
-  -- If cache appears empty, try invalidating it once to trigger refresh
-  if not force_tags or #force_tags == 0 then
-    Cache.Lookups.invalidate_surface_chart_tags(surface_index)
-    force_tags = Cache.Lookups.get_chart_tag_cache(surface_index)
-  end
-
-  -- If still no tags found, there genuinely are no chart tags on this surface
-  if not force_tags or #force_tags == 0 then
-    return nil
-  end
-  
-  -- Get click radius from player settings
   local click_radius = Cache.Settings.get_chart_tag_click_radius()
 
-  -- Initialize min_distance and closest_tag
+  -- Single bounded area query: Factorio's spatial index does the filtering.
+  -- Only tags within the click_radius box are returned, avoiding a full-surface scan.
+  local area_tags = game.forces["player"].find_chart_tags(surface, {
+    left_top     = { x = cursor_position.x - click_radius, y = cursor_position.y - click_radius },
+    right_bottom = { x = cursor_position.x + click_radius, y = cursor_position.y + click_radius },
+  })
+
+  if not area_tags or #area_tags == 0 then return nil end
+
+  -- Among the returned tags, pick the one with minimum Euclidean distance.
   local min_distance = math.huge
-  local closest_tag = nil
-  -- Find the closest chart tag within detection radius
-  for _, tag in pairs(force_tags) do
+  local closest_tag  = nil
+  for _, tag in ipairs(area_tags) do
     if tag and tag.valid then
-      local dx = math.abs(tag.position.x - cursor_position.x)
-      local dy = math.abs(tag.position.y - cursor_position.y)
-      -- Rectangle search: check if within radius bounds for both X and Y
-      if dx <= click_radius and dy <= click_radius then
-        -- Calculate distance for finding closest tag within rectangle
-        local distance = math.sqrt(dx * dx + dy * dy)
-        if distance < min_distance then
-          min_distance = distance
-          closest_tag = tag
-        end
+      local dx = tag.position.x - cursor_position.x
+      local dy = tag.position.y - cursor_position.y
+      local distance = math.sqrt(dx * dx + dy * dy)
+      if distance < min_distance then
+        min_distance = distance
+        closest_tag  = tag
       end
     end
   end
@@ -183,12 +173,12 @@ function ChartTagUtils.safe_add_chart_tag(force, surface, spec, player)
       old_text = existing_chart_tag.text or "",
       old_icon = existing_chart_tag.icon
     })
-    
+
+    local old_gps = GPSUtils.gps_from_map_position(existing_chart_tag.position, surface_index)
     existing_chart_tag.destroy()
-    
-    -- Invalidate cache after destroying
-    Cache.Lookups.invalidate_surface_chart_tags(surface_index)
-    
+    -- Surgical eviction: this GPS entry now refers to a destroyed tag.
+    if old_gps then Cache.Lookups.evict_chart_tag_cache_entry(old_gps) end
+
     -- Fall through to create new chart tag with updated properties
     -- (the force.add_chart_tag call below will create it)
   end

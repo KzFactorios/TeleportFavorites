@@ -63,18 +63,8 @@ function Tag.update_gps_and_surface_mapping(old_gps, new_gps, chart_tag, player,
     if type(surface_tags) == "table" and new_gps and type(old_tag) == "table" then
       surface_tags[new_gps] = old_tag
     end
-    -- Update the lookup table chart_tags_mapped_by_gps
-    local CACHE_KEY = "Lookups"
-    local runtime_cache = _G[CACHE_KEY]
-    if runtime_cache and runtime_cache.surfaces and runtime_cache.surfaces[uint_surface_index] then
-      local surface_cache = runtime_cache.surfaces[uint_surface_index]
-      if surface_cache.chart_tags_mapped_by_gps then
-        surface_cache.chart_tags_mapped_by_gps[old_gps] = nil
-        surface_cache.chart_tags_mapped_by_gps[new_gps] = chart_tag
-      end
-    else
-      Cache.Lookups.invalidate_surface_chart_tags(uint_surface_index)
-    end
+    -- Evict the old GPS entry from the point cache; new GPS will be cached on next access.
+    Cache.Lookups.evict_chart_tag_cache_entry(old_gps)
     
     -- Invalidate rehydrated favorites cache for all players on this surface
     -- Tag GPS change affects all favorites pointing to this tag
