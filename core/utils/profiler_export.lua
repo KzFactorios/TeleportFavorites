@@ -21,8 +21,10 @@ local section_profilers = {}
 local section_results = {}
 
 local STORAGE_END_KEY = "_tf_profile_end_tick"
--- Start capture on first on_game_tick (not inside on_init/on_load): simulation timing + helpers.create_profiler are reliable there.
-local STORAGE_DEFER_APPLY_KEY = "_tf_defer_profile_apply"
+-- Legacy saves may still have this key; clear it on first tick in on_game_tick (never during on_load).
+local LEGACY_DEFER_APPLY_KEY = "_tf_defer_profile_apply"
+-- Set in schedule_deferred_profile_apply (on_load only); consumed on first on_game_tick. Must not use storage during on_load.
+local defer_profile_apply_next_tick = false
 local commands_registered = false
 
 local function profiler_mode()
@@ -208,12 +210,12 @@ function M.arm_profile_auto_stop_from_settings()
   end
 end
 
---- New game + load: start profiler on first `on_game_tick` (not in on_init/on_load).
+--- After load only: start profiler on first `on_game_tick`. Uses session-local flag — never writes `storage` in `on_load`.
 function M.schedule_deferred_profile_apply()
-  if profiler_mode() ~= "profile" or not storage then
+  if profiler_mode() ~= "profile" then
     return
   end
-  storage[STORAGE_DEFER_APPLY_KEY] = true
+  defer_profile_apply_next_tick = true
   log("[TeleportFavorites] PROFILER_CONTROL_MODE=profile: deferred capture will start on first tick (new game or load).")
 end
 
@@ -224,8 +226,11 @@ function M.on_game_tick(event)
     return
   end
 
-  if storage[STORAGE_DEFER_APPLY_KEY] then
-    storage[STORAGE_DEFER_APPLY_KEY] = nil
+  if defer_profile_apply_next_tick then
+    defer_profile_apply_next_tick = false
+    M.apply_profile_mode_from_constants()
+  elseif storage[LEGACY_DEFER_APPLY_KEY] then
+    storage[LEGACY_DEFER_APPLY_KEY] = nil
     M.apply_profile_mode_from_constants()
   end
 
@@ -247,12 +252,9 @@ function M.on_game_tick(event)
   end
 end
 
---- Profiler userdata does not persist across save/load; clear scheduled stop.
+--- Profiler userdata does not persist across save/load. Must not mutate `storage` here (Factorio on_load CRC rule).
 function M.on_load_cleanup()
-  M.clear_profile_auto_stop()
-  if storage then
-    storage[STORAGE_DEFER_APPLY_KEY] = nil
-  end
+  defer_profile_apply_next_tick = false
   active_profiler = nil
   active_profiler_started_tick = nil
   section_profilers = {}

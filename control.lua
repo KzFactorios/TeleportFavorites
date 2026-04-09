@@ -38,7 +38,7 @@ end
 local function custom_on_load()
   ProfilerExport.register_profiling_commands()
   ProfilerExport.on_load_cleanup()
-  fave_bar.on_load_cleanup()
+  fave_bar.on_load_cleanup() -- NOTE: This must NOT mutate storage. See .cursor rules.
   -- on_init does not run when loading a save; profiler must not start inside on_load (API limits). Defer to first tick.
   ProfilerExport.schedule_deferred_profile_apply()
 

@@ -8,3 +8,4 @@ globs: "**/*.lua"
 - **Determinism**: Use `ipairs` for numeric arrays and `pairs` for dictionaries. Never use `next()` on Factorio userdata.
 - **Validation**: Every Factorio object access must be preceded by a `.valid` check.
 - **Reference**: Follow the standards in @project_specs.md.
+- **Persistence Safety**: Never mutate the `storage` table (or `global`) in any `on_load` handler or anything it calls. This will break save/load and multiplayer (Factorio CRC error). Only re-initialize local/session variables or event handlers in `on_load`. Persistent state changes must go in `on_init` or `on_configuration_changed`.

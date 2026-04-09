@@ -99,6 +99,14 @@ data:extend({
     flags = { "gui-icon" }
   },
   {
+    type = "sprite",
+    name = "tf_fave_bar_loader_sprite",
+    filename = "__TeleportFavorites__/graphics/tf_loader.png",
+    width = 128,
+    height = 40,
+    flags = { "gui-icon" }
+  },
+  {
     type = "font",
     name = "tf_font_6",
     from = "default",

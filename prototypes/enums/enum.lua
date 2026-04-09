@@ -79,6 +79,8 @@ UIEnums.GUI.FaveBar = {
   HISTORY_MODE_TOGGLE_BUTTON = "fave_bar_history_mode_toggle",
   TOGGLE_BUTTON = "fave_bar_visibility_toggle",
   SLOT_BUTTON_PREFIX = "fave_bar_slot_",
+  --- Shown briefly before progressive bar build (matches 40px bar height).
+  LOADER_PLACEHOLDER = "tf_fave_bar_loader_placeholder",
 }
 
 UIEnums.GUI.TagEditor = {
