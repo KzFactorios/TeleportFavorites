@@ -111,6 +111,13 @@ function Cache.reset_transient_player_states(player)
   end
 end
 
+local function get_mod_version()
+  if script and script.active_mods and script.mod_name then
+    return script.active_mods[script.mod_name] or "unknown"
+  end
+  return "unknown"
+end
+
 --- Initialize the persistent cache table if not already present.
 function Cache.init()
   if storage and storage._cache_initialized then return end

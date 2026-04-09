@@ -9,17 +9,17 @@ local Deps = require("deps")
 local BasicHelpers, Cache =
   Deps.BasicHelpers, Deps.Cache
 local FavoriteUtils = require("core.favorite.favorite_utils")
-local GuiObserver = require("core.events.gui_observer")
-
 
 local function is_invalid_gps(gps)
   return not gps or type(gps) ~= "string" or gps == ""
 end
 
+-- Use Cache.notify_observers_safe (not a direct gui_observer require): gui_observer loads
+-- fave_bar, which requires this module — a top-level require of gui_observer causes a cycle.
 local function notify_fave(self, event_name, extra)
   local payload = extra or {}
   payload.player_index = self.player_index
-  GuiObserver.GuiEventBus.notify(event_name, payload)
+  Cache.notify_observers_safe(event_name, payload)
 end
 
 local function check_favorites_array(favorites, max_slots)
