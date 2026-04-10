@@ -52,9 +52,13 @@ function DataObserver:update(event_data)
   if not self:is_valid() then return end
   local player = self.player
 
-  if not BasicHelpers.is_planet_surface(player.surface) then return end
-  if player.controller_type == defines.controllers.god or
-     player.controller_type == defines.controllers.spectator then
+  local guard_section = ProfilerExport.action_section_name("observer_data_guard", nil, player and player.index or nil)
+  ProfilerExport.start_section(guard_section)
+  local can_update = BasicHelpers.is_planet_surface(player.surface) and
+    player.controller_type ~= defines.controllers.god and
+    player.controller_type ~= defines.controllers.spectator
+  ProfilerExport.stop_section(guard_section)
+  if not can_update then
     return
   end
 
@@ -71,16 +75,30 @@ function DataObserver:update(event_data)
   local observer_section = ProfilerExport.action_section_name("observer_data_update", action_id, player.index)
   ProfilerExport.start_section(observer_section)
   local success, err = pcall(function()
-    if event_data and event_data.slot then
-      run_profiled("observer_slot_mark_dirty", function()
-        fave_bar.mark_slot_dirty(player, event_data.slot)
+    if event_data and type(event_data) == "table" and type(event_data.slots) == "table" then
+      -- Deferred path: mark all affected slots dirty; flush_all_dirty_slots() will
+      -- write the GUI on the next on_nth_tick(2), spreading the visual-write cost.
+      run_profiled("observer_mode_slots", function()
+        run_profiled("observer_slot_mark_dirty", function()
+          for slot_index, is_dirty in pairs(event_data.slots) do
+            if is_dirty then
+              fave_bar.mark_slot_dirty(player, tonumber(slot_index))
+            end
+          end
+        end)
       end)
-      run_profiled("observer_partial_rehydrate", function()
-        fave_bar.partial_rehydrate(player)
+    elseif event_data and event_data.slot then
+      -- Deferred path: mark the single affected slot dirty for next-tick flush.
+      run_profiled("observer_mode_slot", function()
+        run_profiled("observer_slot_mark_dirty", function()
+          fave_bar.mark_slot_dirty(player, event_data.slot)
+        end)
       end)
     else
-      run_profiled("observer_refresh_slots", function()
-        fave_bar.refresh_slots(player)
+      run_profiled("observer_mode_full", function()
+        run_profiled("observer_refresh_slots", function()
+          fave_bar.refresh_slots(player)
+        end)
       end)
     end
   end)
@@ -187,12 +205,54 @@ local function deferred_event_section_name(event_type, action_id, player_index)
   return ProfilerExport.action_section_name("deferred_evt_" .. suffix, action_id, player_index)
 end
 
+---@param observer_type string|nil
+---@param event_type string|nil
+---@param action_id string|nil
+---@param player_index number|nil
+---@return string
+local function deferred_observer_section_name(observer_type, event_type, action_id, player_index)
+  local obs = tostring(observer_type or "unknown"):gsub("[^%w_]", "_")
+  local evt = tostring(event_type or "unknown"):gsub("[^%w_]", "_")
+  return ProfilerExport.action_section_name("deferred_obs_" .. obs .. "_" .. evt, action_id, player_index)
+end
+
 local REFRESH_EVENT_TYPES = {
   cache_updated = true,
   favorite_added = true,
   favorite_removed = true,
   favorite_updated = true,
 }
+
+---@param data table|nil
+---@return boolean
+local function has_slot_payload(data)
+  if type(data) ~= "table" then return false end
+  if type(data.slot) == "number" then return true end
+  if type(data.slots) == "table" then
+    for _, is_dirty in pairs(data.slots) do
+      if is_dirty then return true end
+    end
+  end
+  return false
+end
+
+---@param target table
+---@param source table|nil
+local function merge_slot_payload(target, source)
+  if type(target) ~= "table" or type(source) ~= "table" then return end
+  target.slots = target.slots or {}
+  if type(source.slot) == "number" then
+    target.slots[source.slot] = true
+  end
+  if type(source.slots) == "table" then
+    for slot_index, is_dirty in pairs(source.slots) do
+      if is_dirty then
+        target.slots[tonumber(slot_index) or slot_index] = true
+      end
+    end
+  end
+  target.slot = nil
+end
 
 ---@param notification table
 ---@return number|nil
@@ -240,6 +300,7 @@ end
 ---@param snapshot table[]
 ---@return table[]
 local function coalesce_snapshot_notifications(snapshot)
+  ProfilerExport.start_section("deferred_coalesce_total")
   local key_to_result_index = {}
   local result = {}
 
@@ -275,13 +336,13 @@ local function coalesce_snapshot_notifications(snapshot)
         existing_data.old_gps = new_data.old_gps or existing_data.old_gps
         existing_data.new_gps = new_data.new_gps or existing_data.new_gps
 
-        local existing_implies_full = (existing_data.slot == nil)
-        local new_implies_full = (tostring(notification.type or "") ~= "cache_updated")
-          or (new_data.slot == nil)
+        local existing_implies_full = not has_slot_payload(existing_data)
+        local new_implies_full = not has_slot_payload(new_data)
         if existing_implies_full or new_implies_full then
           existing_data.slot = nil
+          existing_data.slots = nil
         else
-          existing_data.slot = new_data.slot
+          merge_slot_payload(existing_data, new_data)
         end
       elseif existing then
         existing.data = new_data
@@ -292,26 +353,63 @@ local function coalesce_snapshot_notifications(snapshot)
     end
   end
 
+  ProfilerExport.stop_section("deferred_coalesce_total")
   return result
 end
+
+-- Maximum number of coalesced notifications to dispatch in a single on_nth_tick(2) call.
+-- After coalescing, each entry typically represents one player's pending refresh, so
+-- this budget is generous for normal play but caps extreme spike bursts.
+local DISPATCH_BUDGET_PER_TICK = 32
 
 local function drain_deferred_queue()
   ProfilerExport.start_section("deferred_drain_swap")
   local snapshot = GuiEventBus._deferred_queue
   GuiEventBus._deferred_queue = {}
+  ProfilerExport.start_section("deferred_coalesce")
   snapshot = coalesce_snapshot_notifications(snapshot)
+  ProfilerExport.stop_section("deferred_coalesce")
   ProfilerExport.stop_section("deferred_drain_swap")
 
+  -- Bounded dispatch: if there are more coalesced notifications than the budget
+  -- allows this tick, carry the excess back into the queue for the next tick.
+  -- This smooths latency spikes in large multiplayer sessions without reordering.
   ProfilerExport.start_section("deferred_drain_dispatch")
-  for _, notification in ipairs(snapshot) do
+  local budget = DISPATCH_BUDGET_PER_TICK
+  for i, notification in ipairs(snapshot) do
+    if i > budget then
+      -- Carry the unprocessed tail back to the front of the queue, preserving order.
+      -- Build the remainder list in order, then prepend it so existing queued items
+      -- (from observer callbacks this tick) follow after the carried-over items.
+      local remainder_count = #snapshot - i + 1
+      local remainder = {}
+      for j = 1, remainder_count do
+        remainder[j] = snapshot[i + j - 1]
+      end
+      for j = remainder_count, 1, -1 do
+        table.insert(GuiEventBus._deferred_queue, 1, remainder[j])
+      end
+      GuiEventBus._deferred_tick_active = true
+      break
+    end
     local player_index = notification_player_index(notification)
     local action_id = notification_action_id(notification, player_index)
     local event_section = deferred_event_section_name(notification.type, action_id, player_index)
     ProfilerExport.start_section(event_section)
     local observers = GuiEventBus._observers[notification.type] or {}
+    local observers_loop_section = ProfilerExport.action_section_name("deferred_observers_loop", action_id, player_index)
+    ProfilerExport.start_section(observers_loop_section)
     for _, observer in ipairs(observers) do
       if observer and observer.update then
+        local observer_section = deferred_observer_section_name(
+          observer.observer_type,
+          notification.type,
+          action_id,
+          player_index
+        )
+        ProfilerExport.start_section(observer_section)
         local ok, err = pcall(observer.update, observer, notification.data)
+        ProfilerExport.stop_section(observer_section)
         if not ok then
           ErrorHandler.warn_log("Observer update failed", {
             event_type    = notification.type,
@@ -321,6 +419,7 @@ local function drain_deferred_queue()
         end
       end
     end
+    ProfilerExport.stop_section(observers_loop_section)
     ProfilerExport.stop_section(event_section)
   end
   ProfilerExport.stop_section("deferred_drain_dispatch")
@@ -333,8 +432,11 @@ function GuiEventBus.process_deferred_notifications()
     return
   end
   drain_deferred_queue()
-  -- Queue is now drained — mark inactive (handler stays registered for multiplayer safety).
-  GuiEventBus._deferred_tick_active = false
+  -- If drain carried items back (budget exceeded), _deferred_tick_active is already
+  -- set to true inside drain_deferred_queue; otherwise mark inactive.
+  if #GuiEventBus._deferred_queue == 0 then
+    GuiEventBus._deferred_tick_active = false
+  end
 end
 
 --- Clean up observers for a specific player.

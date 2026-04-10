@@ -33,6 +33,11 @@ local ProfilerExport = require("core.utils.profiler_export")
 
 local tag_editor = {}
 
+-- Session-local flag: true when storage._tf_tag_editor_build_queue has work pending.
+-- Avoids the storage read and length check on every on_nth_tick(2) when idle.
+-- Rehydrated in on_load_cleanup (read-only; must NOT mutate storage).
+local _tag_editor_queue_has_work = false
+
 -- Sets up the tag editor UI, including all controls and their state
 -- This function now only sets state, tooltips, and styles. It does NOT create any elements.
 local function compute_can_confirm(tag_data)
@@ -366,6 +371,7 @@ function tag_editor.build(player)
     tag_data     = tag_data,
     stage        = "a",
   })
+  _tag_editor_queue_has_work = true
   ProfilerExport.stop_section("tag_editor_build_outer")
 end
 
@@ -375,8 +381,16 @@ end
 -- Stage "c": builds error/last rows.
 -- Stage "d": final state wiring.
 function tag_editor.process_build_queue()
-  if not storage or not storage._tf_tag_editor_build_queue then return end
-  if #storage._tf_tag_editor_build_queue == 0 then return end
+  -- Fast-exit: skip all storage access when nothing is queued.
+  if not _tag_editor_queue_has_work then return end
+  if not storage or not storage._tf_tag_editor_build_queue then
+    _tag_editor_queue_has_work = false
+    return
+  end
+  if #storage._tf_tag_editor_build_queue == 0 then
+    _tag_editor_queue_has_work = false
+    return
+  end
 
   local stage_budget = 2
   local processed = 0
@@ -424,10 +438,15 @@ function tag_editor.process_build_queue()
   end
 end
 
---- Clear the build queue on save-load (stale GUI refs; must NOT mutate storage).
+--- Rehydrate session-local state from storage after on_load.
+--- Must NOT mutate storage (Factorio CRC / multiplayer safety rule).
+--- Stale queue entries self-discard in process_build_queue when the frame is gone.
 function tag_editor.on_load_cleanup()
-  -- Intentionally blank: storage is not accessible during on_load.
-  -- Stale queue entries self-discard in process_build_queue when the frame is gone.
+  if storage and storage._tf_tag_editor_build_queue and #storage._tf_tag_editor_build_queue > 0 then
+    _tag_editor_queue_has_work = true
+  else
+    _tag_editor_queue_has_work = false
+  end
 end
 
 -- Helper function to update confirm button state based on current tag data

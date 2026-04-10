@@ -289,7 +289,17 @@ function Cache.remove_stored_tag(gps)
   if not tag_cache or not tag_cache[gps] then return end
   tag_cache[gps] = nil
   Cache.Lookups.remove_chart_tag_from_cache_by_gps(gps)
+  Cache.invalidate_tag_meta_cache_entry(gps)
 end
+
+-- Session-local cache for tag metadata shallow-copies keyed by gps string.
+-- Avoids a `pairs` allocation on every call to get_tag_by_gps during slot renders.
+-- Entries carry no userdata (chart_tag is attached live on each access).
+-- TTL is short (60 ticks ≈ 1 s) so stale text/icon changes are never visible for long.
+-- Invalidated eagerly in Cache.invalidate_rehydrated_favorites and
+-- Cache.remove_tag_by_gps_and_surface when tag data changes.
+local _tag_meta_cache = {}            -- [gps] = { meta = table, expires_at = uint }
+local TAG_META_CACHE_TTL = 60         -- ticks
 
 --- Get tag object by GPS string, attaching a transient chart_tag reference.
 ---@param player LuaPlayer
@@ -311,14 +321,27 @@ function Cache.get_tag_by_gps(player, gps)
     return nil
   end
 
-  -- MULTIPLAYER SAFETY: Shallow copy so we can attach chart_tag (userdata) transiently.
-  local result = {}
-  for k, v in pairs(match_tag) do
-    if type(v) ~= "userdata" then
-      result[k] = v
+  -- Fast path: serve from session meta-cache to avoid repeated shallow-copy allocation.
+  local now = game and game.tick or 0
+  local meta_entry = _tag_meta_cache[gps]
+  local result
+  if meta_entry and now < meta_entry.expires_at then
+    result = meta_entry.meta
+  else
+    -- Slow path: build a fresh shallow copy (no userdata) and cache it.
+    -- MULTIPLAYER SAFETY: never store LuaCustomChartTag (userdata) in storage or
+    -- the cache table; chart_tag is attached transiently below.
+    local meta = {}
+    for k, v in pairs(match_tag) do
+      if type(v) ~= "userdata" then
+        meta[k] = v
+      end
     end
+    _tag_meta_cache[gps] = { meta = meta, expires_at = now + TAG_META_CACHE_TTL }
+    result = meta
   end
 
+  -- Always attach the live chart_tag (userdata, never cached).
   local chart_tag_ref = Cache.Lookups.get_chart_tag_by_gps(gps)
   if chart_tag_ref and chart_tag_ref.valid and chart_tag_ref.position then
     result.chart_tag = chart_tag_ref
@@ -334,6 +357,17 @@ function Cache.get_tag_by_gps(player, gps)
     Cache.notify_observers_safe("invalid_chart_tag", { player = player, gps = gps })
   end
   return nil
+end
+
+--- Evict a single GPS entry from the tag metadata cache (call when tag text/icon changes).
+---@param gps string
+function Cache.invalidate_tag_meta_cache_entry(gps)
+  if gps then _tag_meta_cache[gps] = nil end
+end
+
+--- Clear the entire tag metadata cache (call on broad cache invalidations).
+function Cache.invalidate_tag_meta_cache_all()
+  _tag_meta_cache = {}
 end
 
 --- Ensure the player's surface data structure exists and return it.
@@ -384,6 +418,7 @@ do
 
   function Cache.invalidate_rehydrated_favorites()
     rehydrated_favorites_cache = {}
+    Cache.invalidate_tag_meta_cache_all()
   end
 
   function Cache.get_last_max_favorite_slots(player)

@@ -14,6 +14,8 @@ local ChartTagUtils = require("core.utils.chart_tag_utils")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local Tag = require("core.tag.tag")
 local fave_bar = require("gui.favorites_bar.fave_bar")
+local GuiObserver = require("core.events.gui_observer")
+local GuiEventBus = GuiObserver.GuiEventBus
 
 local function rebuild_bars(players)
   for _, p in ipairs(players) do
@@ -187,37 +189,52 @@ function ChartTagHelpers.update_favorites_gps(old_gps, new_gps, acting_player)
   end
 end
 
---- Update tag metadata (text/icon) for all players who have favorited this tag
---- Called when tag metadata changes but position remains the same
+--- Update tag metadata (text/icon) for all players who have favorited this tag.
+--- Called when tag metadata changes but position remains the same.
+--- Emits deferred GuiEventBus.notify calls (one per affected player) instead of
+--- calling fave_bar.build directly, so all bar-write cost lands on the next
+--- on_nth_tick(2) rather than spiking on the confirm-click / tag-modified tick.
+--- If the caller already queued a notify for the acting player (e.g. handle_confirm_btn),
+--- the coalescer in gui_observer will merge the duplicate into a single dispatch.
 ---@param gps string GPS coordinate string
 ---@param chart_tag LuaCustomChartTag The modified chart tag
----@param player LuaPlayer Player who made the change
-function ChartTagHelpers.update_tag_metadata(gps, chart_tag, player)
+---@param acting_player LuaPlayer Player who made the change
+function ChartTagHelpers.update_tag_metadata(gps, chart_tag, acting_player)
   if not gps or not chart_tag or not chart_tag.valid then return end
-  if not player or not player.valid then return end
+  if not acting_player or not acting_player.valid then return end
 
   -- Text/icon change: the cached LuaCustomChartTag pointer is still valid (same object);
-  -- Factorio reads .text and .icon live, so no cache action needed.
+  -- Factorio reads .text and .icon live, so no cache invalidation needed.
 
-  -- Find all players who have this tag favorited
-  local affected_players = {}
-  for player_index, game_player in pairs(game.players) do
+  local notified = 0
+  for _, game_player in pairs(game.players) do
     if game_player and game_player.valid then
       local player_favorites = PlayerFavorites.new(game_player)
-      local favorite_entry = player_favorites:get_favorite_by_gps(gps)
-      if favorite_entry then
-        table.insert(affected_players, game_player)
+      if player_favorites:get_favorite_by_gps(gps) then
+        -- Find which slot this GPS occupies for the targeted dirty-slot path.
+        local affected_slot = nil
+        for i, fav in ipairs(player_favorites.favorites) do
+          if fav and fav.gps == gps then
+            affected_slot = i
+            break
+          end
+        end
+        GuiEventBus.notify("cache_updated", {
+          type = "tag_metadata_changed",
+          player_index = game_player.index,
+          gps = gps,
+          slot = affected_slot,
+        })
+        notified = notified + 1
       end
     end
   end
 
-  rebuild_bars(affected_players)
-
-  ErrorHandler.debug_log("Updated tag metadata for all affected players", {
+  ErrorHandler.debug_log("Deferred tag metadata update for affected players", {
     gps = gps,
-    affected_player_count = #affected_players,
+    players_notified = notified,
     new_text = chart_tag.text or "",
-    acting_player = player.name
+    acting_player = acting_player.name
   })
 end
 

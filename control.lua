@@ -10,6 +10,8 @@ local handlers = require("core.events.handlers")
 local TeleportHistory = require("core.teleport.teleport_history")
 local ProfilerExport = require("core.utils.profiler_export")
 local fave_bar = require("gui.favorites_bar.fave_bar")
+local teleport_history_modal = require("gui.teleport_history_modal.teleport_history_modal")
+local tag_editor = require("gui.tag_editor.tag_editor")
 
 -- Initialize logging immediately using single source of truth
 ErrorHandler.initialize(Constants.settings.DEFAULT_LOG_LEVEL)
@@ -39,6 +41,8 @@ local function custom_on_load()
   ProfilerExport.register_profiling_commands()
   ProfilerExport.on_load_cleanup()
   fave_bar.on_load_cleanup() -- NOTE: This must NOT mutate storage. See .cursor rules.
+  teleport_history_modal.on_load_cleanup() -- Rehydrates _thm_has_work session flag from storage (read-only).
+  tag_editor.on_load_cleanup()             -- Rehydrates _tag_editor_queue_has_work session flag from storage (read-only).
   -- on_init does not run when loading a save; profiler must not start inside on_load (API limits). Defer to first tick.
   ProfilerExport.schedule_deferred_profile_apply()
 

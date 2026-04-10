@@ -98,6 +98,9 @@ local function navigate_history(event, calc_new_pointer)
 
   local new_pointer = calc_new_pointer(hist)
   TeleportHistory.set_pointer(player, surface_index, new_pointer)
+  if teleport_history_modal.is_open(player) then
+    teleport_history_modal.update_history_list(player)
+  end
 
   -- Teleport to the destination of the new pointer entry
   local pointer = math.max(1, math.min(hist.pointer, #hist.stack))

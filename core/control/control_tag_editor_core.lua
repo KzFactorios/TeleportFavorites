@@ -12,7 +12,6 @@ local tag_editor = require("gui.tag_editor.tag_editor")
 local GuiValidation = require("core.utils.gui_validation")
 local tag_destroy_helper = require("core.tag.tag_destroy_helper")
 local PlayerFavorites = require("core.favorite.player_favorites")
-local FavoriteUtils = require("core.favorite.favorite_utils")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
 local ChartTagHelpers = require("core.events.chart_tag_helpers")
 local GuiObserver = require("core.events.gui_observer")
@@ -241,76 +240,46 @@ function M.handle_confirm_btn(player, element, tag_data)
   local sanitized_tag = Cache.sanitize_for_storage(refreshed_tag)
   tags[tag.gps] = sanitized_tag
 
+  -- Mutate favorites storage exactly once, getting back the affected slot index.
+  -- Pass silent=true so add/remove don't fire their own notify; we send one below.
+  local affected_slot = nil
   if is_favorite then
     local player_favorites = PlayerFavorites.new(player)
-    local _, error_msg = player_favorites:add_favorite(refreshed_tag.gps)
-    if error_msg then
+    local ok, error_msg, slot = player_favorites:add_favorite(refreshed_tag.gps, true)
+    if not ok then
       return M.show_tag_editor_error(player, tag_data,
         BasicHelpers.get_error_string(player, "favorite_slots_full") or error_msg)
     end
+    affected_slot = slot
     refreshed_tag.faved_by_players[player.index] = player.index
     Cache.invalidate_rehydrated_favorites()
   else
     local player_favorites = PlayerFavorites.new(player)
-    player_favorites:remove_favorite(refreshed_tag.gps)
+    local _, _, slot = player_favorites:remove_favorite(refreshed_tag.gps, true)
+    affected_slot = slot
     refreshed_tag.faved_by_players[player.index] = nil
     Cache.invalidate_rehydrated_favorites()
   end
 
-  local function is_data_synced()
-    local player_favorites = PlayerFavorites.new(player)
-    local all_synced = true
-    for i, fav in ipairs(player_favorites.favorites) do
-      if fav and not FavoriteUtils.is_blank_favorite(fav) then
-        if fav.gps ~= refreshed_tag.gps then
-          ErrorHandler.debug_log("[TAG_EDITOR][SYNC CHECK] Slot not synced", {slot=i, fav_gps=fav.gps, expected=refreshed_tag.gps})
-          all_synced = false
-        end
-        if fav.tag and fav.tag.gps ~= refreshed_tag.gps then
-          ErrorHandler.debug_log("[TAG_EDITOR][SYNC CHECK] Tag in slot not synced", {slot=i, tag_gps=fav.tag.gps, expected=refreshed_tag.gps})
-          all_synced = false
-        end
-      end
-    end
-    return all_synced
+  -- Single targeted notify for the acting player.  update_tag_metadata will emit
+  -- deferred notifies for any other players who share this favorited GPS.
+  if is_favorite then
+    GuiEventBus.notify("favorite_added", {
+      player = player,
+      player_index = player.index,
+      gps = refreshed_tag.gps,
+      tag = refreshed_tag,
+      slot = affected_slot,
+    })
+  else
+    GuiEventBus.notify("favorite_removed", {
+      player = player,
+      player_index = player.index,
+      gps = refreshed_tag.gps,
+      tag = refreshed_tag,
+      slot = affected_slot,
+    })
   end
-
-  local function deferred_notify_with_sync_check(max_attempts, attempt)
-    attempt = attempt or 1
-    if is_data_synced() or attempt >= max_attempts then
-      if not is_data_synced() then
-        ErrorHandler.debug_log("[TAG_EDITOR][SYNC CHECK] Data not fully synced after max attempts", {attempt=attempt})
-      end
-      if is_favorite then
-        GuiEventBus.notify("favorite_added", {
-          player = player,
-          gps = refreshed_tag.gps,
-          tag = refreshed_tag
-        })
-      else
-        GuiEventBus.notify("favorite_removed", {
-          player = player,
-          gps = refreshed_tag.gps,
-          tag = refreshed_tag
-        })
-      end
-      GuiEventBus.notify("cache_updated", {
-        type = "favorites_gps_updated",
-        player_index = player.index,
-        old_gps = tag_data.gps,
-        new_gps = refreshed_tag.gps
-      })
-    else
-      -- on_nth_tick(N) is an interval (fires when tick % N == 0), not an absolute tick.
-      -- Run once on the next tick pass: interval 1, then unregister before retrying.
-      script.on_nth_tick(1, function()
-        script.on_nth_tick(1, nil)
-        deferred_notify_with_sync_check(max_attempts, attempt + 1)
-      end)
-    end
-  end
-
-  deferred_notify_with_sync_check(3, 1)
 
   local sanitized_tag2 = Cache.sanitize_for_storage(refreshed_tag)
   tags[refreshed_tag.gps] = sanitized_tag2
@@ -319,7 +288,8 @@ function M.handle_confirm_btn(player, element, tag_data)
   GuiEventBus.notify("cache_updated", {
     type = "tag_editor_confirmed",
     gps = tag.gps,
-    player_index = player.index
+    player_index = player.index,
+    slot = affected_slot,
   })
 
   if tag_data and tag_data.gps then
@@ -371,11 +341,18 @@ function M.handle_delete_confirm(player)
 
   local tag_gps = tag.gps
   local player_favorites = PlayerFavorites.new(player)
-  player_favorites:remove_favorite(tag_gps)
+  -- silent=true: we send the targeted notify below with the returned slot index.
+  local _, _, removed_slot = player_favorites:remove_favorite(tag_gps, true)
 
   tag_destroy_helper.destroy_tag_and_chart_tag(tag, tag.chart_tag)
 
-  GuiEventBus.notify("favorite_removed", { player = player, gps = tag_gps, tag = tag })
+  GuiEventBus.notify("favorite_removed", {
+    player = player,
+    player_index = player.index,
+    gps = tag_gps,
+    tag = tag,
+    slot = removed_slot,
+  })
 
   Cache.invalidate_rehydrated_favorites()
 

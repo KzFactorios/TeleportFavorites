@@ -23,11 +23,18 @@ end
 local THM_DIRTY_PLAYERS_KEY = "_tf_thm_dirty_players"
 local THM_RENDER_STATE_KEY = "_tf_thm_render_state"
 local THM_PROGRESSIVE_ROWS_KEY = "_tf_thm_progressive_rows"
+local THM_BUILD_QUEUE_KEY = "_tf_thm_build_queue"
 local THM_INITIAL_ROWS = 20
 local THM_APPEND_ROWS_PER_PASS = 10
 local THM_APPEND_MIN_ROWS = 5
 local THM_APPEND_MID_ROWS = 8
 local process_progressive_row_jobs
+
+-- Session-local flag: true when any dirty-history or progressive-row work is pending.
+-- Avoids the O(#game.players) loops in flush_dirty_history_lists and
+-- process_progressive_row_jobs on every on_nth_tick(2) when nothing is queued.
+-- Must NOT be stored in storage (session-local only); rehydrated in on_load_cleanup.
+local _thm_has_work = false
 
 ---@param remaining number
 ---@return number
@@ -47,6 +54,7 @@ local function mark_history_list_dirty(player_index, action_id)
   if type(player_index) ~= "number" then return end
   storage[THM_DIRTY_PLAYERS_KEY] = storage[THM_DIRTY_PLAYERS_KEY] or {}
   storage[THM_DIRTY_PLAYERS_KEY][player_index] = action_id or true
+  _thm_has_work = true
 end
 
 local function flush_dirty_history_lists()
@@ -64,6 +72,10 @@ local function flush_dirty_history_lists()
         teleport_history_modal.update_history_list(player, type(dirty_action_id) == "string" and dirty_action_id or nil)
       end
     end
+  end
+  -- Nil-out the table when empty so next on_load can detect cleanly.
+  if next(dirty) == nil then
+    storage[THM_DIRTY_PLAYERS_KEY] = nil
   end
 end
 
@@ -103,6 +115,7 @@ local function set_progressive_row_job(player_index, job)
   if not storage then return end
   storage[THM_PROGRESSIVE_ROWS_KEY] = storage[THM_PROGRESSIVE_ROWS_KEY] or {}
   storage[THM_PROGRESSIVE_ROWS_KEY][player_index] = job
+  _thm_has_work = true
 end
 
 ---@param player_index number
@@ -120,7 +133,10 @@ local function update_pointer_highlight(history_list, old_pointer, new_pointer)
   if old_pointer == new_pointer then return true end
 
   if type(old_pointer) == "number" and old_pointer > 0 then
-    local old_btn = history_list["teleport_history_item_" .. tostring(old_pointer)]
+    local old_btn = GuiValidation.find_child_by_name(
+      history_list,
+      "teleport_history_item_" .. tostring(old_pointer)
+    )
     if old_btn and old_btn.valid then
       ---@diagnostic disable-next-line: assign-type-mismatch
       old_btn.style = "tf_teleport_history_item"
@@ -131,12 +147,17 @@ local function update_pointer_highlight(history_list, old_pointer, new_pointer)
     return true
   end
 
-  local new_btn = history_list["teleport_history_item_" .. tostring(new_pointer)]
+  local new_btn = GuiValidation.find_child_by_name(
+    history_list,
+    "teleport_history_item_" .. tostring(new_pointer)
+  )
   if new_btn and new_btn.valid then
     ---@diagnostic disable-next-line: assign-type-mismatch
     new_btn.style = "tf_teleport_history_item_current"
+    return true
   end
-  return true
+  -- Fallback: if target row isn't present yet (progressive render timing), force full rebuild path.
+  return false
 end
 
 
@@ -297,17 +318,18 @@ function teleport_history_modal.build(player, action_id)
   end
 
   -- Enqueue interior build for the next on_nth_tick(2).
-  storage._tf_thm_build_queue = storage._tf_thm_build_queue or {}
-  for i = #storage._tf_thm_build_queue, 1, -1 do
-    if storage._tf_thm_build_queue[i].player_index == player.index then
-      table.remove(storage._tf_thm_build_queue, i)
+  storage[THM_BUILD_QUEUE_KEY] = storage[THM_BUILD_QUEUE_KEY] or {}
+  for i = #storage[THM_BUILD_QUEUE_KEY], 1, -1 do
+    if storage[THM_BUILD_QUEUE_KEY][i].player_index == player.index then
+      table.remove(storage[THM_BUILD_QUEUE_KEY], i)
     end
   end
-  table.insert(storage._tf_thm_build_queue, {
+  table.insert(storage[THM_BUILD_QUEUE_KEY], {
     player_index = player.index,
     stage = "a",
     action_id = effective_action_id,
   })
+  _thm_has_work = true
 
   return modal_frame
 end
@@ -317,10 +339,15 @@ end
 -- Stage "b": builds content frame + list shell.
 -- Stage "c": populates history list.
 function teleport_history_modal.process_build_queue()
+  -- Fast-exit: skip all three inner loops when nothing is pending.
+  -- _thm_has_work is a session-local flag set whenever any queue/dirty entry is enqueued,
+  -- and cleared here once all work is confirmed drained.
+  if not _thm_has_work then return end
   if not storage then return end
-  storage._tf_thm_build_queue = storage._tf_thm_build_queue or {}
-  if #storage._tf_thm_build_queue > 0 then
-    local entry = table.remove(storage._tf_thm_build_queue, 1)
+
+  storage[THM_BUILD_QUEUE_KEY] = storage[THM_BUILD_QUEUE_KEY] or {}
+  if #storage[THM_BUILD_QUEUE_KEY] > 0 then
+    local entry = table.remove(storage[THM_BUILD_QUEUE_KEY], 1)
     local player = game.players[entry.player_index]
     if player and player.valid then
       local modal_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]
@@ -328,7 +355,7 @@ function teleport_history_modal.process_build_queue()
         if entry.stage == "a" then
           build_interior_a(player, modal_frame, entry.action_id)
           -- Insert stage B at the front so it runs on the very next on_nth_tick(2).
-          table.insert(storage._tf_thm_build_queue, 1, {
+          table.insert(storage[THM_BUILD_QUEUE_KEY], 1, {
             player_index = player.index,
             stage        = "b",
             action_id    = entry.action_id,
@@ -336,7 +363,7 @@ function teleport_history_modal.process_build_queue()
         elseif entry.stage == "b" then
           build_interior_b(player, modal_frame, entry.action_id)
           -- Insert stage C at the front so it runs on the very next on_nth_tick(2).
-          table.insert(storage._tf_thm_build_queue, 1, {
+          table.insert(storage[THM_BUILD_QUEUE_KEY], 1, {
             player_index = player.index,
             stage        = "c",
             action_id    = entry.action_id,
@@ -353,6 +380,16 @@ function teleport_history_modal.process_build_queue()
 
   -- Flush coalesced observer updates once per on_nth_tick(2).
   flush_dirty_history_lists()
+
+  -- Re-evaluate flag: clear it if all three queues are now empty.
+  local build_q = storage[THM_BUILD_QUEUE_KEY]
+  local prog_q  = storage[THM_PROGRESSIVE_ROWS_KEY]
+  local dirty_q = storage[THM_DIRTY_PLAYERS_KEY]
+  if (not build_q or #build_q == 0)
+      and (not prog_q  or next(prog_q)  == nil)
+      and (not dirty_q or next(dirty_q) == nil) then
+    _thm_has_work = false
+  end
 end
 
 --- Destroy the teleport history modal
@@ -456,6 +493,7 @@ process_progressive_row_jobs = function()
   if not storage then return end
   local jobs = storage[THM_PROGRESSIVE_ROWS_KEY]
   if not jobs then return end
+  if next(jobs) == nil then return end
 
   for player_index = 1, #game.players do
     local job = jobs[player_index]
@@ -630,6 +668,23 @@ function teleport_history_modal.update_history_list(player, action_id)
     pointer = pointer,
   })
   ProfilerExport.stop_section(section_name)
+end
+
+--- Rehydrate session-local state from storage after an on_load event.
+--- Must NOT mutate storage (Factorio CRC / multiplayer safety rule).
+--- Only reads storage to decide whether any work is pending for _thm_has_work.
+function teleport_history_modal.on_load_cleanup()
+  if not storage then
+    _thm_has_work = false
+    return
+  end
+  local build_q = storage[THM_BUILD_QUEUE_KEY]
+  local prog_q  = storage[THM_PROGRESSIVE_ROWS_KEY]
+  local dirty_q = storage[THM_DIRTY_PLAYERS_KEY]
+  _thm_has_work = (build_q  and #build_q  > 0)
+              or  (prog_q   and next(prog_q)   ~= nil)
+              or  (dirty_q  and next(dirty_q)  ~= nil)
+              or  false
 end
 
 return teleport_history_modal

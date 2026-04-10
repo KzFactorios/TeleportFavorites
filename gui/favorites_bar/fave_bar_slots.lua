@@ -286,6 +286,8 @@ return function(fave_bar, helpers)
   end
 
   --- Update only the slots row without rebuilding the entire bar.
+  --- Attempts an in-place update first; falls back to clear+rebuild only when slot
+  --- count or structure has changed (e.g. settings change or first build).
   ---@param player LuaPlayer
   ---@param parent_flow LuaGuiElement
   function fave_bar.update_slot_row(player, parent_flow)
@@ -295,10 +297,16 @@ return function(fave_bar, helpers)
     local slots_frame = GuiValidation.find_child_by_name(parent_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW)
     if not slots_frame or not slots_frame.valid then return end
 
-    clear_element_children(slots_frame)
-
     local surface_index = player.surface.index
     local pfaves = Cache.get_player_favorites(player, surface_index)
+
+    -- Fast path: update buttons in-place (no destroy/recreate).
+    if try_update_slots_in_place(slots_frame, player, pfaves) then
+      return slots_frame
+    end
+
+    -- Slow path: structure changed, clear and rebuild.
+    clear_element_children(slots_frame)
     fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves)
 
     return slots_frame
@@ -373,10 +381,18 @@ return function(fave_bar, helpers)
     end
   end
 
-  -- Dirty-slot tracking for targeted partial rehydrates
+  -- Dirty-slot tracking for deferred partial rehydrates.
+  -- Slots are marked dirty by DataObserver:update (on the notification tick) and
+  -- flushed on the next on_nth_tick(2) by process_slot_build_queue, spreading the
+  -- GUI write cost across ticks instead of spiking on the notification tick.
   local dirty_slots = {}
 
-  --- Mark a single slot as dirty for partial rehydration.
+  -- Session-local flag: true when any player has dirty slots pending.
+  -- Avoids iterating game.players in flush_all_dirty_slots when nothing is queued.
+  -- Never stored in storage (session-local); always starts false after on_load.
+  local _dirty_slots_has_work = false
+
+  --- Mark a single slot as dirty for deferred rehydration.
   ---@param player LuaPlayer
   ---@param slot_index number
   function fave_bar.mark_slot_dirty(player, slot_index)
@@ -385,9 +401,11 @@ return function(fave_bar, helpers)
     local pidx = player.index
     dirty_slots[pidx] = dirty_slots[pidx] or {}
     dirty_slots[pidx][slot_index] = true
+    _dirty_slots_has_work = true
   end
 
-  --- Partially rehydrate any dirty slots for the player and clear the dirty set.
+  --- Partially rehydrate any dirty slots for a single player and clear their dirty set.
+  --- Called directly when an immediate update is required (e.g. slot-row rebuild path).
   ---@param player LuaPlayer
   function fave_bar.partial_rehydrate(player)
     if not BasicHelpers.is_valid_player(player) then return end
@@ -405,5 +423,34 @@ return function(fave_bar, helpers)
       end
     end
     dirty_slots[pidx] = nil
+    -- Re-check flag: leave true if other players still have dirty work.
+    if next(dirty_slots) == nil then
+      _dirty_slots_has_work = false
+    end
+  end
+
+  --- Flush all pending dirty slots for every player with queued work.
+  --- Called from process_slot_build_queue (on_nth_tick(2)) to spread GUI write cost
+  --- across ticks rather than spiking on the notification tick.
+  function fave_bar.flush_all_dirty_slots()
+    if not _dirty_slots_has_work then return end
+    -- Iterate only the players that actually have dirty work, not all game.players.
+    for pidx, set in pairs(dirty_slots) do
+      local player = game.players[pidx]
+      if player and player.valid then
+        for slot_index, _ in pairs(set) do
+          local ok, err = pcall(function()
+            fave_bar.update_single_slot(player, slot_index)
+          end)
+          if not ok then
+            if ErrorHandler and ErrorHandler.warn_log then
+              ErrorHandler.warn_log("[FAVE_BAR] flush_all_dirty_slots failed", { player = player.name, slot = slot_index, error = err })
+            end
+          end
+        end
+      end
+      dirty_slots[pidx] = nil
+    end
+    _dirty_slots_has_work = false
   end
 end

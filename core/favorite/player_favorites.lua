@@ -79,49 +79,52 @@ function PlayerFavorites.new(player)
   return obj
 end
 
----Remove a favorite GPS from the player's favorites
+---Remove a favorite GPS from the player's favorites.
 ---@param gps string GPS string to remove
----@return boolean success, string? error_message
-function PlayerFavorites:remove_favorite(gps)
+---@param silent boolean|nil If true, suppress the internal GuiEventBus.notify (caller will notify).
+---@return boolean success, string? error_message, number? slot_index
+function PlayerFavorites:remove_favorite(gps, silent)
   local max_slots = Cache.Settings.get_player_max_favorite_slots(self.player)
-  if is_invalid_gps(gps) then return false, "invalid_gps" end
+  if is_invalid_gps(gps) then return false, "invalid_gps", nil end
   local favorites = self.favorites
   local ok, err = check_favorites_array(favorites, max_slots)
-  if not ok then return false, err end
+  if not ok then return false, err, nil end
   for i = 1, max_slots do
     local fav = favorites[i]
     if fav and fav.gps == gps then
       favorites[i] = FavoriteUtils.get_blank_favorite()
       Cache.set_player_favorites(self.player, favorites)
-      notify_fave(self, "favorite_removed", { gps = gps, slot = i })
-      return true
+      if not silent then
+        notify_fave(self, "favorite_removed", { gps = gps, slot = i })
+      end
+      return true, nil, i
     end
   end
-  return false, "favorite_not_found"
+  return false, "favorite_not_found", nil
 end
 
----Add a favorite GPS to the first available slot
+---Add a favorite GPS to the first available slot.
 ---@param gps string GPS string to add
----@return boolean success, string? error_message
-function PlayerFavorites:add_favorite(gps)
+---@param silent boolean|nil If true, suppress the internal GuiEventBus.notify (caller will notify).
+---@return boolean success, string? error_message, number? slot_index
+function PlayerFavorites:add_favorite(gps, silent)
   local max_slots = Cache.Settings.get_player_max_favorite_slots(self.player)
-  if is_invalid_gps(gps) then return false, "invalid_gps" end
+  if is_invalid_gps(gps) then return false, "invalid_gps", nil end
   local favorites = self.favorites
   if not favorites or #favorites ~= max_slots then
-    -- initialize the player's favorites array
     local old_faves = favorites or {}
     for i = 1, max_slots do
       favorites[i] = old_faves[i] or FavoriteUtils.get_blank_favorite()
     end
   end
-  -- Check for duplicate
+  -- Check for duplicate (already present — treat as success, return current slot).
   for i = 1, max_slots do
     local fav = favorites[i]
     if fav and fav.gps == gps then
-      return true -- Already present, treat as success
+      return true, nil, i
     end
   end
-  -- Find first available (blank and unlocked) slot
+  -- Find first available (blank and unlocked) slot.
   for i = 1, max_slots do
     local fav = favorites[i] or FavoriteUtils.get_blank_favorite()
     if FavoriteUtils.is_blank_favorite(fav) then
@@ -129,11 +132,13 @@ function PlayerFavorites:add_favorite(gps)
       favorites[i].gps = gps
       favorites[i].locked = false
       Cache.set_player_favorites(self.player, favorites)
-      notify_fave(self, "favorite_added", { gps = gps, slot = i })
-      return true
+      if not silent then
+        notify_fave(self, "favorite_added", { gps = gps, slot = i })
+      end
+      return true, nil, i
     end
   end
-  return false, "favorite_slots_full"
+  return false, "favorite_slots_full", nil
 end
 
 ---Get a favorite entry by GPS string

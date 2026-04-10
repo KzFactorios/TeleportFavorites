@@ -156,7 +156,7 @@ All settings are under **Mod Settings → Per Player**:
 | Enable favorites | On | Show the favorites bar and all related features |
 | Enable teleport history | On | Record teleport history |
 | Sequential History Mode (Experimental) | Off | Record departure location alongside destination |
-| Max Slots | 10 | Number of favorite slots (10, 20, or 30). **Warning:** lowering this value deletes favorites beyond the new maximum |
+| Max Slots | 10 | Number of favorite slots (10, 20, or 30). **Warning:** lowering this value deletes favorites beyond the new maximum. A larger bar is a more generous canvas — though the more slots you invite to the party, the more time the game spends setting the table each time your favorites refresh. |
 
 ---
 

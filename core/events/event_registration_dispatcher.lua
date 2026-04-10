@@ -321,6 +321,12 @@ local function register_core_events(script)
       ProfilerExport.stop_section("deferred_notifications")
     end
     fave_bar.process_slot_build_queue()
+    -- Flush dirty slots queued by DataObserver:update this tick (or any previous tick
+    -- that was skipped due to budget overflow). Runs after process_slot_build_queue so
+    -- a progressive build stage and a dirty-slot flush never compete on the same tick.
+    ProfilerExport.start_section("deferred_slot_visuals")
+    fave_bar.flush_all_dirty_slots()
+    ProfilerExport.stop_section("deferred_slot_visuals")
     tag_editor.process_build_queue()
     teleport_history_modal.process_build_queue()
   end)

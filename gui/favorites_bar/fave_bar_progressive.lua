@@ -6,12 +6,10 @@
 --
 -- Stages in storage._tf_slot_build_queue:
 --   chrome1        → build bar_flow + toggle_container (1 tick)
---   chrome2a       → build history toggle + mode buttons (1 tick)
---   chrome2b       → build visibility toggle + slots frame (1 tick)
+--   chrome2a/2b/2  → build all toggle buttons + slots frame (1 tick, merged)
 --   blank_slots    → add empty slot GUI elements BLANK_BATCH_SIZE per tick
 --   prune          → run prune_stale_favorites (1 tick, no GUI adds)
 --   hydrate_slots  → write data into blank slots HYDRATE_BATCH_SIZE per tick
---   chrome2        → legacy alias: redirects to chrome2a (saves from before the split)
 --   slots          → legacy stage kept for old save files
 
 local Deps                                    = require("deps")
@@ -25,9 +23,11 @@ local ProfilerExport                          = require("core.utils.profiler_exp
 
 -- Smaller batches spread GUI adds across more ticks, keeping per-tick work lower.
 -- Label mode uses 2 slots/tick (4 adds each = 8 adds/tick).
--- No-label mode uses BLANK_BATCH_SIZE slots/tick (2 adds each = 6 adds/tick).
-local BLANK_BATCH_SIZE                        = 3
-local HYDRATE_BATCH_SIZE                      = 3
+-- No-label mode uses BLANK_BATCH_SIZE slots/tick (2 adds each = 8 adds/tick).
+-- Raised from 3→4: saves ~2 ticks over a 10-slot build without measurably raising
+-- per-tick cost (each add is still well under the frame budget).
+local BLANK_BATCH_SIZE                        = 4
+local HYDRATE_BATCH_SIZE                      = 4
 
 return function(fave_bar, helpers)
   local cancel_progressive_build_for = helpers.cancel_progressive_build_for
@@ -40,6 +40,11 @@ return function(fave_bar, helpers)
   local build_single_slot            = helpers.build_single_slot
   local is_build_in_flight           = helpers.is_build_in_flight
   local GuiElementBuilders           = helpers.GuiElementBuilders
+
+  -- Session-local flag: true when storage._tf_slot_build_queue has work pending.
+  -- Avoids the storage read and length check on every on_nth_tick(2) when idle.
+  -- Rehydrated in on_load_cleanup (read-only; must NOT mutate storage).
+  local _fave_bar_queue_has_work = false
 
   --- Ensure the bar_frame exists, init the build queue, cancel any in-flight build.
   --- Returns bar_frame on success or nil if setup failed.
@@ -87,6 +92,7 @@ return function(fave_bar, helpers)
       stage         = "chrome1",
     })
     last_build_tick[player.index] = game.tick
+    _fave_bar_queue_has_work = true
   end
 
   --- Called from on_player_joined_game / on_player_created (tick 0).
@@ -105,6 +111,7 @@ return function(fave_bar, helpers)
       stop_after_blank = true,
     })
     last_build_tick[player.index] = game.tick
+    _fave_bar_queue_has_work = true
   end
 
   --- Returns true when the blank bar is fully built and no build is in flight.
@@ -141,14 +148,23 @@ return function(fave_bar, helpers)
       label_mode    = label_mode,
     })
     last_build_tick[player.index] = game.tick
+    _fave_bar_queue_has_work = true
   end
 
   --- Called on every on_nth_tick(2); processes one queue stage per call.
   function fave_bar.process_slot_build_queue()
+    -- Fast-exit: skip all storage access when nothing is queued.
+    if not _fave_bar_queue_has_work then return end
     -- Skip tick 0: on_nth_tick(2) fires at tick 0 (0 % 2 == 0).
     if game.tick < 2 then return end
-    if not storage or not storage._tf_slot_build_queue then return end
-    if #storage._tf_slot_build_queue == 0 then return end
+    if not storage or not storage._tf_slot_build_queue then
+      _fave_bar_queue_has_work = false
+      return
+    end
+    if #storage._tf_slot_build_queue == 0 then
+      _fave_bar_queue_has_work = false
+      return
+    end
 
     local entry  = storage._tf_slot_build_queue[1]
     local player = game.players[entry.player_index]
@@ -200,20 +216,23 @@ return function(fave_bar, helpers)
       return
     end
 
-    -- ── Chrome stage 2a: history toggle + mode buttons (~2 sprite-button adds) ────
-    if entry.stage == "chrome2" or entry.stage == "chrome2a" then
-      ProfilerExport.start_section("pb_chrome2a")
+    -- ── Chrome stage 2: history/mode buttons + visibility toggle + slots frame ────
+    -- (Merged from chrome2a + chrome2b: both are lightweight ~2-add operations that
+    --  together cost well under the frame budget, so combining saves one full tick.)
+    if entry.stage == "chrome2" or entry.stage == "chrome2a" or entry.stage == "chrome2b" then
+      ProfilerExport.start_section("pb_chrome2")
       local player_settings = Cache.Settings.get_player_settings(player)
       local main_flow       = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
       local bar_frame       = main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
       local bar_flow        = bar_frame and bar_frame[Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW]
       local tog_cont        = bar_flow and bar_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER]
       if not bar_frame or not bar_frame.valid or not bar_flow or not tog_cont then
-        ProfilerExport.stop_section("pb_chrome2a")
+        ProfilerExport.stop_section("pb_chrome2")
         table.remove(storage._tf_slot_build_queue, 1)
         return
       end
 
+      -- History toggle + mode buttons (former chrome2a)
       local history_enabled = player_settings.enable_teleport_history
       local player_data     = Cache.get_player_data(player)
       local is_seq          = player_data and (player_data.sequential_history_mode or false) or false
@@ -231,31 +250,8 @@ return function(fave_bar, helpers)
       if hist_btn and hist_btn.valid then hist_btn.visible = history_enabled end
       if mode_btn and mode_btn.valid then mode_btn.visible = history_enabled end
 
-      ProfilerExport.stop_section("pb_chrome2a")
-      storage._tf_slot_build_queue[1] = {
-        player_index     = entry.player_index,
-        surface_index    = entry.surface_index,
-        stage            = "chrome2b",
-        stop_after_blank = entry.stop_after_blank,
-      }
-      return
-    end
-
-    -- ── Chrome stage 2b: visibility toggle + slots frame (~2 adds + visibility) ──
-    if entry.stage == "chrome2b" then
-      ProfilerExport.start_section("pb_chrome2b")
-      local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
-      local bar_frame = main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
-      local bar_flow  = bar_frame and bar_frame[Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW]
-      local tog_cont  = bar_flow and bar_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER]
-      if not bar_frame or not bar_frame.valid or not bar_flow or not tog_cont then
-        ProfilerExport.stop_section("pb_chrome2b")
-        table.remove(storage._tf_slot_build_queue, 1)
-        return
-      end
-
-      local player_data = Cache.get_player_data(player)
-      local slots_vis   = player_data and player_data.fave_bar_slots_visible
+      -- Visibility toggle + slots frame (former chrome2b)
+      local slots_vis = player_data and player_data.fave_bar_slots_visible
       if slots_vis == nil then
         slots_vis = true
         if player_data then player_data.fave_bar_slots_visible = true end
@@ -273,7 +269,7 @@ return function(fave_bar, helpers)
       local label_mode = Cache.Settings.get_player_slot_label_mode(player)
       local use_labels = label_mode ~= "off"
 
-      ProfilerExport.stop_section("pb_chrome2b")
+      ProfilerExport.stop_section("pb_chrome2")
       storage._tf_slot_build_queue[1] = {
         player_index     = entry.player_index,
         surface_index    = entry.surface_index,
@@ -498,8 +494,13 @@ return function(fave_bar, helpers)
   --- Clear the build queue on save-load (stale GUI references, fresh state needed).
   --- on_load_cleanup must NOT mutate storage (see .cursor rules / Factorio CRC rules)
   function fave_bar.on_load_cleanup()
-    -- Do NOT touch storage here. Only clear session-local or GUI state if needed.
-    -- If you need to clear persistent state, do it in on_init or on_configuration_changed.
-    -- This function intentionally left blank to avoid CRC/save/load errors.
+    -- Rehydrate the session-local queue flag from storage (read-only).
+    -- On reload, we cannot assume the queue is empty (a build may have been in-flight
+    -- when the game was saved), so we check the storage table and set the flag accordingly.
+    if storage and storage._tf_slot_build_queue and #storage._tf_slot_build_queue > 0 then
+      _fave_bar_queue_has_work = true
+    else
+      _fave_bar_queue_has_work = false
+    end
   end
 end
