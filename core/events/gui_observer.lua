@@ -4,6 +4,7 @@ local Deps = require("deps")
 local BasicHelpers, ErrorHandler =
   Deps.BasicHelpers, Deps.ErrorHandler
 local fave_bar = require("gui.favorites_bar.fave_bar")
+local ProfilerExport = require("core.utils.profiler_export")
 
 ---@class BaseGuiObserver
 ---@field player LuaPlayer
@@ -57,14 +58,33 @@ function DataObserver:update(event_data)
     return
   end
 
+  local action_id = (type(event_data) == "table" and event_data.action_id) or ProfilerExport.get_action_trace_id(player.index)
+
+  local function run_profiled(section_name, fn)
+    local scoped_name = ProfilerExport.action_section_name(section_name, action_id, player.index)
+    ProfilerExport.start_section(scoped_name)
+    local ok, section_err = pcall(fn)
+    ProfilerExport.stop_section(scoped_name)
+    if not ok then error(section_err) end
+  end
+
+  local observer_section = ProfilerExport.action_section_name("observer_data_update", action_id, player.index)
+  ProfilerExport.start_section(observer_section)
   local success, err = pcall(function()
     if event_data and event_data.slot then
-      fave_bar.mark_slot_dirty(player, event_data.slot)
-      fave_bar.partial_rehydrate(player)
+      run_profiled("observer_slot_mark_dirty", function()
+        fave_bar.mark_slot_dirty(player, event_data.slot)
+      end)
+      run_profiled("observer_partial_rehydrate", function()
+        fave_bar.partial_rehydrate(player)
+      end)
     else
-      fave_bar.refresh_slots(player)
+      run_profiled("observer_refresh_slots", function()
+        fave_bar.refresh_slots(player)
+      end)
     end
   end)
+  ProfilerExport.stop_section(observer_section)
 
   if not success then
     ErrorHandler.warn_log("[DATA OBSERVER] Failed to refresh favorites bar", {
@@ -134,6 +154,18 @@ end
 ---@param event_type string
 ---@param event_data table
 function GuiEventBus.notify(event_type, event_data)
+  if type(event_data) == "table" and not event_data.action_id then
+    local player_index = event_data.player_index
+    if type(player_index) ~= "number" then
+      local player = event_data.player
+      if player and player.valid then
+        player_index = player.index
+      end
+    end
+    if type(player_index) == "number" then
+      event_data.action_id = ProfilerExport.get_action_trace_id(player_index)
+    end
+  end
   GuiEventBus._deferred_queue[#GuiEventBus._deferred_queue + 1] = {
     type      = event_type,
     data      = event_data,
@@ -146,10 +178,136 @@ end
 --- The queue is swapped out before iteration so that any notify() calls made
 --- inside an observer's update land in the NEW queue and are processed on the
 --- next on_nth_tick(2), preventing unbounded loops.
+---@param event_type string
+---@param action_id string|nil
+---@param player_index number|nil
+---@return string
+local function deferred_event_section_name(event_type, action_id, player_index)
+  local suffix = tostring(event_type or "unknown"):gsub("[^%w_]", "_")
+  return ProfilerExport.action_section_name("deferred_evt_" .. suffix, action_id, player_index)
+end
+
+local REFRESH_EVENT_TYPES = {
+  cache_updated = true,
+  favorite_added = true,
+  favorite_removed = true,
+  favorite_updated = true,
+}
+
+---@param notification table
+---@return number|nil
+local function notification_player_index(notification)
+  local data = notification and notification.data or nil
+  if type(data) ~= "table" then return nil end
+  if type(data.player_index) == "number" then return data.player_index end
+  local player = data.player
+  if player and player.valid and type(player.index) == "number" then
+    return player.index
+  end
+  return nil
+end
+
+---@param notification table
+---@param player_index number|nil
+---@return string|nil
+local function notification_action_id(notification, player_index)
+  local data = notification and notification.data or nil
+  if type(data) == "table" and type(data.action_id) == "string" and data.action_id ~= "" then
+    return data.action_id
+  end
+  if type(player_index) == "number" then
+    return ProfilerExport.get_action_trace_id(player_index)
+  end
+  return nil
+end
+
+---@param notification table
+---@param fallback_index number
+---@return string
+local function notification_coalesce_key(notification, fallback_index)
+  local event_type = tostring(notification and notification.type or "unknown")
+  local player_index = notification_player_index(notification)
+  if player_index then
+    if REFRESH_EVENT_TYPES[event_type] then
+      return "refresh|" .. tostring(player_index)
+    end
+    return event_type .. "|" .. tostring(player_index)
+  end
+  -- If no player identity exists, keep notification unique and ordered.
+  return event_type .. "|u|" .. tostring(fallback_index)
+end
+
+---@param snapshot table[]
+---@return table[]
+local function coalesce_snapshot_notifications(snapshot)
+  local key_to_result_index = {}
+  local result = {}
+
+  for i = 1, #snapshot do
+    local notification = snapshot[i]
+    local key = notification_coalesce_key(notification, i)
+    local existing_index = key_to_result_index[key]
+    if not existing_index then
+      result[#result + 1] = notification
+      key_to_result_index[key] = #result
+    else
+      local existing = result[existing_index]
+      local existing_data = existing and existing.data or nil
+      local new_data = notification and notification.data or nil
+
+      -- Refresh-family notifications can arrive multiple times per tick for the same
+      -- player; collapse to one cache_updated dispatch while preserving full-refresh
+      -- semantics (favorite_* implies full refresh).
+      if existing
+          and REFRESH_EVENT_TYPES[tostring(existing.type or "")]
+          and REFRESH_EVENT_TYPES[tostring(notification.type or "")] then
+        if type(existing_data) ~= "table" then existing_data = {} end
+        if type(new_data) ~= "table" then new_data = {} end
+
+        existing.type = "cache_updated"
+        existing.data = existing_data
+
+        existing_data.player_index = new_data.player_index or existing_data.player_index
+        existing_data.player = new_data.player or existing_data.player
+        existing_data.action_id = new_data.action_id or existing_data.action_id
+        existing_data.type = new_data.type or existing_data.type
+        existing_data.gps = new_data.gps or existing_data.gps
+        existing_data.old_gps = new_data.old_gps or existing_data.old_gps
+        existing_data.new_gps = new_data.new_gps or existing_data.new_gps
+
+        local existing_implies_full = (existing_data.slot == nil)
+        local new_implies_full = (tostring(notification.type or "") ~= "cache_updated")
+          or (new_data.slot == nil)
+        if existing_implies_full or new_implies_full then
+          existing_data.slot = nil
+        else
+          existing_data.slot = new_data.slot
+        end
+      elseif existing then
+        existing.data = new_data
+      end
+      if existing then
+        existing.timestamp = notification.timestamp
+      end
+    end
+  end
+
+  return result
+end
+
 local function drain_deferred_queue()
+  ProfilerExport.start_section("deferred_drain_swap")
   local snapshot = GuiEventBus._deferred_queue
   GuiEventBus._deferred_queue = {}
+  snapshot = coalesce_snapshot_notifications(snapshot)
+  ProfilerExport.stop_section("deferred_drain_swap")
+
+  ProfilerExport.start_section("deferred_drain_dispatch")
   for _, notification in ipairs(snapshot) do
+    local player_index = notification_player_index(notification)
+    local action_id = notification_action_id(notification, player_index)
+    local event_section = deferred_event_section_name(notification.type, action_id, player_index)
+    ProfilerExport.start_section(event_section)
     local observers = GuiEventBus._observers[notification.type] or {}
     for _, observer in ipairs(observers) do
       if observer and observer.update then
@@ -163,7 +321,9 @@ local function drain_deferred_queue()
         end
       end
     end
+    ProfilerExport.stop_section(event_section)
   end
+  ProfilerExport.stop_section("deferred_drain_dispatch")
 end
 
 --- Process deferred notifications (called on_nth_tick(2)).

@@ -21,11 +21,73 @@ local section_profilers = {}
 local section_results = {}
 
 local STORAGE_END_KEY = "_tf_profile_end_tick"
+local STORAGE_ACTION_SEQ_KEY = "_tf_profile_action_seq"
+local STORAGE_ACTION_CTX_KEY = "_tf_profile_action_ctx"
 -- Legacy saves may still have this key; clear it on first tick in on_game_tick (never during on_load).
 local LEGACY_DEFER_APPLY_KEY = "_tf_defer_profile_apply"
 -- Set in schedule_deferred_profile_apply (on_load only); consumed on first on_game_tick. Must not use storage during on_load.
 local defer_profile_apply_next_tick = false
 local commands_registered = false
+
+---@param action_name string
+---@param player_index number
+---@return string|nil
+function M.begin_action_trace(action_name, player_index)
+  if not storage then return nil end
+  if type(player_index) ~= "number" then return nil end
+  storage[STORAGE_ACTION_SEQ_KEY] = storage[STORAGE_ACTION_SEQ_KEY] or {}
+  storage[STORAGE_ACTION_CTX_KEY] = storage[STORAGE_ACTION_CTX_KEY] or {}
+
+  local seqs = storage[STORAGE_ACTION_SEQ_KEY]
+  local next_seq = (tonumber(seqs[player_index]) or 0) + 1
+  seqs[player_index] = next_seq
+
+  local id = "p" .. tostring(player_index) .. "s" .. tostring(next_seq)
+  storage[STORAGE_ACTION_CTX_KEY][player_index] = {
+    id = id,
+    action_name = tostring(action_name or "unknown"),
+    started_tick = game and game.tick or 0,
+  }
+  return id
+end
+
+---@param player_index number
+---@return string|nil
+function M.get_action_trace_id(player_index)
+  if not storage then return nil end
+  if type(player_index) ~= "number" then return nil end
+  local ctxs = storage[STORAGE_ACTION_CTX_KEY]
+  local ctx = ctxs and ctxs[player_index] or nil
+  return ctx and ctx.id or nil
+end
+
+---@param player_index number
+---@param action_id string|nil
+function M.end_action_trace(player_index, action_id)
+  if not storage then return end
+  if type(player_index) ~= "number" then return end
+  local ctxs = storage[STORAGE_ACTION_CTX_KEY]
+  if not ctxs then return end
+  local ctx = ctxs[player_index]
+  if not ctx then return end
+  if action_id and ctx.id ~= action_id then return end
+  ctxs[player_index] = nil
+end
+
+---@param base_name string
+---@param action_id string|nil
+---@param player_index number|nil
+---@return string
+function M.action_section_name(base_name, action_id, player_index)
+  local id = action_id
+  if (not id or id == "") and type(player_index) == "number" then
+    id = M.get_action_trace_id(player_index)
+  end
+  if id and id ~= "" then
+    return "act_" .. tostring(id) .. "_" .. tostring(base_name)
+  end
+  return tostring(base_name)
+end
 
 local function profiler_mode()
   return tostring(Constants.settings.PROFILER_CONTROL_MODE or "off")
@@ -189,6 +251,9 @@ function M.stop_profiler_capture(player_index)
   active_profiler_started_tick = nil
   section_profilers = {}
   section_results = {}
+  if storage then
+    storage[STORAGE_ACTION_CTX_KEY] = {}
+  end
   profile_notify(player_index, "[TeleportFavorites] Profile saved to script-output/" .. filename)
   return true
 end

@@ -28,6 +28,7 @@ local GuiValidation = require("core.utils.gui_validation")
 local GuiElementBuilders = require("core.utils.gui_element_builders")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
 local PlayerFavorites = require("core.favorite.player_favorites")
+local ProfilerExport = require("core.utils.profiler_export")
 
 
 local tag_editor = {}
@@ -87,8 +88,22 @@ local function setup_tag_editor_ui(refs, tag_data, player)
 
   if refs.cancel_btn then refs.cancel_btn.tooltip = { "tf-gui.cancel_tooltip" } end
 
-  -- Update error message display using centralized helper
-  tag_editor.update_error_message(player, tag_data.error_message)
+  -- Update error message display from stage-C refs (avoids redundant tree search).
+  local error_frame = refs.tag_editor_error_row_frame
+  local error_label = refs.error_label
+  local should_show = tag_data.error_message and BasicHelpers.trim(tostring(tag_data.error_message)) ~= ""
+  if error_frame and error_frame.valid then
+    error_frame.visible = should_show
+    if error_label and error_label.valid then
+      if should_show then
+        error_label.caption = tag_data.error_message
+      end
+      error_label.visible = should_show
+    end
+  else
+    -- Fallback for safety (should be rare if stage-C refs are present).
+    tag_editor.update_error_message(player, tag_data.error_message)
+  end
 end
 
 -- Confirmation dialog for destructive actions (e.g., tag deletion)
@@ -119,14 +134,9 @@ local function build_titlebar(parent)
 end
 
 local function build_owner_row(parent)
-  -- Create a frame with a fixed height for the owner row
-  local row_frame, label_flow, button_flow = GuiElementBuilders.create_label_button_row(
-    parent, "tag_editor_owner_row_frame", "tf_owner_row_frame")
-  
-  local label = GuiBase.create_label(label_flow, "tag_editor_owner_label",
-    "", "tf_tag_editor_owner_label")
-  local delete_button = GuiElementBuilders.create_delete_button(button_flow, "tag_editor_delete_button", false)
-
+  local row_frame = GuiBase.create_frame(parent, "tag_editor_owner_row_frame", "horizontal", "tf_owner_row_frame")
+  local label = GuiBase.create_label(row_frame, "tag_editor_owner_label", "", "tf_tag_editor_owner_label")
+  local delete_button = GuiElementBuilders.create_delete_button(row_frame, "tag_editor_delete_button", false)
   return row_frame, label, delete_button
 end
 
@@ -199,60 +209,117 @@ local function build_last_row(parent)
   return row, confirm_btn
 end
 
---- Build the interior of the tag editor into an already-existing outer frame.
---- Called from process_build_queue on the next on_nth_tick(2) after build().
+-- Stage A: structural chrome — titlebar, content frame, owner row, inner frame.
+-- Runs on the first on_nth_tick(2) after build(). Returns partial_refs for stage B.
 ---@param player LuaPlayer
----@param tag_editor_outer_frame LuaGuiElement
+---@param outer LuaGuiElement
 ---@param tag_data table
-local function build_interior(player, tag_editor_outer_frame, tag_data)
-  local gps = tag_data.gps
+local function build_interior_a(player, outer, tag_data)
+  ProfilerExport.start_section("tag_editor_build_a")
 
-  local titlebar, title_label = build_titlebar(tag_editor_outer_frame)
+  -- Set player.opened here (deferred from build()) so the engine modal-stack cost
+  -- lands on this on_nth_tick(2) tick rather than on the click event tick.
+  player.opened = outer
 
-  local tag_editor_content_frame = GuiBase.create_frame(tag_editor_outer_frame, "tag_editor_content_frame", "vertical",
+  local titlebar, _title_label = build_titlebar(outer)
+
+  local content_frame = GuiBase.create_frame(outer, "tag_editor_content_frame", "vertical",
     "tf_tag_editor_content_frame")
-  local tag_editor_owner_row, owner_label, delete_button = build_owner_row(tag_editor_content_frame)
 
-  local owner_value = ""
-  if tag_data.tag and tag_data.tag.owner_name then
-    owner_value = tag_data.tag.owner_name
-  end
+  local owner_row, owner_label, delete_button = build_owner_row(content_frame)
+  local owner_value = (tag_data.tag and tag_data.tag.owner_name) or ""
   ---@diagnostic disable-next-line: assign-type-mismatch
-  owner_label.caption = { "tf-gui.owner_label", owner_value or "" }
+  owner_label.caption = { "tf-gui.owner_label", owner_value }
 
-  local tag_editor_content_inner_frame = GuiBase.create_frame(tag_editor_content_frame,
+  local content_inner_frame = GuiBase.create_frame(content_frame,
     "tag_editor_content_inner_frame", "vertical", "tf_tag_editor_content_inner_frame")
 
-  local tag_editor_teleport_favorite_row, tag_editor_is_favorite_button, tag_editor_teleport_button =
-      build_teleport_favorite_row(tag_editor_content_inner_frame, tag_data)
+  ProfilerExport.stop_section("tag_editor_build_a")
+
+  return {
+    titlebar            = titlebar,
+    owner_row           = owner_row,
+    delete_btn          = delete_button,
+    content_inner_frame = content_inner_frame,
+    gps                 = tag_data.gps,
+  }
+end
+
+-- Stage B: interactive rows — teleport/fave row + rich text row (choose-elem-button + textbox).
+-- Runs on the second on_nth_tick(2) after build(). Returns partial_refs for stage C.
+---@param player LuaPlayer
+---@param outer LuaGuiElement
+---@param tag_data table
+---@param partial_refs table
+local function build_interior_b(player, outer, tag_data, partial_refs)
+  ProfilerExport.start_section("tag_editor_build_b")
+
+  local inner = partial_refs.content_inner_frame
+
+  local tele_row, fave_btn, tele_btn = build_teleport_favorite_row(inner, tag_data)
 
   -- NOTE: The built-in Factorio signal/icon picker always requires the user to confirm their
   -- selection with a checkmark; auto-accepting is a Factorio engine limitation.
-  local tag_editor_rich_text_row, tag_editor_icon_button, tag_editor_rich_text_input =
-      build_rich_text_row(tag_editor_content_inner_frame, tag_data)
+  local rich_row, icon_btn, text_input = build_rich_text_row(inner, tag_data)
 
-  local tag_editor_error_row_frame, error_row_error_message = build_error_row(tag_editor_outer_frame, tag_data)
-  local tag_editor_last_row, tag_editor_confirm_button = build_last_row(tag_editor_outer_frame)
+  ProfilerExport.stop_section("tag_editor_build_b")
 
-  local refs = {
-    titlebar = titlebar,
-    owner_row = tag_editor_owner_row,
-    delete_btn = delete_button,
-    teleport_favorite_row = tag_editor_teleport_favorite_row,
-    teleport_btn = tag_editor_teleport_button,
-    favorite_btn = tag_editor_is_favorite_button,
-    rich_text_row = tag_editor_rich_text_row,
-    icon_btn = tag_editor_icon_button,
-    rich_text_input = tag_editor_rich_text_input,
-    error_label = error_row_error_message,
-    confirm_btn = tag_editor_confirm_button,
-    tag_editor_error_row_frame = tag_editor_error_row_frame,
-    tag_editor_last_row = tag_editor_last_row,
-    gps = gps
+  return {
+    titlebar              = partial_refs.titlebar,
+    owner_row             = partial_refs.owner_row,
+    delete_btn            = partial_refs.delete_btn,
+    teleport_favorite_row = tele_row,
+    teleport_btn          = tele_btn,
+    favorite_btn          = fave_btn,
+    rich_text_row         = rich_row,
+    icon_btn              = icon_btn,
+    rich_text_input       = text_input,
+    gps                   = partial_refs.gps,
   }
+end
 
-  setup_tag_editor_ui(refs, tag_data, player)
-  return refs
+-- Stage C: error row + last row element creation only.
+-- Runs on the third on_nth_tick(2) after build(). Returns refs for stage D.
+---@param player LuaPlayer
+---@param outer LuaGuiElement
+---@param tag_data table
+---@param partial_refs table
+local function build_interior_c(player, outer, tag_data, partial_refs)
+  ProfilerExport.start_section("tag_editor_build_c")
+
+  local error_frame, error_label = build_error_row(outer, tag_data)
+  local last_row, confirm_btn    = build_last_row(outer)
+
+  ProfilerExport.stop_section("tag_editor_build_c")
+
+  return {
+    titlebar                   = partial_refs.titlebar,
+    owner_row                  = partial_refs.owner_row,
+    delete_btn                 = partial_refs.delete_btn,
+    teleport_favorite_row      = partial_refs.teleport_favorite_row,
+    teleport_btn               = partial_refs.teleport_btn,
+    favorite_btn               = partial_refs.favorite_btn,
+    rich_text_row              = partial_refs.rich_text_row,
+    icon_btn                   = partial_refs.icon_btn,
+    rich_text_input            = partial_refs.rich_text_input,
+    error_label                = error_label,
+    confirm_btn                = confirm_btn,
+    tag_editor_error_row_frame = error_frame,
+    tag_editor_last_row        = last_row,
+    gps                        = partial_refs.gps,
+  }
+end
+
+-- Stage D: state wiring only via setup_tag_editor_ui. No element creation.
+-- Runs on the fourth on_nth_tick(2) after build(). Completes the editor.
+---@param player LuaPlayer
+---@param outer LuaGuiElement
+---@param tag_data table
+---@param partial_refs table
+local function build_interior_d(player, outer, tag_data, partial_refs)
+  ProfilerExport.start_section("tag_editor_build_d")
+  setup_tag_editor_ui(partial_refs, tag_data, player)
+  ProfilerExport.stop_section("tag_editor_build_d")
 end
 
 -- Main builder for the tag editor.
@@ -260,7 +327,11 @@ end
 -- so map interaction is blocked. Interior elements are enqueued for the next on_nth_tick(2).
 ---@param player LuaPlayer
 function tag_editor.build(player)
-  if not BasicHelpers.is_valid_player(player) then return end
+  ProfilerExport.start_section("tag_editor_build_outer")
+  if not BasicHelpers.is_valid_player(player) then
+    ProfilerExport.stop_section("tag_editor_build_outer")
+    return
+  end
   local tag_data = Cache.get_player_data(player).tag_editor_data or Cache.create_tag_editor_data()
   if not tag_data.gps or tag_data.gps == "" then
     tag_data.gps = tag_data.move_gps or ""
@@ -268,11 +339,11 @@ function tag_editor.build(player)
   -- Do NOT attempt to find or create chart tags here. Only use tag_data.tag and tag_data.chart_tag as provided.
 
   local parent = player.gui.screen
-  local outer = GuiValidation.find_child_by_name(parent, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
-  if outer ~= nil then outer.destroy() end
+  local outer = parent[Enum.GuiEnum.GUI_FRAME.TAG_EDITOR]
+  if outer and outer.valid then outer.destroy() end
 
-  -- Create outer modal frame immediately — this blocks map interaction and makes the editor
-  -- visible (as an empty shell) on this tick. Interior is built on the next on_nth_tick(2).
+  -- Create outer modal frame immediately. player.opened is deferred to build_interior_a
+  -- (on_nth_tick(2)) so the ~8ms engine modal-stack cost lands on a deferred tick, not the click tick.
   local tag_editor_outer_frame = parent.add {
     type      = "frame",
     name      = "tag_editor_frame",
@@ -281,7 +352,6 @@ function tag_editor.build(player)
     modal     = true,
   }
   tag_editor_outer_frame.auto_center = true
-  player.opened = tag_editor_outer_frame
 
   -- Enqueue interior build for the next on_nth_tick(2).
   storage._tf_tag_editor_build_queue = storage._tf_tag_editor_build_queue or {}
@@ -294,23 +364,64 @@ function tag_editor.build(player)
   table.insert(storage._tf_tag_editor_build_queue, {
     player_index = player.index,
     tag_data     = tag_data,
+    stage        = "a",
   })
+  ProfilerExport.stop_section("tag_editor_build_outer")
 end
 
---- Called from on_nth_tick(2). Pops one queued tag editor build and fills in the interior.
+--- Called from on_nth_tick(2). Drains up to a bounded number of queued stages.
+-- Stage "a": builds structural chrome, re-enqueues stage "b" at the front.
+-- Stage "b": builds action rows.
+-- Stage "c": builds error/last rows.
+-- Stage "d": final state wiring.
 function tag_editor.process_build_queue()
   if not storage or not storage._tf_tag_editor_build_queue then return end
   if #storage._tf_tag_editor_build_queue == 0 then return end
 
-  local entry = table.remove(storage._tf_tag_editor_build_queue, 1)
-  local player = game.players[entry.player_index]
-  if not player or not player.valid then return end
+  local stage_budget = 2
+  local processed = 0
 
-  -- If the outer frame was closed before we got here, discard.
-  local outer = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TAG_EDITOR]
-  if not outer or not outer.valid then return end
-
-  build_interior(player, outer, entry.tag_data)
+  while processed < stage_budget and #storage._tf_tag_editor_build_queue > 0 do
+    local entry = table.remove(storage._tf_tag_editor_build_queue, 1)
+    local player = game.players[entry.player_index]
+    if player and player.valid then
+      -- If the outer frame was closed before we got here, discard.
+      local outer = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TAG_EDITOR]
+      if outer and outer.valid then
+        if entry.stage == "a" then
+          local partial_refs = build_interior_a(player, outer, entry.tag_data)
+          -- Insert stage B at the front so it runs as soon as budget allows.
+          table.insert(storage._tf_tag_editor_build_queue, 1, {
+            player_index = player.index,
+            tag_data     = entry.tag_data,
+            stage        = "b",
+            partial_refs = partial_refs,
+          })
+        elseif entry.stage == "b" then
+          local partial_refs = build_interior_b(player, outer, entry.tag_data, entry.partial_refs)
+          -- Insert stage C at the front so it runs as soon as budget allows.
+          table.insert(storage._tf_tag_editor_build_queue, 1, {
+            player_index = player.index,
+            tag_data     = entry.tag_data,
+            stage        = "c",
+            partial_refs = partial_refs,
+          })
+        elseif entry.stage == "c" then
+          local partial_refs = build_interior_c(player, outer, entry.tag_data, entry.partial_refs)
+          -- Insert stage D at the front so it runs as soon as budget allows.
+          table.insert(storage._tf_tag_editor_build_queue, 1, {
+            player_index = player.index,
+            tag_data     = entry.tag_data,
+            stage        = "d",
+            partial_refs = partial_refs,
+          })
+        elseif entry.stage == "d" then
+          build_interior_d(player, outer, entry.tag_data, entry.partial_refs)
+        end
+      end
+    end
+    processed = processed + 1
+  end
 end
 
 --- Clear the build queue on save-load (stale GUI refs; must NOT mutate storage).

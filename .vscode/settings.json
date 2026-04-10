@@ -3,6 +3,10 @@
     {
       "name": "Gemini",
       "factorioPath": "v:\\Fac2orios\\2_Gemini\\bin\\x64\\factorio.exe"
+    },
+    {
+      "name": "Venusian",
+      "factorioPath": "v:\\Fac2orios\\2_Venusian\\bin\\x64\\factorio.exe"
     }
   ],
   "Lua.workspace.userThirdParty": [

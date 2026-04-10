@@ -16,7 +16,8 @@ local GuiHelpers = require("core.utils.gui_helpers")
 local GuiValidation = require("core.utils.gui_validation")
 local TeleportHistoryModal = require("gui.teleport_history_modal.teleport_history_modal")
 local TeleportHistory = require("core.teleport.teleport_history")
-local TeleportStrategy = require("core.utils.teleport_strategy")
+local TeleportEntrypoint = require("core.control.teleport_entrypoint")
+local ProfilerExport = require("core.utils.profiler_export")
 
 local M = {}
 
@@ -182,7 +183,20 @@ local function handle_history_toggle_button_click(event, player)
     -- Close the modal
     TeleportHistoryModal.destroy(player)
   else
-    TeleportHistoryModal.build(player)
+    local action_id = ProfilerExport.begin_action_trace("history_modal_open", player.index)
+    local section_name = ProfilerExport.action_section_name("history_modal_open_click", action_id, player.index)
+    ProfilerExport.start_section(section_name)
+    local ok, err = pcall(TeleportHistoryModal.build, player)
+    ProfilerExport.stop_section(section_name)
+    if action_id then
+      ProfilerExport.end_action_trace(player.index, action_id)
+    end
+    if not ok then
+      ErrorHandler.warn_log("Failed to open teleport history modal", {
+        player = player.name,
+        error = tostring(err)
+      })
+    end
   end
 end
 
@@ -219,9 +233,9 @@ local function on_teleport_history_modal_gui_click(event)
       return
     end
     local surface_index = (player.surface and player.surface.valid and player.surface.index) or 1
-  local idx = BasicHelpers.normalize_index(index)
-  if not idx then return end
-  TeleportHistory.remove_history_item(player, surface_index, tostring(idx))
+    local idx = BasicHelpers.normalize_index(index)
+    if not idx then return end
+    TeleportHistory.remove_history_item(player, surface_index, tostring(idx))
     TeleportHistoryModal.update_history_list(player)
     return
   end
@@ -294,22 +308,30 @@ local function on_teleport_history_modal_gui_click(event)
     end
 
     -- don't add history for a history item click
-    local success, err = TeleportStrategy.teleport_to_gps(player, gps, false)
-    if success then
-      TeleportHistory.set_pointer(player, player.surface.index, index)
-      -- Modal stays open after successful teleport from history
-    else
-      if err and err == "already_at_target" then
-        return
-      else
-        local error_message = tostring(err or "Unknown teleportation failure.")
+    local success, error_code = TeleportEntrypoint.execute(player, gps, {
+      source = "history_modal",
+      add_to_history = false,
+      action_name = "history_item_teleport",
+      section_name = "history_item_click",
+      silent_already_at_target = true,
+      end_action_on_success = false,
+      end_action_on_failure = true,
+      on_success = function(success_player)
+        -- Modal stays open after successful teleport from history.
+        TeleportHistory.set_pointer(success_player, success_player.surface.index, index)
+      end,
+      on_failure = function(failure_player, error_code)
+        local error_message = tostring(error_code or "Unknown teleportation failure.")
         ErrorHandler.warn_log("Teleport failed", { gps = gps, error = error_message })
-        if player and player.valid then
+        if failure_player and failure_player.valid then
           ---@type any
           local msg = { "tf-gui.teleport_failed", error_message }
-          BasicHelpers.safe_player_print(player, msg)
+          BasicHelpers.safe_player_print(failure_player, msg)
         end
-      end
+      end,
+    })
+    if not success and error_code and error_code == "already_at_target" then
+      return
     end
   end
 end
@@ -323,10 +345,7 @@ local function on_history_confirm_dialog_click(event)
   if element.name == Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_CONFIRM_BTN then
     -- Clear history for current surface
     local surface_index = player.surface.index
-    local hist = Cache.get_player_teleport_history(player, surface_index)
-    hist.stack = {}
-    hist.pointer = 0
-    TeleportHistory.notify_observers(player)
+    TeleportHistory.clear_history(player, surface_index)
     -- Close dialog and clear modal state
     GuiValidation.safe_destroy_frame(player.gui.screen, Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_FRAME)
     Cache.set_modal_dialog_state(player, nil)

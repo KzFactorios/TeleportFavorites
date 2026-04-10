@@ -12,7 +12,7 @@ local FavoriteUtils = require("core.favorite.favorite_utils")
 local TeleportHistory = require("core.teleport.teleport_history")
 local GuiElementBuilders = require("core.utils.gui_element_builders")
 local GuiValidation = require("core.utils.gui_validation")
-local TeleportStrategy = require("core.utils.teleport_strategy")
+local TeleportEntrypoint = require("core.control.teleport_entrypoint")
 local teleport_history_modal = require("gui.teleport_history_modal.teleport_history_modal")
 
 
@@ -61,21 +61,26 @@ local function handle_teleport_to_favorite_slot(event, slot_number)
     return
   end
 
-  -- Use Tag module for teleportation (already has all the strategy logic)
+  -- Route through shared teleport entrypoint for consistent behavior across UI/hotkeys.
   ErrorHandler.debug_log("Attempting teleport to GPS", {
     player = player.name,
     slot = slot_number,
     gps = favorite.gps,
     favorite = favorite
   })
-  local result = TeleportStrategy.teleport_to_gps(player, favorite.gps)
-  local success = result == Enum.ReturnStateEnum.SUCCESS
+  local success, outcome = TeleportEntrypoint.execute(player, favorite.gps, {
+    source = "favorite_hotkey",
+    add_to_history = true,
+    action_name = "favorite_hotkey_teleport",
+    end_action_on_success = true,
+    end_action_on_failure = true,
+  })
 
   ErrorHandler.debug_log("Teleport to favorite slot result", {
     player = player.name,
     slot = slot_number,
     gps = favorite.gps,
-    result = result,
+    outcome = outcome,
     success = success,
     favorite = favorite
   })
@@ -107,7 +112,14 @@ local function navigate_history(event, calc_new_pointer)
       })
       return
     end
-    TeleportStrategy.teleport_to_gps(player, entry.gps, false)
+    TeleportEntrypoint.execute(player, entry.gps, {
+      source = "history_hotkey",
+      add_to_history = false,
+      action_name = "history_hotkey_teleport",
+      silent_already_at_target = true,
+      end_action_on_success = true,
+      end_action_on_failure = true,
+    })
   else
     ErrorHandler.debug_log("History navigation: invalid entry or empty stack", {
       pointer = pointer,

@@ -8,6 +8,7 @@ local Deps = require("deps")
 local BasicHelpers, Cache, GPSUtils =
   Deps.BasicHelpers, Deps.Cache, Deps.GpsUtils
 local HistoryItem = Cache.HistoryItem
+local ProfilerExport = require("core.utils.profiler_export")
 
 
 local HISTORY_STACK_SIZE = 128 -- Only 128 allowed for now (TBA for future options)
@@ -15,6 +16,20 @@ local STD_RESOLUTION_TILES = 20  -- Standard mode: consecutive locations within 
 local SEQ_RESOLUTION_TILES = 32  -- Sequential mode: FROM→TO hops shorter than this are not recorded
 
 local TeleportHistory = {}
+
+---@param hist table
+local function ensure_history_meta(hist)
+	if not hist then return end
+	if type(hist.stack_revision) ~= "number" then
+		hist.stack_revision = 0
+	end
+end
+
+---@param hist table
+local function bump_stack_revision(hist)
+	ensure_history_meta(hist)
+	hist.stack_revision = hist.stack_revision + 1
+end
 
 --- Check if two GPS strings are within a given tile resolution of each other (same surface only).
 ---@param gps_a string|nil
@@ -44,11 +59,13 @@ end
 function TeleportHistory.remove_history_item(player, surface_index, index)
 	if not BasicHelpers.is_valid_player(player) then return end
 	local hist = Cache.get_player_teleport_history(player, surface_index)
+	ensure_history_meta(hist)
 	local stack = hist.stack
 	if not stack or #stack == 0 then return end
 	local idx = tonumber(index)
 	if not idx or idx < 1 or idx > #stack then return end
 	table.remove(stack, math.floor(idx))
+	bump_stack_revision(hist)
 	-- Adjust pointer if needed
 	if hist.pointer > #stack then
 		hist.pointer = #stack
@@ -60,16 +77,17 @@ end
 TeleportHistory._observers = {}
 
 --- Register an observer callback for history changes
----@param callback fun(player: LuaPlayer)
+---@param callback fun(player: LuaPlayer, context: table|nil)
 function TeleportHistory.register_observer(callback)
 	table.insert(TeleportHistory._observers, callback)
 end
 
---- Notify all observers of a history change for a player
+--- Notify all observers of a history change for a player.
 ---@param player LuaPlayer
-function TeleportHistory.notify_observers(player)
+---@param context table|nil
+function TeleportHistory.notify_observers(player, context)
 	for _, cb in ipairs(TeleportHistory._observers) do
-		pcall(cb, player)
+		pcall(cb, player, context)
 	end
 end
 
@@ -90,6 +108,7 @@ function TeleportHistory.add_gps(player, gps)
 		surface_index = math.floor(surface_index)
 	end
 	local hist = Cache.get_player_teleport_history(player, surface_index)
+	ensure_history_meta(hist)
 	local stack = hist.stack
 
 	-- Rule C: no consecutive duplicate locations — skip if within resolution of the top entry
@@ -104,6 +123,7 @@ function TeleportHistory.add_gps(player, gps)
 	end
 	local item = HistoryItem.new(gps)
 	table.insert(stack, item)
+	bump_stack_revision(hist)
 	hist.pointer = #stack
 	TeleportHistory.notify_observers(player)
 end
@@ -146,12 +166,14 @@ end
 -- Set pointer to specific index (for teleport history modal navigation)
 function TeleportHistory.set_pointer(player, surface_index, index)
 	if not BasicHelpers.is_valid_player(player) then return end
+	local action_id = ProfilerExport.get_action_trace_id(player.index)
 	local hist = Cache.get_player_teleport_history(player, surface_index)
+	ensure_history_meta(hist)
 	local stack = hist.stack
 
 	if #stack == 0 then
 		hist.pointer = 0
-		TeleportHistory.notify_observers(player)
+		TeleportHistory.notify_observers(player, { action_id = action_id })
 		return
 	end
 
@@ -163,6 +185,19 @@ function TeleportHistory.set_pointer(player, surface_index, index)
 	else
 		hist.pointer = index
 	end
+	TeleportHistory.notify_observers(player, { action_id = action_id })
+end
+
+--- Clear teleport history for a surface and advance stack revision.
+---@param player LuaPlayer
+---@param surface_index integer
+function TeleportHistory.clear_history(player, surface_index)
+	if not BasicHelpers.is_valid_player(player) then return end
+	local hist = Cache.get_player_teleport_history(player, surface_index)
+	ensure_history_meta(hist)
+	hist.stack = {}
+	hist.pointer = 0
+	bump_stack_revision(hist)
 	TeleportHistory.notify_observers(player)
 end
 

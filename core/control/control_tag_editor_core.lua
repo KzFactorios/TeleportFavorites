@@ -316,7 +316,11 @@ function M.handle_confirm_btn(player, element, tag_data)
   tags[refreshed_tag.gps] = sanitized_tag2
   tag_data.tag = sanitized_tag2
 
-  GuiEventBus.notify("cache_updated", { type = "tag_editor_confirmed", gps = tag.gps })
+  GuiEventBus.notify("cache_updated", {
+    type = "tag_editor_confirmed",
+    gps = tag.gps,
+    player_index = player.index
+  })
 
   if tag_data and tag_data.gps then
     Cache.gps_move_in_progress[tag_data.gps] = nil

@@ -15,7 +15,7 @@ local BasicHelpers, ErrorHandler, Cache, GPSUtils, Enum =
   Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.GpsUtils, Deps.Enum
 local tag_editor = require("gui.tag_editor.tag_editor")
 local GuiValidation = require("core.utils.gui_validation")
-local TeleportStrategy = require("core.utils.teleport_strategy")
+local TeleportEntrypoint = require("core.control.teleport_entrypoint")
 local Core = require("core.control.control_tag_editor_core")
 
 local M = {}
@@ -100,7 +100,11 @@ local function handle_teleport_btn(player, map_position)
     return
   end
 
-  TeleportStrategy.teleport_to_gps(player, gps)
+  TeleportEntrypoint.execute(player, gps, {
+    source = "tag_editor",
+    add_to_history = true,
+  })
+  -- Keep current UX: close editor immediately after teleport action.
   Core.close_tag_editor(player)
 end
 

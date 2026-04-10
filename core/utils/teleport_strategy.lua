@@ -8,6 +8,7 @@ local Deps = require("deps")
 local BasicHelpers, ErrorHandler, Cache, Constants, GPSUtils =
   Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.Constants, Deps.GpsUtils
 local ChartTagUtils = require("core.utils.chart_tag_utils")
+local ProfilerExport = require("core.utils.profiler_export")
 
 local TeleportStrategy = {}
 
@@ -49,8 +50,9 @@ end
 ---@param player LuaPlayer Player to teleport
 ---@param gps string GPS coordinates in 'xxx.yyy.s' format
 ---@param add_to_history boolean? Whether to add the teleport to history (default true)
+---@param action_id string|nil Optional profiling action correlation id
 ---@return boolean, string -- Final status and GPS string or error code
-function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history)
+function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history, action_id)
   if add_to_history == nil then add_to_history = true end
 
   ErrorHandler.debug_log("Executing safe teleportation", {
@@ -125,10 +127,13 @@ function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history)
   end
 
   local teleport_success = false
+  local teleport_section = ProfilerExport.action_section_name("teleport_execute", action_id, player and player.index or nil)
+  ProfilerExport.start_section(teleport_section)
   if player.physical_vehicle and player.physical_vehicle.valid then
     if player.physical_vehicle.speed == nil or player.physical_vehicle.speed == 0 then
       teleport_success = player.physical_vehicle.teleport(working_position, player.surface, true)
     else
+      ProfilerExport.stop_section(teleport_section)
       player.play_sound { path = "utility/cannot_build" }
   ErrorHandler.warn_log("Safe teleport blocked: Vehicle is moving")
   return false, "vehicle_moving"
@@ -136,6 +141,7 @@ function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history)
   else
     teleport_success = player.teleport(working_position, player.surface, true)
   end
+  ProfilerExport.stop_section(teleport_section)
 
   if teleport_success then
     -- MULTIPLAYER FIX: render_mode is client-specific and causes desyncs.

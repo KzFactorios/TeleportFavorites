@@ -322,6 +322,7 @@ local function register_core_events(script)
     end
     fave_bar.process_slot_build_queue()
     tag_editor.process_build_queue()
+    teleport_history_modal.process_build_queue()
   end)
 
   script.on_nth_tick(60, function()

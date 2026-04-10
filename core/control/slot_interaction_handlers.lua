@@ -5,8 +5,8 @@
 -- Specialized handlers for slot interactions in the favorites bar: teleportation, lock toggling, drag-and-drop, and tag editing.
 
 local Deps = require("deps")
-local BasicHelpers, ErrorHandler, Cache, GPSUtils =
-  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.GpsUtils
+local BasicHelpers, ErrorHandler, Cache =
+  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache
 local PlayerFavorites = require("core.favorite.player_favorites")
 local FavoriteUtils = require("core.favorite.favorite_utils")
 local fave_bar = require("gui.favorites_bar.fave_bar")
@@ -14,7 +14,8 @@ local tag_editor = require("gui.tag_editor.tag_editor")
 local GuiValidation = require("core.utils.gui_validation")
 local GuiHelpers = require("core.utils.gui_helpers")
 local CursorUtils = require("core.utils.cursor_utils")
-local TeleportStrategy = require("core.utils.teleport_strategy")
+local TeleportEntrypoint = require("core.control.teleport_entrypoint")
+local ProfilerExport = require("core.utils.profiler_export")
 
 local TeleportHistoryModal = require("gui.teleport_history_modal.teleport_history_modal")
 
@@ -49,19 +50,17 @@ function SlotInteractionHandlers.handle_teleport(event, player, fav, slot, did_d
         return false
       end
 
-      local parsed = GPSUtils.parse_gps_string(fav.gps)
-      if not parsed or not parsed.x or not parsed.y or not parsed.s then
-        ErrorHandler.warn_log("[SLOT_INTERACTION] Invalid GPS coordinates for teleport",
-          { slot = slot, gps = fav.gps, fav = fav, player = player and player.name or "<nil>" })
-        return false
-      end
-
-      local ok, teleport_success, error_msg = pcall(TeleportStrategy.teleport_to_gps, player, fav.gps)
-      if ok and teleport_success and TeleportHistoryModal.is_open(player) then
-        TeleportHistoryModal.update_history_list(player)
-      end
-      if not ok or not teleport_success then
-        ErrorHandler.warn_log("[SLOT_INTERACTION] Teleport failed: " .. tostring(error_msg),
+      local teleport_success, error_code = TeleportEntrypoint.execute(player, fav.gps, {
+        source = "fave_bar",
+        add_to_history = true,
+        on_success = function(success_player)
+          if TeleportHistoryModal.is_open(success_player) then
+            TeleportHistoryModal.update_history_list(success_player)
+          end
+        end,
+      })
+      if not teleport_success then
+        ErrorHandler.warn_log("[SLOT_INTERACTION] Teleport failed: " .. tostring(error_code),
           { slot = slot, fav = fav, player = player and player.name or "<nil>" })
         return false
       end
@@ -140,6 +139,8 @@ end
 function SlotInteractionHandlers.open_tag_editor_from_favorite(player, favorite)
   if not favorite then return end
 
+  ProfilerExport.start_section("te_pre_build")
+
   -- Rehydrate the favorite to ensure all runtime fields are present
   favorite = PlayerFavorites.rehydrate_favorite_at_runtime(player, favorite)
 
@@ -169,6 +170,8 @@ function SlotInteractionHandlers.open_tag_editor_from_favorite(player, favorite)
 
   -- Persist gps in tag_editor_data
   Cache.set_tag_editor_data(player, tag_data)
+
+  ProfilerExport.stop_section("te_pre_build")
   tag_editor.build(player)
 end
 
