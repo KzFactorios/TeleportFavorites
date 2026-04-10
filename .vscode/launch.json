@@ -7,21 +7,21 @@
     {
       "type": "factoriomod",
       "request": "launch",
-      "name": "Factorio Mod Debug",
+      "name": "FM Debugging",
       "hookSettings": true,
       "hookData": true
     },
     {
       "type": "factoriomod",
       "request": "launch",
-      "name": "Factorio Mod Debug (Settings & Data)",
+      "name": "FM Settings & Data",
       "hookSettings": true,
       "hookData": true
     },
     {
       "type": "factoriomod",
       "request": "launch",
-      "name": "Factorio Mod Debug (Profile)",
+      "name": "FM Profile",
       "hookMode": "profile"
     }
   ]

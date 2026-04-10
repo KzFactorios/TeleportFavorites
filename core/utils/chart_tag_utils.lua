@@ -112,13 +112,17 @@ function ChartTagUtils.find_closest_chart_tag_to_position(player, cursor_positio
   return closest_tag
 end
 
---- Safe wrapper for chart tag creation with comprehensive error handling and collision detection
+--- Safe wrapper for chart tag creation with comprehensive error handling and collision detection.
 ---@param force LuaForce The force that will own the chart tag
 ---@param surface LuaSurface The surface where the tag will be placed
 ---@param spec table Chart tag specification table (position, text, etc.)
 ---@param player LuaPlayer? Player context for collision notifications
+---@param opts table|nil Optional flags: { skip_collision_check = bool }
+---   skip_collision_check: when true, skips the find_chart_tags area query.
+---   Use this from tag-editor confirm paths where the position is pre-validated and
+---   any existing tag was already destroyed before this call.
 ---@return LuaCustomChartTag|nil chart_tag The created chart tag or nil if failed
-function ChartTagUtils.safe_add_chart_tag(force, surface, spec, player)
+function ChartTagUtils.safe_add_chart_tag(force, surface, spec, player, opts)
   -- Input validation
   if not force or not surface or not spec then
     ErrorHandler.debug_log("Invalid arguments to safe_add_chart_tag", {
@@ -159,9 +163,11 @@ function ChartTagUtils.safe_add_chart_tag(force, surface, spec, player)
     has_icon = spec.icon ~= nil
   })
   
-  -- Use existing chart tag reuse system instead of collision detection
+  -- Collision check: find any existing tag at the target position and destroy it first.
+  -- Skipped when the caller has already handled this (e.g. tag-editor confirm path
+  -- where the old tag was destroyed before this call, saving a find_chart_tags API call).
   local existing_chart_tag = nil
-  if player and player.valid then
+  if player and player.valid and not (opts and opts.skip_collision_check) then
     existing_chart_tag = ChartTagUtils.find_closest_chart_tag_to_position(player, spec.position)
   end
 

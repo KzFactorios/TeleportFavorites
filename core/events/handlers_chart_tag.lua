@@ -151,6 +151,11 @@ return function(handlers)
       if chart_tag and chart_tag.valid then
         local gps = GPSUtils.gps_from_map_position(chart_tag.position,
           tonumber(GPSUtils.get_context_surface_index(chart_tag, player)) or 1)
+
+        -- Seed the GPS cache with the tag we just found so Cache.get_tag_by_gps below
+        -- doesn't fire a second find_chart_tags area query for the same tag.
+        if gps then Cache.Lookups.seed_chart_tag_in_cache(gps, chart_tag) end
+
         local player_favorites = PlayerFavorites.new(player)
         local favorite_entry = player_favorites:get_favorite_by_gps(gps)
         local icon = chart_tag.icon
@@ -196,30 +201,42 @@ return function(handlers)
     if not player or not player.valid then return end
 
     local chart_tag = event.tag
-    if chart_tag and chart_tag.valid and chart_tag.position then
-      if GPSUtils.needs_normalization(chart_tag.position) then
-        ErrorHandler.debug_log("Chart tag added with fractional coordinates, normalizing", {
-          player_name = player.name,
-          position = chart_tag.position
-        })
-        normalize_and_replace_chart_tag(chart_tag, player)
-      end
+    if not chart_tag or not chart_tag.valid or not chart_tag.position then return end
+
+    -- Defer fractional-coordinate normalization to the next tick so the tag-creation tick
+    -- does not pay the cost of force.add_chart_tag synchronously.
+    -- The tag is still registered in storage below (using its original GPS) so there is no
+    -- gap; the normalization path will clean up storage on the following tick.
+    if GPSUtils.needs_normalization(chart_tag.position) then
+      ErrorHandler.debug_log("Chart tag added with fractional coordinates, deferring normalization", {
+        player_name = player.name,
+        position = chart_tag.position
+      })
+      script.on_nth_tick(1, function()
+        script.on_nth_tick(1, nil)
+        if chart_tag and chart_tag.valid then
+          normalize_and_replace_chart_tag(chart_tag, player)
+        end
+      end)
     end
 
     local surface_index = player.surface and player.surface.valid and player.surface.index or 1
     Cache.ensure_surface_cache(tonumber(surface_index) or 1)
 
-    if chart_tag and chart_tag.valid then
-      local gps = GPSUtils.gps_from_map_position(chart_tag.position, tonumber(surface_index) or 1)
-      if gps then
-        local tag = Cache.get_tag_by_gps(player, gps)
-        local surface_tags = Cache.get_surface_tags(surface_index)
-        if not tag then
-          tag = TagClass.new(gps, {}, player.name)
-          surface_tags[gps] = tag
-        else
-          tag.owner_name = player.name
-        end
+    local gps = GPSUtils.gps_from_map_position(chart_tag.position, tonumber(surface_index) or 1)
+    if gps then
+      -- Seed the GPS point cache directly from the event tag; avoids the find_chart_tags
+      -- area query that Cache.get_tag_by_gps would otherwise fire on a cache miss.
+      Cache.Lookups.seed_chart_tag_in_cache(gps, chart_tag)
+
+      -- Now read back from storage (no Factorio API call, just table lookup).
+      local surface_tags = Cache.get_surface_tags(surface_index)
+      local tag = surface_tags and surface_tags[gps]
+      if not tag then
+        tag = TagClass.new(gps, {}, player.name)
+        surface_tags[gps] = tag
+      else
+        tag.owner_name = player.name
       end
     end
   end

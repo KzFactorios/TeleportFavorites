@@ -183,6 +183,29 @@ local function sweep_expired_entries()
   end
 end
 
+--- Seed the GPS point cache with a known-valid chart tag (no area query needed).
+--- Call this from on_chart_tag_added to populate the cache from event.tag directly,
+--- avoiding the redundant find_chart_tags area query that get_chart_tag_by_gps would trigger.
+---@param gps string
+---@param chart_tag LuaCustomChartTag
+local function seed_chart_tag_in_cache(gps, chart_tag)
+  if not gps or gps == "" then return end
+  if not chart_tag then return end
+  local ok, is_valid = pcall(function() return chart_tag.valid end)
+  if not ok or not is_valid then return end
+  local surface_index = GPSUtils.get_surface_index_from_gps(gps)
+  if not surface_index then return end
+  local surface_idx = BasicHelpers.normalize_index(surface_index)
+  local cache = ensure_cache()
+  local sc = cache.surfaces[surface_idx]
+  if not sc then
+    sc = { gps_point_cache = {}, next_sweep_at = (game and game.tick or 0) + SWEEP_TICKS }
+    cache.surfaces[surface_idx] = sc
+  end
+  local now = game and game.tick or 0
+  sc.gps_point_cache[gps] = { tag = chart_tag, expires_at = now + TTL_TICKS }
+end
+
 --- Destroy a chart tag by GPS and evict its cache entry.
 ---@param gps string
 local function remove_chart_tag_from_cache_by_gps(gps)
@@ -204,12 +227,14 @@ end
 
 ---@class Lookups
 ---@field get_chart_tag_by_gps fun(gps: string): LuaCustomChartTag|nil
+---@field seed_chart_tag_in_cache fun(gps: string, chart_tag: LuaCustomChartTag): nil
 ---@field evict_chart_tag_cache_entry fun(gps: string): nil
 ---@field sweep_expired_entries fun(): nil
 ---@field SWEEP_TICKS number
 return {
   init                               = init,
   get_chart_tag_by_gps               = get_chart_tag_by_gps,
+  seed_chart_tag_in_cache            = seed_chart_tag_in_cache,
   evict_chart_tag_cache_entry        = evict_chart_tag_cache_entry,
   sweep_expired_entries              = sweep_expired_entries,
   remove_chart_tag_from_cache_by_gps = remove_chart_tag_from_cache_by_gps,

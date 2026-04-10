@@ -20,7 +20,7 @@ local Constants = {
     -- Profiling Configuration
     -- ========================================
     -- Set to "profile" to auto-start profiling on init/config-change; any other value disables auto-start.
-    PROFILER_CONTROL_MODE = "profile",
+    PROFILER_CONTROL_MODE = "off",
     -- Auto-stop: number of game ticks after profiler start (not calendar time if paused). 0 = manual /tf_profile_stop only.
     PROFILER_MAX_TICKS = 35 * 60,
     -- Output file under write-data/script-output.

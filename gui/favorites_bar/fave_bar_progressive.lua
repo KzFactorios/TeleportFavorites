@@ -5,8 +5,10 @@
 -- Extend pattern: receives (fave_bar, helpers) where helpers contains shared private functions.
 --
 -- Stages in storage._tf_slot_build_queue:
---   chrome1        → build bar_flow + toggle_container (1 tick)
---   chrome2a/2b/2  → build all toggle buttons + slots frame (1 tick, merged)
+--   frame_init     → create fave_bar_frame (1 tick, 1 GUI add)
+--   chrome1        → build bar_flow + toggle_container (1 tick, 2 GUI adds)
+--   chrome2a       → build history + mode buttons (1 tick, 2 GUI adds)
+--   chrome2b       → build visibility toggle + slots frame (1 tick, 2 GUI adds)
 --   blank_slots    → add empty slot GUI elements BLANK_BATCH_SIZE per tick
 --   prune          → run prune_stale_favorites (1 tick, no GUI adds)
 --   hydrate_slots  → write data into blank slots HYDRATE_BATCH_SIZE per tick
@@ -22,11 +24,11 @@ local PlayerFavorites                         = require("core.favorite.player_fa
 local ProfilerExport                          = require("core.utils.profiler_export")
 
 -- Smaller batches spread GUI adds across more ticks, keeping per-tick work lower.
--- Label mode uses 2 slots/tick (4 adds each = 8 adds/tick).
--- No-label mode uses BLANK_BATCH_SIZE slots/tick (2 adds each = 8 adds/tick).
--- Raised from 3→4: saves ~2 ticks over a 10-slot build without measurably raising
--- per-tick cost (each add is still well under the frame budget).
-local BLANK_BATCH_SIZE                        = 4
+-- Label mode uses 1 slot/tick (4 adds each = 4 adds/tick).
+-- No-label mode uses BLANK_BATCH_SIZE slots/tick (2 adds each = 4 adds/tick).
+-- Lowered from 4→2: keeps each blank-slots tick at ≤4 element.add() calls (~2ms),
+-- at the cost of ~2 extra ticks of build time (4ms of wall clock) — imperceptible.
+local BLANK_BATCH_SIZE                        = 2
 local HYDRATE_BATCH_SIZE                      = 4
 
 return function(fave_bar, helpers)
@@ -46,27 +48,22 @@ return function(fave_bar, helpers)
   -- Rehydrated in on_load_cleanup (read-only; must NOT mutate storage).
   local _fave_bar_queue_has_work = false
 
-  --- Ensure the bar_frame exists, init the build queue, cancel any in-flight build.
-  --- Returns bar_frame on success or nil if setup failed.
+  --- Init the build queue and cancel any in-flight build. Does NOT create GUI elements.
+  --- The bar_frame is created lazily in the frame_init queue stage on the next on_nth_tick(2).
   ---@param player LuaPlayer
-  ---@return LuaGuiElement|nil
-  local function prepare_bar_frame_and_queue(player)
-    local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
-    if not main_flow then return nil end
-    local bar_frame = main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
-    if not bar_frame or not bar_frame.valid then
-      bar_frame = GuiBase.create_element("frame", main_flow, {
-        name    = Enum.GuiEnum.GUI_FRAME.FAVE_BAR,
-        direction = "vertical",
-        style   = "tf_fave_bar_frame",
-        index   = 1,
-        visible = false,  -- hidden until the build completes; avoids showing empty-frame square
-      })
-    end
-    if not bar_frame or not bar_frame.valid then return nil end
+  ---@return boolean ok
+  local function prepare_queue_only(player)
     storage._tf_slot_build_queue = storage._tf_slot_build_queue or {}
     cancel_progressive_build_for(player.index)
-    return bar_frame
+    return true
+  end
+
+  --- Used by chrome1 and later stages to get the existing bar_frame (must already exist).
+  ---@param player LuaPlayer
+  ---@return LuaGuiElement|nil
+  local function get_bar_frame(player)
+    local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
+    return main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
   end
 
   --- Resolve main_flow → bar_frame → bar_flow → slots_frame for a player.
@@ -80,34 +77,35 @@ return function(fave_bar, helpers)
   end
 
   --- Called from process_deferred_init_queue (tick 60+).
-  --- Creates the empty outer frame and enqueues chrome + slots stages.
+  --- Defers all GUI creation — frame_init runs on the next on_nth_tick(2), keeping the
+  --- calling tick (tick 60) free of element.add() cost.
   ---@param player LuaPlayer
   function fave_bar.enqueue_progressive_build(player)
     if not BasicHelpers.is_valid_player(player) then return end
-    if not prepare_bar_frame_and_queue(player) then return end
+    prepare_queue_only(player)
 
     table.insert(storage._tf_slot_build_queue, {
       player_index  = player.index,
       surface_index = player.surface.index,
-      stage         = "chrome1",
+      stage         = "frame_init",
     })
     last_build_tick[player.index] = game.tick
     _fave_bar_queue_has_work = true
   end
 
-  --- Called from on_player_joined_game / on_player_created (tick 0).
-  --- Builds the blank bar structure immediately so slots are visible by tick ~4,
-  --- then stops. Hydration is enqueued later by enqueue_hydrate().
+  --- Called from on_player_joined_game / on_player_created / ensure_fave_bar_for_session_players.
+  --- Defers all GUI creation — frame_init runs on the next on_nth_tick(2), keeping tick 1
+  --- free of element.add() cost. Hydration is enqueued later by enqueue_hydrate().
   ---@param player LuaPlayer
   function fave_bar.enqueue_blank_bar(player)
     if not BasicHelpers.is_valid_player(player) then return end
     if BasicHelpers.is_restricted_controller(player) then return end
-    if not prepare_bar_frame_and_queue(player) then return end
+    prepare_queue_only(player)
 
     table.insert(storage._tf_slot_build_queue, {
       player_index     = player.index,
       surface_index    = player.surface.index,
-      stage            = "chrome1",
+      stage            = "frame_init",
       stop_after_blank = true,
     })
     last_build_tick[player.index] = game.tick
@@ -173,23 +171,61 @@ return function(fave_bar, helpers)
       return
     end
 
-    -- ── Chrome stage 1: bar_flow + toggle_container (~2 GUI adds ≈ 1.7 ms) ──────
-    if entry.stage == "chrome1" then
-      ProfilerExport.start_section("pb_chrome1")
+    -- ── Frame init stage: create bar_frame (1 GUI add) ───────────────────────────
+    -- Deferred from the enqueue call so the calling tick (tick 1 or tick 60) pays
+    -- zero element.add() cost. Performs feature-toggle and controller checks here
+    -- so we bail before the first GUI add if the bar shouldn't be built at all.
+    if entry.stage == "frame_init" then
+      ProfilerExport.start_section("pb_frame_init")
       local player_settings = Cache.Settings.get_player_settings(player)
       if not player_settings.favorites_on and not player_settings.enable_teleport_history then
-        ProfilerExport.stop_section("pb_chrome1")
+        ProfilerExport.stop_section("pb_frame_init")
         table.remove(storage._tf_slot_build_queue, 1)
         return
       end
       if BasicHelpers.is_restricted_controller(player) then
-        ProfilerExport.stop_section("pb_chrome1")
+        ProfilerExport.stop_section("pb_frame_init")
         table.remove(storage._tf_slot_build_queue, 1)
         return
       end
 
       local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
-      local bar_frame = main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
+      if not main_flow then
+        ProfilerExport.stop_section("pb_frame_init")
+        table.remove(storage._tf_slot_build_queue, 1)
+        return
+      end
+
+      local bar_frame = main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
+      if not bar_frame or not bar_frame.valid then
+        bar_frame = GuiBase.create_element("frame", main_flow, {
+          name      = Enum.GuiEnum.GUI_FRAME.FAVE_BAR,
+          direction = "vertical",
+          style     = "tf_fave_bar_frame",
+          index     = 1,
+          visible   = false,
+        })
+      end
+      if not bar_frame or not bar_frame.valid then
+        ProfilerExport.stop_section("pb_frame_init")
+        table.remove(storage._tf_slot_build_queue, 1)
+        return
+      end
+
+      ProfilerExport.stop_section("pb_frame_init")
+      storage._tf_slot_build_queue[1] = {
+        player_index     = entry.player_index,
+        surface_index    = entry.surface_index,
+        stage            = "chrome1",
+        stop_after_blank = entry.stop_after_blank,
+      }
+      return
+    end
+
+    -- ── Chrome stage 1: bar_flow + toggle_container (2 GUI adds) ─────────────────
+    if entry.stage == "chrome1" then
+      ProfilerExport.start_section("pb_chrome1")
+      local bar_frame = get_bar_frame(player)
       if not bar_frame or not bar_frame.valid then
         ProfilerExport.stop_section("pb_chrome1")
         table.remove(storage._tf_slot_build_queue, 1)
@@ -216,23 +252,20 @@ return function(fave_bar, helpers)
       return
     end
 
-    -- ── Chrome stage 2: history/mode buttons + visibility toggle + slots frame ────
-    -- (Merged from chrome2a + chrome2b: both are lightweight ~2-add operations that
-    --  together cost well under the frame budget, so combining saves one full tick.)
-    if entry.stage == "chrome2" or entry.stage == "chrome2a" or entry.stage == "chrome2b" then
-      ProfilerExport.start_section("pb_chrome2")
+    -- ── Chrome stage 2a: history toggle + mode buttons (2 GUI adds) ─────────────
+    if entry.stage == "chrome2" or entry.stage == "chrome2a" then
+      ProfilerExport.start_section("pb_chrome2a")
       local player_settings = Cache.Settings.get_player_settings(player)
       local main_flow       = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
       local bar_frame       = main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
       local bar_flow        = bar_frame and bar_frame[Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW]
       local tog_cont        = bar_flow and bar_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER]
       if not bar_frame or not bar_frame.valid or not bar_flow or not tog_cont then
-        ProfilerExport.stop_section("pb_chrome2")
+        ProfilerExport.stop_section("pb_chrome2a")
         table.remove(storage._tf_slot_build_queue, 1)
         return
       end
 
-      -- History toggle + mode buttons (former chrome2a)
       local history_enabled = player_settings.enable_teleport_history
       local player_data     = Cache.get_player_data(player)
       local is_seq          = player_data and (player_data.sequential_history_mode or false) or false
@@ -250,8 +283,31 @@ return function(fave_bar, helpers)
       if hist_btn and hist_btn.valid then hist_btn.visible = history_enabled end
       if mode_btn and mode_btn.valid then mode_btn.visible = history_enabled end
 
-      -- Visibility toggle + slots frame (former chrome2b)
-      local slots_vis = player_data and player_data.fave_bar_slots_visible
+      ProfilerExport.stop_section("pb_chrome2a")
+      storage._tf_slot_build_queue[1] = {
+        player_index     = entry.player_index,
+        surface_index    = entry.surface_index,
+        stage            = "chrome2b",
+        stop_after_blank = entry.stop_after_blank,
+      }
+      return
+    end
+
+    -- ── Chrome stage 2b: visibility toggle + slots frame (2 GUI adds) ────────────
+    if entry.stage == "chrome2b" then
+      ProfilerExport.start_section("pb_chrome2b")
+      local main_flow   = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
+      local bar_frame   = main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
+      local bar_flow    = bar_frame and bar_frame[Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW]
+      local tog_cont    = bar_flow and bar_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER]
+      if not bar_frame or not bar_frame.valid or not bar_flow or not tog_cont then
+        ProfilerExport.stop_section("pb_chrome2b")
+        table.remove(storage._tf_slot_build_queue, 1)
+        return
+      end
+
+      local player_data = Cache.get_player_data(player)
+      local slots_vis   = player_data and player_data.fave_bar_slots_visible
       if slots_vis == nil then
         slots_vis = true
         if player_data then player_data.fave_bar_slots_visible = true end
@@ -269,7 +325,7 @@ return function(fave_bar, helpers)
       local label_mode = Cache.Settings.get_player_slot_label_mode(player)
       local use_labels = label_mode ~= "off"
 
-      ProfilerExport.stop_section("pb_chrome2")
+      ProfilerExport.stop_section("pb_chrome2b")
       storage._tf_slot_build_queue[1] = {
         player_index     = entry.player_index,
         surface_index    = entry.surface_index,
@@ -284,12 +340,12 @@ return function(fave_bar, helpers)
       return
     end
 
-    -- ── Legacy chrome stage (queue entries created before the chrome split) ──────
+    -- ── Legacy chrome stage (queue entries created before the frame_init split) ───
     if entry.stage == "chrome" then
       storage._tf_slot_build_queue[1] = {
         player_index  = entry.player_index,
         surface_index = entry.surface_index,
-        stage         = "chrome1",
+        stage         = "frame_init",
       }
       return
     end
@@ -305,10 +361,10 @@ return function(fave_bar, helpers)
         return
       end
 
-      -- Labels mode adds 4 GUI elements per slot (flow+button+child-label+slot-label)
-      -- vs 2 without labels. Use a smaller batch when labels are on to keep per-tick
-      -- GUI work roughly constant.
-      local batch_size = entry.use_labels and 2 or BLANK_BATCH_SIZE
+      -- Labels mode: 4 adds/slot (flow+button+child-label+slot-label).
+      -- No-label mode: 2 adds/slot (button+child-label).
+      -- Both use BLANK_BATCH_SIZE=2 → max 4 adds/tick either way (~2ms).
+      local batch_size = entry.use_labels and 1 or BLANK_BATCH_SIZE
       local start_idx  = entry.next_slot
       local end_idx    = math.min(start_idx + batch_size - 1, entry.max_slots)
 
