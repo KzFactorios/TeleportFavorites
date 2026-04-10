@@ -83,6 +83,10 @@ These concrete examples should be used by reviewers and by automated lint fixes 
 - Keep documentation concise; update docs only when behavior or architecture changes.
 - Define helper functions and supporting tables before code that references them.
 
+## Instruction precedence
+
+For persistence shape, GPS formatting, and storage hierarchy, [.cursor/rules/project_specs.md](.cursor/rules/project_specs.md) and [.github/instructions/data-schema.instructions.md](.github/instructions/data-schema.instructions.md) are authoritative. Scoped `.instructions.md` files elaborate architecture and patterns. If anything appears to conflict, **project_specs** and **data-schema** win for saved data and GPS rules.
+
 
 ## Related instructions
 
@@ -97,7 +101,6 @@ The following scoped instruction files live under `.github/instructions/` and co
 - [TeleportFavorites PowerShell Standards](.github/instructions/powershell-standards.instructions.md)
 - [TeleportFavorites Testing Standards](.github/instructions/testing-standards.instructions.md)
 - [Beast Mode](.github/instructions/beast-mode.instructions.md)
-- `TODO.instructions.md` (intentionally preserved as an empty placeholder)
 
 
 ## Project-wide domain knowledge
@@ -107,5 +110,4 @@ The following scoped instruction files live under `.github/instructions/` and co
 - **Ownership:** Follow the strict creator-based ownership model defined in `game-rules`.
 - **PowerShell:** Use `Out-String` when piping script output to avoid object-binding errors.
 - **Performance check:** Always reference `performance-patterns` before implementing `on_nth_tick` or loop-heavy logic.
-
--- For storage sanitization (use of `Cache.sanitize_for_storage`), see `.github/instructions/linter-tooling.instructions.md` for concrete guidance and examples.
+- **Storage sanitization:** For `Cache.sanitize_for_storage`, see `.github/instructions/linter-tooling.instructions.md` for concrete guidance and examples.

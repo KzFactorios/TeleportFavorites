@@ -3,9 +3,9 @@ description: "Enforce Factorio-specific Lua 5.2 constraints and loading policies
 globs: "**/*.lua"
 ---
 # Lua Engine Standards
-- **Require Policy**: ALL `require()` calls must be at the absolute top-of-file. Never call inside functions/conditionals.
-- **No Hoisting**: Declare all locals and functions BEFORE they are referenced.
-- **Determinism**: Use `ipairs` for numeric arrays and `pairs` for dictionaries. Never use `next()` on Factorio userdata.
-- **Validation**: Every Factorio object access must be preceded by a `.valid` check.
-- **Reference**: Follow the standards in @project_specs.md.
-- **Persistence Safety**: Never mutate the `storage` table (or `global`) in any `on_load` handler or anything it calls. This will break save/load and multiplayer (Factorio CRC error). Only re-initialize local/session variables or event handlers in `on_load`. Persistent state changes must go in `on_init` or `on_configuration_changed`.
+
+- **Require placement and no-hoisting:** See [.github/copilot-instructions.md](../../.github/copilot-instructions.md).
+- **Determinism:** Use `ipairs` for numeric arrays and `pairs` for dictionaries. Never use `next()` on Factorio userdata.
+- **Validation:** Every Factorio object access must be preceded by a `.valid` check. For player objects, prefer `BasicHelpers.is_valid_player` — see [player-validation.mdc](player-validation.mdc).
+- **Reference:** Follow [.cursor/rules/project_specs.md](project_specs.md) and [core-context.mdc](core-context.mdc).
+- **Persistence safety:** Never mutate the `storage` table (or `global`) in any `on_load` handler or anything it calls. That breaks save/load and multiplayer (Factorio CRC error). Only re-initialize local/session variables or event handlers in `on_load`. Persistent state changes belong in `on_init` or `on_configuration_changed`.

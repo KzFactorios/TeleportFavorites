@@ -5,6 +5,8 @@ applyTo: "**/*.ps1"
 
 # TeleportFavorites: PowerShell Standards (Windows)
 
+Agents and automation running terminal commands on Windows should follow this document (not only when editing `.ps1` files).
+
 ## 1. TERMINAL SYNTAX MAPPING
 - **Chaining**: Use `;` (NEVER `&&`).
 - **Continuation**: Use backtick (`` ` ``).

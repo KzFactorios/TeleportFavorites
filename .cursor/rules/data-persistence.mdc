@@ -3,8 +3,7 @@ description: "Ensure deterministic storage and canonical GPS formatting"
 globs: "core/cache/**/*.lua, **/*.lua"
 ---
 # Data & Persistence
-- **Storage Only**: Use the `storage` table (Factorio 2.0+). The `global` table is forbidden.
-- **GPS Padding**: Use the canonical `"xxx.yyy.s"` format (e.g., `-005.010.1`). Coordinates must be zero-padded to `Constants.settings.GPS_PAD_NUMBER`.
-- **No Userdata**: Never store Factorio objects in `storage`. Use indices or GPS strings.
-- **Sanitization**: Pass all tables to `Cache.sanitize_for_storage(obj)` before writing to `storage`.
-- **Structure**: Refer to the "Storage Hierarchy" in @project_specs.md.
+
+- **Storage only:** Use the `storage` table (Factorio 2.0+). The `global` table is forbidden.
+- **No userdata in `storage`:** Never store Factorio objects; use indices or GPS strings. Sanitize with `Cache.sanitize_for_storage` before writes (see [.github/instructions/linter-tooling.instructions.md](../../.github/instructions/linter-tooling.instructions.md)).
+- **Full rules:** GPS format, relationships, migrations, and layout — [.github/instructions/data-schema.instructions.md](../../.github/instructions/data-schema.instructions.md). Storage hierarchy summary — [.cursor/rules/project_specs.md](project_specs.md).

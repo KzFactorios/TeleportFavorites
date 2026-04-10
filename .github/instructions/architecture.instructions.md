@@ -9,9 +9,9 @@ applyTo: "core/**/*.lua, gui/**/*.lua"
 NEVER use raw `player.gui.screen.add`. Always use `GuiBase` helpers from `gui/gui_base.lua`:
 - **Frames/Flows**: `create_frame`, `create_hflow`, `create_vflow`, `create_draggable`.
 - **Elements**: `create_button`, `create_sprite_button`, `create_label`, `create_textbox`.
--- **Special**: `create_titlebar` (includes close button logic).
+- **Special**: `create_titlebar` (includes close button logic).
 
-Note: For global policies such as `require()` placement and no-hoisting, see `.github/copilot-instructions.md`.
+Note: For global policies such as `require()` placement and no-hoisting, see `.github/copilot-instructions.md`. For deferred GUI updates and dirty-player / `on_nth_tick(2)` throttling, see [performance-patterns.instructions.md](performance-patterns.instructions.md). For GUI naming and passive-observer UI rules in the editor, see `.cursor/rules/gui-architecture.mdc`.
 
 ## 2. MODULE SYSTEM
 - **Logic**: Class-based paradigm with EmmyLua.

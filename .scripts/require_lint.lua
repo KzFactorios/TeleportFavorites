@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 -- Lint for runtime requires and direct GUI API usage.
--- Usage: lua scripts/require_lint.lua [--fix] [path]
+-- Usage: lua .scripts/require_lint.lua [--fix] [path]
 
 local root = arg[#arg]
 local fix = false

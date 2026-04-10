@@ -10,7 +10,7 @@ applyTo: "**/*.lua"
 Note: For global policies such as `require()` placement, no-hoisting, and other contributor policies, see `.github/copilot-instructions.md`.
 
 - **Circulars**: 1. Refactor to `core/utils/basic_helpers.lua`. 2. Lazy-load via `if not M then M = require() end` ONLY if refactor fails.
--- **No Hoisting**: Declare all locals/functions before use. No nested functions.
+- **No Hoisting**: Declare all locals/functions before use. No nested functions.
 
 ## 2. NAMING & ANNOTATIONS
 - **EmmyLua**: Mandatory `---@class`, `---@field`, `---@param`, `---@return`.
@@ -19,7 +19,7 @@ Note: For global policies such as `require()` placement, no-hoisting, and other 
 ## 3. DATA & PERSISTENCE
 - **Source of Truth**: ALWAYS read from `storage`/`Cache`. NEVER read state from GUI elements.
 - **GPS Format**: `"x.y.surface_index"` (e.g., `"100.200.1"`).
-- **Refer to**: #.project/data_schema.md for table structures.
+- **Refer to**: [.github/instructions/data-schema.instructions.md](data-schema.instructions.md) and [.cursor/rules/project_specs.md](../../.cursor/rules/project_specs.md) for storage hierarchy and table structures.
 
 ## 4. FACTORIO API & SAFETY
 - **Validity**: Use `BasicHelpers.is_valid_player(p)` or `if not p.valid then`. 

@@ -1,0 +1,15 @@
+---
+description: "Default to short git commit subjects; full detail lives elsewhere"
+alwaysApply: true
+---
+
+# Commit messages
+
+When proposing or writing a **git commit message** (unless the user explicitly asks for more):
+
+- **User override:** At any time the user may ask for a **longer or more detailed** commit message (body, bullets, file-by-file summary, etc.); honor that for that request — the rules below are the **default** when they do not.
+- **Default:** A **single subject line** only — imperative mood (e.g. `Add foo validation`), **≤ ~72 characters**.
+- **No** multi-paragraph body, **no** bullet list of files or exhaustive change inventory, **no** repeated “what / why” essay.
+- **Optional body** only if the user asks for it (e.g. breaking changes, migration notes).
+
+Progress and deep context are documented outside git; the commit line should read like a **brief synopsis**, not a changelog entry.
