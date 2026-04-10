@@ -24,10 +24,9 @@ local PlayerFavorites                         = require("core.favorite.player_fa
 local ProfilerExport                          = require("core.utils.profiler_export")
 
 -- Smaller batches spread GUI adds across more ticks, keeping per-tick work lower.
--- Label mode uses 1 slot/tick (4 adds each = 4 adds/tick).
--- No-label mode uses BLANK_BATCH_SIZE slots/tick (2 adds each = 4 adds/tick).
--- Lowered from 4→2: keeps each blank-slots tick at ≤4 element.add() calls (~2ms),
--- at the cost of ~2 extra ticks of build time (4ms of wall clock) — imperceptible.
+-- No-label mode: BLANK_BATCH_SIZE slots/tick × 2 adds/slot (button + number label).
+-- Label mode: 1 slot/tick × 4 adds/slot (wrapper + button + number label + slot label).
+-- At 2: no-label = 4 adds/tick (~2ms), label mode = 4 adds/tick (~2ms).
 local BLANK_BATCH_SIZE                        = 2
 local HYDRATE_BATCH_SIZE                      = 4
 
@@ -361,9 +360,8 @@ return function(fave_bar, helpers)
         return
       end
 
-      -- Labels mode: 4 adds/slot (flow+button+child-label+slot-label).
-      -- No-label mode: 2 adds/slot (button+child-label).
-      -- Both use BLANK_BATCH_SIZE=2 → max 4 adds/tick either way (~2ms).
+      -- No-label mode: BLANK_BATCH_SIZE slots/tick × 2 adds/slot (button + number label).
+      -- Label mode: 1 slot/tick × 4 adds/slot (wrapper flow + button + number label + slot label).
       local batch_size = entry.use_labels and 1 or BLANK_BATCH_SIZE
       local start_idx  = entry.next_slot
       local end_idx    = math.min(start_idx + batch_size - 1, entry.max_slots)
