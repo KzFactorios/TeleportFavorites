@@ -320,8 +320,14 @@ function ChartTagUtils.can_delete_chart_tag(player, tag)
   local is_owner = (owner_name == "" or owner_name == player.name)
   local has_other_favorites = false
   if tag.faved_by_players then
-    for _, player_index in ipairs(tag.faved_by_players) do
-      if player_index ~= player.index then
+    for k, v in pairs(tag.faved_by_players) do
+      local pid = nil
+      if type(v) == "number" and v >= 1 then
+        pid = v
+      elseif type(k) == "number" and k >= 1 and (v == true or v == k) then
+        pid = k
+      end
+      if pid and pid ~= player.index then
         has_other_favorites = true
         break
       end
@@ -338,6 +344,25 @@ function ChartTagUtils.can_delete_chart_tag(player, tag)
     end
   end
   return can_delete, is_owner, is_admin_override, reason
+end
+
+--- Count favoriting players in tag.faved_by_players (map [index]=index or legacy array values).
+---@param tag table|nil
+---@return integer
+function ChartTagUtils.count_faved_player_entries(tag)
+  local fbp = tag and tag.faved_by_players
+  if not fbp or type(fbp) ~= "table" then return 0 end
+  local n = 0
+  for k, v in pairs(fbp) do
+    local pid = nil
+    if type(v) == "number" and v >= 1 then
+      pid = v
+    elseif type(k) == "number" and k >= 1 and (v == true or v == k) then
+      pid = k
+    end
+    if pid then n = n + 1 end
+  end
+  return n
 end
 
 function ChartTagUtils.log_admin_action(admin_player, action, tag, additional_data)

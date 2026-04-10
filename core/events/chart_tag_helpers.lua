@@ -206,25 +206,51 @@ function ChartTagHelpers.update_tag_metadata(gps, chart_tag, acting_player)
   -- Text/icon change: the cached LuaCustomChartTag pointer is still valid (same object);
   -- Factorio reads .text and .icon live, so no cache invalidation needed.
 
+  local surface_tags = Cache.get_surface_tags(acting_player.surface.index)
+  local stored_tag = surface_tags and surface_tags[gps]
+
+  local function notify_one(game_player)
+    local player_favorites = PlayerFavorites.new(game_player)
+    if not player_favorites:get_favorite_by_gps(gps) then return false end
+    local affected_slot = nil
+    for i, fav in ipairs(player_favorites.favorites) do
+      if fav and fav.gps == gps then
+        affected_slot = i
+        break
+      end
+    end
+    GuiEventBus.notify("cache_updated", {
+      type = "tag_metadata_changed",
+      player_index = game_player.index,
+      gps = gps,
+      slot = affected_slot,
+    })
+    return true
+  end
+
   local notified = 0
-  for _, game_player in pairs(game.players) do
-    if game_player and game_player.valid then
-      local player_favorites = PlayerFavorites.new(game_player)
-      if player_favorites:get_favorite_by_gps(gps) then
-        -- Find which slot this GPS occupies for the targeted dirty-slot path.
-        local affected_slot = nil
-        for i, fav in ipairs(player_favorites.favorites) do
-          if fav and fav.gps == gps then
-            affected_slot = i
-            break
-          end
+  -- Prefer faved_by_players: map [player_index]=player_index (or true), or legacy array of indices.
+  local fbp = stored_tag and stored_tag.faved_by_players
+  if fbp and type(fbp) == "table" and next(fbp) ~= nil then
+    local seen = {}
+    for k, v in pairs(fbp) do
+      local pid = nil
+      if type(v) == "number" and v >= 1 then
+        pid = v
+      elseif type(k) == "number" and k >= 1 and (v == true or v == k) then
+        pid = k
+      end
+      if pid and not seen[pid] then
+        seen[pid] = true
+        local game_player = game.players[pid]
+        if game_player and game_player.valid and game_player.connected and notify_one(game_player) then
+          notified = notified + 1
         end
-        GuiEventBus.notify("cache_updated", {
-          type = "tag_metadata_changed",
-          player_index = game_player.index,
-          gps = gps,
-          slot = affected_slot,
-        })
+      end
+    end
+  else
+    for _, game_player in pairs(game.connected_players) do
+      if game_player and game_player.valid and notify_one(game_player) then
         notified = notified + 1
       end
     end

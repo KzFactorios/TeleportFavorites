@@ -378,17 +378,20 @@ local function drain_deferred_queue()
   local budget = DISPATCH_BUDGET_PER_TICK
   for i, notification in ipairs(snapshot) do
     if i > budget then
-      -- Carry the unprocessed tail back to the front of the queue, preserving order.
-      -- Build the remainder list in order, then prepend it so existing queued items
-      -- (from observer callbacks this tick) follow after the carried-over items.
-      local remainder_count = #snapshot - i + 1
-      local remainder = {}
-      for j = 1, remainder_count do
-        remainder[j] = snapshot[i + j - 1]
+      -- Carry unprocessed tail to process first next tick, preserving order (O(n) prepend,
+      -- not repeated table.insert(..., 1, x) which is O(n²)).
+      local existing = GuiEventBus._deferred_queue
+      local new_q = {}
+      local r = 0
+      for j = i, #snapshot do
+        r = r + 1
+        new_q[r] = snapshot[j]
       end
-      for j = remainder_count, 1, -1 do
-        table.insert(GuiEventBus._deferred_queue, 1, remainder[j])
+      for j = 1, #existing do
+        r = r + 1
+        new_q[r] = existing[j]
       end
+      GuiEventBus._deferred_queue = new_q
       GuiEventBus._deferred_tick_active = true
       break
     end

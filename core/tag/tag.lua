@@ -12,7 +12,7 @@ local Cache, GPSUtils =
 ---@class Tag
 ---@field gps string # The GPS string (serves as the index)
 ---@field chart_tag LuaCustomChartTag? # Cached chart tag (private, can be nil)
----@field faved_by_players uint[] # Array of player indices who have favorited this tag
+---@field faved_by_players table # Map [player_index]=player_index (or true); legacy array values supported in readers
 ---@field owner_name string? # Name of the player who created/owns this tag
 local Tag = {}
 Tag.__index = Tag

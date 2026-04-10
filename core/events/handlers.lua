@@ -15,6 +15,7 @@ local teleport_history_modal = require("gui.teleport_history_modal.teleport_hist
 local gui_observer = require("core.events.gui_observer")
 local ProfilerExport = require("core.utils.profiler_export")
 local FavoriteUtils = require("core.favorite.favorite_utils")
+local PlayerFavorites = require("core.favorite.player_favorites")
 local with_valid_player = BasicHelpers.with_valid_player
 
 --- Close all mod screen-level GUIs for a player (tag editor, modals, history)
@@ -53,6 +54,8 @@ end
 
 function handlers.on_player_changed_surface(event)
   with_valid_player(event.player_index, function(player)
+    PlayerFavorites.invalidate_instance_cache_for_player(event.player_index)
+    fave_bar.clear_session_gui_refs(event.player_index)
     if player.surface and player.surface.valid then
       ControlTagEditor.close_tag_editor(player)
       Cache.ensure_surface_cache(player.surface.index)

@@ -294,7 +294,7 @@ return function(fave_bar, helpers)
     if not BasicHelpers.is_valid_player(player) then return end
     if not parent_flow or not parent_flow.valid then return end
 
-    local slots_frame = GuiValidation.find_child_by_name(parent_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW)
+    local slots_frame = parent_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW]
     if not slots_frame or not slots_frame.valid then return end
 
     local surface_index = player.surface.index
@@ -318,14 +318,14 @@ return function(fave_bar, helpers)
   function fave_bar.update_single_slot(player, slot_index)
     if not BasicHelpers.is_valid_player(player) then return end
     local _, _, _, slots_frame = get_fave_bar_gui_refs(player)
-    if not slots_frame then return end
+    if not slots_frame or not slots_frame.valid then return end
 
-    local wrapper = GuiValidation.find_child_by_name(slots_frame, "fave_bar_slot_wrapper_" .. slot_index)
+    local wrapper = slots_frame["fave_bar_slot_wrapper_" .. slot_index]
     local slot_button
     if wrapper and wrapper.valid then
-      slot_button = GuiValidation.find_child_by_name(wrapper, "fave_bar_slot_" .. slot_index)
+      slot_button = wrapper["fave_bar_slot_" .. slot_index]
     else
-      slot_button = GuiValidation.find_child_by_name(slots_frame, "fave_bar_slot_" .. slot_index)
+      slot_button = slots_frame["fave_bar_slot_" .. slot_index]
     end
     if not slot_button then return end
 
@@ -349,7 +349,7 @@ return function(fave_bar, helpers)
 
     if wrapper and wrapper.valid then
       local label_mode = Cache.Settings.get_player_slot_label_mode(player)
-      local slot_label = GuiValidation.find_child_by_name(wrapper, "fave_bar_slot_label_" .. slot_index)
+      local slot_label = wrapper["fave_bar_slot_label_" .. slot_index]
       if slot_label and slot_label.valid then
         slot_label.caption = get_slot_label_text(fav, label_mode)
       end
@@ -365,11 +365,10 @@ return function(fave_bar, helpers)
 
     local _, _, bar_flow, slots_frame = get_fave_bar_gui_refs(player)
 
-    if bar_flow then
-      local toggle_container = GuiValidation.find_child_by_name(bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER)
-      if toggle_container then
-        local toggle_visibility_button = GuiValidation.find_child_by_name(toggle_container,
-          Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_BUTTON)
+    if bar_flow and bar_flow.valid then
+      local toggle_container = bar_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER]
+      if toggle_container and toggle_container.valid then
+        local toggle_visibility_button = toggle_container[Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_BUTTON]
         if toggle_visibility_button and toggle_visibility_button.valid then
           toggle_visibility_button.sprite = slots_visible and Enum.SpriteEnum.EYELASH or Enum.SpriteEnum.EYE
         end

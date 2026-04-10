@@ -204,14 +204,13 @@ function PlayerFavorites:reorder_favorites(source_slot, target_slot)
   if BasicHelpers.is_locked_favorite(src_fav) or BasicHelpers.is_locked_favorite(tgt_fav) then
     return false, "locked_slot"
   end
-  -- Deep copy for cascade
   local new_favorites = {}
   for i = 1, max_slots do
-    new_favorites[i] = FavoriteUtils.copy(favorites[i] or FavoriteUtils.get_blank_favorite())
+    new_favorites[i] = FavoriteUtils.copy_for_reorder(favorites[i] or FavoriteUtils.get_blank_favorite())
   end
   -- Blank-seeking cascade algorithm
   if FavoriteUtils.is_blank_favorite(tgt_fav) then
-  new_favorites[target_slot] = FavoriteUtils.copy(src_fav or FavoriteUtils.get_blank_favorite())
+    new_favorites[target_slot] = FavoriteUtils.copy_for_reorder(src_fav or FavoriteUtils.get_blank_favorite())
     new_favorites[source_slot] = FavoriteUtils.get_blank_favorite()
   elseif math.abs(source_slot - target_slot) == 1 then
     new_favorites[source_slot], new_favorites[target_slot] = new_favorites[target_slot], new_favorites[source_slot]
@@ -220,14 +219,14 @@ function PlayerFavorites:reorder_favorites(source_slot, target_slot)
     local direction = source_slot < target_slot and 1 or -1
     if direction == 1 then
       for i = source_slot, target_slot - 1 do
-        new_favorites[i] = FavoriteUtils.copy(new_favorites[i + 1])
+        new_favorites[i] = FavoriteUtils.copy_for_reorder(new_favorites[i + 1])
       end
     else
       for i = source_slot, target_slot + 1, -1 do
-        new_favorites[i] = FavoriteUtils.copy(new_favorites[i - 1])
+        new_favorites[i] = FavoriteUtils.copy_for_reorder(new_favorites[i - 1])
       end
     end
-  new_favorites[target_slot] = FavoriteUtils.copy(src_fav or FavoriteUtils.get_blank_favorite())
+    new_favorites[target_slot] = FavoriteUtils.copy_for_reorder(src_fav or FavoriteUtils.get_blank_favorite())
   end
   self.favorites = new_favorites
   Cache.set_player_favorites(self.player, new_favorites)
@@ -320,6 +319,13 @@ function PlayerFavorites.rehydrate_favorite_at_runtime(player, fav)
   end
   local tag = Cache.get_tag_by_gps(player, fav.gps)
   return FavoriteUtils.new(fav.gps, fav.locked or false, tag)
+end
+
+--- Drop cached PlayerFavorites instances for a player (e.g. surface change or leave).
+---@param player_index uint?
+function PlayerFavorites.invalidate_instance_cache_for_player(player_index)
+  if not player_index then return end
+  PlayerFavorites._instances[player_index] = nil
 end
 
 return PlayerFavorites

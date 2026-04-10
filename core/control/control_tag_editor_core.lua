@@ -345,7 +345,7 @@ function M.handle_delete_confirm(player)
 
   if is_admin_override then
     ChartTagUtils.log_admin_action(player, "delete_chart_tag", tag, {
-      had_other_favorites = tag.faved_by_players and #tag.faved_by_players > 1,
+      had_other_favorites = ChartTagUtils.count_faved_player_entries(tag) > 1,
       override_reason = "admin_privileges"
     })
   end

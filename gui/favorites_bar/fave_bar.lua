@@ -34,6 +34,10 @@ local fave_bar_progressive_extend = require("gui.favorites_bar.fave_bar_progress
 local fave_bar = {}
 local last_build_tick = {}
 
+--- Session-local cached GUI element refs (not in storage). Invalidates on teardown / surface change / player removed.
+---@type table<uint, { main_flow: LuaGuiElement, bar_frame: LuaGuiElement, bar_flow: LuaGuiElement, slots_frame: LuaGuiElement }>
+local session_fave_bar_refs = {}
+
 -- ============================================================
 -- Shared private helpers (closed over by extend modules via helpers table)
 -- ============================================================
@@ -94,6 +98,9 @@ local function _get_fave_bar_frame(player)
 end
 
 local function _destroy_fave_bar(player)
+  if player and player.index then
+    session_fave_bar_refs[player.index] = nil
+  end
   local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   if main_flow and main_flow.valid then
     local ph = main_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.LOADER_PLACEHOLDER]
@@ -125,11 +132,44 @@ local function cancel_progressive_build_for(player_index)
 end
 
 local function get_fave_bar_gui_refs(player)
+  if not BasicHelpers.is_valid_player(player) then
+    return nil, nil, nil, nil
+  end
   local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
-  local bar_frame = main_flow and GuiValidation.find_child_by_name(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
-  local bar_flow = bar_frame and GuiValidation.find_child_by_name(bar_frame, Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW)
-  local slots_frame = bar_flow and GuiValidation.find_child_by_name(bar_flow, Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW)
+  if not main_flow or not main_flow.valid then
+    session_fave_bar_refs[player.index] = nil
+    return nil, nil, nil, nil
+  end
+  local cached = session_fave_bar_refs[player.index]
+  if cached and cached.main_flow == main_flow
+      and cached.main_flow.valid
+      and cached.bar_frame and cached.bar_frame.valid
+      and cached.bar_flow and cached.bar_flow.valid
+      and cached.slots_frame and cached.slots_frame.valid then
+    return cached.main_flow, cached.bar_frame, cached.bar_flow, cached.slots_frame
+  end
+  local bar_frame = main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
+  local bar_flow = bar_frame and bar_frame[Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW]
+  local slots_frame = bar_flow and bar_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW]
+  if bar_frame and bar_frame.valid and bar_flow and bar_flow.valid and slots_frame and slots_frame.valid then
+    session_fave_bar_refs[player.index] = {
+      main_flow = main_flow,
+      bar_frame = bar_frame,
+      bar_flow = bar_flow,
+      slots_frame = slots_frame,
+    }
+  else
+    session_fave_bar_refs[player.index] = nil
+  end
   return main_flow, bar_frame, bar_flow, slots_frame
+end
+
+--- Clear session GUI ref cache for a player (surface change, removal, or explicit teardown).
+---@param player_index uint?
+function fave_bar.clear_session_gui_refs(player_index)
+  if player_index then
+    session_fave_bar_refs[player_index] = nil
+  end
 end
 
 --- Get slot label text based on label mode setting.

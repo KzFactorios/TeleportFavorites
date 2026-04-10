@@ -33,6 +33,17 @@ favorite_utils_mock.get_slot_index_from_element_name = function(element_name)
     return nil
 end
 
+favorite_utils_mock.copy = function(fav)
+  if type(fav) ~= "table" then return nil end
+  local c = {}
+  for k, v in pairs(fav) do c[k] = v end
+  return c
+end
+
+favorite_utils_mock.copy_for_reorder = function(fav)
+  return favorite_utils_mock.copy(fav)
+end
+
 favorite_utils_mock.get_button_type_from_element_name = function(element_name)
     if element_name and element_name:find("teleport_button") then
         return "teleport"

@@ -9,6 +9,10 @@ applyTo: "core/cache/**/*.lua, **/*.lua"
 - **NO USERDATA IN STORAGE**: Never store `LuaCustomChartTag`, `LuaPlayer`, or `LuaSurface` in `storage`.
 - **Retrieval**: Store the **GPS String**, then use `Cache.Lookups.get_chart_tag_by_gps(gps)` at runtime.
 
+## 1.1 STORAGE SCHEMA VERSION
+- **`storage._tf_schema_version`**: Monotonic integer for **data-shape** migrations (not the mod semver string). Increment logic lives in [`core/cache/storage_migrations.lua`](core/cache/storage_migrations.lua); applied from `Cache.init()` on load.
+- **`storage.mod_version`**: Informational string from `script.active_mods` (optional future use).
+
 ## 1.5 GPS STRING FORMAT (Canonical)
 
 - **Canonical format**: TeleportFavorites uses a canonical GPS string for all persistent storage and lookups: `xxx.yyy.s` where:
@@ -61,7 +65,8 @@ storage = {
   },
   surfaces = {
     [s_idx] = {
-      tags = { [gps] = { gps = string, faved_by_players = { [1..n] = player_index } } }
+      -- faved_by_players: map keyed by player index (value is typically same index or true). Do not use # on this table.
+      tags = { [gps] = { gps = string, faved_by_players = { [player_index] = player_index } } }
     }
   }
 }

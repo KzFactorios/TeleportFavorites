@@ -76,30 +76,6 @@ local function validate_tag_editor_opening(player)
 end
 
 
-local function normalize_and_replace_chart_tag(chart_tag, player)
-  if not BasicHelpers.is_valid_player(player) then return nil, nil end
-  local position = chart_tag.position
-  if not position then return nil, nil end
-  if not BasicHelpers.is_whole_number(position.x) or not BasicHelpers.is_whole_number(position.y) then
-    local position_pair = GPSUtils.create_position_pair(position)
-    local chart_tag_spec = ChartTagUtils.build_spec(position_pair.new, chart_tag, player, nil)
-    local surface_index = chart_tag.surface and chart_tag.surface.index or 1
-    local new_chart_tag = ChartTagUtils.safe_add_chart_tag(
-      player and player.force or chart_tag.force,
-      chart_tag.surface, chart_tag_spec, player)
-    if new_chart_tag and new_chart_tag.valid then
-      -- Compute GPS of the fractional position before destroying so we can evict it.
-      local old_gps = GPSUtils.gps_from_map_position(position, surface_index)
-      chart_tag.destroy()
-      -- Surgical eviction: old fractional GPS entry is now stale.
-      if old_gps then Cache.Lookups.evict_chart_tag_cache_entry(old_gps) end
-      return new_chart_tag, position_pair
-    end
-  end
-  return nil, nil
-end
-
-
 ---@param player LuaPlayer
 ---@param chart_tag LuaCustomChartTag
 ---@param tag table?
@@ -203,23 +179,6 @@ return function(handlers)
     local chart_tag = event.tag
     if not chart_tag or not chart_tag.valid or not chart_tag.position then return end
 
-    -- Defer fractional-coordinate normalization to the next tick so the tag-creation tick
-    -- does not pay the cost of force.add_chart_tag synchronously.
-    -- The tag is still registered in storage below (using its original GPS) so there is no
-    -- gap; the normalization path will clean up storage on the following tick.
-    if GPSUtils.needs_normalization(chart_tag.position) then
-      ErrorHandler.debug_log("Chart tag added with fractional coordinates, deferring normalization", {
-        player_name = player.name,
-        position = chart_tag.position
-      })
-      script.on_nth_tick(1, function()
-        script.on_nth_tick(1, nil)
-        if chart_tag and chart_tag.valid then
-          normalize_and_replace_chart_tag(chart_tag, player)
-        end
-      end)
-    end
-
     local surface_index = player.surface and player.surface.valid and player.surface.index or 1
     Cache.ensure_surface_cache(tonumber(surface_index) or 1)
 
@@ -251,7 +210,6 @@ return function(handlers)
     local player = game.players[event.player_index]
     if not player or not player.valid then return end
 
-    local original_owner = nil
     local original_owner_name = nil
 
     local new_gps, old_gps = ChartTagHelpers.extract_gps(event, player)
@@ -260,17 +218,11 @@ return function(handlers)
       local old_tag = Cache.get_tag_by_gps(player, old_gps)
       if old_tag and type(old_tag) == "table" and old_tag.owner_name then
         original_owner_name = old_tag.owner_name
-        for _, p in pairs(game.players) do
-          if p.name == original_owner_name then
-            original_owner = p
-            break
-          end
-        end
       end
     end
 
     if not original_owner_name and event.old_player_index then
-      original_owner = game.players[event.old_player_index]
+      local original_owner = game.players[event.old_player_index]
       if original_owner and original_owner.valid then
         original_owner_name = original_owner.name
       end
@@ -330,37 +282,10 @@ return function(handlers)
 
     if chart_tag and chart_tag.valid and chart_tag.position then
       local position_changed = old_gps and new_gps and old_gps ~= new_gps
-
-      if GPSUtils.needs_normalization(chart_tag.position) then
-        ErrorHandler.debug_log("Chart tag has fractional coordinates, normalizing", {
-          player_name = player.name,
-          position = chart_tag.position,
-          old_gps = old_gps,
-          new_gps = new_gps
-        })
-
-        local new_chart_tag, _ = normalize_and_replace_chart_tag(chart_tag, player)
-        if new_chart_tag then
-          local surface_index = GPSUtils.get_context_surface_index(new_chart_tag, player)
-          local normalized_gps = GPSUtils.gps_from_map_position(new_chart_tag.position, tonumber(surface_index) or 1)
-          if old_gps and normalized_gps and old_gps ~= normalized_gps then
-            local normalized_event = {
-              tag = new_chart_tag,
-              old_position = event.old_position,
-              player_index = event.player_index
-            }
-            apply_gps_move(old_gps, normalized_gps, normalized_event, player, original_owner_name)
-          end
-        end
-        if old_gps and new_gps and old_gps ~= new_gps then
-          apply_gps_move(old_gps, new_gps, event, player, original_owner_name)
-        end
-      elseif position_changed then
+      if position_changed then
         apply_gps_move(old_gps, new_gps, event, player, original_owner_name)
-      else
-        if new_gps then
-          ChartTagHelpers.update_tag_metadata(new_gps, chart_tag, player)
-        end
+      elseif new_gps then
+        ChartTagHelpers.update_tag_metadata(new_gps, chart_tag, player)
       end
     end
   end

@@ -1,6 +1,7 @@
 ---@diagnostic disable: undefined-global
 -- Data Structure (v2.0+):
 -- storage = {
+--   _tf_schema_version = uint,  -- storage schema revision; see core/cache/storage_migrations.lua
 --   mod_version = string,
 --   players = {
 --     [player_index] = {
@@ -29,6 +30,7 @@ local BasicHelpers, Constants, GPSUtils, ErrorHandler =
 local FavoriteUtils = require("core.favorite.favorite_utils")
 local Lookups = require("core.cache.lookups")
 local SettingsCache = require("core.cache.settings")
+local StorageMigrations = require("core.cache.storage_migrations")
 
 -- ===========================
 -- HISTORY ITEM (from history_item.lua)
@@ -136,7 +138,9 @@ function Cache.init()
   storage.surfaces = storage.surfaces or {}
 
   local current_mod_version = get_mod_version()
-  -- TODO: Run migrations here if stored_version ~= current_mod_version
+
+  -- Schema migrations (storage._tf_schema_version); independent of mod semver string.
+  StorageMigrations.apply_all()
 
   -- Legacy stack migration: convert raw GPS strings to HistoryItem objects
   for _, player_data in pairs(storage.players) do
@@ -551,11 +555,8 @@ function Cache.sanitize_for_storage(obj, exclude_fields)
   if type(obj) ~= "table" then return {} end
   local sanitized = {}
   exclude_fields = exclude_fields or {}
-  local keys = {}
-  for k in pairs(obj) do table.insert(keys, k) end
-  table.sort(keys, function(a, b) return tostring(a) < tostring(b) end)
-  for _, k in ipairs(keys) do
-    local v = obj[k]
+  -- Single pairs() pass: order is undefined (not persisted as ordered data).
+  for k, v in pairs(obj) do
     if not exclude_fields[k] and type(v) ~= "userdata" then sanitized[k] = v end
   end
   return sanitized

@@ -30,7 +30,7 @@ end
 ---@return boolean
 local function has_any_favorites(tag)
   if not tag or not tag.faved_by_players then return false end
-  return #tag.faved_by_players > 0
+  return next(tag.faved_by_players) ~= nil
 end
 
 --- Clean up player favorites that match the tag's GPS
@@ -57,22 +57,14 @@ local function cleanup_player_favorites(tag)
   return cleaned_count
 end
 
---- Clean up faved_by_players array for the tag
----@param tag table Tag object with faved_by_players array
+--- Clear faved_by_players (map or legacy array); tag is being destroyed.
+---@param tag table Tag object
 local function cleanup_faved_by_players(tag)
   if not tag.faved_by_players or type(tag.faved_by_players) ~= "table" then
     ErrorHandler.debug_log("No faved_by_players to cleanup")
-    return 
+    return
   end
-  
-  for i = #tag.faved_by_players, 1, -1 do
-    for _, player in pairs(_G.game.players) do
-      if tag.faved_by_players[i] == player.index then
-        table.remove(tag.faved_by_players, i)
-        break
-      end
-    end
-  end
+  tag.faved_by_players = {}
 end
 
 --- Validate inputs for destruction

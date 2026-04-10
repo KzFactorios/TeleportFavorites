@@ -51,4 +51,24 @@ function FavoriteUtils.copy(fav)
   return copy
 end
 
+--- Shallow copy of favorite + tag table for reorder paths (avoids deep_copy of tag per slot).
+---@param fav Favorite?
+---@return Favorite?
+function FavoriteUtils.copy_for_reorder(fav)
+  if type(fav) ~= "table" then return nil end
+  local tag = fav.tag
+  local tag_copy = nil
+  if type(tag) == "table" then
+    tag_copy = {}
+    for k, v in pairs(tag) do
+      tag_copy[k] = v
+    end
+  end
+  local copy = FavoriteUtils.new(fav.gps, fav.locked, tag_copy)
+  for k, v in pairs(fav) do
+    if copy[k] == nil then copy[k] = v end
+  end
+  return copy
+end
+
 return FavoriteUtils

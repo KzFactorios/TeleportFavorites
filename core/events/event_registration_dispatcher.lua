@@ -19,6 +19,7 @@ local fave_bar = require("gui.favorites_bar.fave_bar")
 local tag_editor = require("gui.tag_editor.tag_editor")
 local GuiObserver = require("core.events.gui_observer")
 local ProfilerExport = require("core.utils.profiler_export")
+local PlayerFavorites = require("core.favorite.player_favorites")
 
 ---@class EventRegistrationDispatcher
 local EventRegistrationDispatcher = {}
@@ -76,6 +77,8 @@ end
 
 
 function ChartTagOwnershipManager.on_player_removed(event)
+  fave_bar.clear_session_gui_refs(event.player_index)
+  PlayerFavorites.invalidate_instance_cache_for_player(event.player_index)
   local player = game.get_player(event.player_index)
   if not player then
     ErrorHandler.warn_log("Cannot handle player removed: invalid player index", { player_index = event.player_index })
@@ -301,7 +304,7 @@ local function register_core_events(script)
     end)
     -- GPS point cache sweep: evicts TTL-expired entries for active surfaces only.
     -- Per-surface next_sweep_at clock pauses while no players are on that surface.
-    script.on_nth_tick(Cache.Lookups.SWEEP_TICKS, function()
+    script.on_nth_tick(Cache.Lookups.VALIDITY_SWEEP_TICKS, function()
       Cache.Lookups.sweep_expired_entries()
     end)
   end)

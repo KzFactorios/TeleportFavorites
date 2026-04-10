@@ -36,7 +36,8 @@ local FaveBarGuiLabelsManager = {
 }
 
 local fave_bar = {
-  build = function() end
+  build = function() end,
+  clear_session_gui_refs = function() end,
 }
 
 -- Shared spy utility
@@ -48,7 +49,9 @@ local Cache = require("core.cache.cache")
 if not Cache.Lookups then
   Cache.Lookups = {
     ensure_surface_cache = function() end,
-    invalidate_surface_chart_tags = function() end
+    invalidate_surface_chart_tags = function() end,
+    VALIDITY_SWEEP_TICKS = 18000,
+    sweep_expired_entries = function() end,
   }
 end
 
