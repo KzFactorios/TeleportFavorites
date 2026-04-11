@@ -312,14 +312,13 @@ return function(fave_bar, helpers)
     return slots_frame
   end
 
-  --- Update a single slot button without rebuilding the entire row.
+  --- Apply visuals for one slot when refs, pfaves, and label_mode are already resolved.
+  ---@param slots_frame LuaGuiElement
   ---@param player LuaPlayer
-  ---@param slot_index number Slot index (1-based)
-  function fave_bar.update_single_slot(player, slot_index)
-    if not BasicHelpers.is_valid_player(player) then return end
-    local _, _, _, slots_frame = get_fave_bar_gui_refs(player)
-    if not slots_frame or not slots_frame.valid then return end
-
+  ---@param pfaves table
+  ---@param label_mode string
+  ---@param slot_index number
+  local function apply_one_slot_at_index(slots_frame, player, pfaves, label_mode, slot_index)
     local wrapper = slots_frame["fave_bar_slot_wrapper_" .. slot_index]
     local slot_button
     if wrapper and wrapper.valid then
@@ -329,12 +328,7 @@ return function(fave_bar, helpers)
     end
     if not slot_button then return end
 
-    local surface_index = player.surface.index
-    local pfaves = Cache.get_player_favorites(player, surface_index)
-    if not pfaves then return end
-
     local fav = pfaves[slot_index]
-
     local rehydrated_fav
     if fav then
       rehydrated_fav = PlayerFavorites.rehydrate_favorite_at_runtime(player, fav)
@@ -343,17 +337,45 @@ return function(fave_bar, helpers)
       rehydrated_fav = FavoriteUtils.get_blank_favorite()
     end
 
-    fav = rehydrated_fav
-
-    apply_slot_visuals(slot_button, fav, slot_index)
+    apply_slot_visuals(slot_button, rehydrated_fav, slot_index)
 
     if wrapper and wrapper.valid then
-      local label_mode = Cache.Settings.get_player_slot_label_mode(player)
       local slot_label = wrapper["fave_bar_slot_label_" .. slot_index]
       if slot_label and slot_label.valid then
-        slot_label.caption = get_slot_label_text(fav, label_mode)
+        slot_label.caption = get_slot_label_text(rehydrated_fav, label_mode)
       end
     end
+  end
+
+  --- Update several slot buttons after one storage change (e.g. drag-drop): one GUI ref resolve and one settings read.
+  ---@param player LuaPlayer
+  ---@param indices uint[] 1-based slot indices
+  function fave_bar.update_slots_batch(player, indices)
+    if not BasicHelpers.is_valid_player(player) then return end
+    if not indices or #indices == 0 then return end
+    local _, _, _, slots_frame = get_fave_bar_gui_refs(player)
+    if not slots_frame or not slots_frame.valid then return end
+    local surface_index = player.surface.index
+    local pfaves = Cache.get_player_favorites(player, surface_index)
+    if not pfaves then return end
+    local label_mode = Cache.Settings.get_player_slot_label_mode(player)
+    for _, slot_index in ipairs(indices) do
+      apply_one_slot_at_index(slots_frame, player, pfaves, label_mode, slot_index)
+    end
+  end
+
+  --- Update a single slot button without rebuilding the entire row.
+  ---@param player LuaPlayer
+  ---@param slot_index number Slot index (1-based)
+  function fave_bar.update_single_slot(player, slot_index)
+    if not BasicHelpers.is_valid_player(player) then return end
+    local _, _, _, slots_frame = get_fave_bar_gui_refs(player)
+    if not slots_frame or not slots_frame.valid then return end
+    local surface_index = player.surface.index
+    local pfaves = Cache.get_player_favorites(player, surface_index)
+    if not pfaves then return end
+    local label_mode = Cache.Settings.get_player_slot_label_mode(player)
+    apply_one_slot_at_index(slots_frame, player, pfaves, label_mode, slot_index)
   end
 
   --- Update toggle button visibility state.

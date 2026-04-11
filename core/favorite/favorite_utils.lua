@@ -51,6 +51,20 @@ function FavoriteUtils.copy(fav)
   return copy
 end
 
+--- Whether two stored favorites represent the same bar cell visuals (gps + blank + lock).
+--- Used to detect which slot indices need GUI refresh after reorder.
+---@param a Favorite?
+---@param b Favorite?
+---@return boolean
+function FavoriteUtils.same_visual_identity(a, b)
+  local ab = FavoriteUtils.is_blank_favorite(a)
+  local bb = FavoriteUtils.is_blank_favorite(b)
+  if ab and bb then return true end
+  if ab or bb then return false end
+  if type(a) ~= "table" or type(b) ~= "table" then return false end
+  return (a.gps == b.gps) and ((a.locked or false) == (b.locked or false))
+end
+
 --- Shallow copy of favorite + tag table for reorder paths (avoids deep_copy of tag per slot).
 ---@param fav Favorite?
 ---@return Favorite?

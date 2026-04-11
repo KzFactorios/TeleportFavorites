@@ -214,7 +214,7 @@ end
 ---@param slot number The target slot index
 ---@return boolean success
 function SlotInteractionHandlers.reorder_favorites(player, favorites, drag_index, slot)
-  local success, error_msg = favorites:reorder_favorites(drag_index, slot)
+  local success, error_msg, changed_indices = favorites:reorder_favorites(drag_index, slot)
   if not success then
     BasicHelpers.error_message_to_player(player,
       BasicHelpers.get_error_string(player, "failed_reorder_favorite",
@@ -223,7 +223,12 @@ function SlotInteractionHandlers.reorder_favorites(player, favorites, drag_index
     return false
   end
 
-  fave_bar.refresh_slots(player)
+  -- Update only changed slots; batch path resolves GUI refs and settings once per drop.
+  if changed_indices and #changed_indices > 0 then
+    fave_bar.update_slots_batch(player, changed_indices)
+  else
+    fave_bar.refresh_slots(player)
+  end
   CursorUtils.end_drag_favorite(player)
   return true
 end

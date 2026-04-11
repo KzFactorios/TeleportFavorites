@@ -187,7 +187,7 @@ end
 ---Reorder favorites using blank-seeking cascade algorithm (drag-drop)
 ---@param source_slot integer Source slot index (1-based)
 ---@param target_slot integer Target slot index (1-based)
----@return boolean success, string? error_message
+---@return boolean success, string? error_message, uint[]? changed_slot_indices
 function PlayerFavorites:reorder_favorites(source_slot, target_slot)
   if not source_slot or not target_slot or source_slot == target_slot then
     return false, "invalid_slot_indices"
@@ -228,11 +228,19 @@ function PlayerFavorites:reorder_favorites(source_slot, target_slot)
     end
     new_favorites[target_slot] = FavoriteUtils.copy_for_reorder(src_fav or FavoriteUtils.get_blank_favorite())
   end
+
+  local changed_indices = {}
+  for i = 1, max_slots do
+    if not FavoriteUtils.same_visual_identity(favorites[i], new_favorites[i]) then
+      changed_indices[#changed_indices + 1] = i
+    end
+  end
+
   self.favorites = new_favorites
   Cache.set_player_favorites(self.player, new_favorites)
   notify_fave(self, "favorite_updated", { slot = source_slot })
   notify_fave(self, "favorite_updated", { slot = target_slot })
-  return true
+  return true, nil, changed_indices
 end
 
 --- Update GPS coordinates across all players and return list of affected players
