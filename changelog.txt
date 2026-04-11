@@ -3,6 +3,13 @@ Version: 0.0.98
 Date: 2026-03-20
   Changes:
     - Fixed issue where owner info was getting lost after moving a tag
+    - Favorites bar refresh after drag-and-drop reorder avoids unnecessary full rebuilds; only slots that actually change are updated, with batched favorites/label reads per drop
+    - Drag-and-drop reorder skips redundant slot redraws when a move does not change how those slots look
+    - Toggling sequential history mode updates only the history-mode control instead of rebuilding the whole bar
+    - Deferred favorites bar work is applied in smaller chunks where possible, reducing frame-time spikes when slots update
+    - Deferred notification coalescing preserves per-slot hints when several refresh events arrive the same tick, avoiding unnecessary full-bar refreshes
+    - Favorite removal and other refresh paths are less likely to trigger a full favorites bar rebuild when only one slot actually changed
+    - Multiple GPS/favorite-related updates back-to-back are handled more efficiently so the bar does not redraw more than necessary
 ---------------------------------------------------------------------------------------------------
 Version: 0.0.97
 Date: 2026-03-20
