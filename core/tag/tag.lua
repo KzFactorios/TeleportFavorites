@@ -4,7 +4,7 @@
 -- TeleportFavorites Factorio Mod
 -- Tag model and utilities for managing teleportation tags, chart tags, and player favorites.
 
-local Deps = require("deps")
+local Deps = require("core.deps_barrel")
 local Cache, GPSUtils =
   Deps.Cache, Deps.GpsUtils
 

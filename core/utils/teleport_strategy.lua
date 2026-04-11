@@ -4,7 +4,7 @@
 -- TeleportFavorites Factorio Mod
 -- Strategy pattern implementation for extensible teleportation logic and scenario handling.
 
-local Deps = require("deps")
+local Deps = require("core.deps_barrel")
 local BasicHelpers, ErrorHandler, Cache, Constants, GPSUtils =
   Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.Constants, Deps.GpsUtils
 local ChartTagUtils = require("core.utils.chart_tag_utils")

@@ -1,6 +1,6 @@
 ---@diagnostic disable: undefined-global
 
-local Constants = require("constants")
+local Constants = require("core.constants_impl")
 local BasicHelpers = require("core.utils.basic_helpers")
 local _in_error_handler = false
 

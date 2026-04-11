@@ -4,7 +4,7 @@
 -- TeleportFavorites Factorio Mod
 -- Manages player teleport history stack, pointer navigation, and GPS string conversion for history modal.
 
-local Deps = require("deps")
+local Deps = require("core.deps_barrel")
 local BasicHelpers, Cache, GPSUtils =
   Deps.BasicHelpers, Deps.Cache, Deps.GpsUtils
 local HistoryItem = Cache.HistoryItem

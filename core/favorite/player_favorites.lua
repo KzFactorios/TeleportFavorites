@@ -5,7 +5,7 @@
 -- PlayerFavorites class: manages a collection of favorites for a player, including slot management, persistence, drag-and-drop, and surface-aware data.
 
 
-local Deps = require("deps")
+local Deps = require("core.deps_barrel")
 local BasicHelpers, Cache =
   Deps.BasicHelpers, Deps.Cache
 local FavoriteUtils = require("core.favorite.favorite_utils")

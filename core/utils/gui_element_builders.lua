@@ -5,7 +5,7 @@
 -- Consolidates common GUI element creation patterns for mod GUIs.
 -- Provides specialized builders for buttons, dialogs, rows, and flows.
 
-local Deps = require("deps")
+local Deps = require("core.deps_barrel")
 local BasicHelpers, GPSUtils, Enum =
   Deps.BasicHelpers, Deps.GpsUtils, Deps.Enum
 local GuiBase = require("gui.gui_base")

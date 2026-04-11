@@ -24,7 +24,7 @@
 --   }
 -- }
 
-local Deps = require("base_deps")
+local Deps = require("core.base_deps_barrel")
 local BasicHelpers, Constants, GPSUtils, ErrorHandler =
   Deps.BasicHelpers, Deps.Constants, Deps.GpsUtils, Deps.ErrorHandler
 local FavoriteUtils = require("core.favorite.favorite_utils")

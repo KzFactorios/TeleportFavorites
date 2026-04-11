@@ -14,7 +14,7 @@
 --   hydrate_slots  → write data into blank slots HYDRATE_BATCH_SIZE per tick
 --   slots          → legacy stage kept for old save files
 
-local Deps                                    = require("deps")
+local Deps                                    = require("core.deps_barrel")
 local BasicHelpers, ErrorHandler, Cache, Enum =
     Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.Enum
 local GuiBase                                 = require("gui.gui_base")

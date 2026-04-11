@@ -5,7 +5,7 @@
 -- Centralized event registration dispatcher. All lifecycle, GUI, custom input,
 -- modal-blocking, and ownership events are registered here.
 
-local Deps = require("deps")
+local Deps = require("core.deps_barrel")
 local ErrorHandler, Cache, Constants, Enum, BasicHelpers =
   Deps.ErrorHandler, Deps.Cache, Deps.Constants, Deps.Enum, Deps.BasicHelpers
 local gui_event_dispatcher = require("core.events.gui_event_dispatcher")

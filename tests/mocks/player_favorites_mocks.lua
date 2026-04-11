@@ -5,7 +5,7 @@ local PlayerFavoritesMocks = {}
 
 -- Mock favorite data generator
 local defines = require("tests.mocks.factorio_defines_mock")
-local Constants = require("constants")
+local Constants = require("core.constants_impl")
 
 local function create_mock_favorite(index, gps, name)
   return {

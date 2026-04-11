@@ -5,7 +5,7 @@
 -- Provides: close_tag_editor, show_tag_editor_error, update_chart_tag_fields,
 --           handle_confirm_btn, _dismiss_delete_confirm, handle_delete_confirm
 
-local Deps = require("deps")
+local Deps = require("core.deps_barrel")
 local BasicHelpers, ErrorHandler, Cache, Constants, GPSUtils, Enum =
   Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.Constants, Deps.GpsUtils, Deps.Enum
 local tag_editor = require("gui.tag_editor.tag_editor")

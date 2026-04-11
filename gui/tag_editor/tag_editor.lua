@@ -20,7 +20,7 @@
 -- │  └─ cancel_button (button)
 -- └─ error_row (label, visible on error)
 
-local Deps = require("deps")
+local Deps = require("core.deps_barrel")
 local BasicHelpers, Cache, Enum =
   Deps.BasicHelpers, Deps.Cache, Deps.Enum
 local GuiBase = require("gui.gui_base")

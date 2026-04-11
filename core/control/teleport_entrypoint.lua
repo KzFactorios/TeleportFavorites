@@ -4,7 +4,7 @@
 -- Shared teleport entry helper for UI/control paths.
 -- Keeps one common execution path while allowing per-source behavior hooks.
 
-local Deps = require("deps")
+local Deps = require("core.deps_barrel")
 local BasicHelpers, ErrorHandler =
   Deps.BasicHelpers, Deps.ErrorHandler
 

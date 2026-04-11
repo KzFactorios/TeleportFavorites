@@ -6,7 +6,7 @@
 -- Factorio 2.x: LuaProfiler has no :report(); embed it in a LocalisedString for helpers.write_file.
 -- File output uses helpers.write_file (not game.write_file). Profiling uses helpers.create_profiler.
 
-local Constants = require("constants")
+local Constants = require("core.constants_impl")
 
 local M = {}
 

@@ -9,7 +9,7 @@
 
 ---@diagnostic disable: undefined-global
 
-local Deps = require("deps")
+local Deps = require("core.deps_barrel")
 local BasicHelpers, ErrorHandler, Cache =
   Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache
 local fave_bar = require("gui.favorites_bar.fave_bar")

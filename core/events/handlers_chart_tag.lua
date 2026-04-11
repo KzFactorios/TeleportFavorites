@@ -2,7 +2,7 @@
 -- Chart-tag event handlers extracted from handlers.lua.
 -- Extend pattern: called with the handlers table to add functions to it.
 
-local Deps = require("deps")
+local Deps = require("core.deps_barrel")
 local ErrorHandler, Cache, GPSUtils, Enum, BasicHelpers =
   Deps.ErrorHandler, Deps.Cache, Deps.GpsUtils, Deps.Enum, Deps.BasicHelpers
 local TagClass = require("core.tag.tag")

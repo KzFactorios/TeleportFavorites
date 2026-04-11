@@ -2,7 +2,7 @@
 -- TeleportFavorites Factorio Mod
 -- Favorite class for representing a player's favorite teleport location, with GPS, locked state, and tag helpers.
 
-local Deps = require("base_deps")
+local Deps = require("core.base_deps_barrel")
 local BasicHelpers, Constants = Deps.BasicHelpers, Deps.Constants
 
 ---@class Favorite

@@ -10,7 +10,7 @@
 -- Direct property assignment (chart_tag.text = "foo", chart_tag.icon = {...}) causes CRC mismatches.
 -- CORRECT PATTERN: Destroy and recreate chart tags instead. See control_tag_editor_core.lua.
 
-local Deps = require("deps")
+local Deps = require("core.deps_barrel")
 local BasicHelpers, ErrorHandler, Cache, GPSUtils, Enum =
   Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.GpsUtils, Deps.Enum
 local tag_editor = require("gui.tag_editor.tag_editor")

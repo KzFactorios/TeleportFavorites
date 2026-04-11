@@ -5,7 +5,7 @@
 -- Centralized event handler implementations for TeleportFavorites.
 -- Chart-tag handlers live in handlers_chart_tag.lua (extend pattern).
 
-local Deps = require("deps")
+local Deps = require("core.deps_barrel")
 local ErrorHandler, Cache, Constants, Enum, BasicHelpers =
   Deps.ErrorHandler, Deps.Cache, Deps.Constants, Deps.Enum, Deps.BasicHelpers
 local ControlTagEditor = require("core.control.control_tag_editor")

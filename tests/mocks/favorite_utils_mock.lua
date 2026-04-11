@@ -2,7 +2,7 @@
 -- These mocks are used by tests to avoid requiring real mod infrastructure
 
 local favorite_utils_mock = {}
-local Constants = require("constants")
+local Constants = require("core.constants_impl")
 
 favorite_utils_mock.MAX_FAVORITE_SLOTS = 10
 

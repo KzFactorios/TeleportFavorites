@@ -18,7 +18,7 @@
 --          ├─ fave_bar_slot_1 (sprite-button)
 --          └─ fave_bar_slot_label_1 (label)
 
-local Deps = require("deps")
+local Deps = require("core.deps_barrel")
 local BasicHelpers, ErrorHandler, Cache, Enum =
   Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.Enum
 local GuiBase = require("gui.gui_base")

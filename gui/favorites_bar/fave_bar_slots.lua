@@ -4,7 +4,7 @@
 -- Slot building, updating, and refresh functions extracted from fave_bar.lua.
 -- Extend pattern: receives (fave_bar, helpers) where helpers contains shared private functions.
 
-local Deps = require("deps")
+local Deps = require("core.deps_barrel")
 local BasicHelpers, ErrorHandler, Cache, Enum =
   Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.Enum
 local GuiBase = require("gui.gui_base")

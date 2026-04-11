@@ -1,6 +1,6 @@
 ---@diagnostic disable: undefined-global
 
-local Constants = require("constants")
+local Constants = require("core.constants_impl")
 
 
 data:extend({

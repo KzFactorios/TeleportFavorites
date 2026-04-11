@@ -5,7 +5,7 @@
 -- Features: safe handler registration, error handling, logging, extensible pattern, no global namespace pollution.
 -- Usage: register default/custom handlers, all handlers receive Factorio event object.
 
-local Deps = require("deps")
+local Deps = require("core.deps_barrel")
 local BasicHelpers, ErrorHandler, Cache, GPSUtils, Enum =
   Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.GpsUtils, Deps.Enum
 local FavoriteUtils = require("core.favorite.favorite_utils")

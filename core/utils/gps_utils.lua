@@ -7,7 +7,7 @@
 
 local BasicHelpers = require("core.utils.basic_helpers")
 local ErrorHandler = require("core.utils.error_handler")
-local Constants = require("constants")
+local Constants = require("core.constants_impl")
 
 local padlen, BLANK_GPS = Constants.settings.GPS_PAD_NUMBER, Constants.settings.BLANK_GPS
 

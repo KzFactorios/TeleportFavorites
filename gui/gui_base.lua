@@ -25,7 +25,7 @@
 --   └── create_textbox(parent, name, text, style, icon_selector)
 
 
-local Deps = require("deps")
+local Deps = require("core.deps_barrel")
 local BasicHelpers, ErrorHandler, Enum =
   Deps.BasicHelpers, Deps.ErrorHandler, Deps.Enum
 

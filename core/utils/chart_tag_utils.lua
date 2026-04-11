@@ -15,7 +15,7 @@
 --   ChartTagUtils.find_closest_chart_tag_to_position(player, cursor_position): Find chart tag at a position.
 --   ChartTagUtils.safe_add_chart_tag(force, surface, spec, player): Safely create or update a chart tag.
 
-local Deps = require("deps")
+local Deps = require("core.deps_barrel")
 local BasicHelpers, ErrorHandler, Cache, GPSUtils =
   Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.GpsUtils
 

@@ -4,7 +4,7 @@
 
 ---@diagnostic disable: undefined-global
 
-local Deps = require("base_deps")
+local Deps = require("core.base_deps_barrel")
 local ErrorHandler = Deps.ErrorHandler
 
 local StorageMigrations = {}

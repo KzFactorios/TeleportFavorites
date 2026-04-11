@@ -6,7 +6,7 @@
 -- Specialized functions: modification validation, removal protection, GPS extraction, tag/favorites updating, position notifications, permission checking.
 -- Consolidated from chart_tag_modification_helpers.lua and chart_tag_removal_helpers.lua for better organization and reduced file count.
 
-local Deps = require("deps")
+local Deps = require("core.deps_barrel")
 local ErrorHandler, Cache, GPSUtils =
   Deps.ErrorHandler, Deps.Cache, Deps.GpsUtils
 local BasicHelpers = Deps.BasicHelpers

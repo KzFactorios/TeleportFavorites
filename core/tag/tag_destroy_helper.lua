@@ -5,7 +5,7 @@
 -- Centralized, recursion-safe destruction for tags and chart_tags, with multiplayer and transaction safety.
 
 -- Weak tables to track objects being destroyed
-local Deps = require("deps")
+local Deps = require("core.deps_barrel")
 local ErrorHandler, Cache, Constants =
   Deps.ErrorHandler, Deps.Cache, Deps.Constants
 local FavoriteUtils = require("core.favorite.favorite_utils")

@@ -73,7 +73,7 @@ describe("GuiObserver", function()
         global.cache = { players = {} }
         
         -- Reset constants
-        local Constants = require("constants")
+        local Constants = require("core.constants_impl")
         Constants.settings.DEFAULT_LOG_LEVEL = "debug"
         
         -- Reset GuiEventBus

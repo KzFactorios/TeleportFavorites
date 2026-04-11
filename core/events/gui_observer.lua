@@ -1,6 +1,6 @@
 
 -- Dependencies must be required first, with strict order based on dependencies
-local Deps = require("deps")
+local Deps = require("core.deps_barrel")
 local BasicHelpers, ErrorHandler =
   Deps.BasicHelpers, Deps.ErrorHandler
 local fave_bar = require("gui.favorites_bar.fave_bar")

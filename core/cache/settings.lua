@@ -4,7 +4,7 @@
 -- TeleportFavorites Factorio Mod
 -- Centralized settings cache and access layer for unified, type-safe Factorio settings management.
 
-local Deps = require("base_deps")
+local Deps = require("core.base_deps_barrel")
 local BasicHelpers, Constants = Deps.BasicHelpers, Deps.Constants
 
 --- @class Settings
