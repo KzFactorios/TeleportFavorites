@@ -5,6 +5,15 @@ applyTo: "core/events/**/*.lua, core/cache/**/*.lua, **/*.lua"
 
 # TeleportFavorites: Performance & Optimization
 
+## Player expectations and the UPS overlay
+
+Many players never read mod docs; they still judge quality using **Show-time (mod)** in the UPS overlay. Small recurring costs and spikes are **visible** and create support noise even when absolute milliseconds look low.
+
+- Optimize for **low sustained mod time** and **avoidable spikes**: prefer targeted GUI updates (e.g. slot row refresh, single control updates) over `fave_bar.build(player, true)` when only a small part of state changed.
+- **Periodic** work (`on_nth_tick`, sweeps, queues) should stay **bounded** and cheap when idle; new periodic logic should be reviewed for overlay impact.
+- When changing [`event_registration_dispatcher.lua`](../../core/events/event_registration_dispatcher.lua), adding `on_nth_tick` periods, or hot GUI paths, **sanity-check** with the mod’s profiling commands (`/tf_profile_start` / `/tf_profile_stop` or project profiler) when practical—not as CI, but as author/reviewer habit. Treat **before/after mod time** as part of review for those changes, not only correctness.
+- New **periodic** `script.on_nth_tick` registrations should include a **brief code comment** (period in ticks and purpose) at the registration site so future work does not stack cost blindly.
+
 ## 1. GUI THROTTLING (Dirty-Player Set)
 - **Problem**: Redundant redraws from multiple events in one tick.
 - **Pattern**: Use `GuiEventBus._dirty_players = { [player_index] = true }`.

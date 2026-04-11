@@ -206,8 +206,7 @@ end
 local function handle_history_mode_toggle_click(event, player)
   local is_sequential = not Cache.get_sequential_history_mode(player)
   Cache.set_sequential_history_mode(player, is_sequential)
-  -- Rebuild bar to reflect updated mode state (handles both sprite and tooltip correctly)
-  fave_bar.build(player, true)
+  fave_bar.update_history_mode_button(player)
 end
 
 --- Handle teleport history modal GUI clicks

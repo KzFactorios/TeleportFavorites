@@ -75,6 +75,7 @@ These concrete examples should be used by reviewers and by automated lint fixes 
 
 - **Storage is the source of truth:** use `core/cache/*` helpers rather than reading GUI state.
 - Follow Factorio v2.0+ patterns: surface-aware storage and event-driven handlers.
+- **Player-visible performance:** Many players judge mods via the UPS overlay; follow [.github/instructions/performance-patterns.instructions.md](.github/instructions/performance-patterns.instructions.md) for tick/GUI discipline and the audience note at the top of that file.
 
 
 ## Workflow notes

@@ -223,8 +223,7 @@ function SlotInteractionHandlers.reorder_favorites(player, favorites, drag_index
     return false
   end
 
-  -- Rebuild the entire favorites bar to reflect new order
-  fave_bar.build(player)
+  fave_bar.refresh_slots(player)
   CursorUtils.end_drag_favorite(player)
   return true
 end

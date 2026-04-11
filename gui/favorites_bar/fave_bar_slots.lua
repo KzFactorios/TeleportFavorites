@@ -380,6 +380,37 @@ return function(fave_bar, helpers)
     end
   end
 
+  --- Update history mode button sprite, tooltip, and visibility without rebuilding the bar.
+  --- Falls back to full build if chrome is missing or invalid.
+  ---@param player LuaPlayer
+  function fave_bar.update_history_mode_button(player)
+    if not BasicHelpers.is_valid_player(player) then return end
+
+    local _, _, bar_flow = get_fave_bar_gui_refs(player)
+    if not bar_flow or not bar_flow.valid then
+      fave_bar.build(player, true)
+      return
+    end
+    local toggle_container = bar_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER]
+    if not toggle_container or not toggle_container.valid then
+      fave_bar.build(player, true)
+      return
+    end
+    local mode_btn = toggle_container[Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_MODE_TOGGLE_BUTTON]
+    if not mode_btn or not mode_btn.valid then
+      fave_bar.build(player, true)
+      return
+    end
+
+    local player_settings = Cache.Settings.get_player_settings(player)
+    local history_enabled = player_settings.enable_teleport_history
+    mode_btn.visible = history_enabled
+
+    local is_sequential = Cache.get_sequential_history_mode(player)
+    mode_btn.sprite = is_sequential and Enum.SpriteEnum.SEQUENTIAL_HISTORY_MODE or Enum.SpriteEnum.STD_HISTORY_MODE
+    mode_btn.tooltip = is_sequential and { "tf-gui.history_mode_sequential_tooltip" } or { "tf-gui.history_mode_std_tooltip" }
+  end
+
   -- Dirty-slot tracking for deferred partial rehydrates.
   -- Slots are marked dirty by DataObserver:update (on the notification tick) and
   -- flushed on the next on_nth_tick(2) by process_slot_build_queue, spreading the
