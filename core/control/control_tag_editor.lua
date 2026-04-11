@@ -28,15 +28,33 @@ function M.on_gui_closed(event)
   if not event.element or not event.element.valid then return end
 
   local gui_frame = GuiValidation.get_gui_frame_by_element(event.element)
-  if gui_frame and (gui_frame.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR or
-                    gui_frame.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM) then
-    Core.close_tag_editor(player)
+  -- Track whether the delete confirm overlay is currently showing.
+  -- When player.opened is switched to the confirm frame, Factorio fires on_gui_closed
+  -- with the tag editor frame as event.element. We must NOT close the tag editor in that
+  -- case — it is a side-effect of the stack switch, not a genuine user close.
+  local is_confirm_active = Cache.get_modal_dialog_type(player) == "delete_confirmation"
+
+  if gui_frame and gui_frame.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM then
+    -- ESC on the confirm overlay: treat as cancel (dismiss overlay, keep tag editor open).
+    -- Confirm/Cancel button clicks handle their own cleanup; on_gui_closed for the confirm
+    -- frame in those cases is just a side-effect of the frame being destroyed, not a user ESC.
+    Core.dismiss_delete_confirm(player)
+    Cache.set_tag_editor_delete_mode(player, false)
+    return
+  end
+
+  if gui_frame and gui_frame.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR then
+    if not is_confirm_active then
+      Core.close_tag_editor(player)
+    end
     return
   end
 
   local tag_editor_frame = Cache.get_player_data(player).tag_editor_frame
   if tag_editor_frame and tag_editor_frame.valid and event.element == tag_editor_frame then
-    Core.close_tag_editor(player)
+    if not is_confirm_active then
+      Core.close_tag_editor(player)
+    end
     return
   end
 end
@@ -60,14 +78,19 @@ end
 local function handle_delete_btn(player, tag_data)
   GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
   Cache.set_tag_editor_delete_mode(player, true)
-  local confirm_frame = select(1, tag_editor.build_confirmation_dialog(player, { message = { "tf-gui.confirm_delete_message" } }))
+  local del_frame, _del_confirm, _del_cancel = tag_editor.build_confirmation_dialog(player, {
+    message = { "tf-gui.confirm_delete_message" },
+  })
   Cache.set_modal_dialog_state(player, "delete_confirmation")
-  -- Top modal must own player.opened or the first click can be eaten (focus on tag editor underneath).
-  if confirm_frame and confirm_frame.valid then
-    player.opened = confirm_frame
+  -- player.opened must be a valid custom GUI root: setting nil closes the previous opened GUI
+  -- (the tag editor outer frame) and makes the editor disappear. Point at the confirm overlay instead.
+  if del_frame and del_frame.valid then
+    player.opened = del_frame
   else
-    player.opened = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
-        or GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+    local fallback = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
+    if fallback and fallback.valid then
+      player.opened = fallback
+    end
   end
 end
 
@@ -120,7 +143,12 @@ local function on_tag_editor_gui_click(event)
   local element = event.element
   if not BasicHelpers.is_valid_element(element) then return end
 
-  if event.button == defines.mouse_button_type.right and element.name ~= "tag_editor_delete_button" then
+  local el_name = element.name
+  -- Right-click is otherwise ignored below; allow delete + delete-confirm buttons (right-click on confirm was a no-op).
+  if event.button == defines.mouse_button_type.right
+      and el_name ~= "tag_editor_delete_button"
+      and el_name ~= "tf_confirm_dialog_confirm_btn"
+      and el_name ~= "tf_confirm_dialog_cancel_btn" then
     return
   end
 

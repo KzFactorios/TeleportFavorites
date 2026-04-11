@@ -87,6 +87,7 @@ end
 ---@param cancel_button_name string Name for cancel button
 ---@return LuaGuiElement frame, LuaGuiElement confirm_btn, LuaGuiElement cancel_btn
 function GuiElementBuilders.create_confirmation_dialog(parent, name, message, confirm_button_name, cancel_button_name)
+  -- modal=true: overlay must capture input; player.opened should reference this frame (not nil).
   local frame = parent.add({
     type = "frame",
     name = name,
@@ -94,7 +95,7 @@ function GuiElementBuilders.create_confirmation_dialog(parent, name, message, co
     direction = "vertical",
     style = "tf_confirm_dialog_frame",
     force_auto_center = true,
-    modal = true
+    modal = true,
   })
   frame.auto_center = true
   frame.visible = true

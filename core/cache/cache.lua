@@ -486,6 +486,10 @@ function Cache.set_tag_editor_data(player, data)
   else
     local sanitized = Cache.sanitize_for_storage(data, { chart_tag = true, tag = true })
     for k, v in pairs(sanitized) do pdata.tag_editor_data[k] = v end
+    -- Write tag/chart_tag directly: excluded from sanitize to prevent userdata
+    -- from crashing the strip loop, but must still be stored as in-memory references.
+    if data.tag ~= nil then pdata.tag_editor_data.tag = data.tag end
+    if data.chart_tag ~= nil then pdata.tag_editor_data.chart_tag = data.chart_tag end
   end
   return pdata.tag_editor_data
 end

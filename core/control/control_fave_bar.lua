@@ -348,11 +348,13 @@ local function on_history_confirm_dialog_click(event)
     -- Close dialog and clear modal state
     GuiValidation.safe_destroy_frame(player.gui.screen, Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_FRAME)
     Cache.set_modal_dialog_state(player, nil)
+    player.opened = nil
     return
   elseif element.name == Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_CANCEL_BTN then
     -- Close dialog and clear modal state
     GuiValidation.safe_destroy_frame(player.gui.screen, Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_FRAME)
     Cache.set_modal_dialog_state(player, nil)
+    player.opened = nil
     return
   end
 end
