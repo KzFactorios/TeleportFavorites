@@ -37,6 +37,16 @@ local function is_blank_fave_bar_slot_button(element, player)
   return FavoriteUtils.is_blank_favorite(fav)
 end
 
+--- Tag editor / teleport history modal confirm+cancel (shift+left must not be dropped before modal routing)
+local function is_modal_confirm_cancel_button(element)
+  if not BasicHelpers.is_valid_element(element) then return false end
+  local n = element.name
+  return n == Enum.UIEnums.GUI.TagEditor.CONFIRM_DIALOG_CONFIRM_BTN
+      or n == Enum.UIEnums.GUI.TagEditor.CONFIRM_DIALOG_CANCEL_BTN
+      or n == Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_CONFIRM_BTN
+      or n == Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_CANCEL_BTN
+end
+
 --- Register shared GUI event handler for all GUIs
 ---@param script table The Factorio script object
 function M.register_gui_handlers(script)
@@ -54,7 +64,11 @@ function M.register_gui_handlers(script)
     
     -- Ignore these clicks everywhere EXCEPT on a fave bar slot button
     if event.button == defines.mouse_button_type.right and event.shift then return end
-    if event.button == defines.mouse_button_type.left and event.shift and not is_fave_bar_slot_button(event.element) then return end
+    if event.button == defines.mouse_button_type.left and event.shift
+        and not is_fave_bar_slot_button(event.element)
+        and not is_modal_confirm_cancel_button(event.element) then
+      return
+    end
 
     if _tf_gui_click_guard then return end
 
@@ -91,11 +105,15 @@ function M.register_gui_handlers(script)
             or (parent_gui and parent_gui.name == Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
             or (element.name and tostring(element.name):find(tostring(Constants.settings.FAVE_BAR_SLOT_PREFIX), 1, true) ~= nil)
         elseif active_modal_type == "delete_confirmation" then
-          -- Allow any confirm/cancel buttons from supported confirmation dialogs
+          -- Allow confirm/cancel buttons, or any click whose top frame is a known confirm dialog
           is_allowed_interaction = (element.name == Enum.UIEnums.GUI.TagEditor.CONFIRM_DIALOG_CONFIRM_BTN)
-                                   or (element.name == Enum.UIEnums.GUI.TagEditor.CONFIRM_DIALOG_CANCEL_BTN)
-                                   or (element.name == Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_CONFIRM_BTN)
-                                   or (element.name == Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_CANCEL_BTN)
+              or (element.name == Enum.UIEnums.GUI.TagEditor.CONFIRM_DIALOG_CANCEL_BTN)
+              or (element.name == Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_CONFIRM_BTN)
+              or (element.name == Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_CANCEL_BTN)
+              or (parent_gui and (
+                parent_gui.name == Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM
+                or parent_gui.name == Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_FRAME
+              ))
         end
 
         if not is_allowed_interaction then

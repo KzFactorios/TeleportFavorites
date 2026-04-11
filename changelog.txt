@@ -10,6 +10,7 @@ Date: 2026-03-20
     - Deferred notification coalescing preserves per-slot hints when several refresh events arrive the same tick, avoiding unnecessary full-bar refreshes
     - Favorite removal and other refresh paths are less likely to trigger a full favorites bar rebuild when only one slot actually changed
     - Multiple GPS/favorite-related updates back-to-back are handled more efficiently so the bar does not redraw more than necessary
+    - Tag editor delete confirmation: confirm/cancel now respond reliably on the first click (correct GUI focus, shift+click no longer ignored on those buttons)
 ---------------------------------------------------------------------------------------------------
 Version: 0.0.97
 Date: 2026-03-20

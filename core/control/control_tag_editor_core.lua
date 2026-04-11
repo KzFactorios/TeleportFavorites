@@ -315,6 +315,10 @@ end
 function M.dismiss_delete_confirm(player)
   GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
   Cache.set_modal_dialog_state(player, nil)
+  local tag_editor_frame = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+  if tag_editor_frame and tag_editor_frame.valid then
+    player.opened = tag_editor_frame
+  end
 end
 
 --- Handle delete confirmation

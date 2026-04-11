@@ -178,14 +178,17 @@ local default_custom_input_handlers = {
   local message ---@type LocalisedString
   message = { "tf-gui.confirm_delete_history_message" }
   ---@cast message LocalisedString
-      GuiElementBuilders.create_confirmation_dialog(
+      local hist_confirm_frame = select(1, GuiElementBuilders.create_confirmation_dialog(
         player.gui.screen,
         Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_FRAME,
         message,
         Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_CONFIRM_BTN,
         Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_CANCEL_BTN
-      )
+      ))
       Cache.set_modal_dialog_state(player, "delete_confirmation")
+      if hist_confirm_frame and hist_confirm_frame.valid then
+        player.opened = hist_confirm_frame
+      end
     end
   end,
 }

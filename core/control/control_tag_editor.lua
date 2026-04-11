@@ -60,9 +60,15 @@ end
 local function handle_delete_btn(player, tag_data)
   GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
   Cache.set_tag_editor_delete_mode(player, true)
-  tag_editor.build_confirmation_dialog(player, { message = { "tf-gui.confirm_delete_message" } })
+  local confirm_frame = select(1, tag_editor.build_confirmation_dialog(player, { message = { "tf-gui.confirm_delete_message" } }))
   Cache.set_modal_dialog_state(player, "delete_confirmation")
-  player.opened = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+  -- Top modal must own player.opened or the first click can be eaten (focus on tag editor underneath).
+  if confirm_frame and confirm_frame.valid then
+    player.opened = confirm_frame
+  else
+    player.opened = GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
+        or GuiValidation.find_child_by_name(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR)
+  end
 end
 
 --- Cancel deletion and return to tag editor
