@@ -223,19 +223,6 @@ local REFRESH_EVENT_TYPES = {
   favorite_updated = true,
 }
 
----@param data table|nil
----@return boolean
-local function has_slot_payload(data)
-  if type(data) ~= "table" then return false end
-  if type(data.slot) == "number" then return true end
-  if type(data.slots) == "table" then
-    for _, is_dirty in pairs(data.slots) do
-      if is_dirty then return true end
-    end
-  end
-  return false
-end
-
 ---@param target table
 ---@param source table|nil
 local function merge_slot_payload(target, source)
@@ -317,8 +304,9 @@ local function coalesce_snapshot_notifications(snapshot)
       local new_data = notification and notification.data or nil
 
       -- Refresh-family notifications can arrive multiple times per tick for the same
-      -- player; collapse to one cache_updated dispatch while preserving full-refresh
-      -- semantics (favorite_* implies full refresh).
+      -- player; collapse to one cache_updated dispatch. Union per-slot dirty flags from
+      -- both sides — do not drop slot identity when one notification is coarse (no slot)
+      -- and another is precise; that used to force a full bar refresh every time.
       if existing
           and REFRESH_EVENT_TYPES[tostring(existing.type or "")]
           and REFRESH_EVENT_TYPES[tostring(notification.type or "")] then
@@ -336,14 +324,7 @@ local function coalesce_snapshot_notifications(snapshot)
         existing_data.old_gps = new_data.old_gps or existing_data.old_gps
         existing_data.new_gps = new_data.new_gps or existing_data.new_gps
 
-        local existing_implies_full = not has_slot_payload(existing_data)
-        local new_implies_full = not has_slot_payload(new_data)
-        if existing_implies_full or new_implies_full then
-          existing_data.slot = nil
-          existing_data.slots = nil
-        else
-          merge_slot_payload(existing_data, new_data)
-        end
+        merge_slot_payload(existing_data, new_data)
       elseif existing then
         existing.data = new_data
       end
