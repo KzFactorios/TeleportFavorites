@@ -15,9 +15,6 @@ local UIEnums = {}
 UIEnums.Colors = {
   DEFAULT_DIRT_COLOR = { r = .06, g = .03, b = .01, a = .39 },
   ORANGE_BUTTON_GLOW_COLOR = { r = .8, g = .56, b = .12, a = .5 },
-  --- Favorites bar: locked slot outer glow/shadow (orange; matches slot_orange / tf_orange accents)
-  LOCK_SLOT_GLOW_COLOR = { r = 0.8, g = 0.56, b = 0.12, a = 0.52 },
-  LOCK_SLOT_SHADOW_COLOR = { r = 0.5, g = 0.3, b = 0.1, a = 0.5 },
 }
 
 -- ========================================

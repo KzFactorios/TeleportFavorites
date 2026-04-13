@@ -103,6 +103,7 @@ end
 --- Handle mod configuration changes (mod update, added/removed mods)
 function handlers.on_configuration_changed(data)
   ErrorHandler.debug_log("[CONFIG_CHANGED] Configuration changed, clearing stale fave bars")
+  storage._tf_hydrate_after_blank = nil
   for _, player in pairs(game.players) do
     if player.valid then
       Cache.get_player_data(player)
@@ -126,11 +127,27 @@ end
 -- Each entry: { player_index = N, is_rejoin = bool }
 local _deferred_init_queue = {}
 
---- Process all queued player initializations
---- on_nth_tick(60) stays permanently registered for multiplayer safety; it no-ops when queue is empty
+---@param player LuaPlayer
+---@param surface_idx uint
+---@return boolean
+local function player_has_nonblank_favorites(player, surface_idx)
+  local pfaves = Cache.get_player_favorites(player, surface_idx)
+  if not pfaves then return false end
+  for _, fav in pairs(pfaves) do
+    if not FavoriteUtils.is_blank_favorite(fav) then return true end
+  end
+  return false
+end
+
+--- True when deferred init is waiting (cheap check before calling process_deferred_init_queue).
+---@return boolean
+function handlers.has_deferred_init_pending()
+  return #_deferred_init_queue > 0
+end
+
+--- Process all queued player initializations (drained on on_nth_tick(2), not tick 0).
 function handlers.process_deferred_init_queue()
-  -- Skip tick 0: on_nth_tick(60) fires on tick 0 (0 % 60 == 0) before any player input is
-  -- visible, and the GUI API costs here would spike the very first frame.
+  -- Skip tick 0: on_nth_tick(2) also fires at tick 0; defer heavy work until tick 2+.
   if game.tick == 0 then return end
   if #_deferred_init_queue == 0 then return end
   for _, entry in ipairs(_deferred_init_queue) do
@@ -151,32 +168,32 @@ function handlers.process_deferred_init_queue()
       register_gui_observers(deferred_player)
       ProfilerExport.stop_section("deferred_register_observers")
 
-      -- The blank bar is queued by begin_bar_with_loader_placeholder (join/created); progressive build runs shortly after.
+      -- Blank-first bar is queued from ensure_fave_bar / join / created; progressive may still be in flight.
       -- Skip hydration when there is nothing to fill in:
-      --   • is_rejoin=false  → brand-new player, no favorites exist yet
+      --   • is_rejoin=false  → brand-new player, defer bar to enqueue_blank_bar path only
       --   • no non-blank favorites on the current surface → blank bar is already correct
       ProfilerExport.start_section("fave_bar_build")
       if not entry.is_rejoin then
         ProfilerExport.stop_section("fave_bar_build")
-      elseif fave_bar.blank_bar_is_ready(deferred_player) then
-        local surface_idx = deferred_player.surface.index
-        local pfaves = Cache.get_player_favorites(deferred_player, surface_idx)
-        local has_favorites = false
-        if pfaves then
-          for _, fav in pairs(pfaves) do
-            if not FavoriteUtils.is_blank_favorite(fav) then
-              has_favorites = true
-              break
-            end
-          end
-        end
-        if has_favorites then
-          fave_bar.enqueue_hydrate(deferred_player)
-        end
-        ProfilerExport.stop_section("fave_bar_build")
       else
-        fave_bar.enqueue_progressive_build(deferred_player)
-        ProfilerExport.stop_section("fave_bar_build")
+        local surface_idx = deferred_player.surface.index
+        local has_favorites = player_has_nonblank_favorites(deferred_player, surface_idx)
+        if fave_bar.blank_bar_is_ready(deferred_player) then
+          if has_favorites then
+            fave_bar.enqueue_hydrate(deferred_player)
+          end
+          ProfilerExport.stop_section("fave_bar_build")
+        elseif fave_bar.has_pending_slot_build(deferred_player.index) then
+          -- Let the in-flight blank-first (or progressive) queue run; hydrate after blank shell if needed.
+          if has_favorites then
+            storage._tf_hydrate_after_blank = storage._tf_hydrate_after_blank or {}
+            storage._tf_hydrate_after_blank[deferred_player.index] = true
+          end
+          ProfilerExport.stop_section("fave_bar_build")
+        else
+          fave_bar.enqueue_progressive_build(deferred_player)
+          ProfilerExport.stop_section("fave_bar_build")
+        end
       end
     end
   end
@@ -199,11 +216,11 @@ local function enqueue_deferred_init(player_index, is_rejoin)
 end
 
 --- Single-player save load (and adding this mod to a save) does not fire `on_player_joined_game`.
---- Mirror the join path once per session so the fave bar is queued before `process_deferred_init_queue`.
+--- Mirror the join path once per session so the fave bar is queued before the next `on_nth_tick(2)`
+--- drains `process_deferred_init_queue`.
 --- `enqueue_deferred_init(..., true)` dedupes with `on_player_created`/`on_player_joined_game` without
 --- overwriting `is_rejoin = false` for brand-new players.
---- We call enqueue_blank_bar directly (skipping the loader sprite) because the bar frame is hidden
---- until the build completes — the loader visual is invisible and its creation cost (~1 ms) is wasted.
+--- `enqueue_blank_bar` matches join/created: chrome + empty slots first, hydrate when ready.
 function handlers.ensure_fave_bar_for_session_players()
   for _, player in pairs(game.players) do
     if player and player.valid and BasicHelpers.is_valid_player(player) then
@@ -216,7 +233,7 @@ end
 function handlers.on_player_created(event)
   with_valid_player(event.player_index, function(player)
     enqueue_deferred_init(player.index, false)
-    fave_bar.begin_bar_with_loader_placeholder(player)
+    fave_bar.enqueue_blank_bar(player)
   end)
 end
 
@@ -227,7 +244,7 @@ function handlers.on_player_joined_game(event)
       player_index = player.index
     })
     enqueue_deferred_init(player.index, true)
-    fave_bar.begin_bar_with_loader_placeholder(player)
+    fave_bar.enqueue_blank_bar(player)
   end)
 end
 

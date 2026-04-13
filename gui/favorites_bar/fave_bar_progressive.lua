@@ -23,12 +23,11 @@ local FavoriteUtils                           = require("core.favorite.favorite_
 local PlayerFavorites                         = require("core.favorite.player_favorites")
 local ProfilerExport                          = require("core.utils.profiler_export")
 
--- Smaller batches spread GUI adds across more ticks, keeping per-tick work lower.
+-- Batches spread GUI adds across ticks; slightly larger than legacy (~10–15% fewer ticks).
 -- No-label mode: BLANK_BATCH_SIZE slots/tick × 2 adds/slot (button + number label).
 -- Label mode: 1 slot/tick × 4 adds/slot (wrapper + button + number label + slot label).
--- At 2: no-label = 4 adds/tick (~2ms), label mode = 4 adds/tick (~2ms).
-local BLANK_BATCH_SIZE                        = 2
-local HYDRATE_BATCH_SIZE                      = 4
+local BLANK_BATCH_SIZE                        = 3
+local HYDRATE_BATCH_SIZE                      = 5
 
 return function(fave_bar, helpers)
   local cancel_progressive_build_for = helpers.cancel_progressive_build_for
@@ -75,9 +74,8 @@ return function(fave_bar, helpers)
     return bar_flow and bar_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW]
   end
 
-  --- Called from process_deferred_init_queue (tick 60+).
-  --- Defers all GUI creation — frame_init runs on the next on_nth_tick(2), keeping the
-  --- calling tick (tick 60) free of element.add() cost.
+  --- Called from process_deferred_init_queue when a full progressive build is needed.
+  --- frame_init runs on the next on_nth_tick(2), keeping the enqueue tick free of element.add().
   ---@param player LuaPlayer
   function fave_bar.enqueue_progressive_build(player)
     if not BasicHelpers.is_valid_player(player) then return end
@@ -171,8 +169,8 @@ return function(fave_bar, helpers)
     end
 
     -- ── Frame init stage: create bar_frame (1 GUI add) ───────────────────────────
-    -- Deferred from the enqueue call so the calling tick (tick 1 or tick 60) pays
-    -- zero element.add() cost. Performs feature-toggle and controller checks here
+    -- Deferred from the enqueue call so the calling tick pays zero element.add() cost.
+    -- Performs feature-toggle and controller checks here
     -- so we bail before the first GUI add if the bar shouldn't be built at all.
     if entry.stage == "frame_init" then
       ProfilerExport.start_section("pb_frame_init")
@@ -384,6 +382,14 @@ return function(fave_bar, helpers)
           tooltip = { "tf-gui.favorite_slot_empty" },
         }
         btn.add { type = "label", name = "n", caption = tostring(i), style = "tf_fave_bar_slot_number" }
+        btn.add {
+          type                   = "sprite",
+          name                   = "tf_slot_lock",
+          sprite                 = "tf_fave_slot_lock",
+          visible                = false,
+          ignored_by_interaction = true,
+          style                  = "tf_fave_slot_lock_overlay",
+        }
         if entry.use_labels then
           btn_parent.add {
             type    = "label",
@@ -404,6 +410,14 @@ return function(fave_bar, helpers)
           if bar_frame and bar_frame.valid then bar_frame.visible = true end
           table.remove(storage._tf_slot_build_queue, 1)
           last_build_tick[entry.player_index] = game.tick
+          local need_hydrate = storage._tf_hydrate_after_blank
+              and storage._tf_hydrate_after_blank[entry.player_index]
+          if need_hydrate then
+            storage._tf_hydrate_after_blank[entry.player_index] = nil
+            local pfaves_pre = Cache.get_player_favorites(player, entry.surface_index)
+            prune_stale_favorites(player, entry.surface_index, pfaves_pre)
+            fave_bar.enqueue_hydrate(player)
+          end
         else
           -- Transition to the prune stage: runs prune_stale_favorites alone on the
           -- next tick so it doesn't pile on top of the first hydrate batch.
@@ -472,10 +486,14 @@ return function(fave_bar, helpers)
           btn.sprite                 = icon or ""
           btn.tooltip                = tooltip
           -- Blank buttons are built with "tf_slot_button_smallfont"; skip the
-          -- style write for the common case (non-locked, non-pin) to avoid
+          -- style write for the common case (unlocked, non-pin) to avoid
           -- Factorio's style-recalculation cost on every hydrated slot.
-          if style ~= "tf_slot_button_smallfont" then
+          if style ~= "tf_slot_button_smallfont" or BasicHelpers.is_locked_favorite(fav) then
             btn.style = style
+          end
+          local lock_el = btn["tf_slot_lock"]
+          if lock_el and lock_el.valid then
+            lock_el.visible = BasicHelpers.is_locked_favorite(fav)
           end
           if entry.use_labels then
             local lbl = child["fave_bar_slot_label_" .. i]

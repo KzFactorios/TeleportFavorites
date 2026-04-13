@@ -252,4 +252,13 @@ data:extend({
     height = 40,
     flags = { "gui-icon" }
   },
+  {
+    type = "sprite",
+    name = "tf_fave_slot_lock",
+    filename = "__TeleportFavorites__/graphics/icons8-lock.png",
+    width = 24,
+    height = 24,
+    scale = 0.8,
+    flags = { "gui-icon" }
+  },
 })

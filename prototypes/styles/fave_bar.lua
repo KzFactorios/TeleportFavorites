@@ -1,7 +1,25 @@
 ---@diagnostic disable: undefined-global
 -- Custom styles for the Favorites Bar GUI (fave_bar)
 
+local util = require("util")
 local gui_style = data.raw["gui-style"].default
+
+-- Slot index label (child of sprite-button): keep color when the button is hovered (avoids dark text on locked slots).
+local TF_FAVE_BAR_SLOT_NUMBER_COLOR = { r = 0.98, g = 0.66, b = 0.22, a = 0.9 }
+
+-- Locked slot chrome: warm wash on the slot face + crisp outer rim (same 9-slice pattern as mod rounded_button_glow).
+-- Rim is draw-only (outer layer); does not change button size, padding, or margins.
+local LOCKED_SLOT_BASE_TINT = { r = 1, g = 0.86, b = 0.7, a = 0.15 }
+local LOCKED_SLOT_BORDER_RIM = {
+  position = { 256, 191 },
+  corner_size = 16,
+  tint = { r = 0.72, g = 0.36, b = 0.06, a = 0.48 },
+  top_outer_border_shift = 4,
+  bottom_outer_border_shift = -4,
+  left_outer_border_shift = 4,
+  right_outer_border_shift = -4,
+  draw_type = "outer",
+}
 
 -- add all new styles under this line
 
@@ -86,28 +104,63 @@ gui_style.tf_slot_button_smallfont_map_pin = {
     left_padding = 8
 }
 
--- Base face: subtle tint; cyan lock ring comes from glow/shadow in prototypes/styles/init.lua
-gui_style.tf_slot_button_locked = {
-    type = "button_style",
-    parent = "tf_slot_button_smallfont",
-    default_graphical_set = {
-        base = { border = 4, position = {0, 736}, size = 80,
-                 tint = { r = 0.9, g = 0.88, b = 0.85, a = 0.38 } }
-    },
-    hovered_graphical_set = {
-        base = { border = 4, position = {80, 736}, size = 80,
-                 tint = { r = 0.92, g = 0.9, b = 0.87, a = 0.45 } }
-    },
-    clicked_graphical_set = {
-        base = { border = 4, position = {160, 736}, size = 80,
-                 tint = { r = 0.85, g = 0.83, b = 0.8, a = 0.5 } }
-    },
+-- Locked favorites: neutral grey slot face (slot_button.default), not clicked — clicked_graphical_set uses the
+-- warm/orange “pressed” variant in 2.0. Shallow-frame clicked shadow adds inset / depressed chrome.
+do
+  local sb = gui_style.slot_button
+  local shallow = gui_style.slot_button_in_shallow_frame
+  if sb and sb.default_graphical_set then
+    local function locked_face()
+      local g = util.table.deepcopy(sb.default_graphical_set)
+      g.glow = nil
+      if shallow and shallow.clicked_graphical_set and shallow.clicked_graphical_set.shadow then
+        g.shadow = util.table.deepcopy(shallow.clicked_graphical_set.shadow)
+      end
+      if g.base then
+        g.base = util.table.deepcopy(g.base)
+        g.base.tint = LOCKED_SLOT_BASE_TINT
+      end
+      g.glow = util.table.deepcopy(LOCKED_SLOT_BORDER_RIM)
+      return g
+    end
+    local pressed = locked_face()
+    gui_style.tf_slot_button_smallfont_locked = {
+      type = "button_style",
+      parent = "tf_slot_button_smallfont",
+      default_graphical_set = util.table.deepcopy(pressed),
+      hovered_graphical_set = util.table.deepcopy(pressed),
+      clicked_graphical_set = util.table.deepcopy(pressed),
+    }
+    pressed = locked_face()
+    gui_style.tf_slot_button_smallfont_map_pin_locked = {
+      type = "button_style",
+      parent = "tf_slot_button_smallfont_map_pin",
+      default_graphical_set = util.table.deepcopy(pressed),
+      hovered_graphical_set = util.table.deepcopy(pressed),
+      clicked_graphical_set = util.table.deepcopy(pressed),
+    }
+  end
+end
+
+-- Child sprite on slot button (after label "n"); lock icon. Size: sprite `tf_fave_slot_lock` scale in data.lua.
+-- Use negative padding to nudge toward the corner — margins do not affect layout for this nested image in practice.
+gui_style.tf_fave_slot_lock_overlay = {
+    type = "image_style",
+    parent = "image",
+    stretch_image_to_widget_size = false,
+    horizontal_align = "left",
+    vertical_align = "top",
+    top_padding = -3,
+    left_padding = -3,
 }
 
 gui_style.tf_fave_bar_slot_number = {
     type = "label_style",
     font = "tf_font_8",
-    font_color = { r = 0.98, g = 0.66, b = 0.22, a = 0.9 },
+    font_color = TF_FAVE_BAR_SLOT_NUMBER_COLOR,
+    hovered_font_color = TF_FAVE_BAR_SLOT_NUMBER_COLOR,
+    parent_hovered_font_color = TF_FAVE_BAR_SLOT_NUMBER_COLOR,
+    clicked_font_color = TF_FAVE_BAR_SLOT_NUMBER_COLOR,
     horizontal_align = "center",
     width = 25,
     top_padding = 21

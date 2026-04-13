@@ -178,28 +178,3 @@ gui_style.tf_frame_action_button = {
   parent = "frame_action_button",
   right_margin = 0, 
 }
-
--- tf_slot_button_locked is defined in prototypes/styles/fave_bar.lua (loaded before Styles).
--- Add outer glow/shadow here so we can use Styles helpers and UIEnums colors.
-do
-  local locked = gui_style.tf_slot_button_locked
-  if locked then
-    local glow_tint = UIEnums.ColorEnum.LOCK_SLOT_GLOW_COLOR
-    local shadow_tint = UIEnums.ColorEnum.LOCK_SLOT_SHADOW_COLOR
-    local def = locked.default_graphical_set
-    local hov = locked.hovered_graphical_set
-    local clk = locked.clicked_graphical_set
-    if def then
-      def.shadow = Styles.rounded_button_glow(shadow_tint)
-      def.glow = Styles.default_glow(glow_tint, 0.48)
-    end
-    if hov then
-      hov.shadow = Styles.rounded_button_glow(shadow_tint)
-      hov.glow = Styles.default_glow(glow_tint, 0.58)
-    end
-    if clk then
-      clk.shadow = Styles.rounded_button_glow(shadow_tint)
-      clk.glow = Styles.default_glow(glow_tint, 0.42)
-    end
-  end
-end

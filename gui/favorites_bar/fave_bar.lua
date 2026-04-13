@@ -15,7 +15,7 @@
 --    └─ fave_bar_slots_flow (frame, horizontal)
 --       ├─ [mode=off] fave_bar_slot_1 ... fave_bar_slot_N
 --       └─ [mode=short/long] fave_bar_slot_wrapper_1 (flow, vertical)
---          ├─ fave_bar_slot_1 (sprite-button)
+--          ├─ fave_bar_slot_1 (sprite-button: children label "n", sprite tf_slot_lock when locked)
 --          └─ fave_bar_slot_label_1 (label)
 
 local Deps = require("core.deps_barrel")
@@ -120,6 +120,13 @@ local function is_build_in_flight(player_index)
   return false
 end
 
+--- True if this player has any entry in the slot build queue (blank-first or full progressive).
+---@param player_index uint
+---@return boolean
+function fave_bar.has_pending_slot_build(player_index)
+  return is_build_in_flight(player_index)
+end
+
 --- Remove all build-queue entries for a player (cancels any in-flight progressive build).
 ---@param player_index uint
 local function cancel_progressive_build_for(player_index)
@@ -208,8 +215,15 @@ local function get_slot_btn_props(i, fav)
     end
     local btn_icon = GuiValidation.get_validated_sprite_path(normalize_icon_type(icon),
       { fallback = Enum.SpriteEnum.PIN, log_context = { slot = i, fav_gps = fav.gps, fav_tag = fav.tag } })
-    local style = fav.locked and "tf_slot_button_locked" or "tf_slot_button_smallfont"
+    local style = "tf_slot_button_smallfont"
     if btn_icon == "tf_tag_in_map_view_small" then style = "tf_slot_button_smallfont_map_pin" end
+    if fav.locked then
+      if style == "tf_slot_button_smallfont_map_pin" then
+        style = "tf_slot_button_smallfont_map_pin_locked"
+      else
+        style = "tf_slot_button_smallfont_locked"
+      end
+    end
     return btn_icon, GuiHelpers.build_favorite_tooltip(fav, { slot = i }) or { "tf-gui.fave_slot_tooltip", i }, style
   else
     return "", { "tf-gui.favorite_slot_empty" }, "tf_slot_button_smallfont"
@@ -255,6 +269,14 @@ local function build_single_slot(parent, player, pfaves, i, use_labels, label_mo
   }
   if btn and btn.valid then
     btn.add { type = "label", name = "n", caption = tostring(i), style = "tf_fave_bar_slot_number" }
+    btn.add {
+      type                   = "sprite",
+      name                   = "tf_slot_lock",
+      sprite                 = "tf_fave_slot_lock",
+      visible                = BasicHelpers.is_locked_favorite(fav),
+      ignored_by_interaction = true,
+      style                  = "tf_fave_slot_lock_overlay",
+    }
     if use_labels then
       GuiBase.create_label(btn_parent, "fave_bar_slot_label_" .. i,
                            get_slot_label_text(fav, label_mode), "tf_fave_bar_slot_label")

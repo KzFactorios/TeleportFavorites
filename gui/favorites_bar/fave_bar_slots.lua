@@ -31,6 +31,19 @@ return function(fave_bar, helpers)
     btn.sprite  = icon or ""
     btn.tooltip = tooltip
     btn.style   = style
+    local lock_el = btn["tf_slot_lock"]
+    if not lock_el or not lock_el.valid then
+      lock_el = btn.add {
+        type                   = "sprite",
+        name                   = "tf_slot_lock",
+        sprite                 = "tf_fave_slot_lock",
+        ignored_by_interaction = true,
+        style                  = "tf_fave_slot_lock_overlay",
+      }
+    end
+    if lock_el and lock_el.valid then
+      lock_el.visible = BasicHelpers.is_locked_favorite(fav)
+    end
   end
 
   local function clear_element_children(el)

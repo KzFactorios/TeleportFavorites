@@ -323,6 +323,11 @@ local function register_core_events(script)
       GuiObserver.GuiEventBus.process_deferred_notifications()
       ProfilerExport.stop_section("deferred_notifications")
     end
+    if handlers.has_deferred_init_pending() then
+      ProfilerExport.start_section("deferred_init_queue")
+      handlers.process_deferred_init_queue()
+      ProfilerExport.stop_section("deferred_init_queue")
+    end
     fave_bar.process_slot_build_queue()
     -- Flush dirty slots queued by DataObserver:update this tick (or any previous tick
     -- that was skipped due to budget overflow). Runs after process_slot_build_queue so
@@ -332,10 +337,6 @@ local function register_core_events(script)
     ProfilerExport.stop_section("deferred_slot_visuals")
     tag_editor.process_build_queue()
     teleport_history_modal.process_build_queue()
-  end)
-
-  script.on_nth_tick(60, function()
-    handlers.process_deferred_init_queue()
   end)
 
   ErrorHandler.debug_log("[EVENT_REG] Registering on_tick handler for first-tick setup")
