@@ -86,20 +86,21 @@ gui_style.tf_slot_button_smallfont_map_pin = {
     left_padding = 8
 }
 
+-- Base face: subtle tint; cyan lock ring comes from glow/shadow in prototypes/styles/init.lua
 gui_style.tf_slot_button_locked = {
     type = "button_style",
     parent = "tf_slot_button_smallfont",
     default_graphical_set = {
         base = { border = 4, position = {0, 736}, size = 80,
-                 tint = { r = 0.98, g = 0.66, b = 0.22, a = 0.9 } }
+                 tint = { r = 0.9, g = 0.88, b = 0.85, a = 0.38 } }
     },
     hovered_graphical_set = {
         base = { border = 4, position = {80, 736}, size = 80,
-                 tint = { r = 0.98, g = 0.66, b = 0.22, a = 0.8 } }
+                 tint = { r = 0.92, g = 0.9, b = 0.87, a = 0.45 } }
     },
     clicked_graphical_set = {
         base = { border = 4, position = {160, 736}, size = 80,
-                 tint = { r = 0.98, g = 0.66, b = 0.22, a = 0.8 } }
+                 tint = { r = 0.85, g = 0.83, b = 0.8, a = 0.5 } }
     },
 }
 
