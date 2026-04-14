@@ -117,8 +117,7 @@ return function(fave_bar, helpers)
     if not bar_flow or not bar_flow.valid then return false end
     if not slots_frame or not slots_frame.valid then return false end
     local max_slots = Cache.Settings.get_player_max_favorite_slots(player) or 30
-    -- `children` may be a LuaCustomTable: use `table_size` (Factorio runtime), not `#`.
-    return table_size(slots_frame.children) >= max_slots
+    return GuiHelpers.count_direct_children(slots_frame) >= max_slots
   end
 
   --- Enqueues only the hydrate_slots stage for a player whose blank bar is already built.
@@ -508,8 +507,7 @@ return function(fave_bar, helpers)
         table.remove(storage._tf_slot_build_queue, 1)
         return
       end
-      -- `children` is not a plain Lua sequence; `#` can be wrong vs `table_size` (see blank_bar_is_ready).
-      if table_size(slots_frame.children) ~= entry.expected_built then
+      if GuiHelpers.count_direct_children(slots_frame) ~= entry.expected_built then
         table.remove(storage._tf_slot_build_queue, 1)
         return
       end

@@ -167,7 +167,7 @@ return function(fave_bar, helpers)
       local has_valid_structure = false
       if existing_frame and existing_frame.valid then
         local bar_flow = existing_frame[Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW]
-        has_valid_structure = bar_flow and bar_flow.valid and table_size(bar_flow.children) > 0
+        has_valid_structure = bar_flow and bar_flow.valid and GuiHelpers.count_direct_children(bar_flow) > 0
       end
       local needs_rebuild = not has_valid_structure
       if needs_rebuild then
@@ -232,7 +232,7 @@ return function(fave_bar, helpers)
         end
 
         local slots_already_current = recently_built
-          and slots_frame and slots_frame.valid and table_size(slots_frame.children) > 0
+          and slots_frame and slots_frame.valid and GuiHelpers.count_direct_children(slots_frame) > 0
         if not slots_already_current then
           if deferred_slots then
             storage._tf_slot_build_queue = storage._tf_slot_build_queue or {}
@@ -248,7 +248,7 @@ return function(fave_bar, helpers)
           else
             cancel_progressive_build_for(player.index)
             local slots_updated = slots_frame and slots_frame.valid
-              and table_size(slots_frame.children) > 0
+              and GuiHelpers.count_direct_children(slots_frame) > 0
               and try_update_slots_in_place(slots_frame, player, pfaves)
             if not slots_updated then
               clear_element_children(slots_frame)

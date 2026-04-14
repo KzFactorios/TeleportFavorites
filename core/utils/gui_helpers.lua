@@ -12,6 +12,28 @@ local GuiBase = require("gui.gui_base")
 
 local GuiHelpers = {}
 
+--- Count direct children of a GUI element. Do not use `#parent.children` or
+--- `table_size(parent.children)` on `LuaGuiElement.children` — it is a LuaCustomTable;
+--- use numeric indexing (same pattern as `slots_frame.children[i]` in progressive hydrate).
+---@param parent LuaGuiElement|nil
+---@return integer
+function GuiHelpers.count_direct_children(parent)
+  if not parent or not parent.valid then return 0 end
+  local ch = parent.children
+  if not ch then return 0 end
+  local n = 0
+  for i = 1, 512 do
+    local el = ch[i]
+    if el == nil then break end
+    if type(el) == "userdata" and el.valid then
+      n = n + 1
+    else
+      break
+    end
+  end
+  return n
+end
+
 function GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   local top = player.gui.top
   local flow = top and top.tf_main_gui_flow
