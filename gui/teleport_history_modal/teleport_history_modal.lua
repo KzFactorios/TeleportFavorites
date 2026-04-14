@@ -197,11 +197,8 @@ end
 -- Runs on the first on_nth_tick(2) after build().
 ---@param player LuaPlayer
 ---@param modal_frame LuaGuiElement
----@param action_id string|nil
-local function build_interior_a(player, modal_frame, action_id)
-  local section_name = ProfilerExport.action_section_name("thm_build_interior_a", action_id, player.index)
-  ProfilerExport.start_section(section_name)
-
+---@param _action_id string|nil
+local function build_interior_a(player, modal_frame, _action_id)
   local titlebar = GuiBase.create_element('flow', modal_frame, {
     name = "teleport_history_modal_titlebar",
     direction = "horizontal",
@@ -219,18 +216,14 @@ local function build_interior_a(player, modal_frame, action_id)
   GuiBase.create_icon_button(titlebar, "teleport_history_modal_close_button",
     Enum.SpriteEnum.CLOSE, { "tf-gui.close" }, "tf_frame_action_button")
 
-  ProfilerExport.stop_section(section_name)
 end
 
 -- Stage B: content frame + scroll pane + history list shell only.
 -- Runs on the second on_nth_tick(2) after build().
 ---@param player LuaPlayer
 ---@param modal_frame LuaGuiElement
----@param action_id string|nil
-local function build_interior_b(player, modal_frame, action_id)
-  local section_name = ProfilerExport.action_section_name("thm_build_interior_b", action_id, player.index)
-  ProfilerExport.start_section(section_name)
-
+---@param _action_id string|nil
+local function build_interior_b(player, modal_frame, _action_id)
   local content_frame = GuiBase.create_frame(modal_frame, "teleport_history_modal_content", "vertical",
     "tf_teleport_history_modal_content")
 
@@ -244,7 +237,6 @@ local function build_interior_b(player, modal_frame, action_id)
   -- Do not set player.opened; ESC key should not close this modal.
   player.opened = nil
 
-  ProfilerExport.stop_section(section_name)
 end
 
 -- Stage C: populate history list after shell creation.
@@ -253,10 +245,7 @@ end
 ---@param modal_frame LuaGuiElement
 ---@param action_id string|nil
 local function build_interior_c(player, modal_frame, action_id)
-  local section_name = ProfilerExport.action_section_name("thm_build_interior_c", action_id, player.index)
-  ProfilerExport.start_section(section_name)
   teleport_history_modal.update_history_list(player, action_id)
-  ProfilerExport.stop_section(section_name)
 end
 
 --- Build the teleport history modal dialog.
@@ -527,8 +516,6 @@ process_progressive_row_jobs = function()
             jobs[player_index] = nil
             mark_history_list_dirty(player_index, job.action_id)
           else
-            local append_section = ProfilerExport.action_section_name("thm_progressive_append", job.action_id, player_index)
-            ProfilerExport.start_section(append_section)
             local pointer = hist.pointer
             local remaining_rows = job.next_index
             local chunk_size = get_adaptive_append_chunk_size(remaining_rows)
@@ -551,7 +538,6 @@ process_progressive_row_jobs = function()
               end
               jobs[player_index] = nil
             end
-            ProfilerExport.stop_section(append_section)
           end
         end
       end
@@ -564,22 +550,17 @@ end
 ---@param action_id string|nil
 function teleport_history_modal.update_history_list(player, action_id)
   local effective_action_id = action_id or ProfilerExport.get_action_trace_id(player and player.index or nil)
-  local section_name = ProfilerExport.action_section_name("thm_update_list", effective_action_id, player and player.index or nil)
-  ProfilerExport.start_section(section_name)
   if not BasicHelpers.is_valid_player(player) then
-    ProfilerExport.stop_section(section_name)
     return
   end
 
   local modal_frame = player.gui.screen[Enum.GuiEnum.GUI_FRAME.TELEPORT_HISTORY_MODAL]
   if not modal_frame or not modal_frame.valid then
-    ProfilerExport.stop_section(section_name)
     return
   end
 
   local history_list = resolve_history_list(modal_frame)
   if not history_list or not history_list.valid then
-    ProfilerExport.stop_section(section_name)
     return
   end
 
@@ -596,7 +577,6 @@ function teleport_history_modal.update_history_list(player, action_id)
       and prior.stack_revision == stack_revision
       and prior.stack_size == #stack then
     if prior.pointer == pointer then
-      ProfilerExport.stop_section(section_name)
       return
     end
     if update_pointer_highlight(history_list, prior.pointer, pointer) then
@@ -605,7 +585,6 @@ function teleport_history_modal.update_history_list(player, action_id)
       if effective_action_id then
         ProfilerExport.end_action_trace(player.index, effective_action_id)
       end
-      ProfilerExport.stop_section(section_name)
       return
     end
   end
@@ -632,7 +611,6 @@ function teleport_history_modal.update_history_list(player, action_id)
     if effective_action_id then
       ProfilerExport.end_action_trace(player.index, effective_action_id)
     end
-    ProfilerExport.stop_section(section_name)
     return
   end
 
@@ -667,7 +645,6 @@ function teleport_history_modal.update_history_list(player, action_id)
     stack_size = #stack,
     pointer = pointer,
   })
-  ProfilerExport.stop_section(section_name)
 end
 
 --- Rehydrate session-local state from storage after an on_load event.

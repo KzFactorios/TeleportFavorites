@@ -8,7 +8,6 @@ local Deps = require("core.deps_barrel")
 local BasicHelpers, ErrorHandler, Cache, Constants, GPSUtils =
   Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.Constants, Deps.GpsUtils
 local ChartTagUtils = require("core.utils.chart_tag_utils")
-local ProfilerExport = require("core.utils.profiler_export")
 
 local TeleportStrategy = {}
 
@@ -127,21 +126,17 @@ function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history, ac
   end
 
   local teleport_success = false
-  local teleport_section = ProfilerExport.action_section_name("teleport_execute", action_id, player and player.index or nil)
-  ProfilerExport.start_section(teleport_section)
   if player.physical_vehicle and player.physical_vehicle.valid then
     if player.physical_vehicle.speed == nil or player.physical_vehicle.speed == 0 then
       teleport_success = player.physical_vehicle.teleport(working_position, player.surface, true)
     else
-      ProfilerExport.stop_section(teleport_section)
       player.play_sound { path = "utility/cannot_build" }
-  ErrorHandler.warn_log("Safe teleport blocked: Vehicle is moving")
-  return false, "vehicle_moving"
+      ErrorHandler.warn_log("Safe teleport blocked: Vehicle is moving")
+      return false, "vehicle_moving"
     end
   else
     teleport_success = player.teleport(working_position, player.surface, true)
   end
-  ProfilerExport.stop_section(teleport_section)
 
   if teleport_success then
     -- MULTIPLAYER FIX: render_mode is client-specific and causes desyncs.

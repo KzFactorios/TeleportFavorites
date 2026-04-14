@@ -184,17 +184,57 @@ end
 -- STATE MANAGEMENT HELPERS
 -- ===========================
 
+---@param a LocalisedString|nil
+---@param b LocalisedString|nil
+---@return boolean
+local function localised_string_equal(a, b)
+  if a == b then return true end
+  local ta, tb = type(a), type(b)
+  if ta ~= tb then return false end
+  if ta == "string" then return a == b end
+  if ta == "table" then
+    ---@cast a table
+    ---@cast b table
+    local len = #a
+    if len ~= #b then return false end
+    for i = 1, len do
+      if a[i] ~= b[i] then return false end
+    end
+    return true
+  end
+  return false
+end
+
 --- Set button state and tooltip in one call (consolidates repeated pattern)
 ---@param button LuaGuiElement Button element
 ---@param enabled boolean Whether button should be enabled
 ---@param tooltip LocalisedString|string|nil Tooltip to set
 function GuiElementBuilders.set_button_state_and_tooltip(button, enabled, tooltip)
   if not BasicHelpers.is_valid_element(button) then return end
-  
+
   GuiValidation.set_button_state(button, enabled)
   if tooltip then
     ---@cast tooltip LocalisedString|string
     button.tooltip = tooltip
+  end
+end
+
+--- Like set_button_state_and_tooltip but skips assignments when state and tooltip already match (reduces GUI churn).
+---@param button LuaGuiElement Button element
+---@param enabled boolean Whether button should be enabled
+---@param tooltip LocalisedString|string|nil Tooltip to set
+function GuiElementBuilders.set_button_state_and_tooltip_if_changed(button, enabled, tooltip)
+  if not BasicHelpers.is_valid_element(button) then return end
+
+  local want_enabled = enabled ~= false
+  if button.enabled ~= want_enabled then
+    GuiValidation.set_button_state(button, enabled)
+  end
+  if tooltip then
+    ---@cast tooltip LocalisedString|string
+    if not localised_string_equal(button.tooltip, tooltip) then
+      button.tooltip = tooltip
+    end
   end
 end
 

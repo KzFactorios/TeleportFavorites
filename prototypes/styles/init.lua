@@ -158,11 +158,10 @@ gui_style.tf_frame_title = {
   type = "label_style",
   parent = "frame_title",
   top_margin = -2,
-  horizontally_stretchable = "off", 
-  minimal_width = 60,               
-  single_line = true,               
-  horizontal_align = "left",        
-  font_color = { r = 1, g = 1, b = 1, a = 1 }
+  horizontally_stretchable = "off",
+  minimal_width = 60,
+  single_line = true,
+  horizontal_align = "left",
 }
 
 gui_style.tf_titlebar_draggable = {

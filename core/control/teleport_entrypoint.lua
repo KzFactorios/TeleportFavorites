@@ -16,7 +16,6 @@ local ProfilerExport = require("core.utils.profiler_export")
 ---@field add_to_history boolean|nil Defaults to TeleportStrategy default when nil.
 ---@field action_name string|nil
 ---@field action_id string|nil
----@field section_name string|nil Optional profiled section name for this entrypoint call.
 ---@field silent_already_at_target boolean|nil
 ---@field end_action_on_success boolean|nil Default false.
 ---@field end_action_on_failure boolean|nil Default true.
@@ -50,12 +49,6 @@ function M.execute(player, gps, opts)
     action_id = ProfilerExport.begin_action_trace(opts.action_name, player.index)
   end
 
-  local scoped_section_name = nil
-  if opts.section_name then
-    scoped_section_name = ProfilerExport.action_section_name(opts.section_name, action_id, player.index)
-    ProfilerExport.start_section(scoped_section_name)
-  end
-
   local ok, call_success, call_result = pcall(
     TeleportStrategy.teleport_to_gps,
     player,
@@ -63,10 +56,6 @@ function M.execute(player, gps, opts)
     opts.add_to_history,
     action_id
   )
-
-  if scoped_section_name then
-    ProfilerExport.stop_section(scoped_section_name)
-  end
 
   local end_on_success = opts.end_action_on_success == true
   local end_on_failure = opts.end_action_on_failure ~= false

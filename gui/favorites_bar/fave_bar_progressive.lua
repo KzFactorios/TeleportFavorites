@@ -21,7 +21,6 @@ local GuiBase                                 = require("gui.gui_base")
 local GuiHelpers                              = require("core.utils.gui_helpers")
 local FavoriteUtils                           = require("core.favorite.favorite_utils")
 local PlayerFavorites                         = require("core.favorite.player_favorites")
-local ProfilerExport                          = require("core.utils.profiler_export")
 
 -- Batches spread GUI adds across ticks; slightly larger than legacy (~10–15% fewer ticks).
 -- No-label mode: BLANK_BATCH_SIZE slots/tick × 2 adds/slot (button + number label).
@@ -173,22 +172,18 @@ return function(fave_bar, helpers)
     -- Performs feature-toggle and controller checks here
     -- so we bail before the first GUI add if the bar shouldn't be built at all.
     if entry.stage == "frame_init" then
-      ProfilerExport.start_section("pb_frame_init")
       local player_settings = Cache.Settings.get_player_settings(player)
       if not player_settings.favorites_on and not player_settings.enable_teleport_history then
-        ProfilerExport.stop_section("pb_frame_init")
         table.remove(storage._tf_slot_build_queue, 1)
         return
       end
       if BasicHelpers.is_restricted_controller(player) then
-        ProfilerExport.stop_section("pb_frame_init")
         table.remove(storage._tf_slot_build_queue, 1)
         return
       end
 
       local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
       if not main_flow then
-        ProfilerExport.stop_section("pb_frame_init")
         table.remove(storage._tf_slot_build_queue, 1)
         return
       end
@@ -204,12 +199,10 @@ return function(fave_bar, helpers)
         })
       end
       if not bar_frame or not bar_frame.valid then
-        ProfilerExport.stop_section("pb_frame_init")
         table.remove(storage._tf_slot_build_queue, 1)
         return
       end
 
-      ProfilerExport.stop_section("pb_frame_init")
       storage._tf_slot_build_queue[1] = {
         player_index     = entry.player_index,
         surface_index    = entry.surface_index,
@@ -221,10 +214,8 @@ return function(fave_bar, helpers)
 
     -- ── Chrome stage 1: bar_flow + toggle_container (2 GUI adds) ─────────────────
     if entry.stage == "chrome1" then
-      ProfilerExport.start_section("pb_chrome1")
       local bar_frame = get_bar_frame(player)
       if not bar_frame or not bar_frame.valid then
-        ProfilerExport.stop_section("pb_chrome1")
         table.remove(storage._tf_slot_build_queue, 1)
         return
       end
@@ -239,7 +230,6 @@ return function(fave_bar, helpers)
           "horizontal", "tf_fave_toggle_container")
       end
 
-      ProfilerExport.stop_section("pb_chrome1")
       storage._tf_slot_build_queue[1] = {
         player_index     = entry.player_index,
         surface_index    = entry.surface_index,
@@ -251,14 +241,12 @@ return function(fave_bar, helpers)
 
     -- ── Chrome stage 2a: history toggle + mode buttons (2 GUI adds) ─────────────
     if entry.stage == "chrome2" or entry.stage == "chrome2a" then
-      ProfilerExport.start_section("pb_chrome2a")
       local player_settings = Cache.Settings.get_player_settings(player)
       local main_flow       = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
       local bar_frame       = main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
       local bar_flow        = bar_frame and bar_frame[Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW]
       local tog_cont        = bar_flow and bar_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER]
       if not bar_frame or not bar_frame.valid or not bar_flow or not tog_cont then
-        ProfilerExport.stop_section("pb_chrome2a")
         table.remove(storage._tf_slot_build_queue, 1)
         return
       end
@@ -280,7 +268,6 @@ return function(fave_bar, helpers)
       if hist_btn and hist_btn.valid then hist_btn.visible = history_enabled end
       if mode_btn and mode_btn.valid then mode_btn.visible = history_enabled end
 
-      ProfilerExport.stop_section("pb_chrome2a")
       storage._tf_slot_build_queue[1] = {
         player_index     = entry.player_index,
         surface_index    = entry.surface_index,
@@ -292,13 +279,11 @@ return function(fave_bar, helpers)
 
     -- ── Chrome stage 2b: visibility toggle + slots frame (2 GUI adds) ────────────
     if entry.stage == "chrome2b" then
-      ProfilerExport.start_section("pb_chrome2b")
       local main_flow   = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
       local bar_frame   = main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
       local bar_flow    = bar_frame and bar_frame[Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW]
       local tog_cont    = bar_flow and bar_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER]
       if not bar_frame or not bar_frame.valid or not bar_flow or not tog_cont then
-        ProfilerExport.stop_section("pb_chrome2b")
         table.remove(storage._tf_slot_build_queue, 1)
         return
       end
@@ -322,7 +307,6 @@ return function(fave_bar, helpers)
       local label_mode = Cache.Settings.get_player_slot_label_mode(player)
       local use_labels = label_mode ~= "off"
 
-      ProfilerExport.stop_section("pb_chrome2b")
       storage._tf_slot_build_queue[1] = {
         player_index     = entry.player_index,
         surface_index    = entry.surface_index,
@@ -349,11 +333,9 @@ return function(fave_bar, helpers)
 
     -- ── Blank slots stage: create empty GUI structure, no data lookups ───────────
     if entry.stage == "blank_slots" then
-      ProfilerExport.start_section("pb_blank")
       local slots_frame = get_bar_slots_frame(player)
 
       if not slots_frame or not slots_frame.valid then
-        ProfilerExport.stop_section("pb_blank")
         table.remove(storage._tf_slot_build_queue, 1)
         return
       end
@@ -400,7 +382,6 @@ return function(fave_bar, helpers)
         end
       end
 
-      ProfilerExport.stop_section("pb_blank")
 
       if end_idx >= entry.max_slots then
         if entry.stop_after_blank then
@@ -439,10 +420,8 @@ return function(fave_bar, helpers)
 
     -- ── Prune stage: clear stale GPS favorites before hydration (no GUI adds) ────
     if entry.stage == "prune" then
-      ProfilerExport.start_section("pb_prune")
       local pfaves_pre = Cache.get_player_favorites(player, entry.surface_index)
       prune_stale_favorites(player, entry.surface_index, pfaves_pre)
-      ProfilerExport.stop_section("pb_prune")
       storage._tf_slot_build_queue[1] = {
         player_index  = entry.player_index,
         surface_index = entry.surface_index,
@@ -457,11 +436,9 @@ return function(fave_bar, helpers)
 
     -- ── Hydrate slots stage: fill existing blank buttons with data ───────────────
     if entry.stage == "hydrate_slots" then
-      ProfilerExport.start_section("pb_hydrate")
       local slots_frame = get_bar_slots_frame(player)
 
       if not slots_frame or not slots_frame.valid then
-        ProfilerExport.stop_section("pb_hydrate")
         table.remove(storage._tf_slot_build_queue, 1)
         return
       end
@@ -505,7 +482,6 @@ return function(fave_bar, helpers)
         ::next_hydrate::
       end
 
-      ProfilerExport.stop_section("pb_hydrate")
 
       if end_idx >= entry.max_slots then
         -- Hydration complete — reveal the bar now that it has real content.
@@ -522,16 +498,13 @@ return function(fave_bar, helpers)
 
     -- ── Legacy slots stage (saves created before blank/hydrate split) ─────────
     if entry.stage == "slots" then
-      ProfilerExport.start_section("pb_slots")
       local slots_frame = get_bar_slots_frame(player)
 
       if not slots_frame or not slots_frame.valid then
-        ProfilerExport.stop_section("pb_slots")
         table.remove(storage._tf_slot_build_queue, 1)
         return
       end
       if #slots_frame.children ~= entry.expected_built then
-        ProfilerExport.stop_section("pb_slots")
         table.remove(storage._tf_slot_build_queue, 1)
         return
       end
@@ -547,7 +520,6 @@ return function(fave_bar, helpers)
         build_single_slot(slots_frame, player, pfaves, i, use_labels, label_mode)
       end
 
-      ProfilerExport.stop_section("pb_slots")
 
       if end_idx >= max_slots then
         -- Legacy build complete — reveal the bar.

@@ -184,10 +184,7 @@ local function handle_history_toggle_button_click(event, player)
     TeleportHistoryModal.destroy(player)
   else
     local action_id = ProfilerExport.begin_action_trace("history_modal_open", player.index)
-    local section_name = ProfilerExport.action_section_name("history_modal_open_click", action_id, player.index)
-    ProfilerExport.start_section(section_name)
     local ok, err = pcall(TeleportHistoryModal.build, player)
-    ProfilerExport.stop_section(section_name)
     if action_id then
       ProfilerExport.end_action_trace(player.index, action_id)
     end
@@ -311,7 +308,6 @@ local function on_teleport_history_modal_gui_click(event)
       source = "history_modal",
       add_to_history = false,
       action_name = "history_item_teleport",
-      section_name = "history_item_click",
       silent_already_at_target = true,
       end_action_on_success = false,
       end_action_on_failure = true,

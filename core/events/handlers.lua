@@ -13,7 +13,6 @@ local GuiValidation = require("core.utils.gui_validation")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local teleport_history_modal = require("gui.teleport_history_modal.teleport_history_modal")
 local gui_observer = require("core.events.gui_observer")
-local ProfilerExport = require("core.utils.profiler_export")
 local FavoriteUtils = require("core.favorite.favorite_utils")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local with_valid_player = BasicHelpers.with_valid_player
@@ -74,15 +73,11 @@ function handlers.on_init()
   if Constants.settings.DEFAULT_LOG_LEVEL == "debug" then
     ErrorHandler.debug_log("[Cache] Cache.init() called during on_init")
   end
-  ProfilerExport.start_section("cache_init")
   Cache.init()
-  ProfilerExport.stop_section("cache_init")
 
-  ProfilerExport.start_section("player_observer_setup")
   for _, player in pairs(game.players) do
     register_gui_observers(player)
   end
-  ProfilerExport.stop_section("player_observer_setup")
 
   if Constants.settings.DEFAULT_LOG_LEVEL == "debug" then
     ErrorHandler.debug_log("[INIT] Startup initialization complete - GUI build deferred to player join")
@@ -153,46 +148,34 @@ function handlers.process_deferred_init_queue()
   for _, entry in ipairs(_deferred_init_queue) do
     local deferred_player = game.players[entry.player_index]
     if deferred_player and deferred_player.valid then
-      ProfilerExport.start_section("deferred_cache_reset")
       Cache.reset_transient_player_states(deferred_player)
-      ProfilerExport.stop_section("deferred_cache_reset")
 
-      ProfilerExport.start_section("deferred_close_screens")
       if entry.is_rejoin then
         close_all_mod_screens(deferred_player)
         gui_observer.GuiEventBus.cleanup_player_observers(deferred_player)
       end
-      ProfilerExport.stop_section("deferred_close_screens")
 
-      ProfilerExport.start_section("deferred_register_observers")
       register_gui_observers(deferred_player)
-      ProfilerExport.stop_section("deferred_register_observers")
 
       -- Blank-first bar is queued from ensure_fave_bar / join / created; progressive may still be in flight.
       -- Skip hydration when there is nothing to fill in:
       --   • is_rejoin=false  → brand-new player, defer bar to enqueue_blank_bar path only
       --   • no non-blank favorites on the current surface → blank bar is already correct
-      ProfilerExport.start_section("fave_bar_build")
-      if not entry.is_rejoin then
-        ProfilerExport.stop_section("fave_bar_build")
-      else
+      if entry.is_rejoin then
         local surface_idx = deferred_player.surface.index
         local has_favorites = player_has_nonblank_favorites(deferred_player, surface_idx)
         if fave_bar.blank_bar_is_ready(deferred_player) then
           if has_favorites then
             fave_bar.enqueue_hydrate(deferred_player)
           end
-          ProfilerExport.stop_section("fave_bar_build")
         elseif fave_bar.has_pending_slot_build(deferred_player.index) then
           -- Let the in-flight blank-first (or progressive) queue run; hydrate after blank shell if needed.
           if has_favorites then
             storage._tf_hydrate_after_blank = storage._tf_hydrate_after_blank or {}
             storage._tf_hydrate_after_blank[deferred_player.index] = true
           end
-          ProfilerExport.stop_section("fave_bar_build")
         else
           fave_bar.enqueue_progressive_build(deferred_player)
-          ProfilerExport.stop_section("fave_bar_build")
         end
       end
     end

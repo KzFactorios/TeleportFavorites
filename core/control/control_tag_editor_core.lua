@@ -17,6 +17,7 @@ local ChartTagHelpers = require("core.events.chart_tag_helpers")
 local GuiObserver = require("core.events.gui_observer")
 local GuiEventBus = GuiObserver.GuiEventBus
 local Tag = require("core.tag.tag")
+local TagEditorMapMarker = require("core.utils.tag_editor_map_marker")
 
 local M = {}
 
@@ -39,6 +40,10 @@ end
 --- Close and clean up the tag editor GUI
 ---@param player LuaPlayer
 function M.close_tag_editor(player)
+  TagEditorMapMarker.destroy_for_player(player)
+  if storage and storage._tf_tag_editor_marker_defer_at then
+    storage._tf_tag_editor_marker_defer_at[player.index] = nil
+  end
   local tag_data = Cache.get_tag_editor_data(player)
   local was_move_mode = tag_data and tag_data.move_mode == true
   if was_move_mode then

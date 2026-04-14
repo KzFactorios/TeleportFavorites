@@ -139,12 +139,10 @@ end
 function SlotInteractionHandlers.open_tag_editor_from_favorite(player, favorite)
   if not favorite then return end
 
-  ProfilerExport.start_section("te_pre_build")
+  local action_id = ProfilerExport.begin_action_trace("tag_editor_from_favorite", player.index)
 
-  -- Rehydrate the favorite to ensure all runtime fields are present
   favorite = PlayerFavorites.rehydrate_favorite_at_runtime(player, favorite)
 
-  -- Create initial tag data from favorite
   local icon = ""
   local text = ""
   if favorite.tag and favorite.tag.chart_tag and favorite.tag.chart_tag.valid then
@@ -164,11 +162,17 @@ function SlotInteractionHandlers.open_tag_editor_from_favorite(player, favorite)
     chart_tag = favorite.chart_tag
   })
 
-  -- Persist gps in tag_editor_data
   Cache.set_tag_editor_data(player, tag_data)
 
-  ProfilerExport.stop_section("te_pre_build")
+  -- Defer world marker to next tick: game-view modal compositing differs from map-only custom input.
+  storage._tf_tag_editor_marker_defer_at = storage._tf_tag_editor_marker_defer_at or {}
+  storage._tf_tag_editor_marker_defer_at[player.index] = game.tick + 1
+
   tag_editor.build(player)
+
+  if action_id then
+    ProfilerExport.end_action_trace(player.index, action_id)
+  end
 end
 
 --- Handle right-click request to open tag editor

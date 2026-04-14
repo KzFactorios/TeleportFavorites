@@ -84,10 +84,8 @@ gui_style.tf_teleport_history_modal_content = {
 
 gui_style.tf_teleport_history_modal_title = {
     type = "label_style",
-    parent = "label",
-    font = "default-bold",
+    parent = "frame_title",
     horizontally_stretchable = "on",
-    font_color = { r = 1, g = 1, b = 1, a = 1 },
 }
 
 gui_style.tf_teleport_history_empty_label = {

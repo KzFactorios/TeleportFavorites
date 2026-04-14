@@ -316,6 +316,19 @@ function PlayerFavorites:available_slots()
   return count
 end
 
+--- True if at least one favorite slot is blank (empty). Stops at the first blank; use instead of counting all blanks when only fullness matters.
+---@return boolean
+function PlayerFavorites:has_blank_slot()
+  local max_slots = Cache.Settings.get_player_max_favorite_slots(self.player)
+  for i = 1, max_slots do
+    local fav = self.favorites[i]
+    if fav and FavoriteUtils.is_blank_favorite(fav) then
+      return true
+    end
+  end
+  return false
+end
+
 -- ===========================
 -- FAVORITE REHYDRATION (from favorite_rehydration.lua)
 -- ===========================

@@ -13,8 +13,6 @@ local GuiHelpers = require("core.utils.gui_helpers")
 local GuiElementBuilders = require("core.utils.gui_element_builders")
 local FavoriteUtils = require("core.favorite.favorite_utils")
 local PlayerFavorites = require("core.favorite.player_favorites")
-local ProfilerExport = require("core.utils.profiler_export")
-
 return function(fave_bar, helpers)
   local is_build_in_flight        = helpers.is_build_in_flight
   local get_fave_bar_gui_refs     = helpers.get_fave_bar_gui_refs
@@ -152,10 +150,8 @@ return function(fave_bar, helpers)
     end
 
     local success, result = pcall(function()
-      ProfilerExport.start_section("fb_settings_lookup")
       local player_settings = Cache.Settings.get_player_settings(player)
       local player_data = Cache.get_player_data(player)
-      ProfilerExport.stop_section("fb_settings_lookup")
 
       if not player_settings.favorites_on and not player_settings.enable_teleport_history then
         _destroy_fave_bar(player)
@@ -167,7 +163,6 @@ return function(fave_bar, helpers)
         return
       end
 
-      ProfilerExport.start_section("fb_structure_check")
       local existing_frame = main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
       local has_valid_structure = false
       if existing_frame and existing_frame.valid then
@@ -178,9 +173,7 @@ return function(fave_bar, helpers)
       if needs_rebuild then
         GuiValidation.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
       end
-      ProfilerExport.stop_section("fb_structure_check")
 
-      ProfilerExport.start_section("fb_frame_create")
       local fave_bar_frame
       if needs_rebuild then
         fave_bar_frame = GuiBase.create_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR, "horizontal", "tf_fave_bar_frame")
@@ -199,7 +192,6 @@ return function(fave_bar, helpers)
         _history_toggle_button = _toggle_container and _toggle_container[Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_TOGGLE_BUTTON]
         _history_mode_toggle = _toggle_container and _toggle_container[Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_MODE_TOGGLE_BUTTON]
       end
-      ProfilerExport.stop_section("fb_frame_create")
 
       local favorites_enabled = player_settings.favorites_on
       local history_enabled = player_settings.enable_teleport_history
@@ -224,11 +216,9 @@ return function(fave_bar, helpers)
         local recently_built = prev_build_tick ~= nil
           and tick >= prev_build_tick and (tick - prev_build_tick) < 3
 
-        ProfilerExport.start_section("fb_gps_validation")
         if not recently_built then
           prune_stale_favorites(player, surface_index, pfaves)
         end
-        ProfilerExport.stop_section("fb_gps_validation")
 
         if _toggle_button and _toggle_button.valid then _toggle_button.visible = true end
 
@@ -241,7 +231,6 @@ return function(fave_bar, helpers)
           slots_frame.visible = slots_visible
         end
 
-        ProfilerExport.start_section("fb_buttons_row")
         local slots_already_current = recently_built
           and slots_frame and slots_frame.valid and #slots_frame.children > 0
         if not slots_already_current then
@@ -266,7 +255,6 @@ return function(fave_bar, helpers)
             end
           end
         end
-        ProfilerExport.stop_section("fb_buttons_row")
 
         local max_slots = Cache.Settings.get_player_max_favorite_slots(player)
         if pfaves and #pfaves > max_slots then

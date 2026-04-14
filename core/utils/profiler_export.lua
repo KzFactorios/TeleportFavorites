@@ -158,6 +158,23 @@ function M.stop_section(name)
   section_profilers[name] = nil
 end
 
+--- Stable section name for per-player breakdowns while LuaProfiler capture is active.
+--- When `begin_action_trace` set context for this player, uses `action_section_name` (`act_<id>_<base>`).
+--- Otherwise uses `<base>_p<player_index>` so multiplayer same-tick opens do not collide.
+---@param base string
+---@param player_index uint|nil
+---@return string
+function M.player_scoped_section(base, player_index)
+  if type(player_index) ~= "number" then
+    return tostring(base)
+  end
+  local id = M.get_action_trace_id(player_index)
+  if id and id ~= "" then
+    return M.action_section_name(base, nil, player_index)
+  end
+  return tostring(base) .. "_p" .. tostring(player_index)
+end
+
 --- Write profiler output; falls back to header-only text if embed/write fails.
 ---@param payload table LocalisedString array
 ---@param filename string

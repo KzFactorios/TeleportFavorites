@@ -17,6 +17,7 @@ local DebugCommands = require("core.commands.debug_commands")
 local ChartTagUtils = require("core.utils.chart_tag_utils")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local tag_editor = require("gui.tag_editor.tag_editor")
+local TagEditorMapMarker = require("core.utils.tag_editor_map_marker")
 local GuiObserver = require("core.events.gui_observer")
 local ProfilerExport = require("core.utils.profiler_export")
 local PlayerFavorites = require("core.favorite.player_favorites")
@@ -319,22 +320,16 @@ local function register_core_events(script)
 
   script.on_nth_tick(2, function()
     if GuiObserver.GuiEventBus._deferred_tick_active then
-      ProfilerExport.start_section("deferred_notifications")
       GuiObserver.GuiEventBus.process_deferred_notifications()
-      ProfilerExport.stop_section("deferred_notifications")
     end
     if handlers.has_deferred_init_pending() then
-      ProfilerExport.start_section("deferred_init_queue")
       handlers.process_deferred_init_queue()
-      ProfilerExport.stop_section("deferred_init_queue")
     end
     fave_bar.process_slot_build_queue()
     -- Flush dirty slots queued by DataObserver:update this tick (or any previous tick
     -- that was skipped due to budget overflow). Runs after process_slot_build_queue so
     -- a progressive build stage and a dirty-slot flush never compete on the same tick.
-    ProfilerExport.start_section("deferred_slot_visuals")
     fave_bar.flush_all_dirty_slots()
-    ProfilerExport.stop_section("deferred_slot_visuals")
     tag_editor.process_build_queue()
     teleport_history_modal.process_build_queue()
   end)
@@ -342,10 +337,28 @@ local function register_core_events(script)
   ErrorHandler.debug_log("[EVENT_REG] Registering on_tick handler for first-tick setup")
   script.on_event(defines.events.on_tick, function(event)
     ProfilerExport.on_game_tick(event)
+    -- Deferred tag-editor map marker (favorites open): run after modal frame first tick.
+    local defer_at = storage and storage._tf_tag_editor_marker_defer_at
+    if defer_at then
+      for pindex, due in pairs(defer_at) do
+        if type(due) == "number" and event.tick >= due then
+          defer_at[pindex] = nil
+          local p = game.players[pindex]
+          if p and p.valid then
+            local outer = p.gui.screen[Enum.GuiEnum.GUI_FRAME.TAG_EDITOR]
+            if outer and outer.valid then
+              local tag_data = Cache.get_tag_editor_data(p)
+              if tag_data then
+                TagEditorMapMarker.sync_for_tag_data(p, tag_data)
+              end
+            end
+          end
+        end
+      end
+    end
     if not handlers.get_observers_registered_flag() then
       handlers.set_observers_registered_flag(true)
       ErrorHandler.debug_log("[TICK] *** REGISTERING GUI OBSERVERS *** (first tick after load)", { tick = event.tick })
-      ProfilerExport.start_section("first_tick_observers")
       for _, player in pairs(game.players) do
         if player and player.valid then
           GuiObserver.GuiEventBus.register_player_observers(player)
@@ -355,12 +368,9 @@ local function register_core_events(script)
         end
       end
       -- SP save load / mod added to save: no on_player_joined_game — queue fave bar like a rejoin.
-      ProfilerExport.start_section("session_fave_bar_init")
       handlers.ensure_fave_bar_for_session_players()
-      ProfilerExport.stop_section("session_fave_bar_init")
       -- process_deferred_notifications is intentionally NOT called here.
       -- on_nth_tick(2) drains it at tick 2, keeping tick-0 cost lower.
-      ProfilerExport.stop_section("first_tick_observers")
       ErrorHandler.debug_log("[TICK] GUI observers registered for all players", { tick = event.tick })
     end
   end)

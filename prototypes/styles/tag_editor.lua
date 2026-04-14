@@ -7,6 +7,8 @@ local gui_style = data.raw["gui-style"].default
 --- put all new content below this line ---
 
 
+-- minimal_height: modest reserve so deferred B–D don’t jump auto_center as much; too large leaves dead air (see tag editor layout).
+-- Error row visible may exceed this; frame is allowed to grow (vertically_stretchable).
 gui_style.tf_tag_editor_outer_frame = {
   type = "frame_style",
   parent = "slot_window_frame",
@@ -16,8 +18,8 @@ gui_style.tf_tag_editor_outer_frame = {
   left_padding = 8,   
   horizontally_stretchable = "on",
   vertically_stretchable = "on",
-  minimal_width = 342, 
-  maximal_height = 1080
+  minimal_width = 346,
+  minimal_height = 250,
 }
 
 gui_style.tf_tag_editor_content_frame = {
@@ -51,7 +53,6 @@ gui_style.tf_tag_editor_owner_label = {
   right_padding = 8,
   bottom_padding = 6,
   left_padding = 8,
-  font = "default-bold",
   font_color = { r = 1, g = 1, b = 1, a = 1 }, 
   horizontally_stretchable = "on",
   width = 292,
@@ -121,7 +122,8 @@ gui_style.tf_tag_editor_last_row = {
   type = "horizontal_flow_style",
   parent = "horizontal_flow",
   horizontally_stretchable = "on",
-  vertically_stretchable = "on",
+  -- Do not absorb extra vertical slack from the outer frame; height follows the Confirm button.
+  vertically_stretchable = "off",
   top_margin = 4,
   top_padding = 0,
   bottom_padding = 0,
@@ -135,8 +137,9 @@ gui_style.tf_tag_editor_last_row_draggable = {
   type = "empty_widget_style",
   parent = "draggable_space",
   horizontally_stretchable = "on",
+  -- Fill the row’s height (set by Confirm); row itself does not stretch with the outer frame.
   vertically_stretchable = "on",
-  top_margin = 8,
+  top_margin = 0,
   right_margin = 8,
   left_margin = 0,
   left_padding = 0,
