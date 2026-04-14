@@ -63,7 +63,20 @@ Re-audit these even if partially fixed; catch-up may exercise rare branches:
 | 2026-04-14 | (from log) | ~1705 | Post–phase 2; `script.dat` differed in archive client vs server |
 | 2026-04-14 | — | — | **Phase 3 code (static audit):** sorted core `script.on_event` registration, custom inputs, `StorageMigrations` / `apply_player_max_slots` / `tag_destroy_helper` / `handlers` favorite scan; `TeleportHistory` malformed-GPS `log` |
 | 2026-04-14 | 127845210 | 1507 | Archive `desync-report-2026-04-14_14-48-49.zip`; post–phase 3; `TryingToCatchUp` tick 1504; nested `script.dat` matched (2339 B client/server) |
+| 2026-04-14 | 1709456018 | 1461 | Archive `desync-report-2026-04-14_15-03-02.zip`; post–`tf-mp-bisect-mode` prototype bump (`Checksum of TeleportFavorites` 2070420553); `TryingToCatchUp` tick 1457; nested `script.dat` matched (2339 B client/server) |
 | … | … | … | … |
+
+## Static audit (phase 4 — code pass)
+
+Classified remaining `pairs` / deferral paths that affect MP determinism or correctness:
+
+- **[`core/cache/cache.lua`](core/cache/cache.lua):** `Cache.init` migration collects player/surface indices then `table.sort` before writes. `apply_player_max_slots` sorts surface indices. `sanitize_for_storage` / `set_tag_editor_data` / `get_tag_by_gps` meta shallow-copy: order does not change final table contents for persisted data. **Safe** as audited.
+- **[`core/cache/lookups.lua`](core/cache/lookups.lua):** validity sweep collects tag numbers then sorts. **Safe.**
+- **[`core/utils/chart_tag_utils.lua`](core/utils/chart_tag_utils.lua):** `can_delete_chart_tag` / `count_faved_player_entries` use `pairs` only for commutative boolean/count; documented in source. **Safe.**
+- **[`gui/favorites_bar/fave_bar.lua`](gui/favorites_bar/fave_bar.lua):** `prune_stale_favorites` builds a GPS membership set from `pairs(tag_cache)`; order irrelevant. **Safe.**
+- **[`gui/favorites_bar/fave_bar_slots.lua`](gui/favorites_bar/fave_bar_slots.lua):** `partial_rehydrate` / `flush_all_dirty_slots` now sort player indices and slot indices before GUI updates (aligns with [`gui_observer.lua`](core/events/gui_observer.lua) dirty-slot policy).
+- **[`core/control/control_tag_editor_core.lua`](core/control/control_tag_editor_core.lua):** `script.on_nth_tick(1, …)` is single-flight per tick (`_tag_editor_defer_nth1_armed`) so a second confirm the same tick does not replace the handler; `flush_deferred_api_work` closes the tag editor for every player in the drained queue, sorted by player index.
+- **`control.lua` / [`event_registration_dispatcher.lua`](core/events/event_registration_dispatcher.lua):** no `remote.` / `commands.add` in hot paths beyond init; `game.print` on max-slots runtime setting change is informational only (not serialized). Profiler `write_file` is documented on [`ProfilerExport`](core/utils/profiler_export.lua) tick path — keep profiling off for MP repro.
 
 ## References
 

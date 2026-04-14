@@ -50,6 +50,7 @@ local session_fave_bar_refs = {}
 local function prune_stale_favorites(player, surface_index, pfaves)
   if not pfaves then return false end
   local tag_cache = Cache.get_surface_tags(surface_index)
+  -- pairs(tag_cache): order irrelevant; valid_gps is a set used only for membership.
   local valid_gps = {}
   if tag_cache then
     for gps in pairs(tag_cache) do valid_gps[gps] = true end

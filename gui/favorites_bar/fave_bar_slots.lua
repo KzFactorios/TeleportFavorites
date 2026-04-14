@@ -465,7 +465,13 @@ return function(fave_bar, helpers)
     local pidx = player.index
     local set = dirty_slots[pidx]
     if not set then return end
+    local slot_indices = {}
     for slot_index, _ in pairs(set) do
+      slot_indices[#slot_indices + 1] = slot_index
+    end
+    table.sort(slot_indices, function(a, b) return (tonumber(a) or 0) < (tonumber(b) or 0) end)
+    for si = 1, #slot_indices do
+      local slot_index = slot_indices[si]
       local ok, err = pcall(function()
         fave_bar.update_single_slot(player, slot_index)
       end)
@@ -487,22 +493,36 @@ return function(fave_bar, helpers)
   --- across ticks rather than spiking on the notification tick.
   function fave_bar.flush_all_dirty_slots()
     if not _dirty_slots_has_work then return end
-    -- Iterate only the players that actually have dirty work, not all game.players.
-    for pidx, set in pairs(dirty_slots) do
-      local player = game.players[pidx]
-      if player and player.valid then
-        for slot_index, _ in pairs(set) do
-          local ok, err = pcall(function()
-            fave_bar.update_single_slot(player, slot_index)
-          end)
-          if not ok then
-            if ErrorHandler and ErrorHandler.warn_log then
-              ErrorHandler.warn_log("[FAVE_BAR] flush_all_dirty_slots failed", { player = player.name, slot = slot_index, error = err })
+    local pidx_list = {}
+    for pidx in pairs(dirty_slots) do
+      pidx_list[#pidx_list + 1] = pidx
+    end
+    table.sort(pidx_list, function(a, b) return (tonumber(a) or 0) < (tonumber(b) or 0) end)
+    for pi = 1, #pidx_list do
+      local pidx = pidx_list[pi]
+      local set = dirty_slots[pidx]
+      if set then
+        local player = game.players[pidx]
+        if player and player.valid then
+          local slot_indices = {}
+          for slot_index, _ in pairs(set) do
+            slot_indices[#slot_indices + 1] = slot_index
+          end
+          table.sort(slot_indices, function(a, b) return (tonumber(a) or 0) < (tonumber(b) or 0) end)
+          for si = 1, #slot_indices do
+            local slot_index = slot_indices[si]
+            local ok, err = pcall(function()
+              fave_bar.update_single_slot(player, slot_index)
+            end)
+            if not ok then
+              if ErrorHandler and ErrorHandler.warn_log then
+                ErrorHandler.warn_log("[FAVE_BAR] flush_all_dirty_slots failed", { player = player.name, slot = slot_index, error = err })
+              end
             end
           end
         end
+        dirty_slots[pidx] = nil
       end
-      dirty_slots[pidx] = nil
     end
     _dirty_slots_has_work = false
   end

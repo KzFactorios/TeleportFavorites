@@ -320,6 +320,7 @@ function ChartTagUtils.can_delete_chart_tag(player, tag)
   local is_owner = (owner_name == "" or owner_name == player.name)
   local has_other_favorites = false
   if tag.faved_by_players then
+    -- pairs(): order-independent; we only need whether any other player index is present.
     for k, v in pairs(tag.faved_by_players) do
       local pid = nil
       if type(v) == "number" and v >= 1 then
@@ -353,6 +354,7 @@ function ChartTagUtils.count_faved_player_entries(tag)
   local fbp = tag and tag.faved_by_players
   if not fbp or type(fbp) ~= "table" then return 0 end
   local n = 0
+  -- pairs(): count only; iteration order does not affect n.
   for k, v in pairs(fbp) do
     local pid = nil
     if type(v) == "number" and v >= 1 then

@@ -2,6 +2,7 @@
 Version: 0.0.98
 Date: 2026-04-15
   Changes:
+    - Multiplayer: tag editor deferred confirm uses a single `on_nth_tick(1)` registration per tick and closes every confirming player after draining the deferred API queue; favorites bar dirty-slot flush sorts players and slots
     - Multiplayer desync bisection: runtime-global `tf-mp-bisect-mode` (`none`, `no_fave_bar_queue`, `no_tag_editor`, `no_history_modal`, `no_lookups_sweep`, `no_chart_and_remote`) gates subsystems for isolation testing; Map → Mod settings → Teleport Favorites (same value on all peers)
     - Multiplayer (phase 3 static audit): deterministic `script.on_event` registration order for core lifecycle events; sorted custom-input handler registration; sorted `storage.surfaces` / tag GPS iteration in `storage_migrations`; sorted per-player surfaces in `Cache.apply_player_max_slots`; `tag_destroy_helper` uses sorted-by-index players and numeric favorite slots; `player_has_nonblank_favorites` uses array order; malformed-history GPS warning uses `log` instead of `game.print`; sorted registration-result checks in `register_all_events`
     - Multiplayer: deterministic iteration for `on_runtime_mod_setting_changed` (connected players), chart-tag ownership reset (surfaces and GPS keys), tag-editor marker deferrals on `on_tick`, GUI observer dirty-slot merge/cleanup, and GPS lookup validity sweep; added `for_each_connected_player_by_index_asc`

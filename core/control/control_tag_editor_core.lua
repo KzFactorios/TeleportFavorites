@@ -23,9 +23,14 @@ local M = {}
 
 -- Session-local queue of deferred Factorio API work (force.add_chart_tag calls).
 -- Populated by update_chart_tag_fields on the confirm-click tick.
--- Drained by handle_confirm_btn's on_nth_tick(1) closure on the next tick.
+-- Drained on the next tick by a single shared on_nth_tick(1) handler (see _tag_editor_defer_nth1_armed).
 -- Using a queue (not a single slot) in case of future multi-operation paths.
 local _deferred_api_work = {}
+
+-- Factorio allows only one active script.on_nth_tick(1, ...) handler; a second
+-- registration replaces the first. Arm at most once per tick so multiple players
+-- confirming on the same tick still share one handler that drains the full queue.
+local _tag_editor_defer_nth1_armed = false
 
 --- Update error message in the tag editor UI and cache
 ---@param player LuaPlayer
@@ -121,7 +126,7 @@ function M.update_chart_tag_fields(tag, tag_data, text, icon, player)
     chart_tag_spec.icon = GuiValidation.has_valid_icon(icon) and icon or nil
 
     -- Queue the expensive force.add_chart_tag for the next tick.
-    -- handle_confirm_btn's single on_nth_tick(1) drains this queue alongside close_tag_editor.
+    -- handle_confirm_btn schedules one nth_tick(1) per tick to drain this queue and close editors.
     table.insert(_deferred_api_work, {
       kind          = "recreate",
       force         = force,
@@ -155,12 +160,14 @@ function M.update_chart_tag_fields(tag, tag_data, text, icon, player)
 end
 
 --- Drain all queued deferred Factorio API work (force.add_chart_tag calls).
---- Called from handle_confirm_btn's on_nth_tick(1) closure so there is only
---- one on_nth_tick(1) registration per confirm-click tick.
+--- Closes the tag editor for every player that had queued work (sorted by index).
+--- Called from handle_confirm_btn's on_nth_tick(1) closure; paired with
+--- `_tag_editor_defer_nth1_armed` so only one nth_tick(1) handler is registered per tick.
 local function flush_deferred_api_work()
   if #_deferred_api_work == 0 then return end
   local work_items = _deferred_api_work
   _deferred_api_work = {}
+  local close_by_index = {}
   for _, w in ipairs(work_items) do
     local new_ct = ChartTagUtils.safe_add_chart_tag(w.force, w.surface, w.spec, w.player, { skip_collision_check = true })
     if new_ct and new_ct.valid then
@@ -188,6 +195,17 @@ local function flush_deferred_api_work()
         })
       end
     end
+    if w.player and w.player.valid then
+      close_by_index[w.player.index] = w.player
+    end
+  end
+  local idxs = {}
+  for pindex in pairs(close_by_index) do
+    idxs[#idxs + 1] = pindex
+  end
+  table.sort(idxs)
+  for i = 1, #idxs do
+    M.close_tag_editor(close_by_index[idxs[i]])
   end
 end
 
@@ -306,13 +324,18 @@ function M.handle_confirm_btn(player, element, tag_data)
     Cache.gps_move_in_progress[tag_data.gps] = nil
   end
 
-  -- Single on_nth_tick(1) handles both the deferred force.add_chart_tag work and the
-  -- GUI destruction, so there is exactly one handler registration per confirm-click tick.
-  script.on_nth_tick(1, function()
-    script.on_nth_tick(1, nil)
-    flush_deferred_api_work()
-    M.close_tag_editor(player)
-  end)
+  -- Defer force.add_chart_tag + editor teardown to next tick. Only one on_nth_tick(1)
+  -- registration per local tick (multiple confirms same tick share one handler).
+  if not _tag_editor_defer_nth1_armed then
+    _tag_editor_defer_nth1_armed = true
+    script.on_nth_tick(1, function()
+      script.on_nth_tick(1, nil)
+      _tag_editor_defer_nth1_armed = false
+      flush_deferred_api_work()
+      -- Fallback if the queue was empty but this handler still ran (defensive).
+      M.close_tag_editor(player)
+    end)
+  end
 end
 
 --- Close the delete confirmation dialog
