@@ -69,6 +69,7 @@ Re-audit these even if partially fixed; catch-up may exercise rare branches:
 | 2026-04-14 | 1709456018 | 1461 | Archive `desync-report-2026-04-14_15-03-02.zip`; post–`tf-mp-bisect-mode` prototype bump (`Checksum of TeleportFavorites` 2070420553); `TryingToCatchUp` tick 1457; nested `script.dat` matched (2339 B client/server) |
 | 2026-04-14 | 2972902694 | 1445 | Archive `desync-report-2026-04-14_15-15-30.zip`; post–phase 4 (tag editor single-flight defer + sorted dirty-slot flush); prototype 2070420553; `TryingToCatchUp` tick 1442; nested `script.dat` matched (2339 B client/server) |
 | 2026-04-14 | 4153474262 | 1595 | Archive `desync-report-2026-04-14_15-55-59.zip`; from commit `4a48a4c` (pre–WIP restore); prototype `Checksum of TeleportFavorites` 2179346781; `TryingToCatchUp` tick 1591; nested `script.dat` matched (2339 B client/server) |
+| 2026-04-14 | 4153474262 | 1293 | Archive `desync-report-2026-04-14_16-30-37.zip`; same TF build as row above; `TryingToCatchUp` tick 1289; nested `script.dat` matched (2339 B client/server) |
 | … | … | … | … |
 
 ## Static audit (phase 4 — code pass)
