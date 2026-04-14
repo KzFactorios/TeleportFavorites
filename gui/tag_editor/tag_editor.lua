@@ -452,8 +452,7 @@ end
 -- stage_budget is 1 so b+c (and c+d1) never run in the same callback — trades ~2 ticks latency for lower UPS spikes.
 -- If a build_* slice still exceeds ~2ms after profiling, add nested ProfilerExport inside build_interior_a/b/c.
 function tag_editor.process_build_queue()
-  -- Fast-exit: skip all storage access when nothing is queued.
-  if not _tag_editor_queue_has_work then return end
+  -- Derive work from storage — do not skip when `_tag_editor_queue_has_work` is stale (MP parity with favorites bar queue).
   if not storage or not storage._tf_tag_editor_build_queue then
     _tag_editor_queue_has_work = false
     return
@@ -462,6 +461,7 @@ function tag_editor.process_build_queue()
     _tag_editor_queue_has_work = false
     return
   end
+  _tag_editor_queue_has_work = true
 
   local stage_budget = 1
   local processed = 0

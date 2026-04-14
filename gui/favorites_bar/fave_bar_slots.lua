@@ -46,9 +46,13 @@ return function(fave_bar, helpers)
 
   local function clear_element_children(el)
     if not el or not el.valid then return end
-    local children = el.children
-    for i = #children, 1, -1 do
-      if children[i] and children[i].valid then children[i].destroy() end
+    local ch = el.children
+    if not ch then return end
+    -- Do not use `#ch` on LuaCustomTable — count can disagree between peers; always peel index 1.
+    for _ = 1, 512 do
+      local c = ch[1]
+      if c == nil or not c.valid then break end
+      c.destroy()
     end
   end
 
@@ -59,10 +63,11 @@ return function(fave_bar, helpers)
     local label_mode = Cache.Settings.get_player_slot_label_mode(player)
     local use_labels = label_mode ~= "off"
     local children = slots_frame.children
+    local child_count = GuiHelpers.count_direct_children(slots_frame)
 
-    if #children ~= max_slots then
+    if child_count ~= max_slots then
       log("[TeleportFavorites][FAVE_BAR] try_update_slots_in_place: count mismatch children="
-        .. tostring(#children) .. " max_slots=" .. tostring(max_slots))
+        .. tostring(child_count) .. " max_slots=" .. tostring(max_slots))
       return false
     end
 
@@ -493,7 +498,13 @@ return function(fave_bar, helpers)
   --- Called from process_slot_build_queue (on_nth_tick(2)) to spread GUI write cost
   --- across ticks rather than spiking on the notification tick.
   function fave_bar.flush_all_dirty_slots()
-    if not _dirty_slots_has_work then return end
+    -- Do not trust _dirty_slots_has_work alone — same failure mode as the slot build queue:
+    -- always derive from `dirty_slots` so peers never skip a flush while work exists.
+    if not next(dirty_slots) then
+      _dirty_slots_has_work = false
+      return
+    end
+    _dirty_slots_has_work = true
     local pidx_list = {}
     for pidx in pairs(dirty_slots) do
       pidx_list[#pidx_list + 1] = pidx

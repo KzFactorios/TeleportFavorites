@@ -2,6 +2,8 @@
 Version: 0.0.98
 Date: 2026-04-15
   Changes:
+    - Multiplayer: favorites bar `flush_all_dirty_slots` derives pending work from `dirty_slots` (not `_dirty_slots_has_work` alone); slot row `clear_element_children` / `try_update_slots_in_place` avoid `#` on `LuaGuiElement.children` (LuaCustomTable)
+    - Multiplayer: tag editor and teleport history modal build queues consult `storage` first so session-local “has work” flags cannot skip processing
     - Favorites bar: count GUI children via `GuiHelpers.count_direct_children` (numeric `children[i]`); `#` and `table_size` on `LuaGuiElement.children` (LuaCustomTable) can mis-report and break `blank_bar_is_ready` / legacy `slots` guard / slot-row structure checks
     - Multiplayer desync fix: favorites bar `process_slot_build_queue` no longer skips work when `_fave_bar_queue_has_work` is stale (slots rebuild inserted into `storage._tf_slot_build_queue` without updating the session flag); deferred slot queue entries now set `stage = "slots"` so the legacy progressive worker runs; migration coerces old saves missing `stage`
     - Multiplayer: tag editor deferred confirm uses a single `on_nth_tick(1)` registration per tick and closes every confirming player after draining the deferred API queue; favorites bar dirty-slot flush sorts players and slots

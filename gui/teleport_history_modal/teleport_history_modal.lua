@@ -36,6 +36,18 @@ local process_progressive_row_jobs
 -- Must NOT be stored in storage (session-local only); rehydrated in on_load_cleanup.
 local _thm_has_work = false
 
+--- True when any THM queue has pending work (matches `on_load_cleanup` / session flag semantics).
+---@return boolean
+local function thm_storage_has_pending_work()
+  if not storage then return false end
+  local build_q = storage[THM_BUILD_QUEUE_KEY]
+  local prog_q  = storage[THM_PROGRESSIVE_ROWS_KEY]
+  local dirty_q = storage[THM_DIRTY_PLAYERS_KEY]
+  return (build_q  and #build_q  > 0)
+      or  (prog_q   and next(prog_q)   ~= nil)
+      or  (dirty_q  and next(dirty_q)  ~= nil)
+end
+
 ---@param remaining number
 ---@return number
 local function get_adaptive_append_chunk_size(remaining)
@@ -328,11 +340,13 @@ end
 -- Stage "b": builds content frame + list shell.
 -- Stage "c": populates history list.
 function teleport_history_modal.process_build_queue()
-  -- Fast-exit: skip all three inner loops when nothing is pending.
-  -- _thm_has_work is a session-local flag set whenever any queue/dirty entry is enqueued,
-  -- and cleared here once all work is confirmed drained.
-  if not _thm_has_work then return end
+  -- Derive work from storage — do not skip when `_thm_has_work` is stale (MP parity with favorites bar queue).
   if not storage then return end
+  if not thm_storage_has_pending_work() then
+    _thm_has_work = false
+    return
+  end
+  _thm_has_work = true
 
   storage[THM_BUILD_QUEUE_KEY] = storage[THM_BUILD_QUEUE_KEY] or {}
   if #storage[THM_BUILD_QUEUE_KEY] > 0 then
@@ -655,13 +669,7 @@ function teleport_history_modal.on_load_cleanup()
     _thm_has_work = false
     return
   end
-  local build_q = storage[THM_BUILD_QUEUE_KEY]
-  local prog_q  = storage[THM_PROGRESSIVE_ROWS_KEY]
-  local dirty_q = storage[THM_DIRTY_PLAYERS_KEY]
-  _thm_has_work = (build_q  and #build_q  > 0)
-              or  (prog_q   and next(prog_q)   ~= nil)
-              or  (dirty_q  and next(dirty_q)  ~= nil)
-              or  false
+  _thm_has_work = thm_storage_has_pending_work()
 end
 
 return teleport_history_modal
