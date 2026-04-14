@@ -255,14 +255,14 @@ function PlayerFavorites.update_gps_for_all_players(old_gps, new_gps, acting_pla
 
   local affected_players = {}
 
-  for player_index, player in pairs(game.players) do
-    if player and player.valid and player_index ~= acting_player_index then
+  BasicHelpers.for_each_player_by_index_asc(function(player, player_index)
+    if player_index ~= acting_player_index then
       local favorites = PlayerFavorites.new(player)
       if favorites:update_gps_coordinates(old_gps, new_gps) then
         table.insert(affected_players, player)
       end
     end
-  end
+  end)
   return affected_players
 end
 

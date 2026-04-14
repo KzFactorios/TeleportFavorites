@@ -75,9 +75,9 @@ function handlers.on_init()
   end
   Cache.init()
 
-  for _, player in pairs(game.players) do
+  BasicHelpers.for_each_player_by_index_asc(function(player)
     register_gui_observers(player)
-  end
+  end)
 
   if Constants.settings.DEFAULT_LOG_LEVEL == "debug" then
     ErrorHandler.debug_log("[INIT] Startup initialization complete - GUI build deferred to player join")
@@ -99,7 +99,7 @@ end
 function handlers.on_configuration_changed(data)
   ErrorHandler.debug_log("[CONFIG_CHANGED] Configuration changed, clearing stale fave bars")
   storage._tf_hydrate_after_blank = nil
-  for _, player in pairs(game.players) do
+  BasicHelpers.for_each_player_by_index_asc(function(player)
     if player.valid then
       Cache.get_player_data(player)
       local main_flow = player.gui.top[Enum.UIEnums.GUI.Shared.MAIN_GUI_FLOW]
@@ -107,7 +107,7 @@ function handlers.on_configuration_changed(data)
         GuiValidation.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
       end
     end
-  end
+  end)
 end
 
 function handlers.get_observers_registered_flag()
@@ -205,12 +205,12 @@ end
 --- overwriting `is_rejoin = false` for brand-new players.
 --- `enqueue_blank_bar` matches join/created: chrome + empty slots first, hydrate when ready.
 function handlers.ensure_fave_bar_for_session_players()
-  for _, player in pairs(game.players) do
+  BasicHelpers.for_each_player_by_index_asc(function(player)
     if player and player.valid and BasicHelpers.is_valid_player(player) then
       enqueue_deferred_init(player.index, true)
       fave_bar.enqueue_blank_bar(player)
     end
-  end
+  end)
 end
 
 function handlers.on_player_created(event)

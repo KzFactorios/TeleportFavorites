@@ -171,6 +171,8 @@ return function(fave_bar, helpers)
     -- Deferred from the enqueue call so the calling tick pays zero element.add() cost.
     -- Performs feature-toggle and controller checks here
     -- so we bail before the first GUI add if the bar shouldn't be built at all.
+    -- MP: `get_player_settings` reads `player.mod_settings` / `settings.get_player_settings(player)`;
+    -- controller checks use `LuaPlayer` state — all replicated identically on every peer for the same tick.
     if entry.stage == "frame_init" then
       local player_settings = Cache.Settings.get_player_settings(player)
       if not player_settings.favorites_on and not player_settings.enable_teleport_history then

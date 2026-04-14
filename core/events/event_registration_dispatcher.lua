@@ -359,14 +359,14 @@ local function register_core_events(script)
     if not handlers.get_observers_registered_flag() then
       handlers.set_observers_registered_flag(true)
       ErrorHandler.debug_log("[TICK] *** REGISTERING GUI OBSERVERS *** (first tick after load)", { tick = event.tick })
-      for _, player in pairs(game.players) do
+      BasicHelpers.for_each_player_by_index_asc(function(player)
         if player and player.valid then
           GuiObserver.GuiEventBus.register_player_observers(player)
           ErrorHandler.debug_log("[TICK] Registered observers for player", {
             player = player.name, player_index = player.index, tick = event.tick
           })
         end
-      end
+      end)
       -- SP save load / mod added to save: no on_player_joined_game — queue fave bar like a rejoin.
       handlers.ensure_fave_bar_for_session_players()
       -- process_deferred_notifications is intentionally NOT called here.

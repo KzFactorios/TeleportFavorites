@@ -142,11 +142,27 @@ function Cache.init()
   -- Schema migrations (storage._tf_schema_version); independent of mod semver string.
   StorageMigrations.apply_all()
 
-  -- Legacy stack migration: convert raw GPS strings to HistoryItem objects
-  for _, player_data in pairs(storage.players) do
-    if player_data.surfaces then
-      for _, surface_data in pairs(player_data.surfaces) do
-        local history = surface_data.teleport_history
+  -- Legacy stack migration: convert raw GPS strings to HistoryItem objects (sorted player indices for MP determinism).
+  local player_indices = {}
+  for idx in pairs(storage.players) do
+    if type(idx) == "number" then
+      player_indices[#player_indices + 1] = idx
+    end
+  end
+  table.sort(player_indices)
+  for pi = 1, #player_indices do
+    local player_data = storage.players[player_indices[pi]]
+    if player_data and player_data.surfaces then
+      local surface_indices = {}
+      for sidx in pairs(player_data.surfaces) do
+        if type(sidx) == "number" then
+          surface_indices[#surface_indices + 1] = sidx
+        end
+      end
+      table.sort(surface_indices)
+      for si = 1, #surface_indices do
+        local surface_data = player_data.surfaces[surface_indices[si]]
+        local history = surface_data and surface_data.teleport_history
         if history and history.stack then
           for idx, entry in ipairs(history.stack) do
             if type(entry) == "string" then
