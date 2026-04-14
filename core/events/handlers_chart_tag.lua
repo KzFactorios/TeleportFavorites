@@ -22,14 +22,12 @@ local with_valid_player = BasicHelpers.with_valid_player
 -- TAG EDITOR EVENT HELPERS (from tag_editor_event_helpers.lua)
 -- ===========================
 
+-- Do not gate on player.render_mode here: same multiplayer policy as ChartTagUtils.find_closest_chart_tag_to_position
+-- (render_mode is treated as unsafe for cross-peer script decisions in this mod). Map vs game presentation is handled
+-- in tag_editor.build / open_tag_editor_from_favorite (markers, deferred layout), not by rejecting open here.
 local function validate_tag_editor_opening(player)
   if not BasicHelpers.is_valid_player(player) then
     return false, "Invalid player"
-  end
-  -- Map-only entry: modal + dimming stack on chart/remote view, not the live game canvas — different compositing
-  -- than favorites-bar open (game view). See tag_editor.build / open_tag_editor_from_favorite marker defer.
-  if player.render_mode == defines.render_mode.game then
-    return false, "Not in map view"
   end
   if player.opened ~= nil then
     local opened_type = "unknown"
@@ -76,6 +74,8 @@ local function validate_tag_editor_opening(player)
   end
   return true, nil
 end
+
+-- MP smoke (manual): two clients, open tag editor from chart and from favorites bar; edit tag text — both bars refresh, no desync.
 
 
 ---@param player LuaPlayer

@@ -228,7 +228,8 @@ function ChartTagHelpers.update_tag_metadata(gps, chart_tag, acting_player)
     return true
   end
 
-  local notified = 0
+  -- Collect player indices first, then sort so deferred GuiEventBus.notify order matches across peers (pairs() is not ordered).
+  local notify_indices = {}
   -- Prefer faved_by_players: map [player_index]=player_index (or true), or legacy array of indices.
   local fbp = stored_tag and stored_tag.faved_by_players
   if fbp and type(fbp) == "table" and next(fbp) ~= nil then
@@ -243,16 +244,24 @@ function ChartTagHelpers.update_tag_metadata(gps, chart_tag, acting_player)
       if pid and not seen[pid] then
         seen[pid] = true
         local game_player = game.players[pid]
-        if game_player and game_player.valid and game_player.connected and notify_one(game_player) then
-          notified = notified + 1
+        if game_player and game_player.valid and game_player.connected then
+          notify_indices[#notify_indices + 1] = pid
         end
       end
     end
   else
     for _, game_player in pairs(game.connected_players) do
-      if game_player and game_player.valid and notify_one(game_player) then
-        notified = notified + 1
+      if game_player and game_player.valid then
+        notify_indices[#notify_indices + 1] = game_player.index
       end
+    end
+  end
+  table.sort(notify_indices)
+  local notified = 0
+  for _, pid in ipairs(notify_indices) do
+    local game_player = game.players[pid]
+    if game_player and game_player.valid and notify_one(game_player) then
+      notified = notified + 1
     end
   end
 
