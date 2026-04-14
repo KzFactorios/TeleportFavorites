@@ -6,6 +6,25 @@ local BasicHelpers, ErrorHandler =
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local ProfilerExport = require("core.utils.profiler_export")
 
+--- Call `fn(slot_index)` for each dirty key in `slots_tbl` in ascending numeric order (MP-safe vs `pairs`).
+---@param slots_tbl table|nil
+---@param fn fun(slot_index: number)
+local function for_each_sorted_dirty_slot(slots_tbl, fn)
+  if type(slots_tbl) ~= "table" or type(fn) ~= "function" then return end
+  local keys = {}
+  for slot_index, is_dirty in pairs(slots_tbl) do
+    if is_dirty then
+      keys[#keys + 1] = tonumber(slot_index) or slot_index
+    end
+  end
+  table.sort(keys, function(a, b)
+    return (tonumber(a) or 0) < (tonumber(b) or 0)
+  end)
+  for i = 1, #keys do
+    fn(keys[i])
+  end
+end
+
 ---@class BaseGuiObserver
 ---@field player LuaPlayer
 ---@field player_index uint|nil
@@ -70,11 +89,9 @@ function DataObserver:update(event_data)
       -- write the GUI on the next on_nth_tick(2), spreading the visual-write cost.
       run(function()
         run(function()
-          for slot_index, is_dirty in pairs(event_data.slots) do
-            if is_dirty then
-              fave_bar.mark_slot_dirty(player, tonumber(slot_index))
-            end
-          end
+          for_each_sorted_dirty_slot(event_data.slots, function(slot_index)
+            fave_bar.mark_slot_dirty(player, slot_index)
+          end)
         end)
       end)
     elseif event_data and event_data.slot then
@@ -201,11 +218,9 @@ local function merge_slot_payload(target, source)
     target.slots[source.slot] = true
   end
   if type(source.slots) == "table" then
-    for slot_index, is_dirty in pairs(source.slots) do
-      if is_dirty then
-        target.slots[tonumber(slot_index) or slot_index] = true
-      end
-    end
+    for_each_sorted_dirty_slot(source.slots, function(slot_index)
+      target.slots[slot_index] = true
+    end)
   end
   target.slot = nil
 end
@@ -363,7 +378,13 @@ function GuiEventBus.cleanup_player_observers(player)
   local player_name  = player.name
   local total_cleaned = 0
 
-  for _, observers in pairs(GuiEventBus._observers) do
+  local event_names = {}
+  for event_type, _ in pairs(GuiEventBus._observers) do
+    event_names[#event_names + 1] = event_type
+  end
+  table.sort(event_names)
+  for ei = 1, #event_names do
+    local observers = GuiEventBus._observers[event_names[ei]]
     local cleaned_count = 0
     for i = #observers, 1, -1 do
       local observer = observers[i]
@@ -405,7 +426,14 @@ function GuiEventBus.cleanup_old_observers(max_age_ticks)
 
   local total_cleaned = 0
 
-  for event_type, observers in pairs(GuiEventBus._observers) do
+  local event_names = {}
+  for event_type, _ in pairs(GuiEventBus._observers) do
+    event_names[#event_names + 1] = event_type
+  end
+  table.sort(event_names)
+  for ei = 1, #event_names do
+    local event_type = event_names[ei]
+    local observers = GuiEventBus._observers[event_type]
     for i = #observers, 1, -1 do
       local observer = observers[i]
       local should_remove = false

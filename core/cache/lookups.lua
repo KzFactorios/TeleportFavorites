@@ -117,7 +117,14 @@ end
 local function sweep_expired_entries()
   if not game then return end
   local cache = ensure_cache()
-  for tn, entry in pairs(cache.tags) do
+  local tns = {}
+  for tn, _ in pairs(cache.tags) do
+    tns[#tns + 1] = tn
+  end
+  table.sort(tns)
+  for i = 1, #tns do
+    local tn = tns[i]
+    local entry = cache.tags[tn]
     if not entry or not entry.tag or not entry.tag.valid then
       if entry and entry.gps then
         cache.gps_to_tag_number[entry.gps] = nil

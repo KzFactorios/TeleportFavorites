@@ -379,6 +379,26 @@ function basic_helpers.for_each_player_by_index_asc(callback)
   end
 end
 
+--- Like `for_each_player_by_index_asc`, but only players with `player.connected` true (e.g. replaces `pairs(game.connected_players)` safely).
+---@param callback fun(player: LuaPlayer, player_index: uint)
+function basic_helpers.for_each_connected_player_by_index_asc(callback)
+  if not game or not game.players or type(callback) ~= "function" then return end
+  local indices = {}
+  for _, player in pairs(game.players) do
+    if player and player.valid and player.connected then
+      indices[#indices + 1] = player.index
+    end
+  end
+  table.sort(indices)
+  for i = 1, #indices do
+    local pindex = indices[i]
+    local player = game.players[pindex]
+    if player and player.valid and player.connected then
+      callback(player, pindex)
+    end
+  end
+end
+
 function basic_helpers.error_message_to_player(player, error_key, _context)
   if not basic_helpers.is_valid_player(player) then return end
   local message_text = basic_helpers.format_error_message(error_key)

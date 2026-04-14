@@ -1,7 +1,9 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.0.98
-Date: 2026-03-20
+Date: 2026-04-15
   Changes:
+    - Multiplayer: deterministic iteration for `on_runtime_mod_setting_changed` (connected players), chart-tag ownership reset (surfaces and GPS keys), tag-editor marker deferrals on `on_tick`, GUI observer dirty-slot merge/cleanup, and GPS lookup validity sweep; added `for_each_connected_player_by_index_asc`
+    - If desync persists with identical TeleportFavorites script checksums on host and client, try the same save with this mod disabled on both sides to see whether the failure is attributable to this mod or to vanilla/other mods
     - Fixed issue where owner info was getting lost after moving a tag
     - Favorites bar refresh after drag-and-drop reorder avoids unnecessary full rebuilds; only slots that actually change are updated, with batched favorites/label reads per drop
     - Drag-and-drop reorder skips redundant slot redraws when a move does not change how those slots look

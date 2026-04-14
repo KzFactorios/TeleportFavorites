@@ -60,15 +60,29 @@ local function reset_ownership_for_player(player_name)
     return 0
   end
   local reset_count = 0
+  local surfaces = {}
   for _, surface in pairs(game.surfaces) do
     if surface and surface.valid then
-      local surface_tags = Cache.get_surface_tags(surface.index)
-      if surface_tags then
-        for _, tag in pairs(surface_tags) do
-          if tag and tag.owner_name == player_name then
-            tag.owner_name = nil
-            reset_count = reset_count + 1
-          end
+      surfaces[#surfaces + 1] = surface
+    end
+  end
+  table.sort(surfaces, function(a, b) return a.index < b.index end)
+  for si = 1, #surfaces do
+    local surface = surfaces[si]
+    local surface_tags = Cache.get_surface_tags(surface.index)
+    if surface_tags then
+      local gps_keys = {}
+      for gps, _ in pairs(surface_tags) do
+        if type(gps) == "string" then
+          gps_keys[#gps_keys + 1] = gps
+        end
+      end
+      table.sort(gps_keys)
+      for gi = 1, #gps_keys do
+        local tag = surface_tags[gps_keys[gi]]
+        if tag and tag.owner_name == player_name then
+          tag.owner_name = nil
+          reset_count = reset_count + 1
         end
       end
     end
@@ -232,12 +246,12 @@ local function register_core_events(script)
 
       if event.setting == "favorites_on" then
         ErrorHandler.debug_log("[SETTINGS] Processing favorites_on change")
-        for _, player in pairs(game.connected_players) do
+        BasicHelpers.for_each_connected_player_by_index_asc(function(player)
           Cache.Settings.invalidate_player_cache(player)
           local player_settings = Cache.Settings.get_player_settings(player)
           ErrorHandler.debug_log("[SETTINGS] Player " .. player.name .. " favorites_on: " .. tostring(player_settings.favorites_on))
           fave_bar.build(player, true)
-        end
+        end)
         return
       end
 
@@ -247,23 +261,23 @@ local function register_core_events(script)
         if player and player.valid then
           apply_max_slots_to_player(player)
         else
-          for _, p in pairs(game.connected_players) do
+          BasicHelpers.for_each_connected_player_by_index_asc(function(p)
             apply_max_slots_to_player(p)
-          end
+          end)
         end
         return
       end
 
       if event.setting == "enable_teleport_history" then
         ErrorHandler.debug_log("[SETTINGS] Processing enable_teleport_history change")
-        for _, player in pairs(game.connected_players) do
+        BasicHelpers.for_each_connected_player_by_index_asc(function(player)
           Cache.Settings.invalidate_player_cache(player)
           local player_settings = Cache.Settings.get_player_settings(player)
           if not player_settings.enable_teleport_history then
             teleport_history_modal.destroy(player)
           end
           fave_bar.build(player, true)
-        end
+        end)
         return
       end
 
@@ -340,7 +354,16 @@ local function register_core_events(script)
     -- Deferred tag-editor map marker (favorites open): run after modal frame first tick.
     local defer_at = storage and storage._tf_tag_editor_marker_defer_at
     if defer_at then
+      local deferred_indices = {}
       for pindex, due in pairs(defer_at) do
+        if type(pindex) == "number" and type(due) == "number" then
+          deferred_indices[#deferred_indices + 1] = pindex
+        end
+      end
+      table.sort(deferred_indices)
+      for di = 1, #deferred_indices do
+        local pindex = deferred_indices[di]
+        local due = defer_at[pindex]
         if type(due) == "number" and event.tick >= due then
           defer_at[pindex] = nil
           local p = game.players[pindex]

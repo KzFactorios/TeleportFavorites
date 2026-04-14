@@ -250,11 +250,9 @@ function ChartTagHelpers.update_tag_metadata(gps, chart_tag, acting_player)
       end
     end
   else
-    for _, game_player in pairs(game.connected_players) do
-      if game_player and game_player.valid then
-        notify_indices[#notify_indices + 1] = game_player.index
-      end
-    end
+    BasicHelpers.for_each_connected_player_by_index_asc(function(game_player)
+      notify_indices[#notify_indices + 1] = game_player.index
+    end)
   end
   table.sort(notify_indices)
   local notified = 0
