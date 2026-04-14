@@ -5,6 +5,8 @@
 - **Phase 1 / 2:** Addressed common nondeterminism sources (stable `game.players` / `connected_players` iteration, sorted surfaces/tags ownership reset, tick deferrals, GUI observer slot merge order, lookup validity sweep order, etc.). See changelog under 0.0.98 and prior MP fixes.
 - **Post–phase 2:** Desync still occurs immediately after `TryingToCatchUp` (e.g. reports on 2026-04-14 with varying `crcTick`).
 - **Attribution (confirmed):** With **TeleportFavorites removed on both host and client**, **no desync**. With TF enabled, desync returns. Treat as **TF-caused** (or TF-triggered) until a narrower minimal repro says otherwise.
+- **Bisect (2026-04-14):** With runtime-global **`tf-mp-bisect-mode` = `no_fave_bar_queue`** saved on the **host** (then clients join), **catch-up completes without desync**. That implicated [`fave_bar.process_slot_build_queue`](gui/favorites_bar/fave_bar_progressive.lua) / [`fave_bar.flush_all_dirty_slots`](gui/favorites_bar/fave_bar_slots.lua).
+- **Root cause (2026-04-14):** Session-local **`_fave_bar_queue_has_work`** could stay **false** while [`fave_bar_slots` deferred rebuild](gui/favorites_bar/fave_bar_slots.lua) appended to **`storage._tf_slot_build_queue`** only — one peer skipped queue processing, another ran it → **`storage` diverged**. Fix: derive “has work” from **`#storage._tf_slot_build_queue`** each tick; set **`stage = \"slots\"`** on deferred inserts; coerce nil-`stage` legacy-shaped entries. **`tf-mp-bisect-mode` = `none`** should be retested in MP.
 
 ## Goal
 
@@ -38,7 +40,7 @@ Eliminate **catch-up / early-tick** multiplayer CRC failures with **TeleportFavo
 
 ### Deferred: subsystem bisection via temporary flags
 
-**Implemented:** runtime-global mod setting **`tf-mp-bisect-mode`** (`none` | `no_fave_bar_queue` | `no_tag_editor` | `no_history_modal` | `no_lookups_sweep` | `no_chart_and_remote`). Map → Mod settings → Teleport Favorites — value must match on all peers. Code: [`core/utils/mp_bisect.lua`](core/utils/mp_bisect.lua), gates in [`event_registration_dispatcher.lua`](core/events/event_registration_dispatcher.lua), remote stubs in [`teleport_history.lua`](core/teleport/teleport_history.lua). Rejoin MP after each change; first mode that **stops** desync narrows the suspect layer.
+**Implemented:** runtime-global mod setting **`tf-mp-bisect-mode`** (`none` | `no_fave_bar_queue` | `no_tag_editor` | `no_history_modal` | `no_lookups_sweep` | `no_chart_and_remote`). Map → Mod settings → Teleport Favorites — value is stored in the **save**; **host** can set it in **single-player**, **save**, then start MP so **joining clients never need the map UI**. Code: [`core/utils/mp_bisect.lua`](core/utils/mp_bisect.lua), gates in [`event_registration_dispatcher.lua`](core/events/event_registration_dispatcher.lua), remote stubs in [`teleport_history.lua`](core/teleport/teleport_history.lua). Rejoin MP after each change; first mode that **stops** desync narrows the suspect layer.
 
 ## Likely code targets (after phase 2)
 
@@ -64,6 +66,7 @@ Re-audit these even if partially fixed; catch-up may exercise rare branches:
 | 2026-04-14 | — | — | **Phase 3 code (static audit):** sorted core `script.on_event` registration, custom inputs, `StorageMigrations` / `apply_player_max_slots` / `tag_destroy_helper` / `handlers` favorite scan; `TeleportHistory` malformed-GPS `log` |
 | 2026-04-14 | 127845210 | 1507 | Archive `desync-report-2026-04-14_14-48-49.zip`; post–phase 3; `TryingToCatchUp` tick 1504; nested `script.dat` matched (2339 B client/server) |
 | 2026-04-14 | 1709456018 | 1461 | Archive `desync-report-2026-04-14_15-03-02.zip`; post–`tf-mp-bisect-mode` prototype bump (`Checksum of TeleportFavorites` 2070420553); `TryingToCatchUp` tick 1457; nested `script.dat` matched (2339 B client/server) |
+| 2026-04-14 | 2972902694 | 1445 | Archive `desync-report-2026-04-14_15-15-30.zip`; post–phase 4 (tag editor single-flight defer + sorted dirty-slot flush); prototype 2070420553; `TryingToCatchUp` tick 1442; nested `script.dat` matched (2339 B client/server) |
 | … | … | … | … |
 
 ## Static audit (phase 4 — code pass)

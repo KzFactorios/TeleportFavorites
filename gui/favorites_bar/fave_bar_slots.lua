@@ -241,6 +241,7 @@ return function(fave_bar, helpers)
             table.insert(storage._tf_slot_build_queue, {
               player_index   = player.index,
               surface_index  = player.surface.index,
+              stage          = "slots",
               next_slot      = 1,
               expected_built = 0,
             })

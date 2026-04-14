@@ -40,9 +40,8 @@ return function(fave_bar, helpers)
   local is_build_in_flight           = helpers.is_build_in_flight
   local GuiElementBuilders           = helpers.GuiElementBuilders
 
-  -- Session-local flag: true when storage._tf_slot_build_queue has work pending.
-  -- Avoids the storage read and length check on every on_nth_tick(2) when idle.
-  -- Rehydrated in on_load_cleanup (read-only; must NOT mutate storage).
+  -- Session-local hint (kept in sync with storage in process_slot_build_queue / on_load_cleanup).
+  -- Do not use it to skip processing: other modules may enqueue into storage without touching this flag.
   local _fave_bar_queue_has_work = false
 
   --- Init the build queue and cancel any in-flight build. Does NOT create GUI elements.
@@ -147,20 +146,22 @@ return function(fave_bar, helpers)
 
   --- Called on every on_nth_tick(2); processes one queue stage per call.
   function fave_bar.process_slot_build_queue()
-    -- Fast-exit: skip all storage access when nothing is queued.
-    if not _fave_bar_queue_has_work then return end
     -- Skip tick 0: on_nth_tick(2) fires at tick 0 (0 % 2 == 0).
     if game.tick < 2 then return end
-    if not storage or not storage._tf_slot_build_queue then
+    -- Never trust the session flag alone: `fave_bar_slots` (and similar) may insert into
+    -- `storage._tf_slot_build_queue` without setting `_fave_bar_queue_has_work`. If one peer
+    -- skips processing while another drains the queue, `storage` diverges → MP desync.
+    if not storage or not storage._tf_slot_build_queue or #storage._tf_slot_build_queue == 0 then
       _fave_bar_queue_has_work = false
       return
     end
-    if #storage._tf_slot_build_queue == 0 then
-      _fave_bar_queue_has_work = false
-      return
-    end
+    _fave_bar_queue_has_work = true
 
     local entry  = storage._tf_slot_build_queue[1]
+    -- Deferred rebuild from fave_bar_slots used next_slot/expected_built without stage (legacy "slots" worker).
+    if entry and entry.stage == nil and type(entry.next_slot) == "number" and type(entry.expected_built) == "number" then
+      entry.stage = "slots"
+    end
     local player = game.players[entry.player_index]
     if not player or not player.valid then
       table.remove(storage._tf_slot_build_queue, 1)
