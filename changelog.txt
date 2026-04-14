@@ -2,6 +2,7 @@
 Version: 0.0.98
 Date: 2026-04-15
   Changes:
+    - Multiplayer (phase 3 static audit): deterministic `script.on_event` registration order for core lifecycle events; sorted custom-input handler registration; sorted `storage.surfaces` / tag GPS iteration in `storage_migrations`; sorted per-player surfaces in `Cache.apply_player_max_slots`; `tag_destroy_helper` uses sorted-by-index players and numeric favorite slots; `player_has_nonblank_favorites` uses array order; malformed-history GPS warning uses `log` instead of `game.print`; sorted registration-result checks in `register_all_events`
     - Multiplayer: deterministic iteration for `on_runtime_mod_setting_changed` (connected players), chart-tag ownership reset (surfaces and GPS keys), tag-editor marker deferrals on `on_tick`, GUI observer dirty-slot merge/cleanup, and GPS lookup validity sweep; added `for_each_connected_player_by_index_asc`
     - If desync persists with identical TeleportFavorites script checksums on host and client, try the same save with this mod disabled on both sides to see whether the failure is attributable to this mod or to vanilla/other mods
     - Fixed issue where owner info was getting lost after moving a tag

@@ -462,7 +462,15 @@ do
     if new_max < 1 then return end
     local player_data = Cache.get_player_data(player)
     if not player_data or not player_data.surfaces then return end
-    for _, sdata in pairs(player_data.surfaces) do
+    local surf_indices = {}
+    for sidx in pairs(player_data.surfaces) do
+      if type(sidx) == "number" then
+        surf_indices[#surf_indices + 1] = sidx
+      end
+    end
+    table.sort(surf_indices)
+    for si = 1, #surf_indices do
+      local sdata = player_data.surfaces[surf_indices[si]]
       local favorites = sdata.favorites or {}
       local current_len = #favorites
       if current_len < new_max then

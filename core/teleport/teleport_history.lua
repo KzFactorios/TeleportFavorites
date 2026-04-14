@@ -102,7 +102,7 @@ function TeleportHistory.add_gps(player, gps)
 
 	local surface_index = GPSUtils.get_surface_index_from_gps(gps)
 	if not surface_index or type(surface_index) ~= "number" then
-		game.print("[TeleportFavorites] WARNING: Malformed GPS string, using player's current surface index for history. gps=" .. tostring(gps))
+		log("[TeleportFavorites] WARNING: Malformed GPS string, using player's current surface index for history. gps=" .. tostring(gps))
 		surface_index = player.surface and player.surface.index or 1
 	else
 		surface_index = math.floor(surface_index)

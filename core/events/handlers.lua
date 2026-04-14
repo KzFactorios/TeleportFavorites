@@ -128,8 +128,9 @@ local _deferred_init_queue = {}
 local function player_has_nonblank_favorites(player, surface_idx)
   local pfaves = Cache.get_player_favorites(player, surface_idx)
   if not pfaves then return false end
-  for _, fav in pairs(pfaves) do
-    if not FavoriteUtils.is_blank_favorite(fav) then return true end
+  for i = 1, #pfaves do
+    local fav = pfaves[i]
+    if fav and not FavoriteUtils.is_blank_favorite(fav) then return true end
   end
   return false
 end

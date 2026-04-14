@@ -267,8 +267,15 @@ function M.register_default_inputs(script)
       for k, _ in pairs(default_custom_input_handlers) do table.insert(t, k) end
       return t
     end)(), ", ") or "nil") })
+  local input_names_sorted = {}
+  for input_name, _ in pairs(default_custom_input_handlers) do
+    input_names_sorted[#input_names_sorted + 1] = input_name
+  end
+  table.sort(input_names_sorted)
   local count = 0
-  for input_name, handler in pairs(default_custom_input_handlers) do
+  for i = 1, #input_names_sorted do
+    local input_name = input_names_sorted[i]
+    local handler = default_custom_input_handlers[input_name]
     local safe_handler = create_safe_handler(handler, input_name)
     local success, err = pcall(function()
       script.on_event(input_name, safe_handler)

@@ -38,10 +38,26 @@ function StorageMigrations.migrate_faved_by_players_v1()
   local surfaces = storage.surfaces
   if type(surfaces) ~= "table" then return end
   local tags_updated = 0
-  for _, surf in pairs(surfaces) do
+  local surface_indices = {}
+  for sidx in pairs(surfaces) do
+    if type(sidx) == "number" then
+      surface_indices[#surface_indices + 1] = sidx
+    end
+  end
+  table.sort(surface_indices)
+  for si = 1, #surface_indices do
+    local surf = surfaces[surface_indices[si]]
     local tags = surf and surf.tags
     if type(tags) == "table" then
-      for _, tag in pairs(tags) do
+      local gps_keys = {}
+      for gps, _ in pairs(tags) do
+        if type(gps) == "string" then
+          gps_keys[#gps_keys + 1] = gps
+        end
+      end
+      table.sort(gps_keys)
+      for gi = 1, #gps_keys do
+        local tag = tags[gps_keys[gi]]
         if type(tag) == "table" and type(tag.faved_by_players) == "table" then
           tag.faved_by_players = normalize_faved_by_players(tag.faved_by_players)
           tags_updated = tags_updated + 1

@@ -6,8 +6,8 @@
 
 -- Weak tables to track objects being destroyed
 local Deps = require("core.deps_barrel")
-local ErrorHandler, Cache, Constants =
-  Deps.ErrorHandler, Deps.Cache, Deps.Constants
+local ErrorHandler, Cache, Constants, BasicHelpers =
+  Deps.ErrorHandler, Deps.Cache, Deps.Constants, Deps.BasicHelpers
 local FavoriteUtils = require("core.favorite.favorite_utils")
 
 local destroying_tags = setmetatable({}, { __mode = "k" })
@@ -42,17 +42,19 @@ local function cleanup_player_favorites(tag)
   end
   
   local cleaned_count = 0
-  for _, player in pairs(_G.game.players) do
+  local blank = (Constants and Constants.settings and Constants.settings.BLANK_GPS) or "1000000.1000000.1"
+  BasicHelpers.for_each_player_by_index_asc(function(player)
     local pfaves = Cache.get_player_favorites(player)
-    for _, fave in pairs(pfaves) do
-      if fave.gps == tag.gps then
-        -- Use canonical blank GPS constant to avoid hardcoded literal
-        fave.gps = (Constants and Constants.settings and Constants.settings.BLANK_GPS) or "1000000.1000000.1"
+    if not pfaves then return end
+    for i = 1, #pfaves do
+      local fave = pfaves[i]
+      if fave and fave.gps == tag.gps then
+        fave.gps = blank
         fave.locked = false
         cleaned_count = cleaned_count + 1
       end
     end
-  end
+  end)
 
   return cleaned_count
 end

@@ -410,7 +410,17 @@ local function register_core_events(script)
     end
   end)
 
-  for event_type, event_config in pairs(core_events) do
+  -- Deterministic registration order (pairs() on event keys is undefined across peers).
+  local event_types = {}
+  for event_type, _ in pairs(core_events) do
+    event_types[#event_types + 1] = event_type
+  end
+  table.sort(event_types, function(a, b)
+    return (tonumber(a) or 0) < (tonumber(b) or 0)
+  end)
+  for i = 1, #event_types do
+    local event_type = event_types[i]
+    local event_config = core_events[event_type]
     local safe_handler = create_safe_event_handler(event_config.handler, event_config.name)
     script.on_event(event_type, safe_handler)
     registration_count = registration_count + 1
@@ -513,8 +523,14 @@ function EventRegistrationDispatcher.register_all_events(script)
     ErrorHandler.warn_log("Failed to register debug commands", { error = tostring(debug_cmd_err) })
   end
 
-  for category, success in pairs(results) do
-    if not success then
+  local result_categories = {}
+  for category, _ in pairs(results) do
+    result_categories[#result_categories + 1] = category
+  end
+  table.sort(result_categories)
+  for ri = 1, #result_categories do
+    local category = result_categories[ri]
+    if not results[category] then
       overall_success = false
       ErrorHandler.warn_log("Event registration failed for category", { category = category })
     end
