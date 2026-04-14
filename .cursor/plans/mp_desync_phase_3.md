@@ -38,7 +38,7 @@ Eliminate **catch-up / early-tick** multiplayer CRC failures with **TeleportFavo
 
 ### Deferred: subsystem bisection via temporary flags
 
-**Not in scope until requested:** no-op major subsystems behind a shared dev flag (same on all peers), rejoin MP after each toggle to see which layer removes the desync. When resumed, draft order was: favorites bar progressive + flush → tag editor + marker deferral → teleport history modal progressive → `Cache.Lookups` sweep/seed → chart-tag / ownership / remote history.
+**Implemented:** runtime-global mod setting **`tf-mp-bisect-mode`** (`none` | `no_fave_bar_queue` | `no_tag_editor` | `no_history_modal` | `no_lookups_sweep` | `no_chart_and_remote`). Map → Mod settings → Teleport Favorites — value must match on all peers. Code: [`core/utils/mp_bisect.lua`](core/utils/mp_bisect.lua), gates in [`event_registration_dispatcher.lua`](core/events/event_registration_dispatcher.lua), remote stubs in [`teleport_history.lua`](core/teleport/teleport_history.lua). Rejoin MP after each change; first mode that **stops** desync narrows the suspect layer.
 
 ## Likely code targets (after phase 2)
 
@@ -62,6 +62,7 @@ Re-audit these even if partially fixed; catch-up may exercise rare branches:
 |------|-------------------|-------------------------|--------|
 | 2026-04-14 | (from log) | ~1705 | Post–phase 2; `script.dat` differed in archive client vs server |
 | 2026-04-14 | — | — | **Phase 3 code (static audit):** sorted core `script.on_event` registration, custom inputs, `StorageMigrations` / `apply_player_max_slots` / `tag_destroy_helper` / `handlers` favorite scan; `TeleportHistory` malformed-GPS `log` |
+| 2026-04-14 | 127845210 | 1507 | Archive `desync-report-2026-04-14_14-48-49.zip`; post–phase 3; `TryingToCatchUp` tick 1504; nested `script.dat` matched (2339 B client/server) |
 | … | … | … | … |
 
 ## References
