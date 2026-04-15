@@ -1,0 +1,247 @@
+local Deps = require("core.deps_barrel")
+local BasicHelpers, ErrorHandler, Cache, GPSUtils, Enum =
+  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.GpsUtils, Deps.Enum
+local FavoriteUtils = require("core.favorite.favorite_utils")
+local TeleportHistory = require("core.teleport.teleport_history")
+local GuiElementBuilders = require("core.utils.gui_element_builders")
+local GuiValidation = require("core.utils.gui_validation")
+local TeleportEntrypoint = require("core.control.teleport_entrypoint")
+local teleport_history_modal = require("gui.teleport_history_modal.teleport_history_modal")
+local M = {}
+local function handle_teleport_to_favorite_slot(event, slot_number)
+  local player = game.get_player(event.player_index)
+  if not player or not player.valid then
+    ErrorHandler.debug_log("Invalid player in teleport handler", { player_index = event.player_index })
+    return
+  end
+  local player_settings = Cache.Settings.get_player_settings(player)
+  if not player_settings.favorites_on then
+    ErrorHandler.debug_log("Favorites are disabled in player settings", { player = player.name })
+    return
+  end
+  local surface_index = player.surface.index
+  local favorites = Cache.get_player_favorites(player, surface_index)
+  ErrorHandler.debug_log("Fetched favorites for surface", {
+    player = player.name,
+    surface_index = surface_index,
+    favorites_count = favorites and #favorites or 0,
+    favorites = favorites
+  })
+  if not favorites then
+    BasicHelpers.safe_player_print(player, "tf-gui.no_favorites_available")
+    ErrorHandler.debug_log("No favorites available for player", { player = player.name, surface_index = surface_index })
+    return
+  end
+  local favorite = favorites[slot_number]
+  ErrorHandler.debug_log("Favorite slot data", {
+    player = player.name,
+    slot = slot_number,
+    favorite = favorite
+  })
+  if not favorite or FavoriteUtils.is_blank_favorite(favorite) then
+    ErrorHandler.debug_log("Favorite slot empty or blank",
+      { player = player.name, slot = slot_number, favorite = favorite })
+    BasicHelpers.safe_player_print(player, "tf-gui.favorite_slot_empty")
+    return
+  end
+  ErrorHandler.debug_log("Attempting teleport to GPS", {
+    player = player.name,
+    slot = slot_number,
+    gps = favorite.gps,
+    favorite = favorite
+  })
+  local success, outcome = TeleportEntrypoint.execute(player, favorite.gps, {
+    source = "favorite_hotkey",
+    add_to_history = true,
+    action_name = "favorite_hotkey_teleport",
+    end_action_on_success = true,
+    end_action_on_failure = true,
+  })
+  ErrorHandler.debug_log("Teleport to favorite slot result", {
+    player = player.name,
+    slot = slot_number,
+    gps = favorite.gps,
+    outcome = outcome,
+    success = success,
+    favorite = favorite
+  })
+end
+local function navigate_history(event, calc_new_pointer)
+  local player = game.get_player(event.player_index)
+  if not player or not player.valid then return end
+  local surface_index = player.surface.index
+  local hist = Cache.get_player_teleport_history(player, surface_index)
+  if not hist or not hist.stack or #hist.stack == 0 then return end
+  local new_pointer = calc_new_pointer(hist)
+  TeleportHistory.set_pointer(player, surface_index, new_pointer)
+  if teleport_history_modal.is_open(player) then
+    teleport_history_modal.update_history_list(player)
+  end
+  local pointer = math.max(1, math.min(hist.pointer, #hist.stack))
+  local entry = hist.stack[pointer]
+  if entry and type(entry) == "table" and entry.gps then
+    local entry_surface = GPSUtils.get_surface_index_from_gps(entry.gps)
+    if entry_surface and math.floor(entry_surface) ~= surface_index then
+      ErrorHandler.debug_log("History navigation: short-circuit, entry is on different surface", {
+        entry_surface = entry_surface,
+        current_surface = surface_index
+      })
+      return
+    end
+    TeleportEntrypoint.execute(player, entry.gps, {
+      source = "history_hotkey",
+      add_to_history = false,
+      action_name = "history_hotkey_teleport",
+      silent_already_at_target = true,
+      end_action_on_success = true,
+      end_action_on_failure = true,
+    })
+  else
+    ErrorHandler.debug_log("History navigation: invalid entry or empty stack", {
+      pointer = pointer,
+      stack_size = #hist.stack,
+      entry_type = type(entry),
+      entry_gps = entry and entry.gps or nil
+    })
+  end
+end
+local default_custom_input_handlers = {
+  ["teleport_history-toggle"] = function(event)
+    local player = game.get_player(event.player_index)
+    if not BasicHelpers.is_valid_player(player) then return end
+    local settings = Cache.Settings.get_player_settings(player)
+    if not settings.enable_teleport_history then
+      ErrorHandler.debug_log("Teleport history toggle pressed but feature disabled", { player = player.name })
+      return
+    end
+    if teleport_history_modal.is_open(player) then
+      teleport_history_modal.destroy(player, true)
+    else
+      teleport_history_modal.build(player)
+    end
+  end,
+  ["teleport_history-prev"] = function(event)
+    navigate_history(event, function(hist) return math.max(1, hist.pointer - 1) end)
+  end,
+  ["teleport_history-next"] = function(event)
+    navigate_history(event, function(hist) return math.min(#hist.stack, hist.pointer + 1) end)
+  end,
+  ["teleport_history-first"] = function(event)
+    navigate_history(event, function() return 1 end)
+  end,
+  ["teleport_history-last"] = function(event)
+    navigate_history(event, function(hist) return #hist.stack end)
+  end,
+  ["teleport_history-clear"] = function(event)
+    local player = game.get_player(event.player_index)
+    if player and player.valid then
+      if not teleport_history_modal.is_open(player) then
+        ErrorHandler.debug_log("Teleport history clear pressed but modal not open", { player = player.name })
+        return
+      end
+      GuiValidation.safe_destroy_frame(player.gui.screen, Enum.GuiEnum.GUI_FRAME.TAG_EDITOR_DELETE_CONFIRM)
+      GuiValidation.safe_destroy_frame(player.gui.screen, Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_FRAME)
+      local message
+      message = { "tf-gui.confirm_delete_history_message" }
+      local _hist_frame, _hist_confirm, _hist_cancel = GuiElementBuilders.create_confirmation_dialog(
+        player.gui.screen,
+        Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_FRAME,
+        message,
+        Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_CONFIRM_BTN,
+        Enum.UIEnums.GUI.TeleportHistory.CONFIRM_DIALOG_CANCEL_BTN
+      )
+      Cache.set_modal_dialog_state(player, "delete_confirmation")
+      if _hist_frame and _hist_frame.valid then
+        player.opened = _hist_frame
+      end
+    end
+  end,
+}
+for i = 1, 10 do
+  local slot = i
+  default_custom_input_handlers[Enum.EventEnum.TELEPORT_TO_FAVORITE .. slot] =
+    function(event) handle_teleport_to_favorite_slot(event, slot) end
+end
+local function create_safe_handler(handler, handler_name)
+  return function(event)
+    ErrorHandler.debug_log("Custom input received", {
+      handler_name = handler_name,
+      player_index = event.player_index,
+      input_name = event.input_name
+    })
+    if event.player_index then
+      local player = game.get_player(event.player_index)
+      if BasicHelpers.is_valid_player(player) and Cache.is_modal_dialog_active(player) then
+        local allowed_inputs = {
+          "tf-close-tag-editor",
+          "tf-close-modal"
+        }
+        local input_allowed = false
+        for _, allowed_input in ipairs(allowed_inputs) do
+          if event.input_name == allowed_input then
+            input_allowed = true
+            break
+          end
+        end
+        if not input_allowed then
+          ErrorHandler.debug_log("[MODAL BLOCKER] Blocking custom input", {
+            input_name = event.input_name,
+            player_index = event.player_index,
+            modal_type = Cache.get_modal_dialog_type(player)
+          })
+          return
+        end
+      end
+    end
+    local success, err = pcall(handler, event)
+    if not success then
+      ErrorHandler.warn_log("Custom input handler failed", {
+        error = tostring(err),
+        player_index = event.player_index
+      })
+      if event.player_index then
+        local player = game.get_player(event.player_index)
+        if player and player.valid then
+          BasicHelpers.error_message_to_player(player, "Input handler error occurred")
+        end
+      end
+    end
+  end
+end
+function M.register_default_inputs(script)
+  if not script or type(script.on_event) ~= "function" then
+    ErrorHandler.warn_log("Invalid script object for custom input registration")
+    return false
+  end
+  ErrorHandler.debug_log("Registering default custom input handlers")
+  ErrorHandler.debug_log("Handler table keys:",
+    { keys = (default_custom_input_handlers and table.concat((function()
+      local t = {}
+      for k, _ in pairs(default_custom_input_handlers) do table.insert(t, k) end
+      return t
+    end)(), ", ") or "nil") })
+  local input_names_sorted = {}
+  for input_name, _ in pairs(default_custom_input_handlers) do
+    input_names_sorted[#input_names_sorted + 1] = input_name
+  end
+  table.sort(input_names_sorted)
+  local count = 0
+  for i = 1, #input_names_sorted do
+    local input_name = input_names_sorted[i]
+    local handler = default_custom_input_handlers[input_name]
+    local safe_handler = create_safe_handler(handler, input_name)
+    local success, err = pcall(function()
+      script.on_event(input_name, safe_handler)
+    end)
+    if success then
+      count = count + 1
+      ErrorHandler.debug_log("Registered custom input handler", { input_name = input_name })
+    else
+      ErrorHandler.warn_log("Failed to register custom input handler", { input_name = input_name, error = err })
+    end
+  end
+  ErrorHandler.debug_log("Custom input handler registration complete", { registered = count })
+  return true
+end
+M.default_custom_input_handlers = default_custom_input_handlers
+return M

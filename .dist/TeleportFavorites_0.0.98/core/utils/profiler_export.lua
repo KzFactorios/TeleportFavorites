@@ -1,0 +1,306 @@
+local Constants = require("core.constants_impl")
+local M = {}
+local active_profiler = nil
+local active_profiler_started_tick = nil
+local section_profilers = {}
+local section_results = {}
+local STORAGE_END_KEY = "_tf_profile_end_tick"
+local STORAGE_ACTION_SEQ_KEY = "_tf_profile_action_seq"
+local STORAGE_ACTION_CTX_KEY = "_tf_profile_action_ctx"
+local LEGACY_DEFER_APPLY_KEY = "_tf_defer_profile_apply"
+local defer_profile_apply_next_tick = false
+local commands_registered = false
+function M.begin_action_trace(action_name, player_index)
+  if not storage then return nil end
+  if type(player_index) ~= "number" then return nil end
+  storage[STORAGE_ACTION_SEQ_KEY] = storage[STORAGE_ACTION_SEQ_KEY] or {}
+  storage[STORAGE_ACTION_CTX_KEY] = storage[STORAGE_ACTION_CTX_KEY] or {}
+  local seqs = storage[STORAGE_ACTION_SEQ_KEY]
+  local next_seq = (tonumber(seqs[player_index]) or 0) + 1
+  seqs[player_index] = next_seq
+  local id = "p" .. tostring(player_index) .. "s" .. tostring(next_seq)
+  storage[STORAGE_ACTION_CTX_KEY][player_index] = {
+    id = id,
+    action_name = tostring(action_name or "unknown"),
+    started_tick = game and game.tick or 0,
+  }
+  return id
+end
+function M.get_action_trace_id(player_index)
+  if not storage then return nil end
+  if type(player_index) ~= "number" then return nil end
+  local ctxs = storage[STORAGE_ACTION_CTX_KEY]
+  local ctx = ctxs and ctxs[player_index] or nil
+  return ctx and ctx.id or nil
+end
+function M.end_action_trace(player_index, action_id)
+  if not storage then return end
+  if type(player_index) ~= "number" then return end
+  local ctxs = storage[STORAGE_ACTION_CTX_KEY]
+  if not ctxs then return end
+  local ctx = ctxs[player_index]
+  if not ctx then return end
+  if action_id and ctx.id ~= action_id then return end
+  ctxs[player_index] = nil
+end
+function M.action_section_name(base_name, action_id, player_index)
+  local id = action_id
+  if (not id or id == "") and type(player_index) == "number" then
+    id = M.get_action_trace_id(player_index)
+  end
+  if id and id ~= "" then
+    return "act_" .. tostring(id) .. "_" .. tostring(base_name)
+  end
+  return tostring(base_name)
+end
+local function profiler_mode()
+  return tostring(Constants.settings.PROFILER_CONTROL_MODE or "off")
+end
+local function profiler_auto_stop_ticks()
+  local raw_value = tonumber(Constants.settings.PROFILER_MAX_TICKS) or 0
+  if raw_value < 0 then
+    return 0
+  end
+  return math.floor(raw_value)
+end
+local function profile_file_name()
+  return tostring(Constants.settings.PROFILER_OUTPUT_FILE or "teleport-favorites-profile.txt")
+end
+local function profile_notify(player_index, message)
+  local player = player_index and game.get_player(player_index) or nil
+  if player then
+    player.print(message)
+    return
+  end
+  log(message)
+end
+function M.start_profiler_capture(player_index)
+  if active_profiler then
+    return false
+  end
+  local ok, prof_or_err = pcall(function()
+    return helpers.create_profiler()
+  end)
+  if not ok or not prof_or_err then
+    log("[TeleportFavorites] helpers.create_profiler failed: " .. tostring(prof_or_err))
+    return false
+  end
+  active_profiler = prof_or_err
+  active_profiler_started_tick = game.tick
+  log("[TeleportFavorites] LuaProfiler capture started at tick " .. tostring(game.tick))
+  return true
+end
+function M.start_section(name)
+  if not active_profiler then return end
+  if section_profilers[name] then return end
+  local ok, prof = pcall(function() return helpers.create_profiler() end)
+  if ok and prof then
+    section_profilers[name] = { profiler = prof, start_tick = game.tick }
+  end
+end
+function M.stop_section(name)
+  local entry = section_profilers[name]
+  if not entry then return end
+  pcall(function() entry.profiler.stop() end)
+  table.insert(section_results, {
+    name = name,
+    profiler = entry.profiler,
+    start_tick = entry.start_tick,
+    end_tick = game.tick,
+  })
+  section_profilers[name] = nil
+end
+function M.player_scoped_section(base, player_index)
+  if type(player_index) ~= "number" then
+    return tostring(base)
+  end
+  local id = M.get_action_trace_id(player_index)
+  if id and id ~= "" then
+    return M.action_section_name(base, nil, player_index)
+  end
+  return tostring(base) .. "_p" .. tostring(player_index)
+end
+local function write_profiler_file(payload, filename)
+  local ok, err = pcall(function()
+    helpers.write_file(filename, payload, false)
+  end)
+  if ok then
+    return true
+  end
+  log("[TeleportFavorites] helpers.write_file (with LuaProfiler) failed: " .. tostring(err))
+  local ok2, err2 = pcall(function()
+    helpers.write_file(
+      filename,
+      payload[2] .. "(Could not embed LuaProfiler in file; see factorio-current.log.)\n",
+      false
+    )
+  end)
+  if not ok2 then
+    log("[TeleportFavorites] helpers.write_file fallback failed: " .. tostring(err2))
+  end
+  return ok
+end
+function M.stop_profiler_capture(player_index)
+  if not active_profiler then
+    return false
+  end
+  local profiler = active_profiler
+  local ok_stop, err_stop = pcall(function()
+    profiler.stop()
+  end)
+  if not ok_stop then
+    log("[TeleportFavorites] LuaProfiler stop() failed: " .. tostring(err_stop))
+  end
+  local elapsed = 0
+  local start_tick = active_profiler_started_tick or 0
+  if active_profiler_started_tick then
+    elapsed = game.tick - active_profiler_started_tick
+  end
+  local header = "TeleportFavorites profile report\n"
+    .. "Started at:    tick " .. tostring(start_tick) .. "\n"
+    .. "Stopped at:    tick " .. tostring(game.tick) .. "\n"
+    .. "Ticks elapsed: " .. tostring(elapsed) .. " (" .. tostring(math.floor(elapsed / 60)) .. "s at 60 UPS)\n\n"
+  local PAYLOAD_FIXED = 5
+  local PAYLOAD_TITLE = 1
+  local PAYLOAD_MAX   = 20
+  local CHUNK_ENTRIES = 17
+  local CHUNK_SLOTS   = PAYLOAD_MAX - PAYLOAD_FIXED - PAYLOAD_TITLE
+  local payload = { "", header, "== Overall ==\n", profiler, "\n" }
+  if #section_results > 0 then
+    table.insert(payload, "\n== Startup Sections ==\n")
+    local current_chunk = { "" }
+    for _, sec in ipairs(section_results) do
+      local sec_elapsed = sec.end_tick - sec.start_tick
+      local label = string.format(
+        "  [%-30s]  tick %d \xE2\x86\x92 %d  (%d ticks, ~%ds)\n    ",
+        sec.name, sec.start_tick, sec.end_tick, sec_elapsed, math.floor(sec_elapsed / 60)
+      )
+      table.insert(current_chunk, { "", label, sec.profiler, "\n" })
+      if #current_chunk > CHUNK_ENTRIES then
+        if #payload < PAYLOAD_MAX then
+          table.insert(payload, current_chunk)
+        end
+        current_chunk = { "" }
+      end
+    end
+    if #current_chunk > 1 and #payload < PAYLOAD_MAX then
+      table.insert(payload, current_chunk)
+    end
+  end
+  local base = profile_file_name()
+  local stem, ext = base:match("^(.+)(%.[^%.]+)$")
+  local filename = stem and (stem .. "-t" .. tostring(start_tick) .. ext) or (base .. "-t" .. tostring(start_tick))
+  write_profiler_file(payload, filename)
+  active_profiler = nil
+  active_profiler_started_tick = nil
+  section_profilers = {}
+  section_results = {}
+  if storage then
+    storage[STORAGE_ACTION_CTX_KEY] = {}
+  end
+  profile_notify(player_index, "[TeleportFavorites] Profile saved to script-output/" .. filename)
+  return true
+end
+function M.clear_profile_auto_stop()
+  if storage then
+    storage[STORAGE_END_KEY] = nil
+  end
+end
+function M.arm_profile_auto_stop_from_settings()
+  M.clear_profile_auto_stop()
+  local max_ticks = profiler_auto_stop_ticks()
+  if max_ticks <= 0 or not active_profiler then
+    return
+  end
+  if storage then
+    storage[STORAGE_END_KEY] = game.tick + max_ticks
+  end
+end
+function M.schedule_deferred_profile_apply()
+  if profiler_mode() ~= "profile" then
+    return
+  end
+  defer_profile_apply_next_tick = true
+  log("[TeleportFavorites] PROFILER_CONTROL_MODE=profile: deferred capture will start on first tick (new game or load).")
+end
+function M.on_game_tick(event)
+  if not storage then
+    return
+  end
+  if defer_profile_apply_next_tick then
+    defer_profile_apply_next_tick = false
+    M.apply_profile_mode_from_constants()
+  elseif storage[LEGACY_DEFER_APPLY_KEY] then
+    storage[LEGACY_DEFER_APPLY_KEY] = nil
+    M.apply_profile_mode_from_constants()
+  end
+  if not storage[STORAGE_END_KEY] then
+    return
+  end
+  if not active_profiler then
+    storage[STORAGE_END_KEY] = nil
+    return
+  end
+  local end_tick = storage[STORAGE_END_KEY]
+  if event.tick < end_tick then
+    return
+  end
+  storage[STORAGE_END_KEY] = nil
+  if M.stop_profiler_capture(nil) then
+    profile_notify(nil, "[TeleportFavorites] Auto profile window complete.")
+  end
+end
+function M.on_load_cleanup()
+  defer_profile_apply_next_tick = false
+  active_profiler = nil
+  active_profiler_started_tick = nil
+  section_profilers = {}
+  section_results = {}
+end
+function M.apply_profile_mode_from_constants()
+  if profiler_mode() ~= "profile" then
+    M.clear_profile_auto_stop()
+    return
+  end
+  if M.start_profiler_capture(nil) then
+    local max_ticks = profiler_auto_stop_ticks()
+    if max_ticks > 0 then
+      profile_notify(nil, "[TeleportFavorites] Auto profiler started. Auto-stop in " .. tostring(max_ticks) .. " ticks.")
+    else
+      profile_notify(nil, "[TeleportFavorites] Auto profiler started. Auto-stop disabled (PROFILER_MAX_TICKS = 0).")
+    end
+  end
+  M.arm_profile_auto_stop_from_settings()
+end
+function M.cmd_tf_profile_start(cmd)
+  if not M.start_profiler_capture(cmd.player_index) then
+    profile_notify(cmd.player_index, "[TeleportFavorites] Profiler is already running. Use /tf_profile_stop first.")
+    return
+  end
+  M.arm_profile_auto_stop_from_settings()
+  profile_notify(cmd.player_index, "[TeleportFavorites] Profiler started.")
+end
+function M.cmd_tf_profile_stop(cmd)
+  M.clear_profile_auto_stop()
+  if not M.stop_profiler_capture(cmd.player_index) then
+    profile_notify(cmd.player_index, "[TeleportFavorites] No active profiler. Run /tf_profile_start first.")
+    return
+  end
+end
+function M.register_profiling_commands()
+  if commands_registered then
+    return
+  end
+  commands_registered = true
+  commands.add_command(
+    "tf_profile_start",
+    "Start TeleportFavorites profiling capture.",
+    M.cmd_tf_profile_start
+  )
+  commands.add_command(
+    "tf_profile_stop",
+    "Stop profiling and save report to script-output.",
+    M.cmd_tf_profile_stop
+  )
+end
+return M

@@ -1,0 +1,47 @@
+local control_tag_editor = require("core.control.control_tag_editor")
+local control_fave_bar = require("core.control.control_fave_bar")
+local event_registration_dispatcher = require("core.events.event_registration_dispatcher")
+local Deps = require("core.deps_barrel")
+local ErrorHandler, Constants = Deps.ErrorHandler, Deps.Constants
+local handlers = require("core.events.handlers")
+local TeleportHistory = require("core.teleport.teleport_history")
+local ProfilerExport = require("core.utils.profiler_export")
+local fave_bar = require("gui.favorites_bar.fave_bar")
+local teleport_history_modal = require("gui.teleport_history_modal.teleport_history_modal")
+local tag_editor = require("gui.tag_editor.tag_editor")
+ErrorHandler.initialize(Constants.settings.DEFAULT_LOG_LEVEL)
+local function custom_on_init()
+  ProfilerExport.register_profiling_commands()
+  ProfilerExport.apply_profile_mode_from_constants()
+  TeleportHistory.register_remote_interface()
+  if storage and storage._tf_debug_mode then
+    ErrorHandler.debug_log("Development mode detected - enabling debug logging")
+  else
+    ErrorHandler.debug_log("Production mode - using minimal logging")
+  end
+  handlers.on_init()
+end
+local function custom_on_load()
+  ProfilerExport.register_profiling_commands()
+  ProfilerExport.on_load_cleanup()
+  fave_bar.on_load_cleanup()
+  teleport_history_modal.on_load_cleanup()
+  tag_editor.on_load_cleanup()
+  ProfilerExport.schedule_deferred_profile_apply()
+  TeleportHistory.register_remote_interface()
+  handlers.on_load()
+end
+script.on_init(function()
+  custom_on_init()
+end)
+script.on_load(function()
+  custom_on_load()
+end)
+script.on_configuration_changed(function(data)
+  handlers.on_configuration_changed(data)
+  ProfilerExport.apply_profile_mode_from_constants()
+end)
+if ErrorHandler.should_log_debug and ErrorHandler.should_log_debug() then
+  ErrorHandler.debug_log("[CONTROL] Registering all mod events through centralized dispatcher", {})
+end
+event_registration_dispatcher.register_all_events(script)

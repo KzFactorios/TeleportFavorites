@@ -1,0 +1,14 @@
+{
+  "name": "TeleportFavorites",
+  "title": "Teleport Favorites",
+  "version": "0.0.98",
+  "description": "A utility mod for managing favorite locations and teleport functionality.",
+  "author": "kurtz",
+  "license": "MIT",
+  "created": "2025-05-22",
+  "factorio_version": "2.0",
+  "dependencies": [
+    "base >= 2.0.47",
+    "!QuickMapTagTeleport"
+  ]
+}
