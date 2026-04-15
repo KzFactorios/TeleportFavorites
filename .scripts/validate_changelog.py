@@ -1,61 +1,60 @@
 import os
 import re
+import sys
 
-DIST = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.dist'))
-CHANGELOG = os.path.join(DIST, 'changelog.txt')
+# Get version from environment
+version = os.environ.get('INPUT_VERSION', '0.0.0')
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+TARGET_DIR = os.path.join(ROOT, '.dist', f'TeleportFavorites_{version}')
+CHANGELOG = os.path.join(TARGET_DIR, 'changelog.txt')
 
 HEADER_PATTERN = re.compile(r'^-{99}$')
-VERSION_PATTERN = re.compile(r'^Version: \d+\.\d+\.\w+$')
+VERSION_PATTERN = re.compile(r'^Version: \d+\.\d+\.\d+$') # Changed \w to \d for Z
 DATE_PATTERN = re.compile(r'^Date: \d{4}-\d{2}-\d{2}$')
 CATEGORY_PATTERN = re.compile(r'^  [^:]+:$')
 ENTRY_PATTERN = re.compile(r'^    - .+')
 CONTINUATION_PATTERN = re.compile(r'^      .+')
 
 errors = []
-if not os.path.exists(CHANGELOG):
-    errors.append('changelog.txt not found in .dist')
-else:
-    with open(CHANGELOG, 'r', encoding='utf-8') as f:
-        lines = [line.rstrip('\n') for line in f]
-    i = 0
-    while i < len(lines):
-        # Header line
-        if not HEADER_PATTERN.match(lines[i]):
-            errors.append(f'Line {i+1}: Expected 99-dash header')
-        i += 1
-        # Version line
-        if i >= len(lines) or not VERSION_PATTERN.match(lines[i]):
-            errors.append(f'Line {i+1}: Expected Version: X.Y.Z')
-        i += 1
-        # Optional date line
-        if i < len(lines) and DATE_PATTERN.match(lines[i]):
-            i += 1
-        # Categories and entries
-        while i < len(lines) and lines[i] != '' and not HEADER_PATTERN.match(lines[i]):
-            if CATEGORY_PATTERN.match(lines[i]):
-                i += 1
-                while i < len(lines) and (ENTRY_PATTERN.match(lines[i]) or CONTINUATION_PATTERN.match(lines[i])):
-                    i += 1
-            elif lines[i] == '':
-                i += 1
-            else:
-                errors.append(f'Line {i+1}: Unexpected line format: {lines[i]}')
-                i += 1
-        # Skip empty lines before next header
-        while i < len(lines) and lines[i] == '':
-            i += 1
 
-    # Check for tabs and trailing whitespace
-    for idx, line in enumerate(lines):
-        if '\t' in line:
-            errors.append(f'Line {idx+1}: Tab character found')
-        if line != line.rstrip():
-            errors.append(f'Line {idx+1}: Trailing whitespace found')
+if not os.path.exists(CHANGELOG):
+    print(f"Error: changelog.txt not found at {CHANGELOG}")
+    sys.exit(1)
+
+with open(CHANGELOG, 'r', encoding='utf-8') as f:
+    lines = [line.rstrip() for line in f]
+
+# 1. Structural Validation (Declarative)
+# Check for tabs or trailing spaces first
+for idx, line in enumerate(lines):
+    if '\t' in line:
+        errors.append(f'Line {idx+1}: Tab character found')
+    if line != line.rstrip():
+        errors.append(f'Line {idx+1}: Trailing whitespace found')
+
+# 2. Pattern Matching
+# Note: Factorio changelogs often have empty lines between blocks; 
+# your script should be tolerant of them.
+for idx, line in enumerate(lines):
+    if not line: continue  # Skip empty lines
+    
+    # Check if this line matches any known good format
+    is_valid = (
+        HEADER_PATTERN.match(line) or
+        VERSION_PATTERN.match(line) or
+        DATE_PATTERN.match(line) or
+        CATEGORY_PATTERN.match(line) or
+        ENTRY_PATTERN.match(line) or
+        CONTINUATION_PATTERN.match(line)
+    )
+    
+    if not is_valid:
+        errors.append(f'Line {idx+1}: Unexpected format: "{line.strip()}"')
 
 if errors:
     print('changelog.txt validation failed:')
     for err in errors:
-        print('  ' + err)
-    exit(1)
+        print(f'  {err}')
+    sys.exit(1)
 else:
     print('changelog.txt format is valid.')

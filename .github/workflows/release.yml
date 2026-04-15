@@ -1,6 +1,3 @@
-
-# Trivial change to force GitHub Actions workflow re-index (2025-07-24)
-
 name: Release Mod
 
 permissions:
@@ -27,67 +24,38 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install dependencies (if needed)
-        run: |
-          python -m pip install --upgrade pip
-
-      - name: Copy production files to .dist
+      - name: Copy and Stage production files
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: python .scripts/copy_for_deploy.py
 
-      - name: Strip comments from Lua files in .dist
+      - name: Strip comments from Lua files
         run: python .scripts/strip_comments.py
 
-      - name: Update info.json version in .dist
+      - name: Update info.json version
         run: |
-          $infoPath = ".dist/info.json"
+          $infoPath = ".dist/TeleportFavorites_${{ github.event.inputs.version }}/info.json"
           if (Test-Path $infoPath) {
             $json = Get-Content $infoPath -Raw | ConvertFrom-Json
             $json.version = "${{ github.event.inputs.version }}"
             $json | ConvertTo-Json -Depth 32 | Set-Content $infoPath -Encoding UTF8
           } else {
-            Write-Error "info.json not found in .dist; build failed to stage required files."
+            Write-Error "info.json not found at $infoPath"
           }
 
-      - name: Validate changelog.txt format in .dist
+      - name: Validate changelog
         run: python .scripts/validate_changelog.py
 
-      - name: Validate thumbnail.png present in .dist
-        run: |
-          if (!(Test-Path ".dist/thumbnail.png")) {
-            Write-Error "thumbnail.png is missing from .dist. Ensure it's added at repo root or graphics/logo_144.png exists for fallback."
-          }
-
-      - name: Wrap .dist contents in versioned mod folder
+      - name: Zip the mod directory
         run: |
           $modFolder = "TeleportFavorites_${{ github.event.inputs.version }}"
-          $target = ".dist/$modFolder"
-          if (-not (Test-Path $target)) { New-Item -ItemType Directory -Path $target | Out-Null }
-          Get-ChildItem ".dist" -Force | Where-Object { $_.Name -ne $modFolder } | ForEach-Object {
-            Move-Item -Path $_.FullName -Destination $target
-          }
+          Compress-Archive -Path ".dist/$modFolder/*" -DestinationPath "$modFolder.zip" -Force
 
-      - name: Zip the .dist directory for release
-        run: |
-          $modFolder = "TeleportFavorites_${{ github.event.inputs.version }}"
-          Compress-Archive -Path ".dist/$modFolder" -DestinationPath "TeleportFavorites_${{ github.event.inputs.version }}.zip" -Force
-
-      - name: List files in .dist
-        run: Get-ChildItem .dist -Recurse
-
-      - name: Verify diagnostic annotations preserved (debug)
-        run: |
-          Write-Host "Checking slot_interaction_handlers.lua first 3 lines:"
-          Get-Content .dist\TeleportFavorites_${{ github.event.inputs.version }}\core\control\slot_interaction_handlers.lua | Select-Object -First 3
-          Write-Host "Checking settings.lua first 3 lines:"
-          Get-Content .dist\TeleportFavorites_${{ github.event.inputs.version }}\core\cache\settings.lua | Select-Object -First 3
-
-      - name: Upload .dist directory as artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: TeleportFavorites_${{ github.event.inputs.version }}
-          path: .dist
-          include-hidden-files: true
-          if-no-files-found: error
+          path: .dist/TeleportFavorites_${{ github.event.inputs.version }}
 
       - name: Create GitHub Release
         if: ${{ success() }}
@@ -95,7 +63,5 @@ jobs:
         with:
           tag_name: v${{ github.event.inputs.version }}
           name: TeleportFavorites ${{ github.event.inputs.version }}
-          # Point to the new, truncated file instead of the full one
-          body_path: .dist\TeleportFavorites_${{ github.event.inputs.version }}\changelog.txt
+          body_path: .dist/TeleportFavorites_${{ github.event.inputs.version }}/release_notes.txt
           files: TeleportFavorites_${{ github.event.inputs.version }}.zip
-

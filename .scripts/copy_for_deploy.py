@@ -1,10 +1,11 @@
 import os
 import shutil
 
-# 1. Setup and Environment
+# 1. Environment Setup
 version = os.environ.get('INPUT_VERSION', '0.0.0')
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 DIST = os.path.join(ROOT, '.dist')
+# This creates the specific folder structure: .dist/TeleportFavorites_0.0.0/
 TARGET_DIR = os.path.join(DIST, f'TeleportFavorites_{version}')
 
 # Configuration
@@ -18,32 +19,31 @@ EXCLUDE_FILES = {
     'luacov.*', 'TeleportFavorites_workspace.code-workspace',
 }
 
-# 2. Prepare Directory
+# 2. Prepare Directories
 if os.path.exists(DIST):
     shutil.rmtree(DIST)
 os.makedirs(TARGET_DIR, exist_ok=True)
 
-# 3. Generate release_notes.txt
+# 3. Generate release_notes.txt (Truncated)
 changelog_path = os.path.join(ROOT, 'changelog.txt')
 if os.path.exists(changelog_path):
     with open(changelog_path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
         last_ten_lines = "".join(lines[-10:])
-
+    
     with open(os.path.join(TARGET_DIR, 'release_notes.txt'), 'w', encoding='utf-8') as f:
         f.write("## Recent Changes\n")
         f.write(last_ten_lines)
         f.write("\n\n---\n*See the full changelog in the .zip file or on the Factorio Portal.*")
 
-# 4. Copying Logic
+# 4. Copying Logic (Recursive)
 def should_exclude(rel_path):
-    if not rel_path or rel_path == '.': return False
+    # Ignore the .dist directory itself during the walk
+    if rel_path.startswith('.dist'): return True
+    # Basic filter
     parts = rel_path.split(os.sep)
-    # Exclude hidden folders/files
-    if any(p.startswith('.') for p in parts): return True
-    # Exclude specific folders
+    if any(p.startswith('.') and p != '.' for p in parts): return True
     if any(p in EXCLUDE_DIRS for p in parts): return True
-    # Exclude specific files
     fname = parts[-1]
     if fname in EXCLUDE_FILES or fname.endswith(('_spec.lua', '_test.lua')): return True
     return False
@@ -60,8 +60,8 @@ for dirpath, dirnames, filenames in os.walk(ROOT):
             continue
             
         src = os.path.join(dirpath, fname)
-        # Mirror structure directly into TARGET_DIR
-        # If file is at root, it goes straight to TARGET_DIR/filename
+        # Flatten structure: Put root files at the root of TARGET_DIR
+        # Put nested files in corresponding sub-folders in TARGET_DIR
         dst_path = os.path.join(TARGET_DIR, rel_dir if rel_dir != '.' else '', fname)
         os.makedirs(os.path.dirname(dst_path), exist_ok=True)
         shutil.copy2(src, dst_path)
@@ -80,4 +80,4 @@ for dirpath, _, filenames in os.walk(TARGET_DIR):
         if os.path.exists(fpath) and os.path.getsize(fpath) == 0:
             os.remove(fpath)
 
-print(f'Production files staged to {TARGET_DIR}')
+print(f'Production files successfully staged to {TARGET_DIR}')
