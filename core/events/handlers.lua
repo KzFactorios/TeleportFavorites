@@ -99,6 +99,7 @@ end
 function handlers.on_configuration_changed(data)
   ErrorHandler.debug_log("[CONFIG_CHANGED] Configuration changed, clearing stale fave bars")
   storage._tf_hydrate_after_blank = nil
+  storage._tf_slot_build_queue = nil
   BasicHelpers.for_each_player_by_index_asc(function(player)
     if player.valid then
       Cache.get_player_data(player)
@@ -106,6 +107,7 @@ function handlers.on_configuration_changed(data)
       if main_flow and main_flow.valid then
         GuiValidation.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
       end
+      fave_bar.enqueue_blank_bar(player, "on_configuration_changed")
     end
   end)
 end
@@ -153,7 +155,8 @@ function handlers.process_deferred_init_queue()
 
       if entry.is_rejoin then
         close_all_mod_screens(deferred_player)
-        gui_observer.GuiEventBus.cleanup_player_observers(deferred_player)
+        -- Observer cleanup was moved to the on_player_joined_game dispatcher handler
+        -- so fresh observers are in place during the 2-tick gap before this runs.
       end
 
       register_gui_observers(deferred_player)

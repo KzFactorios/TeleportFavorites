@@ -353,7 +353,6 @@ end
 ---@param event table
 function fave_bar.on_player_controller_changed(event)
   if not event or not event.player_index then return end
-  if game.tick < 60 then return end
   if is_build_in_flight(event.player_index) then return end
   local player = game.players[event.player_index]
   if not player or not player.valid then return end

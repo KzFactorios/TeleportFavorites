@@ -234,6 +234,11 @@ local function register_core_events(script)
         ErrorHandler.debug_log("Transient states reset for rejoining player", {
           player = player.name, player_index = player.index
         })
+        -- Cleanup stale observers first, then register fresh ones immediately.
+        -- This avoids the register→cleanup→re-register cycle that would otherwise
+        -- happen when process_deferred_init_queue runs on the next on_nth_tick(2).
+        -- The early registration here covers the 2-tick gap before deferred init fires.
+        GuiObserver.GuiEventBus.cleanup_player_observers(player)
         local reg_ok, reg_err = pcall(GuiObserver.GuiEventBus.register_player_observers, player)
         if not reg_ok then
           ErrorHandler.warn_log("Failed to register GUI observers for joining player", { player = player.name, error = tostring(reg_err) })
