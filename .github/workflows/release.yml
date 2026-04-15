@@ -16,7 +16,8 @@ on:
 jobs:
   build-and-release:
     runs-on: windows-latest
-    environment: release-approval
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -94,6 +95,7 @@ jobs:
         with:
           tag_name: v${{ github.event.inputs.version }}
           name: TeleportFavorites ${{ github.event.inputs.version }}
+          # Point to the new, truncated file instead of the full one
           body_path: .dist\TeleportFavorites_${{ github.event.inputs.version }}\changelog.txt
           files: TeleportFavorites_${{ github.event.inputs.version }}.zip
 

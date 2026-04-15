@@ -4,8 +4,15 @@ import shutil
 # Configuration
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 DIST = os.path.join(ROOT, '.dist')
-EXCLUDE_DIRS = {'tests', '.git', '.github', '.vscode', '.project', '.scripts', '.dist'}
+EXCLUDE_DIRS = {'tests', 'script-output', '.cursor', '.dist', '.git', '.githooks', '.github', '.idea', '.project', '.scripts', '.vscode', 
+    'graphics/.screenshots', 'graphics/.sprite_shop', 'graphics/.svgs'}
 EXCLUDE_FILES = {
+    '.busted',
+    '.gitignore',
+    '.luarc.json',
+    '.test.*',
+    'coverage_summary.txt',
+    'luacov.*',
     'TeleportFavorites_workspace.code-workspace',
 }
 
@@ -20,6 +27,24 @@ REQUIRED_ROOT_FILES = [
     'settings.lua',
     'thumbnail.png',  # Optional but recommended by Factorio; ensure it's copied if present
 ]
+
+
+# 1. Ensure the full changelog exists for the Factorio Portal
+# (This happens naturally if you keep copying the full original)
+
+# 2. Create the truncated version for GitHub
+with open('changelog.txt', 'r') as f:
+    full_log = f.read()
+
+# Extract only the top/most recent block (assuming your format is standard)
+# This example assumes you want the last 10 lines
+last_ten_lines = "".join(full_log.splitlines()[-10:])
+
+with open('.dist/TeleportFavorites_{version}/release_notes.txt', 'w') as f:
+    f.write("## Recent Changes\n")
+    f.write(last_ten_lines)
+    f.write("\n\n---\n*See the full changelog in the .zip file or on the Factorio Portal.*")
+
 
 # Utility: Remove empty files
 def remove_empty_files(path):
