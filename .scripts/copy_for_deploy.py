@@ -40,7 +40,7 @@ with open('changelog.txt', 'r', encoding='utf-8') as f:
 # This example assumes you want the last 10 lines
 last_ten_lines = "".join(full_log.splitlines()[-10:])
 
-with open('.dist/TeleportFavorites_{version}/release_notes.txt', 'w', encoding='utf-8') as f:
+with open(f'.dist/TeleportFavorites_{version}/release_notes.txt', 'w', encoding='utf-8') as f:
     f.write("## Recent Changes\n")
     f.write(last_ten_lines)
     f.write("\n\n---\n*See the full changelog in the .zip file or on the Factorio Portal.*")
