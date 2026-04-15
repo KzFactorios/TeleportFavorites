@@ -15,6 +15,7 @@ jobs:
     runs-on: windows-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      RELEASE_VERSION: ${{ github.event.inputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -27,26 +28,15 @@ jobs:
       - name: Copy and Stage production files
         run: python .scripts/copy_for_deploy.py
 
-
-      - name: Debug - List all files in .dist
-        run: |
-          Write-Host "Listing all contents of .dist folder:"
-          Get-ChildItem -Path .dist -Recurse | Select-Object -ExpandProperty FullName
-
-
       - name: Strip comments from Lua files
         run: python .scripts/strip_comments.py
 
-      - name: Diagnostic - Locate info.json
-        run: |
-          Write-Host "Searching for info.json in the .dist directory..."
-          Get-ChildItem -Path .dist -Recurse -Filter "info.json" | Select-Object -ExpandProperty FullName
-
       - name: Update info.json version
         run: |
-          $infoPath = ".dist/TeleportFavorites_${{ github.event.inputs.version }}/info.json"
+          $v = $env:RELEASE_VERSION
+          $infoPath = ".dist/TeleportFavorites_$v/info.json"
           $json = Get-Content $infoPath -Raw | ConvertFrom-Json
-          $json.version = "${{ github.event.inputs.version }}"
+          $json.version = $v
           $json | ConvertTo-Json -Depth 32 | Set-Content $infoPath -Encoding UTF8
 
       - name: Validate changelog
@@ -54,20 +44,20 @@ jobs:
 
       - name: Zip the mod directory
         run: |
-          $modFolder = "TeleportFavorites_${{ github.event.inputs.version }}"
+          $modFolder = "TeleportFavorites_$($env:RELEASE_VERSION)"
           Compress-Archive -Path ".dist/$modFolder/*" -DestinationPath "$modFolder.zip" -Force
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ github.event.inputs.version }}
-          name: TeleportFavorites ${{ github.event.inputs.version }}
-          body_path: .dist/TeleportFavorites_${{ github.event.inputs.version }}/release_notes.txt
-          files: TeleportFavorites_${{ github.event.inputs.version }}.zip
+          tag_name: v${{ env.RELEASE_VERSION }}
+          name: TeleportFavorites ${{ env.RELEASE_VERSION }}
+          body_path: .dist/TeleportFavorites_${{ env.RELEASE_VERSION }}/release_notes.txt
+          files: TeleportFavorites_${{ env.RELEASE_VERSION }}.zip
 
       - name: Output Permanent Download URL
         run: |
-          $v = "${{ github.event.inputs.version }}"
+          $v = $env:RELEASE_VERSION
           Write-Host "=========================================================="
           Write-Host "Mod released successfully!"
           Write-Host "Download URL: https://github.com/KzFactorios/TeleportFavorites/releases/download/v$v/TeleportFavorites_$v.zip"

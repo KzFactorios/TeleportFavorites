@@ -1,11 +1,16 @@
 import os
 import shutil
+import sys
 
-# 1. Environment Setup
-version = os.environ.get('INPUT_VERSION', '0.0.0')
+# 1. Environment Setup (RELEASE_VERSION in CI; INPUT_VERSION legacy local)
+version = os.environ.get('RELEASE_VERSION') or os.environ.get('INPUT_VERSION')
+if os.environ.get('GITHUB_ACTIONS') == 'true' and not version:
+    print('Error: RELEASE_VERSION must be set in GitHub Actions', file=sys.stderr)
+    sys.exit(1)
+version = version or '0.0.0'
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 DIST = os.path.join(ROOT, '.dist')
-# This creates the specific folder structure: .dist/TeleportFavorites_0.0.0/
+# Staging folder: .dist/TeleportFavorites_<version>/
 TARGET_DIR = os.path.join(DIST, f'TeleportFavorites_{version}')
 
 # Configuration
