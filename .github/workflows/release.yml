@@ -14,8 +14,6 @@ jobs:
   build-and-release:
     runs-on: windows-latest
     env:
-      # Inject the input directly into the environment for all steps
-      INPUT_VERSION: ${{ github.event.inputs.version }}
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout repository
@@ -27,8 +25,6 @@ jobs:
           python-version: '3.x'
 
       - name: Copy and Stage production files
-        env:
-          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: python .scripts/copy_for_deploy.py
 
       - name: Strip comments from Lua files
@@ -37,13 +33,9 @@ jobs:
       - name: Update info.json version
         run: |
           $infoPath = ".dist/TeleportFavorites_${{ github.event.inputs.version }}/info.json"
-          if (Test-Path $infoPath) {
-            $json = Get-Content $infoPath -Raw | ConvertFrom-Json
-            $json.version = "${{ github.event.inputs.version }}"
-            $json | ConvertTo-Json -Depth 32 | Set-Content $infoPath -Encoding UTF8
-          } else {
-            Write-Error "info.json not found at $infoPath"
-          }
+          $json = Get-Content $infoPath -Raw | ConvertFrom-Json
+          $json.version = "${{ github.event.inputs.version }}"
+          $json | ConvertTo-Json -Depth 32 | Set-Content $infoPath -Encoding UTF8
 
       - name: Validate changelog
         run: python .scripts/validate_changelog.py
@@ -53,14 +45,7 @@ jobs:
           $modFolder = "TeleportFavorites_${{ github.event.inputs.version }}"
           Compress-Archive -Path ".dist/$modFolder/*" -DestinationPath "$modFolder.zip" -Force
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: TeleportFavorites_${{ github.event.inputs.version }}
-          path: .dist/TeleportFavorites_${{ github.event.inputs.version }}
-
       - name: Create GitHub Release
-        if: ${{ success() }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.event.inputs.version }}
@@ -68,11 +53,10 @@ jobs:
           body_path: .dist/TeleportFavorites_${{ github.event.inputs.version }}/release_notes.txt
           files: TeleportFavorites_${{ github.event.inputs.version }}.zip
 
-      - name: Print Release URL
+      - name: Output Permanent Download URL
         run: |
-          Write-Host "Mod release is available at: https://github.com/KzFactorios/TeleportFavorites/releases/tag/v${{ github.event.inputs.version }}"
-
-      - name: Final Directory Listing
-        run: |
-          Write-Host "Contents of .dist:"
-          Get-ChildItem -Path .dist -Recurse | Select-Object FullName
+          $v = "${{ github.event.inputs.version }}"
+          Write-Host "=========================================================="
+          Write-Host "Mod released successfully!"
+          Write-Host "Download URL: https://github.com/KzFactorios/TeleportFavorites/releases/download/v$v/TeleportFavorites_$v.zip"
+          Write-Host "=========================================================="
