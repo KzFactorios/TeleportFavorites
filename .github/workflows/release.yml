@@ -30,6 +30,11 @@ jobs:
       - name: Strip comments from Lua files
         run: python .scripts/strip_comments.py
 
+      - name: Diagnostic - Locate info.json
+        run: |
+          Write-Host "Searching for info.json in the .dist directory..."
+          Get-ChildItem -Path .dist -Recurse -Filter "info.json" | Select-Object -ExpandProperty FullName
+
       - name: Update info.json version
         run: |
           $infoPath = ".dist/TeleportFavorites_${{ github.event.inputs.version }}/info.json"
