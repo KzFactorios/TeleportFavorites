@@ -33,14 +33,14 @@ REQUIRED_ROOT_FILES = [
 # (This happens naturally if you keep copying the full original)
 
 # 2. Create the truncated version for GitHub
-with open('changelog.txt', 'r') as f:
+with open('changelog.txt', 'r', encoding='utf-8') as f:
     full_log = f.read()
 
 # Extract only the top/most recent block (assuming your format is standard)
 # This example assumes you want the last 10 lines
 last_ten_lines = "".join(full_log.splitlines()[-10:])
 
-with open('.dist/TeleportFavorites_{version}/release_notes.txt', 'w') as f:
+with open('.dist/TeleportFavorites_{version}/release_notes.txt', 'w', encoding='utf-8') as f:
     f.write("## Recent Changes\n")
     f.write(last_ten_lines)
     f.write("\n\n---\n*See the full changelog in the .zip file or on the Factorio Portal.*")
