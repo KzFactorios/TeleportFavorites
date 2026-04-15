@@ -47,6 +47,12 @@ jobs:
           $modFolder = "TeleportFavorites_$($env:RELEASE_VERSION)"
           Compress-Archive -Path ".dist/$modFolder/*" -DestinationPath "$modFolder.zip" -Force
 
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TeleportFavorites-${{ env.RELEASE_VERSION }}
+          path: TeleportFavorites_${{ env.RELEASE_VERSION }}.zip
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -58,7 +64,13 @@ jobs:
       - name: Output Permanent Download URL
         run: |
           $v = $env:RELEASE_VERSION
+          $repo = "${{ github.repository }}"
+          $zipUrl = "https://github.com/$repo/releases/download/v$v/TeleportFavorites_$v.zip"
+          $releaseUrl = "https://github.com/$repo/releases/tag/v$v"
           Write-Host "=========================================================="
           Write-Host "Mod released successfully!"
-          Write-Host "Download URL: https://github.com/KzFactorios/TeleportFavorites/releases/download/v$v/TeleportFavorites_$v.zip"
+          Write-Host "Download URL: $zipUrl"
+          Write-Host "Release page: $releaseUrl"
           Write-Host "=========================================================="
+          $summary = "## TeleportFavorites $v`n`n**[Download TeleportFavorites_$v.zip]($zipUrl)**`n`n[View release]($releaseUrl)`n"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary -Encoding utf8
