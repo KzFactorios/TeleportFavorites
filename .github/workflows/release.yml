@@ -27,6 +27,13 @@ jobs:
       - name: Copy and Stage production files
         run: python .scripts/copy_for_deploy.py
 
+
+      - name: Debug - List all files in .dist
+        run: |
+          Write-Host "Listing all contents of .dist folder:"
+          Get-ChildItem -Path .dist -Recurse | Select-Object -ExpandProperty FullName
+
+
       - name: Strip comments from Lua files
         run: python .scripts/strip_comments.py
 
