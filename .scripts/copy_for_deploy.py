@@ -5,7 +5,6 @@ import shutil
 version = os.environ.get('INPUT_VERSION', '0.0.0')
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 DIST = os.path.join(ROOT, '.dist')
-# This is the mod-root folder that Factorio expects
 TARGET_DIR = os.path.join(DIST, f'TeleportFavorites_{version}')
 
 # Configuration
@@ -24,7 +23,7 @@ if os.path.exists(DIST):
     shutil.rmtree(DIST)
 os.makedirs(TARGET_DIR, exist_ok=True)
 
-# 3. Generate release_notes.txt (Truncated version for GitHub Release body)
+# 3. Generate release_notes.txt
 changelog_path = os.path.join(ROOT, 'changelog.txt')
 if os.path.exists(changelog_path):
     with open(changelog_path, 'r', encoding='utf-8') as f:
@@ -36,16 +35,17 @@ if os.path.exists(changelog_path):
         f.write(last_ten_lines)
         f.write("\n\n---\n*See the full changelog in the .zip file or on the Factorio Portal.*")
 
-# 4. Copying Logic (Recursive)
+# 4. Copying Logic
 def should_exclude(rel_path):
+    if not rel_path or rel_path == '.': return False
     parts = rel_path.split(os.sep)
-    if any(part.startswith('.') and part != '.' for part in parts):
-        return True
-    if any(part in EXCLUDE_DIRS for part in parts):
-        return True
+    # Exclude hidden folders/files
+    if any(p.startswith('.') for p in parts): return True
+    # Exclude specific folders
+    if any(p in EXCLUDE_DIRS for p in parts): return True
+    # Exclude specific files
     fname = parts[-1]
-    if fname in EXCLUDE_FILES or fname.endswith(('_spec.lua', '_test.lua')):
-        return True
+    if fname in EXCLUDE_FILES or fname.endswith(('_spec.lua', '_test.lua')): return True
     return False
 
 for dirpath, dirnames, filenames in os.walk(ROOT):
@@ -60,28 +60,24 @@ for dirpath, dirnames, filenames in os.walk(ROOT):
             continue
             
         src = os.path.join(dirpath, fname)
-        # Mirror structure inside TARGET_DIR
-        dst_dir = os.path.join(TARGET_DIR, rel_dir)
-        os.makedirs(dst_dir, exist_ok=True)
-        shutil.copy2(src, os.path.join(dst_dir, fname))
+        # Mirror structure directly into TARGET_DIR
+        # If file is at root, it goes straight to TARGET_DIR/filename
+        dst_path = os.path.join(TARGET_DIR, rel_dir if rel_dir != '.' else '', fname)
+        os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+        shutil.copy2(src, dst_path)
 
-# 5. Thumbnail Fallback logic
+# 5. Thumbnail Fallback
 thumbnail_dst = os.path.join(TARGET_DIR, 'thumbnail.png')
 if not os.path.exists(thumbnail_dst):
     logo_144 = os.path.join(ROOT, 'graphics', 'logo_144.png')
     if os.path.exists(logo_144):
         shutil.copy2(logo_144, thumbnail_dst)
-    else:
-        print('WARNING: thumbnail.png not found and no fallback graphics/logo_144.png available.')
 
 # 6. Cleanup empty files
-def remove_empty_files(path):
-    for dirpath, _, filenames in os.walk(path):
-        for fname in filenames:
-            fpath = os.path.join(dirpath, fname)
-            if os.path.exists(fpath) and os.path.getsize(fpath) == 0:
-                os.remove(fpath)
+for dirpath, _, filenames in os.walk(TARGET_DIR):
+    for fname in filenames:
+        fpath = os.path.join(dirpath, fname)
+        if os.path.exists(fpath) and os.path.getsize(fpath) == 0:
+            os.remove(fpath)
 
-remove_empty_files(TARGET_DIR)
-
-print(f'Production files successfully staged to {TARGET_DIR}')
+print(f'Production files staged to {TARGET_DIR}')
