@@ -71,3 +71,8 @@ jobs:
       - name: Print Release URL
         run: |
           Write-Host "Mod release is available at: https://github.com/KzFactorios/TeleportFavorites/releases/tag/v${{ github.event.inputs.version }}"
+
+      - name: Final Directory Listing
+        run: |
+          Write-Host "Contents of .dist:"
+          Get-ChildItem -Path .dist -Recurse | Select-Object FullName
