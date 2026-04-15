@@ -438,7 +438,7 @@ function fave_bar.flush_loader_placeholder_defer_if_ready()
       local p = game.get_player(e.player_index)
       if p and p.valid then
         fave_bar.destroy_loader_placeholder(p)
-        fave_bar.enqueue_blank_bar(p)
+        fave_bar.enqueue_blank_bar(p, "loader_placeholder_defer_flush")
       end
       table.remove(list, i)
     end
@@ -452,7 +452,7 @@ function fave_bar.begin_bar_with_loader_placeholder(player)
   if BasicHelpers.is_restricted_controller(player) then return end
   local player_settings = Cache.Settings.get_player_settings(player)
   if not player_settings.favorites_on and not player_settings.enable_teleport_history then
-    fave_bar.enqueue_blank_bar(player)
+    fave_bar.enqueue_blank_bar(player, "begin_bar_with_loader_both_features_off")
     return
   end
   fave_bar.destroy_loader_placeholder(player)

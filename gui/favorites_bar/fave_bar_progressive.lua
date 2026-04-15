@@ -92,9 +92,21 @@ return function(fave_bar, helpers)
   --- Defers all GUI creation — frame_init runs on the next on_nth_tick(2), keeping tick 1
   --- free of element.add() cost. Hydration is enqueued later by enqueue_hydrate().
   ---@param player LuaPlayer
-  function fave_bar.enqueue_blank_bar(player)
-    if not BasicHelpers.is_valid_player(player) then return end
-    if BasicHelpers.is_restricted_controller(player) then return end
+  ---@param enqueue_reason string? caller id for MP desync tracing (factorio-current.log)
+  function fave_bar.enqueue_blank_bar(player, enqueue_reason)
+    local reason = enqueue_reason or "unknown"
+    if not BasicHelpers.is_valid_player(player) then
+      ErrorHandler.warn_log("[TF_MP][enqueue_blank_bar] skip invalid_player", { reason = reason, tick = game.tick })
+      return
+    end
+    if BasicHelpers.is_restricted_controller(player) then
+      ErrorHandler.warn_log("[TF_MP][enqueue_blank_bar] skip restricted_controller", {
+        reason = reason, tick = game.tick, player_index = player.index, player_name = player.name,
+      })
+      return
+    end
+    storage._tf_slot_build_queue = storage._tf_slot_build_queue or {}
+    local qlen_before = #storage._tf_slot_build_queue
     prepare_queue_only(player)
 
     table.insert(storage._tf_slot_build_queue, {
@@ -105,6 +117,15 @@ return function(fave_bar, helpers)
     })
     last_build_tick[player.index] = game.tick
     _fave_bar_queue_has_work = true
+    ErrorHandler.warn_log("[TF_MP][enqueue_blank_bar] enqueued frame_init (stop_after_blank)", {
+      reason          = reason,
+      tick            = game.tick,
+      player_index    = player.index,
+      player_name     = player.name,
+      qlen_before     = qlen_before,
+      qlen_after      = #storage._tf_slot_build_queue,
+      surface_index   = player.surface.index,
+    })
   end
 
   --- Returns true when the blank bar is fully built and no build is in flight.

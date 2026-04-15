@@ -205,11 +205,30 @@ end
 --- `enqueue_deferred_init(..., true)` dedupes with `on_player_created`/`on_player_joined_game` without
 --- overwriting `is_rejoin = false` for brand-new players.
 --- `enqueue_blank_bar` matches join/created: chrome + empty slots first, hydrate when ready.
+---
+--- MP SAFETY: Only enqueue a fresh blank build when no bar is present and no build is already running.
+--- In MP catch-up the joining client runs this on its first tick (observers_registered reset by on_load)
+--- while the server skips it (flag already true). Calling enqueue_blank_bar unconditionally cancels any
+--- in-flight build and inserts a new frame_init entry, causing chrome1 to destroy + recreate FAVE_BAR_FLOW
+--- on the client only → GUI state diverges from server → CRC mismatch → desync.
+--- process_deferred_init_queue already handles hydration via its own blank_bar_is_ready check.
 function handlers.ensure_fave_bar_for_session_players()
   BasicHelpers.for_each_player_by_index_asc(function(player)
     if player and player.valid and BasicHelpers.is_valid_player(player) then
       enqueue_deferred_init(player.index, true)
-      fave_bar.enqueue_blank_bar(player)
+      local ready = fave_bar.blank_bar_is_ready(player)
+      local pending = fave_bar.has_pending_slot_build(player.index)
+      if not ready and not pending then
+        fave_bar.enqueue_blank_bar(player, "ensure_fave_bar_for_session_players")
+      else
+        ErrorHandler.warn_log("[TF_MP][ensure_fave_bar_for_session_players] skip enqueue_blank_bar", {
+          tick = game.tick,
+          player_index = player.index,
+          player_name = player.name,
+          blank_bar_is_ready = ready,
+          has_pending_slot_build = pending,
+        })
+      end
     end
   end)
 end
@@ -217,7 +236,7 @@ end
 function handlers.on_player_created(event)
   with_valid_player(event.player_index, function(player)
     enqueue_deferred_init(player.index, false)
-    fave_bar.enqueue_blank_bar(player)
+    fave_bar.enqueue_blank_bar(player, "on_player_created")
   end)
 end
 
@@ -228,7 +247,7 @@ function handlers.on_player_joined_game(event)
       player_index = player.index
     })
     enqueue_deferred_init(player.index, true)
-    fave_bar.enqueue_blank_bar(player)
+    fave_bar.enqueue_blank_bar(player, "on_player_joined_game")
   end)
 end
 

@@ -82,14 +82,18 @@ end
 ---@param chart_tag LuaCustomChartTag
 ---@param tag table?
 local function restore_chart_tag_and_refresh(player, chart_tag, tag)
+  -- Guard here in addition to the on_chart_tag_removed outer check: if the object became
+  -- invalid between the two call sites, accessing chart_tag.position would raise a Lua error
+  -- that the outer xpcall would swallow silently, leaving the tag un-restored on that peer.
+  if not chart_tag or not chart_tag.valid then return end
   if chart_tag.position and chart_tag.surface then
     local new_chart_tag = player.force.add_chart_tag(
-      player.surface,
+      chart_tag.surface,  -- use the tag's own surface, not the player's current surface
       {
-        position = chart_tag.position,
-        text = chart_tag.text or "",
-        icon = chart_tag.icon,
-        last_user = chart_tag.last_user
+        position  = chart_tag.position,
+        text      = chart_tag.text or "",
+        icon      = chart_tag.icon,
+        last_user = chart_tag.last_user,
       }
     )
     if tag then
