@@ -14,6 +14,8 @@ jobs:
   build-and-release:
     runs-on: windows-latest
     env:
+      # Inject the input directly into the environment for all steps
+      INPUT_VERSION: ${{ github.event.inputs.version }}
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout repository
