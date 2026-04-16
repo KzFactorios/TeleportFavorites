@@ -7,3 +7,4 @@ globs: "gui/**/*.lua"
 - **Naming**: Elements must follow `tp_fav_{context}_{purpose}_{type}`.
 - **State**: GUI elements must be passive observers of `storage`. Do not store unique state in UI elements.
 - **Performance**: Use the "Dirty-Player" pattern via `GuiEventBus._dirty_players`. Process updates on `on_nth_tick(2)`.
+- **Multiplayer GUI creation:** GUI must be built from code that runs identically on ALL peers: event handlers (`on_player_joined_game`, `on_player_controller_changed`, `on_configuration_changed`) or `on_nth_tick` processors walking a `storage`-based queue. Never trigger a bar build from a local-flag-gated path — the flag is not synchronized and will differ between the host and a joining client.

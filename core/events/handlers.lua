@@ -106,7 +106,7 @@ function handlers.on_configuration_changed(data)
       if main_flow and main_flow.valid then
         GuiValidation.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
       end
-      fave_bar.enqueue_blank_bar(player, "on_configuration_changed")
+      fave_bar.build(player, true)
     end
   end)
 end
@@ -119,121 +119,36 @@ function handlers.set_observers_registered_flag(value)
   observers_registered_this_session = value
 end
 
--- Queue for deferred player initialization
--- Each entry: { player_index = N, is_rejoin = bool }
-local _deferred_init_queue = {}
-
---- True when deferred init is waiting (cheap check before calling process_deferred_init_queue).
----@return boolean
-function handlers.has_deferred_init_pending()
-  return #_deferred_init_queue > 0
-end
-
---- Process all queued player initializations (drained on on_nth_tick(2), not tick 0).
---- Restricted players (spectator/god) are kept in the queue and retried every 2 ticks
---- until they have a character — handles the MP case where the host is briefly in
---- spectator mode at tick 2 before their character is assigned.
-function handlers.process_deferred_init_queue()
-  -- Skip tick 0: on_nth_tick(2) also fires at tick 0; defer heavy work until tick 2+.
-  if game.tick == 0 then return end
-  if #_deferred_init_queue == 0 then return end
-  local retry = {}
-  for _, entry in ipairs(_deferred_init_queue) do
-    local deferred_player = game.players[entry.player_index]
-    if deferred_player and deferred_player.valid then
-      if BasicHelpers.is_restricted_controller(deferred_player) then
-        -- Player is spectator/god — not ready yet. Retry on the next on_nth_tick(2).
-        table.insert(retry, entry)
-      else
-        Cache.reset_transient_player_states(deferred_player)
-
-        if entry.is_rejoin then
-          close_all_mod_screens(deferred_player)
-          -- Observer cleanup was moved to the on_player_joined_game dispatcher handler
-          -- so fresh observers are in place during the 2-tick gap before this runs.
-        end
-
-        register_gui_observers(deferred_player)
-
-        -- Force-build: cancels any in-flight progressive build and populates all slots
-        -- synchronously (force_show=true bypasses is_planet_surface).
-        ErrorHandler.warn_log("[TF_MP][deferred_init] calling fave_bar.build", {
-          tick            = game.tick,
-          player          = deferred_player.name,
-          controller_type = deferred_player.controller_type,
-          is_rejoin       = entry.is_rejoin,
-        })
-        fave_bar.build(deferred_player, true)
-      end
-    end
-  end
-  _deferred_init_queue = retry
-end
-
---- Enqueue a player for deferred initialization (deduplicates).
----@param player_index uint
----@param is_rejoin boolean
-local function enqueue_deferred_init(player_index, is_rejoin)
-  for _, entry in ipairs(_deferred_init_queue) do
-    if entry.player_index == player_index then
-      if not is_rejoin then
-        entry.is_rejoin = false
-      end
-      return
-    end
-  end
-  table.insert(_deferred_init_queue, { player_index = player_index, is_rejoin = is_rejoin })
-end
-
---- Single-player save load (and adding this mod to a save) does not fire `on_player_joined_game`.
---- Mirror the join path once per session so the fave bar is queued before the next `on_nth_tick(2)`
---- drains `process_deferred_init_queue`.
---- `enqueue_deferred_init(..., true)` dedupes with `on_player_created`/`on_player_joined_game` without
---- overwriting `is_rejoin = false` for brand-new players.
---- `enqueue_blank_bar` matches join/created: chrome + empty slots first, hydrate when ready.
----
---- MP SAFETY: Only enqueue a fresh blank build when no bar is present and no build is already running.
---- In MP catch-up the joining client runs this on its first tick (observers_registered reset by on_load)
---- while the server skips it (flag already true). Calling enqueue_blank_bar unconditionally cancels any
---- in-flight build and inserts a new frame_init entry, causing chrome1 to destroy + recreate FAVE_BAR_FLOW
---- on the client only → GUI state diverges from server → CRC mismatch → desync.
---- process_deferred_init_queue already handles hydration via its own blank_bar_is_ready check.
+--- SP save-load and mod-added-to-save paths do not fire `on_player_joined_game`.
+--- Called once per session from the first on_tick to cover those cases.
+--- In MP the bar will already be built (on_player_joined_game runs before on_tick),
+--- so the ready/pending guard ensures nothing is double-built.
 function handlers.ensure_fave_bar_for_session_players()
   BasicHelpers.for_each_player_by_index_asc(function(player)
-    if player and player.valid and BasicHelpers.is_valid_player(player) then
-      enqueue_deferred_init(player.index, true)
-      local ready = fave_bar.blank_bar_is_ready(player)
-      local pending = fave_bar.has_pending_slot_build(player.index)
-      if not ready and not pending then
-        fave_bar.enqueue_blank_bar(player, "ensure_fave_bar_for_session_players")
-      else
-        ErrorHandler.warn_log("[TF_MP][ensure_fave_bar_for_session_players] skip enqueue_blank_bar", {
-          tick = game.tick,
-          player_index = player.index,
-          player_name = player.name,
-          blank_bar_is_ready = ready,
-          has_pending_slot_build = pending,
-        })
-      end
+    if not BasicHelpers.is_valid_player(player) then return end
+    if BasicHelpers.is_restricted_controller(player) then return end
+    local ready   = fave_bar.blank_bar_is_ready(player)
+    local pending = fave_bar.has_pending_slot_build(player.index)
+    if not ready and not pending then
+      fave_bar.build(player, true)
     end
   end)
 end
 
 function handlers.on_player_created(event)
   with_valid_player(event.player_index, function(player)
-    enqueue_deferred_init(player.index, false)
-    fave_bar.enqueue_blank_bar(player, "on_player_created")
+    register_gui_observers(player)
   end)
 end
 
 function handlers.on_player_joined_game(event)
   with_valid_player(event.player_index, function(player)
-    ErrorHandler.debug_log("Deferring initialization for rejoining player", {
-      player = player.name,
-      player_index = player.index
-    })
-    enqueue_deferred_init(player.index, true)
-    fave_bar.enqueue_blank_bar(player, "on_player_joined_game")
+    close_all_mod_screens(player)
+    Cache.reset_transient_player_states(player)
+    pcall(function() player.clear_cursor() end)
+    gui_observer.GuiEventBus.cleanup_player_observers(player)
+    register_gui_observers(player)
+    fave_bar.build(player, true)
   end)
 end
 
