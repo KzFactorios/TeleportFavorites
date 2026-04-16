@@ -5,8 +5,8 @@
 -- Extend pattern: receives (fave_bar, helpers) where helpers contains shared private functions.
 
 local Deps = require("core.deps_barrel")
-local BasicHelpers, ErrorHandler, Cache, Enum =
-  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.Enum
+local BasicHelpers, ErrorHandler, Cache, Enum, Constants =
+  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.Enum, Deps.Constants
 local GuiBase = require("gui.gui_base")
 local GuiValidation = require("core.utils.gui_validation")
 local GuiHelpers = require("core.utils.gui_helpers")
@@ -223,6 +223,9 @@ return function(fave_bar, helpers)
       else
         local surface_index = player.surface.index
         local pfaves = Cache.get_player_favorites(player, surface_index)
+        local max_slots = Cache.Settings.get_player_max_favorite_slots(player) or 30
+        local label_mode = Cache.Settings.get_player_slot_label_mode(player)
+        local use_labels = label_mode ~= "off"
 
         local recently_built = prev_build_tick ~= nil
           and tick >= prev_build_tick and (tick - prev_build_tick) < 3
@@ -248,13 +251,42 @@ return function(fave_bar, helpers)
           if deferred_slots then
             storage._tf_slot_build_queue = storage._tf_slot_build_queue or {}
             clear_element_children(slots_frame)
-            table.insert(storage._tf_slot_build_queue, {
-              player_index   = player.index,
-              surface_index  = player.surface.index,
-              stage          = "slots",
-              next_slot      = 1,
-              expected_built = 0,
-            })
+            -- Sync cap keeps first-tick Lua under budget; tail uses blank_slots (tick>=2) then prune+hydrate.
+            local build_blanks = helpers.build_blank_slot_range
+            local cap = math.floor(tonumber(Constants.settings.FAVE_BAR_SYNC_BLANK_BUILD_CAP) or 22)
+            local tail_batch_max = math.floor(tonumber(Constants.settings.FAVE_BAR_TAIL_BLANK_BATCH_MAX) or 10)
+            if use_labels then
+              cap = math.min(cap, 14)
+            end
+            local n_first = math.min(cap, max_slots)
+            if build_blanks and slots_frame and slots_frame.valid then
+              build_blanks(slots_frame, 1, n_first, use_labels)
+            end
+            if max_slots > n_first then
+              local remaining = max_slots - n_first
+              table.insert(storage._tf_slot_build_queue, {
+                player_index         = player.index,
+                surface_index        = player.surface.index,
+                stage                = "blank_slots",
+                next_slot            = n_first + 1,
+                expected_blank       = n_first,
+                max_slots            = max_slots,
+                use_labels           = use_labels,
+                label_mode           = label_mode,
+                stop_after_blank     = false,
+                blank_batch_override = math.min(tail_batch_max, remaining),
+              })
+            else
+              table.insert(storage._tf_slot_build_queue, {
+                player_index  = player.index,
+                surface_index = player.surface.index,
+                stage         = "hydrate_slots",
+                next_slot     = 1,
+                max_slots     = max_slots,
+                use_labels    = use_labels,
+                label_mode    = label_mode,
+              })
+            end
           else
             local slots_updated = slots_frame and slots_frame.valid
               and GuiHelpers.count_direct_children(slots_frame) > 0
@@ -266,7 +298,6 @@ return function(fave_bar, helpers)
           end
         end
 
-        local max_slots = Cache.Settings.get_player_max_favorite_slots(player)
         if pfaves and #pfaves > max_slots then
           GuiElementBuilders.show_simple_error_label(fave_bar_frame, "tf-gui.fave_bar_overflow_error")
         end

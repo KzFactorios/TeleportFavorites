@@ -106,7 +106,7 @@ function handlers.on_configuration_changed(data)
       if main_flow and main_flow.valid then
         GuiValidation.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
       end
-      fave_bar.build(player, true)
+      fave_bar.build(player, true, true)
     end
   end)
 end
@@ -130,7 +130,7 @@ function handlers.ensure_fave_bar_for_session_players()
     local ready   = fave_bar.blank_bar_is_ready(player)
     local pending = fave_bar.has_pending_slot_build(player.index)
     if not ready and not pending then
-      fave_bar.build(player, true)
+      fave_bar.build(player, true, true)
     end
   end)
 end
@@ -148,7 +148,7 @@ function handlers.on_player_joined_game(event)
     pcall(function() player.clear_cursor() end)
     gui_observer.GuiEventBus.cleanup_player_observers(player)
     register_gui_observers(player)
-    fave_bar.build(player, true)
+    fave_bar.build(player, true, true)
   end)
 end
 

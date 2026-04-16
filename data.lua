@@ -259,6 +259,7 @@ data:extend({
     width = 24,
     height = 24,
     scale = 0.8,
-    flags = { "gui-icon" }
+    flags = { "gui-icon" },
+    tint = { r = 1, g = 1, b = 1, a = 0.5 },
   },
 })

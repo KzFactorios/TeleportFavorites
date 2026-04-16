@@ -9,11 +9,12 @@ local TF_FAVE_BAR_SLOT_NUMBER_COLOR = { r = 0.98, g = 0.66, b = 0.22, a = 0.9 }
 
 -- Locked slot chrome: warm wash on the slot face + crisp outer rim (same 9-slice pattern as mod rounded_button_glow).
 -- Rim is draw-only (outer layer); does not change button size, padding, or margins.
-local LOCKED_SLOT_BASE_TINT = { r = 1, g = 0.86, b = 0.7, a = 0.15 }
+-- Face wash + outer rim for `tf_slot_button_smallfont_locked` (see `locked_face()` below). Lower `a` = subtler.
+local LOCKED_SLOT_BASE_TINT = { r = 0.55, g = 0.38, b = 0.24, a = 0.10 }
 local LOCKED_SLOT_BORDER_RIM = {
   position = { 256, 191 },
   corner_size = 16,
-  tint = { r = 0.72, g = 0.36, b = 0.06, a = 0.48 },
+  tint = { r = 0.72, g = 0.36, b = 0.06, a = 0.18 },
   top_outer_border_shift = 4,
   bottom_outer_border_shift = -4,
   left_outer_border_shift = 4,

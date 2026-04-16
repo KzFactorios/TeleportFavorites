@@ -44,6 +44,11 @@ local Constants = {
     TELEPORT_HISTORY_LABEL_MAX_DISPLAY = 27,             -- Teleport history label max display length
     DEFAULT_SLOT_LABEL_MODE = "off",                      -- Default slot label mode (off/short/long)
     SLOT_LABEL_MODE_SETTING = "slot-label-mode",          -- Setting name for slot label display mode
+    -- Deferred fave bar: sync this many blank slot cells on the build() tick; rest via blank_slots queue (UPS).
+    -- Lower if LuaProfiler first-tick ms must stay under a budget (e.g. under 5 ms with 30 max slots).
+    FAVE_BAR_SYNC_BLANK_BUILD_CAP = 15,
+    -- Max blank slots to add per process_slot_build_queue when finishing the tail after the sync cap.
+    FAVE_BAR_TAIL_BLANK_BATCH_MAX = 10,
 
     -- ========================================
     -- Update Intervals (in ticks)

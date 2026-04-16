@@ -449,7 +449,8 @@ end
 -- Stage "c": error/last rows.
 -- Stage "d1"/"d2": split final state wiring across two on_nth_tick(2) callbacks. Legacy "d" runs atomically.
 -- Stage "focus": rich text input focus (deferred from build_rich_text_row for lower peak Lua on stage b).
--- stage_budget is 1 so b+c (and c+d1) never run in the same callback — trades ~2 ticks latency for lower UPS spikes.
+-- stage_budget is 2 so b+c run in one process_build_queue call (fewer visible pop-in waves); slightly higher peak Lua that tick.
+-- d1/d2/focus still split across ticks. If profiling shows spikes on huge saves, dial back to 1.
 -- If a build_* slice still exceeds ~2ms after profiling, add nested ProfilerExport inside build_interior_a/b/c.
 function tag_editor.process_build_queue()
   -- Derive work from storage — do not skip when `_tag_editor_queue_has_work` is stale (MP parity with favorites bar queue).
@@ -463,7 +464,7 @@ function tag_editor.process_build_queue()
   end
   _tag_editor_queue_has_work = true
 
-  local stage_budget = 1
+  local stage_budget = 2
   local processed = 0
 
   while processed < stage_budget and #storage._tf_tag_editor_build_queue > 0 do

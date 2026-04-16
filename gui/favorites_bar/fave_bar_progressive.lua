@@ -28,7 +28,53 @@ local PlayerFavorites                         = require("core.favorite.player_fa
 local BLANK_BATCH_SIZE                        = 3
 local HYDRATE_BATCH_SIZE                      = 5
 
+--- Create empty slot buttons for indices [start_idx, end_idx]. Shared by blank_slots queue stage and
+--- fave_bar.build(..., deferred_slots) so placeholder DOM matches before hydrate runs.
+---@param slots_frame LuaGuiElement
+---@param start_idx uint
+---@param end_idx uint
+---@param use_labels boolean
+local function build_blank_slot_range(slots_frame, start_idx, end_idx, use_labels)
+  for i = start_idx, end_idx do
+    local btn_parent = slots_frame
+    if use_labels then
+      btn_parent = slots_frame.add {
+        type      = "flow",
+        name      = "fave_bar_slot_wrapper_" .. i,
+        direction = "vertical",
+        style     = "tf_fave_bar_slot_wrapper",
+      }
+    end
+    local btn = btn_parent.add {
+      type    = "sprite-button",
+      name    = "fave_bar_slot_" .. i,
+      sprite  = "",
+      style   = "tf_slot_button_smallfont",
+      tooltip = { "tf-gui.favorite_slot_empty" },
+    }
+    btn.add { type = "label", name = "n", caption = tostring(i), style = "tf_fave_bar_slot_number" }
+    btn.add {
+      type                   = "sprite",
+      name                   = "tf_slot_lock",
+      sprite                 = "tf_fave_slot_lock",
+      visible                = false,
+      ignored_by_interaction = true,
+      style                  = "tf_fave_slot_lock_overlay",
+    }
+    if use_labels then
+      btn_parent.add {
+        type    = "label",
+        name    = "fave_bar_slot_label_" .. i,
+        caption = "",
+        style   = "tf_fave_bar_slot_label",
+      }
+    end
+  end
+end
+
 return function(fave_bar, helpers)
+  helpers.build_blank_slot_range = build_blank_slot_range
+
   local cancel_progressive_build_for = helpers.cancel_progressive_build_for
   local last_build_tick              = helpers.last_build_tick
   local create_toggle_chrome         = helpers.create_toggle_chrome
@@ -385,46 +431,17 @@ return function(fave_bar, helpers)
 
       -- No-label mode: BLANK_BATCH_SIZE slots/tick × 2 adds/slot (button + number label).
       -- Label mode: 1 slot/tick × 4 adds/slot (wrapper flow + button + number label + slot label).
-      local batch_size = entry.use_labels and 1 or BLANK_BATCH_SIZE
+      -- blank_batch_override: optional (e.g. deferred build — full row of placeholders in one pass when no labels).
+      local batch_size
+      if type(entry.blank_batch_override) == "number" and entry.blank_batch_override > 0 then
+        batch_size = entry.blank_batch_override
+      else
+        batch_size = entry.use_labels and 1 or BLANK_BATCH_SIZE
+      end
       local start_idx  = entry.next_slot
       local end_idx    = math.min(start_idx + batch_size - 1, entry.max_slots)
 
-      for i = start_idx, end_idx do
-        local btn_parent = slots_frame
-        if entry.use_labels then
-          btn_parent = slots_frame.add {
-            type      = "flow",
-            name      = "fave_bar_slot_wrapper_" .. i,
-            direction = "vertical",
-            style     = "tf_fave_bar_slot_wrapper",
-          }
-        end
-        local btn = btn_parent.add {
-          type    = "sprite-button",
-          name    = "fave_bar_slot_" .. i,
-          sprite  = "",
-          style   = "tf_slot_button_smallfont",
-          tooltip = { "tf-gui.favorite_slot_empty" },
-        }
-        btn.add { type = "label", name = "n", caption = tostring(i), style = "tf_fave_bar_slot_number" }
-        btn.add {
-          type                   = "sprite",
-          name                   = "tf_slot_lock",
-          sprite                 = "tf_fave_slot_lock",
-          visible                = false,
-          ignored_by_interaction = true,
-          style                  = "tf_fave_slot_lock_overlay",
-        }
-        if entry.use_labels then
-          btn_parent.add {
-            type    = "label",
-            name    = "fave_bar_slot_label_" .. i,
-            caption = "",
-            style   = "tf_fave_bar_slot_label",
-          }
-        end
-      end
-
+      build_blank_slot_range(slots_frame, start_idx, end_idx, entry.use_labels)
 
       if end_idx >= entry.max_slots then
         if entry.stop_after_blank then
