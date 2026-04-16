@@ -316,6 +316,9 @@ local function on_teleport_history_modal_gui_click(event)
         TeleportHistory.set_pointer(success_player, success_player.surface.index, index)
       end,
       on_failure = function(failure_player, error_code)
+        if error_code == "space_platform_teleport_blocked" then
+          return
+        end
         local error_message = tostring(error_code or "Unknown teleportation failure.")
         ErrorHandler.warn_log("Teleport failed", { gps = gps, error = error_message })
         if failure_player and failure_player.valid then

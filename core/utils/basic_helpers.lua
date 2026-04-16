@@ -320,7 +320,8 @@ function basic_helpers.get_fallback_string(category, key, params)
             teleport_success = "Teleported successfully!", teleport_failed = "Teleportation failed" },
     error = { driving_teleport_blocked = "Are you crazy? Trying to teleport while driving is strictly prohibited.",
               player_missing = "Unable to teleport. Player is missing", unknown_error = "Unknown error",
-              move_mode_failed = "Move failed", invalid_location_chosen = "invalid location chosen" },
+              move_mode_failed = "Move failed", invalid_location_chosen = "invalid location chosen",
+              space_platform_teleport_blocked = "Teleport is disabled on space platforms. Use normal travel to a planet first." },
     command = { nothing_to_undo = "No actions to undo" }
   }
   local fallback = fallbacks[category] and fallbacks[category][key]

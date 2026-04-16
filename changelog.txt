@@ -2,24 +2,11 @@
 Version: 0.0.98
 Date: 2026-04-15
   Changes:
-    - Multiplayer: favorites bar `flush_all_dirty_slots` derives pending work from `dirty_slots` (not `_dirty_slots_has_work` alone); slot row `clear_element_children` / `try_update_slots_in_place` avoid `#` on `LuaGuiElement.children` (LuaCustomTable)
-    - Multiplayer: tag editor and teleport history modal build queues consult `storage` first so session-local “has work” flags cannot skip processing
-    - Favorites bar: count GUI children via `GuiHelpers.count_direct_children` (numeric `children[i]`); `#` and `table_size` on `LuaGuiElement.children` (LuaCustomTable) can mis-report and break `blank_bar_is_ready` / legacy `slots` guard / slot-row structure checks
-    - Multiplayer desync fix: favorites bar `process_slot_build_queue` no longer skips work when `_fave_bar_queue_has_work` is stale (slots rebuild inserted into `storage._tf_slot_build_queue` without updating the session flag); deferred slot queue entries now set `stage = "slots"` so the legacy progressive worker runs; migration coerces old saves missing `stage`
-    - Multiplayer: tag editor deferred confirm uses a single `on_nth_tick(1)` registration per tick and closes every confirming player after draining the deferred API queue; favorites bar dirty-slot flush sorts players and slots
-    - Multiplayer desync bisection: runtime-global `tf-mp-bisect-mode` (`none`, `no_fave_bar_queue`, `no_tag_editor`, `no_history_modal`, `no_lookups_sweep`, `no_chart_and_remote`) gates subsystems for isolation testing; Map → Mod settings → Teleport Favorites (same value on all peers)
-    - Multiplayer (phase 3 static audit): deterministic `script.on_event` registration order for core lifecycle events; sorted custom-input handler registration; sorted `storage.surfaces` / tag GPS iteration in `storage_migrations`; sorted per-player surfaces in `Cache.apply_player_max_slots`; `tag_destroy_helper` uses sorted-by-index players and numeric favorite slots; `player_has_nonblank_favorites` uses array order; malformed-history GPS warning uses `log` instead of `game.print`; sorted registration-result checks in `register_all_events`
-    - Multiplayer: deterministic iteration for `on_runtime_mod_setting_changed` (connected players), chart-tag ownership reset (surfaces and GPS keys), tag-editor marker deferrals on `on_tick`, GUI observer dirty-slot merge/cleanup, and GPS lookup validity sweep; added `for_each_connected_player_by_index_asc`
-    - If desync persists with identical TeleportFavorites script checksums on host and client, try the same save with this mod disabled on both sides to see whether the failure is attributable to this mod or to vanilla/other mods
-    - Fixed issue where owner info was getting lost after moving a tag
-    - Favorites bar refresh after drag-and-drop reorder avoids unnecessary full rebuilds; only slots that actually change are updated, with batched favorites/label reads per drop
-    - Drag-and-drop reorder skips redundant slot redraws when a move does not change how those slots look
-    - Toggling sequential history mode updates only the history-mode control instead of rebuilding the whole bar
-    - Deferred favorites bar work is applied in smaller chunks where possible, reducing frame-time spikes when slots update
-    - Deferred notification coalescing preserves per-slot hints when several refresh events arrive the same tick, avoiding unnecessary full-bar refreshes
-    - Favorite removal and other refresh paths are less likely to trigger a full favorites bar rebuild when only one slot actually changed
-    - Multiple GPS/favorite-related updates back-to-back are handled more efficiently so the bar does not redraw more than necessary
-    - Tag editor delete confirmation: confirm/cancel respond reliably; delete overlay sets player.opened to the confirm frame (setting opened to nil was closing the tag editor); confirmation frame uses modal=true; right-click on confirm/cancel allowed; shift+click still allowed on those buttons
+    - Multiplayer: more desync fixes and stricter same-order behavior across the favorites bar, tag editor, and teleport history so clients stay in sync
+    - Multiplayer: if you still desync with the same mod version on host and every client, try the same save with TeleportFavorites turned off everywhere to see whether the problem is this mod or something else
+    - Fixed tag creator/owner information being lost after moving a tag on the map
+    - Tag editor: delete confirmation (confirm/cancel) behaves reliably again
+    - UPS and responsiveness: favorites bar updates use less work per change (chunked deferred work, fewer full rebuilds, better coalescing), which should show as lower mod time in the UPS overlay and feel snappier when you reorder slots, edit favorites, toggle sequential history, or change several locations in a row
 ---------------------------------------------------------------------------------------------------
 Version: 0.0.97
 Date: 2026-03-20

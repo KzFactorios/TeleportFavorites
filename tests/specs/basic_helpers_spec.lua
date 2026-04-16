@@ -67,3 +67,20 @@ describe("BasicHelpers.for_each_connected_player_by_index_asc", function()
     assert(#seen == 0)
   end)
 end)
+
+describe("BasicHelpers.is_space_platform_surface", function()
+  it("returns true when surface has a platform", function()
+    local surface = { valid = true, platform = { name = "test" } }
+    assert(BasicHelpers.is_space_platform_surface(surface) == true)
+  end)
+
+  it("returns false when surface has no platform", function()
+    local surface = { valid = true, planet = {}, platform = nil }
+    assert(BasicHelpers.is_space_platform_surface(surface) == false)
+  end)
+
+  it("returns false for nil or invalid surface", function()
+    assert(BasicHelpers.is_space_platform_surface(nil) == false)
+    assert(BasicHelpers.is_space_platform_surface({ valid = false }) == false)
+  end)
+end)

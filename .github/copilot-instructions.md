@@ -71,6 +71,11 @@ These concrete examples should be used by reviewers and by automated lint fixes 
 - Do not use emojis or decorative symbols in repository docs or instruction files.
 
 
+## Workspace scope
+
+- **`.dist/` is out of scope by default:** It is generated release staging (see [Linter & Tooling](.github/instructions/linter-tooling.instructions.md)). Unless the user explicitly asks about deploy bundles, release zips, or that pipeline, do not read, edit, search, or cite files under `.dist/`; use the real sources at the repository root instead.
+
+
 ## Key conventions
 
 - **Storage is the source of truth:** use `core/cache/*` helpers rather than reading GUI state.

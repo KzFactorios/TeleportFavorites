@@ -1,204 +1,232 @@
-
 # TeleportFavorites
 
 *Instant teleportation to your favorite map locations in Factorio 2.0+*
 
-TeleportFavorites gives you a personal teleportation toolkit — a favorites bar, map tag editor, teleport history, and keyboard shortcuts — all designed for multiplayer safety and per-surface awareness.
+TeleportFavorites adds a **favorites bar**, **map tag editor**, and **teleport history** with shortcuts. Favorites, tags, and history stay **per surface** (Nauvis, Vulcanus, Gleba, etc, modded worlds too), and tag editing respects **multiplayer** ownership.
+
+---
+
+## Quick start
+
+*👋 Shortest path from install to your first teleport.*
+
+1. Enable the mod and load a save.
+2. Look at the **top of the screen** for the **favorites bar**.
+3. **Right-click the map** to open the tag editor, set an icon or text, star it if you want it on the bar, and confirm.
+4. **Left-click** a filled slot to teleport, or use **Ctrl+1** through **Ctrl+0** for slots 1–10 only.
+5. Open **teleport history** from the bar or with **Ctrl+Shift+T**; use **Ctrl+Minus** / **Ctrl+Equals** to step through entries.
+
+Details below: [Getting Started](#getting-started), [Map Tags](#map-tags), [Teleport History](#teleport-history), [Sequential History Mode](#sequential-history-mode-experimental).
 
 ---
 
 ## Features
 
-- **Favorites Bar** — 10, 20, or 30-slot configurable bar at the top of your screen for one-click teleportation
-- **Map Tag Editor** — Right-click the map to create, edit, favorite, or delete tags with icons and text
-- **Teleport History** — Scrollable history of recent teleports with keyboard navigation and optional sequential mode
-- **Drag & Drop Reordering** — Shift+left-click to start dragging, rearrange your favorites bar freely
-- **Slot Locking** — Ctrl+left-click to lock a slot; locked slots can't be moved, overwritten, or dragged
-- **Multiplayer Safe** — Tag ownership enforced by player name; only creators and admins can edit
-- **Surface Aware** — Favorites, tags, and history are tracked per surface (Nauvis, Vulcanus, etc.)
-- **Multi-Language** — Automatically detects your game language; community translations included
+- ⭐ **Favorites bar** — 10, 20, or 30 slots (setting); one-click teleport from the top of the screen
+- 🗺️ **Map tag editor** — Right-click the map to create, edit, favorite, or delete tags with icons and text
+- 📜 **Teleport history** — Scrollable list, keyboard navigation, **destination-only (Standard)** or **full-hop (Sequential)** recording. Switch modes with the **history mode** button on the favorites bar (next to the history button); hover for in-game tooltips
+- 🔀 **Drag and drop** — Shift+left-click to drag slots on the bar
+- 🔒 **Slot locking** — Ctrl+left-click locks a slot so it cannot be moved, overwritten, or dragged
+- 🤝 **Multiplayer-safe** — Tag ownership by player name; only the creator or admins can edit or move a tag
+- 🌍 **Surface-aware** — Favorites, tags, and history are stored per surface
+- 🌐 **Locales** — Uses your game language where translations exist
 
 ---
 
 ## Getting Started
 
-After installing the mod, look at the top of your screen for the **favorites bar**.
+📌 After installing the mod, look at the top of your screen for the **favorites bar**.
 
-| Action | How |
-|---|---|
-| Teleport to a favorite | Left-click a slot |
-| Edit a favorite / open tag editor | Right-click a slot |
-| Lock / unlock a slot | Ctrl + left-click |
-| Start drag & drop | Shift + left-click, then click destination |
-| Toggle bar visibility | Click the eye button |
-| Open teleport history | Click the history button, or Ctrl+Shift+T |
+**Favorites bar actions**
 
-Empty slots are always available — just waiting for your next tag.
+- **Teleport to a favorite** — Left-click a slot
+- **Edit a favorite / open tag editor** — Right-click a slot
+- **Lock / unlock a slot** — Ctrl+left-click
+- **Start drag and drop** — Shift+left-click, then click the destination slot
+- **Toggle bar visibility** — Click the eye button
+- **Open teleport history** — Click the history button, or Ctrl+Shift+T
+
+Empty slots stay available until you fill them.
 
 ---
 
 ## Map Tags
 
-### Creating & Editing
+### Creating and editing
 
-1. **Right-click** anywhere on the map to open the Tag Editor
+1. **Right-click** anywhere on the map to open the tag editor
 2. Choose an **icon** and/or enter **text** (at least one is required)
-3. Click the **star** to mark it as a favorite
+3. Click the **star** to add the tag to your favorites bar
 4. Click **Confirm** to save
 
-You can also right-click any existing favorite in the bar or any map tag to edit it.
+You can also right-click a favorite on the bar or an existing map tag to edit it.
 
 ### Teleporting
 
-- **From the favorites bar:** Left-click any populated slot
-- **From the tag editor:** Click the teleport button
+- **From the favorites bar:** Left-click a filled slot
+- **From the tag editor:** Use the teleport button
 - **Hotkeys:** Ctrl+1 through Ctrl+0 teleport to favorites 1–10
 
-Teleports are blocked while you or your vehicle are moving — come to a full stop first.
+You cannot teleport while you or your vehicle are moving — come to a **full stop** first.
 
-### Ownership & Permissions
+### Ownership and permissions
 
-- Only the tag **creator** (or a server **admin**) can edit or move a tag
-- Anyone can favorite any tag and teleport to it
-- Ownership is tracked by player name for multiplayer consistency
+- Only the tag **creator** (or a server **admin**) can edit or move the tag
+- Anyone can favorite a tag and teleport to it
+- Ownership is tracked by **player name** for multiplayer consistency
 
 ---
 
 ## Teleport History
 
-TeleportFavorites records your teleport destinations so you can revisit them later.
+⏮️ TeleportFavorites records teleport **destinations** (in Standard mode) so you can return to them later. **Sequential** mode instead records **full hops** (departure and destination); see [Sequential History Mode](#sequential-history-mode-experimental).
 
 ### What gets recorded
 
-- Teleports from the favorites bar (left-click or hotkey)
+- Teleports from the favorites bar (click or hotkey)
 - Teleports from the tag editor teleport button
 
-### What does NOT get recorded
+### What does not get recorded
 
-- Navigating through history itself (prev/next)
-- Teleports from other mods or console commands
+- Moving through history itself (previous / next)
+- Teleports from other mods or the console
 
 ### Using history
 
-- Open the history modal from the favorites bar button or **Ctrl+Shift+T**
-- Click any entry to teleport there; the modal stays open for multiple jumps
-- History is **per-player** and **per-surface** — you only see your own, for your current world
-- Up to 128 entries are stored; oldest entries are removed automatically
+- Open the history window from the favorites bar or **Ctrl+Shift+T**
+- Click an entry to teleport there; the window can stay open for several jumps in a row
+- History is **per player** and **per surface**
+- Up to **128** entries; oldest entries drop off when the limit is exceeded
 
-### Keyboard Shortcuts
+### Keyboard shortcuts
 
-| Action | Shortcut |
-|---|---|
-| Toggle history modal | Ctrl + Shift + T |
-| Previous entry | Ctrl + Minus |
-| Next entry | Ctrl + Equals |
-| First (oldest) entry | Ctrl + Shift + Minus |
-| Last (newest) entry | Ctrl + Shift + Equals |
-| Clear all history | Ctrl + Shift + Backspace (modal must be open) |
+- **Toggle history window** — Ctrl+Shift+T
+- **Previous entry** — Ctrl+Minus
+- **Next entry** — Ctrl+Equals
+- **First (oldest) entry** — Ctrl+Shift+Minus
+- **Last (newest) entry** — Ctrl+Shift+Equals
+- **Clear all history** — Ctrl+Shift+Backspace (history window must be open)
 
 ---
 
-## Sequential History Mode (Experimental)
+## Sequential History Mode (experimental)
 
-**Problem:** You teleport to a favorite, run around building for a while, then teleport somewhere else. When you press "Previous," you land at the original teleport destination — not where you were actually standing when you left.
+In **Standard** mode, history is **destination-only**: each entry is where you arrived. In **Sequential** mode, history is **full-hop**: each teleport can add **where you left from** and **where you went** as separate steps so “Previous” can return you to your pre-teleport feet position. The mod portal summary calls this **destination-only** vs **full-hop** behavior.
 
-**Solution:** Sequential History Mode records **both** your departure location and your destination as separate entries in the history stack.
+**Problem:** 🤔 You teleport to a favorite, build elsewhere, then teleport again. In Standard mode, **Previous** might take you to an older **destination**, not the tile you stood on before the last jump.
+
+**Solution:** Sequential mode pushes **departure** then **destination** onto the history stack when you teleport (subject to filtering below).
 
 ### How it works
 
-When you teleport in sequential mode, two entries are pushed onto the stack: first your departure position, then the destination. Pressing "Previous" once takes you back to where you were standing before the teleport. Pressing it again continues backward through earlier entries.
+When you teleport in Sequential mode, two entries are added: first your **departure** position, then the **destination**. **Ctrl+Minus** once returns you to where you stood before that teleport; pressing again keeps stepping backward.
 
-**Smart filtering** keeps the history clean:
-- **Trivial hops** — if your departure and destination are within 32 tiles of each other, nothing is recorded
-- **Consecutive duplicates** — if a new location is within 20 tiles of the most recent entry, it is silently collapsed
+**Filtering** keeps noise down:
 
-### How it changes navigation
+- **Trivial hop (Sequential only)** — If departure and destination are within **32** tiles of each other, that teleport is not recorded
+- **Stack collapse** — A new GPS within **20** tiles of the **top of the history stack** is skipped (same rule used whenever an entry is pushed, including each step of a Sequential pair)
 
-| Navigation | Standard Mode | Sequential Mode |
-|---|---|---|
-| Previous (Ctrl+Minus) | Goes to the previous destination | Goes one step back (first press = your departure point) |
-| Next (Ctrl+Equals) | Goes to the next destination | Goes one step forward |
-| History modal display | Shows each destination | Shows each entry (departures and destinations interleaved) |
+### How navigation differs
+
+**Previous (Ctrl+Minus)**
+
+- **Standard (destination-only):** Previous **destination**
+- **Sequential (full-hop):** One step back on the stack (first step is often your **departure** point)
+
+**Next (Ctrl+Equals)**
+
+- **Standard (destination-only):** Next **destination**
+- **Sequential (full-hop):** One step forward on the stack
+
+**History window**
+
+- **Standard (destination-only):** One row per **destination**
+- **Sequential (full-hop):** **Departure** and **destination** rows can alternate
 
 ### How to toggle
 
-Click the **history mode button** on the favorites bar (next to the history scroll button). The icon reflects the current mode:
-- **Finger pointer** = Standard mode (destinations only)
-- **Numbered list** = Sequential mode (departures + destinations)
+Click the **history mode** button on the favorites bar (beside the history open button). The **sprite** shows which mode is active: a **pointing-hand** icon for Standard, a **list-style** icon for Sequential (button art only — history rows are not numbered in the list). **Hover** the button for localized tooltips (“History Mode: Standard / Sequential”).
 
 ### Notes
 
-- **Experimental** — behavior may change in future updates
-- Existing history entries continue to work normally when switching modes
-- Toggling the mode does not delete any history
-- Each player controls their own setting independently in multiplayer
+- 🧪 **Experimental** — details may change in future versions
+- Existing history remains valid when you switch modes
+- Switching modes does **not** clear history
+- Each player chooses their own mode in multiplayer
 
 ---
 
-## Multiplayer & Surfaces
+## Multiplayer and surfaces
 
-- All data (favorites, tags, history) is organized **per surface** — no cross-world confusion
-- Tag editing is restricted to the **owner** or **admins**; favoriting and teleporting is open to all
-- Player data is cleaned up automatically when a player leaves
+🛰️ Favorites, tags, and history are stored **per surface** so different planets and platforms stay separate
 
-### Surface Switching
+- Only the tag **owner** or **admins** may edit or move a tag; favoriting and teleporting stay open to everyone
+- Player data is cleaned up when a player leaves the game
 
-When you change surfaces (portals, admin commands, space platforms), your favorites bar and history update automatically to show data for the current world.
+### Surface switching
+
+When you change surfaces (elevators, portals, commands, platforms), the favorites bar and history switch to that surface’s data automatically.
 
 ---
 
 ## Settings
 
-All settings are under **Mod Settings → Per Player**:
+All settings are under **Mod settings → Per player**:
 
-| Setting | Default | Description |
-|---|---|---|
-| Enable favorites | On | Show the favorites bar and all related features |
-| Enable teleport history | On | Record teleport history |
-| Sequential History Mode (Experimental) | Off | Record departure location alongside destination |
-| Max Slots | 10 | Number of favorite slots (10, 20, or 30). **Warning:** lowering this value deletes favorites beyond the new maximum. A larger bar is a more generous canvas — though the more slots you invite to the party, the more time the game spends setting the table each time your favorites refresh. |
+- **Enable favorites** — **Default:** On — Show the favorites bar and related UI
+- **Enable teleport history** — **Default:** On — Record and show teleport history
+- **Sequential History Mode (experimental)** — **Default:** Off — Record departure and destination in Sequential mode
+- **Max slots** — **Default:** 10 — Slot count: **10**, **20**, or **30**. **Warning:** lowering this **permanently deletes** favorites in slots above the new limit (including locked slots). Larger slot counts refresh more UI when the bar updates; pick the size you actually use.
 
 ---
 
-## Multi-Language Support
+## Feedback, translations, and bugs
 
-TeleportFavorites automatically detects your game language. Community translations are included for many languages. If you find missing or incorrect translations, please report them on the mod portal.
+💬 TeleportFavorites follows your **game language** when a locale is available; community translations cover many languages.
+
+**Translations:** Missing or wrong strings — please say so in the **[Teleport Favorites discussion](https://mods.factorio.com/mod/TeleportFavorites/discussion)** on the Factorio mod portal.
+
+**Feedback and feature requests:** Ideas, balance, and quality-of-life improvements are welcome in the **[Teleport Favorites discussion](https://mods.factorio.com/mod/TeleportFavorites/discussion)** — a save or screenshot helps when describing UI or workflow wishes.
+
+**Bugs and unexpected behavior:** Open a thread in the **[same discussion](https://mods.factorio.com/mod/TeleportFavorites/discussion)**. Include Factorio version, mod version, single-player or multiplayer, and steps to reproduce if you can — that speeds up fixes.
 
 ---
 
-## Debug Commands
+## Troubleshooting (console)
 
-Console commands for troubleshooting:
+🔧 Use this only when diagnosing problems or helping with a bug report.
 
-| Command | Description |
-|---|---|
-| `/tf_log_level debug` | Enable verbose debug logging |
-| `/tf_log_level production` | Disable debug logs (default) |
-| `/tf_log_level` | Show current level and options |
-| `/tf_debug_info` | Show current debug configuration |
+- **`/tf_log_level debug`** — Verbose debug logging
+- **`/tf_log_level production`** — Normal logging (default)
+- **`/tf_log_level`** — Show current level and options
+- **`/tf_debug_info`** — Show debug configuration
 
 ---
 
 ## FAQ
 
-**I can't teleport to my favorite.**
-Check that the destination has a safe landing position and that you're not moving.
+**I can't teleport to my favorite.**  
+Check for a valid landing spot and that you are **not moving** (and your vehicle is stopped if you are in one).
 
-**Can I teleport with my vehicle?**
-Yes. You'll bring along whatever vehicle you're riding. The vehicle must be at a full stop.
+**Can I teleport in a vehicle?**  
+Yes. The vehicle teleports with you but you must be at a **full stop**.
 
-**Why can't I edit someone else's tag?**
-Only the tag creator or a server admin can edit or move a tag. Anyone can favorite it.
+**Teleport on a space platform?**  
+**Not supported.** Factorio’s Space Age rules for characters on space platforms are fragile—scripted teleports and can **leave your character in an invalid or lethal state** (outside the hub, vacuum, etc.). Travel to a planet (or otherwise leave the platform) first, then teleport.
 
-**What happens if I lower my max slots?**
-Favorites in slots above the new maximum are permanently deleted, even if locked. Manage your slots before lowering.
+**Why can't I edit someone else's tag?**  
+Only the creator or an admin can edit or move it. Anyone can favorite it and teleport.
+
+**What if I lower max slots?**  
+Favorites above the new slot count are **deleted permanently**, even locked ones. Raising the limit again later **does not** bring them back.
 
 ---
 
 ## Links
 
-- **Mod Portal:** [TeleportFavorites](https://mods.factorio.com/mod/TeleportFavorites)
-- **Source & Issues:** [GitHub](https://github.com/KzFactorios/TeleportFavorites)
+- **Mod portal:** [TeleportFavorites](https://mods.factorio.com/mod/TeleportFavorites)
+- **Discussion:** [Teleport Favorites discussion](https://mods.factorio.com/mod/TeleportFavorites/discussion)
+- **Source and issues:** [GitHub](https://github.com/KzFactorios/TeleportFavorites)
 
 ---
 

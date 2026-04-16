@@ -49,6 +49,19 @@ function M.execute(player, gps, opts)
     action_id = ProfilerExport.begin_action_trace(opts.action_name, player.index)
   end
 
+  local end_on_failure = opts.end_action_on_failure ~= false
+  if player.surface and BasicHelpers.is_space_platform_surface(player.surface) then
+    ErrorHandler.warn_log("[TELEPORT_ENTRYPOINT] Teleport blocked on space platform", {
+      source = source,
+      player = player.name,
+    })
+    BasicHelpers.safe_player_print(player, BasicHelpers.get_error_string(player, "space_platform_teleport_blocked"))
+    if end_on_failure and action_id then
+      ProfilerExport.end_action_trace(player.index, action_id)
+    end
+    return false, "space_platform_teleport_blocked"
+  end
+
   local ok, call_success, call_result = pcall(
     TeleportStrategy.teleport_to_gps,
     player,
@@ -58,7 +71,6 @@ function M.execute(player, gps, opts)
   )
 
   local end_on_success = opts.end_action_on_success == true
-  local end_on_failure = opts.end_action_on_failure ~= false
 
   if not ok then
     local call_error = tostring(call_success)
