@@ -226,6 +226,8 @@ return function(handlers)
       if rej_tag and rej_tag.valid and event.old_position then
         rej_tag.position = event.old_position
         player.play_sound({ path = "utility/cannot_build" })
+        BasicHelpers.safe_player_print(player,
+          BasicHelpers.get_error_string(player, "tag_deletion_forbidden"))
       end
       return
     end

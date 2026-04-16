@@ -48,6 +48,8 @@ Details below: [Getting Started](#getting-started), [Map Tags](#map-tags), [Tele
 
 Empty slots stay available until you fill them.
 
+**Clicks:** Right-click opens this mod’s tag editor; left-click on the map is vanilla editor. To teleport with this mod, left-click a **filled** bar slot (or use hotkeys).
+
 ---
 
 ## Map Tags
@@ -60,6 +62,8 @@ Empty slots stay available until you fill them.
 4. Click **Confirm** to save
 
 You can also right-click a favorite on the bar or an existing map tag to edit it.
+
+**When using TeleportFavorites, think right-click** — it opens this mod’s tag editor, not the vanilla map tag UI. Left-click on the map stays vanilla; the only mod-specific left-click for “go there” is a **filled** slot on the favorites bar (or hotkeys).
 
 ### Teleporting
 
