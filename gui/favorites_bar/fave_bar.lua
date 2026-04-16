@@ -373,6 +373,11 @@ function fave_bar.on_player_controller_changed(event)
     if bar_flow and bar_flow.valid and slots_frame and slots_frame.valid then
       fave_bar.enqueue_hydrate(player)
     else
+      ErrorHandler.warn_log("[TF_MP][ctrl_changed] bar missing — calling fave_bar.build", {
+        tick            = game and game.tick,
+        player          = player.name,
+        controller_type = player.controller_type,
+      })
       fave_bar.build(player)
     end
   end

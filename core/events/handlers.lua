@@ -130,34 +130,44 @@ function handlers.has_deferred_init_pending()
 end
 
 --- Process all queued player initializations (drained on on_nth_tick(2), not tick 0).
+--- Restricted players (spectator/god) are kept in the queue and retried every 2 ticks
+--- until they have a character — handles the MP case where the host is briefly in
+--- spectator mode at tick 2 before their character is assigned.
 function handlers.process_deferred_init_queue()
   -- Skip tick 0: on_nth_tick(2) also fires at tick 0; defer heavy work until tick 2+.
   if game.tick == 0 then return end
   if #_deferred_init_queue == 0 then return end
+  local retry = {}
   for _, entry in ipairs(_deferred_init_queue) do
     local deferred_player = game.players[entry.player_index]
     if deferred_player and deferred_player.valid then
-      Cache.reset_transient_player_states(deferred_player)
+      if BasicHelpers.is_restricted_controller(deferred_player) then
+        -- Player is spectator/god — not ready yet. Retry on the next on_nth_tick(2).
+        table.insert(retry, entry)
+      else
+        Cache.reset_transient_player_states(deferred_player)
 
-      if entry.is_rejoin then
-        close_all_mod_screens(deferred_player)
-        -- Observer cleanup was moved to the on_player_joined_game dispatcher handler
-        -- so fresh observers are in place during the 2-tick gap before this runs.
+        if entry.is_rejoin then
+          close_all_mod_screens(deferred_player)
+          -- Observer cleanup was moved to the on_player_joined_game dispatcher handler
+          -- so fresh observers are in place during the 2-tick gap before this runs.
+        end
+
+        register_gui_observers(deferred_player)
+
+        -- Force-build: cancels any in-flight progressive build and populates all slots
+        -- synchronously (force_show=true bypasses is_planet_surface).
+        ErrorHandler.warn_log("[TF_MP][deferred_init] calling fave_bar.build", {
+          tick            = game.tick,
+          player          = deferred_player.name,
+          controller_type = deferred_player.controller_type,
+          is_rejoin       = entry.is_rejoin,
+        })
+        fave_bar.build(deferred_player, true)
       end
-
-      register_gui_observers(deferred_player)
-
-      -- Unconditional force-build for all deferred entries (new players and rejoins alike).
-      -- Cancels any in-flight progressive build and guarantees bar visibility at tick 2.
-      -- force_show=true bypasses is_planet_surface; the inner is_restricted_controller
-      -- check still applies so spectator players get no bar here and fall back to
-      -- on_player_controller_changed when their character is ready.
-      -- fave_bar.build builds all slots synchronously (favorites included), so no
-      -- separate hydrate-after-blank step is needed.
-      fave_bar.build(deferred_player, true)
     end
   end
-  _deferred_init_queue = {}
+  _deferred_init_queue = retry
 end
 
 --- Enqueue a player for deferred initialization (deduplicates).

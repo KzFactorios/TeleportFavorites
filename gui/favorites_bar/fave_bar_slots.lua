@@ -164,6 +164,12 @@ return function(fave_bar, helpers)
       end
 
       if BasicHelpers.is_restricted_controller(player) then
+        ErrorHandler.warn_log("[TF_MP][fave_bar.build] ABORTED: restricted controller", {
+          tick            = game and game.tick,
+          player          = player.name,
+          controller_type = player.controller_type,
+          force_show      = force_show,
+        })
         _destroy_fave_bar(player)
         return
       end
@@ -211,6 +217,12 @@ return function(fave_bar, helpers)
         _history_mode_toggle.tooltip = is_sequential and { "tf-gui.history_mode_sequential_tooltip" } or { "tf-gui.history_mode_std_tooltip" }
       end
 
+      -- Always cancel any in-flight progressive build when a synchronous build runs.
+      -- This prevents a lingering frame_init entry from running chrome1 (which destroys
+      -- FAVE_BAR_FLOW) after the sync build has already populated the bar, leaving an
+      -- invisible empty frame. Must run regardless of recently_built or slots_already_current.
+      cancel_progressive_build_for(player.index)
+
       if not favorites_enabled then
         if _toggle_button and _toggle_button.valid then _toggle_button.visible = false end
         if slots_frame and slots_frame.valid then slots_frame.visible = false end
@@ -241,7 +253,6 @@ return function(fave_bar, helpers)
         if not slots_already_current then
           if deferred_slots then
             storage._tf_slot_build_queue = storage._tf_slot_build_queue or {}
-            cancel_progressive_build_for(player.index)
             clear_element_children(slots_frame)
             table.insert(storage._tf_slot_build_queue, {
               player_index   = player.index,
@@ -251,7 +262,6 @@ return function(fave_bar, helpers)
               expected_built = 0,
             })
           else
-            cancel_progressive_build_for(player.index)
             local slots_updated = slots_frame and slots_frame.valid
               and GuiHelpers.count_direct_children(slots_frame) > 0
               and try_update_slots_in_place(slots_frame, player, pfaves)
@@ -268,6 +278,11 @@ return function(fave_bar, helpers)
         end
       end
 
+      ErrorHandler.warn_log("[TF_MP][fave_bar.build] setting visible=true", {
+        tick       = game and game.tick,
+        player     = player.name,
+        force_show = force_show,
+      })
       fave_bar_frame.visible = true
       return fave_bar_frame
     end)

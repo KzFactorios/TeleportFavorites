@@ -1,4 +1,7 @@
 {
+  "Lua.workspace.ignoreDir": [
+    ".dist"
+  ],
   "factorio.versions": [
     {
       "name": "Gemini",
