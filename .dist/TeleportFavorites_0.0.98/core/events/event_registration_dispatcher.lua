@@ -158,43 +158,11 @@ local function register_core_events(script)
   local registration_count = 0
   local core_events = {}
   core_events[defines.events.on_player_created] = {
-    handler = function(event)
-      handlers.on_player_created(event)
-      local player = game.players[event.player_index]
-      if player and player.valid then
-        local reg_ok, reg_err = pcall(GuiObserver.GuiEventBus.register_player_observers, player)
-        if not reg_ok then
-          ErrorHandler.warn_log("Failed to register GUI observers for new player", { player = player.name, error = tostring(reg_err) })
-        end
-      end
-    end,
+    handler = function(event) handlers.on_player_created(event) end,
     name = "on_player_created"
   }
   core_events[defines.events.on_player_joined_game] = {
-    handler = function(event)
-      handlers.on_player_joined_game(event)
-      local player = game.players[event.player_index]
-      if player and player.valid then
-        local player_data = Cache.get_player_data(player)
-        if player_data.drag_favorite then
-          player_data.drag_favorite.active = false
-          player_data.drag_favorite.source_slot = nil
-          player_data.drag_favorite.favorite = nil
-        end
-        if player_data.tag_editor_data and player_data.tag_editor_data.move_mode then
-          player_data.tag_editor_data.move_mode = false
-          player_data.tag_editor_data.error_message = ""
-        end
-        pcall(function() player.clear_cursor() end)
-        ErrorHandler.debug_log("Transient states reset for rejoining player", {
-          player = player.name, player_index = player.index
-        })
-        local reg_ok, reg_err = pcall(GuiObserver.GuiEventBus.register_player_observers, player)
-        if not reg_ok then
-          ErrorHandler.warn_log("Failed to register GUI observers for joining player", { player = player.name, error = tostring(reg_err) })
-        end
-      end
-    end,
+    handler = function(event) handlers.on_player_joined_game(event) end,
     name = "on_player_joined_game"
   }
   core_events[defines.events.on_player_changed_surface] = {
@@ -289,9 +257,6 @@ local function register_core_events(script)
   script.on_nth_tick(2, function()
     if GuiObserver.GuiEventBus._deferred_tick_active then
       GuiObserver.GuiEventBus.process_deferred_notifications()
-    end
-    if handlers.has_deferred_init_pending() then
-      handlers.process_deferred_init_queue()
     end
     if not MpBisect.no_fave_bar_queue() then
       fave_bar.process_slot_build_queue()

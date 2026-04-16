@@ -82,6 +82,10 @@ function basic_helpers.is_restricted_controller(player)
   local ct = player.controller_type
   return ct == defines.controllers.god or ct == defines.controllers.spectator
 end
+function basic_helpers.is_chart_render_mode(player)
+  if not player or not player.valid then return false end
+  return player.render_mode == defines.render_mode.chart
+end
 function basic_helpers.is_valid_player(player)
   if player == nil then return false, "Player is nil" end
   if not player.valid then return false, "Player is not valid" end

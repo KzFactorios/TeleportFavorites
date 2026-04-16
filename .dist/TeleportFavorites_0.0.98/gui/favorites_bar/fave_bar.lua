@@ -248,17 +248,16 @@ function fave_bar.update_fave_bar_visibility(player)
 end
 function fave_bar.on_player_controller_changed(event)
   if not event or not event.player_index then return end
-  if game.tick < 60 then return end
-  if is_build_in_flight(event.player_index) then return end
   local player = game.players[event.player_index]
   if not player or not player.valid then return end
+  fave_bar.update_fave_bar_visibility(player)
+  if is_build_in_flight(event.player_index) then return end
   local modal_was_open = Cache.get_modal_dialog_type(player) == "teleport_history"
   local is_remote_controller = player.controller_type == defines.controllers.remote
   if is_remote_controller and modal_was_open then
     teleport_history_modal.destroy(player, true)
     teleport_history_modal.build(player)
   end
-  fave_bar.update_fave_bar_visibility(player)
   if BasicHelpers.is_supported_controller(player) then
     local _, _, bar_flow, slots_frame = get_fave_bar_gui_refs(player)
     if bar_flow and bar_flow.valid and slots_frame and slots_frame.valid then

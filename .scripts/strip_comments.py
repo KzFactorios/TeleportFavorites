@@ -9,7 +9,7 @@ if os.environ.get('GITHUB_ACTIONS') == 'true' and not version:
     sys.exit(1)
 version = version or '0.0.0'
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-DIST = os.path.join(ROOT, '.dist', f'TeleportFavorites_{version}')
+DIST = os.path.join(ROOT, '.dist')
 
 # License header check
 LICENSE_HEADER_PATTERN = re.compile(r'^\s*(--.*copyright|--.*license)', re.IGNORECASE)

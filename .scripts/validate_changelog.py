@@ -9,7 +9,7 @@ if os.environ.get('GITHUB_ACTIONS') == 'true' and not version:
     sys.exit(1)
 version = version or '0.0.0'
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-TARGET_DIR = os.path.join(ROOT, '.dist', f'TeleportFavorites_{version}')
+TARGET_DIR = os.path.join(ROOT, '.dist')
 CHANGELOG = os.path.join(TARGET_DIR, 'changelog.txt')
 
 HEADER_PATTERN = re.compile(r'^-{99}$')

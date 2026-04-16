@@ -87,6 +87,9 @@ return function(handlers)
   end
   function handlers.on_open_tag_editor_custom_input(event)
     with_valid_player(event.player_index, function(player)
+      if not BasicHelpers.is_chart_render_mode(player) then
+        return
+      end
       local can_open, reason = validate_tag_editor_opening(player)
       if not can_open then
         if reason == "Drag mode active" then

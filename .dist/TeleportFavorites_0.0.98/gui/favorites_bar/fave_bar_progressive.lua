@@ -162,6 +162,9 @@ return function(fave_bar, helpers)
     if entry.stage == "chrome1" then
       local bar_frame = get_bar_frame(player)
       if not bar_frame or not bar_frame.valid then
+        ErrorHandler.warn_log("[TF_MP][chrome1] bar_frame missing, aborting build", {
+          player_index = entry.player_index, tick = game.tick,
+        })
         table.remove(storage._tf_slot_build_queue, 1)
         return
       end
@@ -188,6 +191,12 @@ return function(fave_bar, helpers)
       local bar_flow        = bar_frame and bar_frame[Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW]
       local tog_cont        = bar_flow and bar_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER]
       if not bar_frame or not bar_frame.valid or not bar_flow or not tog_cont then
+        ErrorHandler.warn_log("[TF_MP][chrome2a] chrome structure missing, aborting build", {
+          player_index = entry.player_index, tick = game.tick,
+          bar_frame_valid = bar_frame and bar_frame.valid or false,
+          bar_flow_valid  = bar_flow  and bar_flow.valid  or false,
+          tog_cont_valid  = tog_cont  and tog_cont.valid  or false,
+        })
         table.remove(storage._tf_slot_build_queue, 1)
         return
       end
@@ -220,6 +229,12 @@ return function(fave_bar, helpers)
       local bar_flow    = bar_frame and bar_frame[Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW]
       local tog_cont    = bar_flow and bar_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER]
       if not bar_frame or not bar_frame.valid or not bar_flow or not tog_cont then
+        ErrorHandler.warn_log("[TF_MP][chrome2b] chrome structure missing, aborting build", {
+          player_index = entry.player_index, tick = game.tick,
+          bar_frame_valid = bar_frame and bar_frame.valid or false,
+          bar_flow_valid  = bar_flow  and bar_flow.valid  or false,
+          tog_cont_valid  = tog_cont  and tog_cont.valid  or false,
+        })
         table.remove(storage._tf_slot_build_queue, 1)
         return
       end
@@ -263,6 +278,10 @@ return function(fave_bar, helpers)
     if entry.stage == "blank_slots" then
       local slots_frame = get_bar_slots_frame(player)
       if not slots_frame or not slots_frame.valid then
+        ErrorHandler.warn_log("[TF_MP][blank_slots] slots_frame missing, aborting build", {
+          tick         = game.tick,
+          player_index = entry.player_index,
+        })
         table.remove(storage._tf_slot_build_queue, 1)
         return
       end

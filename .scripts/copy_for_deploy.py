@@ -10,8 +10,8 @@ if os.environ.get('GITHUB_ACTIONS') == 'true' and not version:
 version = version or '0.0.0'
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 DIST = os.path.join(ROOT, '.dist')
-# Staging folder: .dist/TeleportFavorites_<version>/
-TARGET_DIR = os.path.join(DIST, f'TeleportFavorites_{version}')
+# Staging folder root: .dist/
+TARGET_DIR = DIST
 
 # Configuration
 EXCLUDE_DIRS = {

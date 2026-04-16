@@ -34,7 +34,7 @@ jobs:
       - name: Update info.json version
         run: |
           $v = $env:RELEASE_VERSION
-          $infoPath = ".dist/TeleportFavorites_$v/info.json"
+          $infoPath = ".dist/info.json"
           $json = Get-Content $infoPath -Raw | ConvertFrom-Json
           $json.version = $v
           $json | ConvertTo-Json -Depth 32 | Set-Content $infoPath -Encoding UTF8
@@ -42,10 +42,41 @@ jobs:
       - name: Validate changelog
         run: python .scripts/validate_changelog.py
 
+      - name: Wrap .dist contents in versioned mod folder
+        run: |
+          $modFolder = "TeleportFavorites_$($env:RELEASE_VERSION)"
+          $target = ".dist/$modFolder"
+          if (-not (Test-Path $target)) { New-Item -ItemType Directory -Path $target | Out-Null }
+          Get-ChildItem ".dist" -Force | Where-Object { $_.Name -ne $modFolder } | ForEach-Object {
+            Move-Item -Path $_.FullName -Destination $target
+          }
+
       - name: Zip the mod directory
         run: |
           $modFolder = "TeleportFavorites_$($env:RELEASE_VERSION)"
-          Compress-Archive -Path ".dist/$modFolder/*" -DestinationPath "$modFolder.zip" -Force
+          Compress-Archive -Path ".dist/$modFolder" -DestinationPath "$modFolder.zip" -Force
+
+      - name: Validate zip contains info.json
+        run: |
+          $modFolder = "TeleportFavorites_$($env:RELEASE_VERSION)"
+          $zipPath = "$modFolder.zip"
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zip = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
+          try {
+            $expected = "$modFolder/info.json"
+            $found = $false
+            foreach ($entry in $zip.Entries) {
+              if ($entry.FullName -eq $expected) {
+                $found = $true
+                break
+              }
+            }
+            if (-not $found) {
+              throw "Missing $expected inside $zipPath"
+            }
+          } finally {
+            $zip.Dispose()
+          }
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
