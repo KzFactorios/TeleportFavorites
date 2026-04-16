@@ -164,12 +164,6 @@ return function(fave_bar, helpers)
       end
 
       if BasicHelpers.is_restricted_controller(player) then
-        ErrorHandler.warn_log("[TF_MP][fave_bar.build] ABORTED: restricted controller", {
-          tick            = game and game.tick,
-          player          = player.name,
-          controller_type = player.controller_type,
-          force_show      = force_show,
-        })
         _destroy_fave_bar(player)
         return
       end
@@ -278,11 +272,6 @@ return function(fave_bar, helpers)
         end
       end
 
-      ErrorHandler.warn_log("[TF_MP][fave_bar.build] setting visible=true", {
-        tick       = game and game.tick,
-        player     = player.name,
-        force_show = force_show,
-      })
       fave_bar_frame.visible = true
       return fave_bar_frame
     end)
