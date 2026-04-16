@@ -2,6 +2,12 @@
   "Lua.workspace.ignoreDir": [
     ".dist"
   ],
+  "files.exclude": {
+    "**/.dist": true
+  },
+  "search.exclude": {
+    "**/.dist": true
+  },
   "factorio.versions": [
     {
       "name": "Gemini",

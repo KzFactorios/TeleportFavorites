@@ -153,6 +153,14 @@ function basic_helpers.is_restricted_controller(player)
   return ct == defines.controllers.god or ct == defines.controllers.spectator
 end
 
+--- Check if player is currently in chart render mode (map view).
+---@param player LuaPlayer
+---@return boolean is_chart
+function basic_helpers.is_chart_render_mode(player)
+  if not player or not player.valid then return false end
+  return player.render_mode == defines.render_mode.chart
+end
+
 -- ===========================
 -- SAFE VALIDATION HELPERS (from safe_helpers.lua)
 -- ===========================

@@ -158,6 +158,15 @@ def should_exclude_file(file_path: Path, project_root: Path) -> bool:
     """
     relative_path = file_path.relative_to(project_root)
     path_parts = relative_path.parts
+
+    # Exclude generated distribution tree explicitly.
+    if '.dist' in path_parts:
+        return True
+
+    # Exclude all dot-prefixed files/directories.
+    for part in path_parts:
+        if part.startswith('.'):
+            return True
     
     # Exclude test directories and files
     test_indicators = ['test', 'tests', 'spec', 'specs']
@@ -267,7 +276,7 @@ def print_analysis_report(file_results: List[FileAnalysis],
     print(f"  Annotation lines: {grand_total_annotations:,} ({annotation_percentage:.1f}%)")
     print(f"  Error log lines: {grand_total_error_log_lines:,}")
     print("(Excluding regular comments and blank lines)")
-    print("(Excluding test files, development tools, and factorio.emmy.lua)")
+    print("(Excluding dot paths (.dist/.git/.cursor/etc), test files, and factorio.emmy.lua)")
     print("(Annotations are lines starting with ---@param, ---@return, etc.)")
 
 def main():
@@ -276,7 +285,7 @@ def main():
     project_root = str(script_dir.parent)
     print(f"Analyzing Lua files in: {project_root}")
     print("Excluding: comments and blank lines (but keeping annotations like ---@param)")
-    print("Excluding: test files, development tools (.test.* files), and factorio.emmy.lua")
+    print("Excluding: dot paths (files/dirs), .dist, test files, and factorio.emmy.lua")
     print()
     try:
         file_results, folder_totals, grand_total_lines, grand_total_annotations, grand_total_code_lines, grand_total_error_log_lines = analyze_lua_files(project_root)
