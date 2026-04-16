@@ -161,26 +161,25 @@ function handlers.process_deferred_init_queue()
 
       register_gui_observers(deferred_player)
 
-      -- Blank-first bar is queued from ensure_fave_bar / join / created; progressive may still be in flight.
-      -- Skip hydration when there is nothing to fill in:
-      --   • is_rejoin=false  → brand-new player, defer bar to enqueue_blank_bar path only
-      --   • no non-blank favorites on the current surface → blank bar is already correct
-      if entry.is_rejoin then
-        local surface_idx = deferred_player.surface.index
-        local has_favorites = player_has_nonblank_favorites(deferred_player, surface_idx)
-        if fave_bar.blank_bar_is_ready(deferred_player) then
-          if has_favorites then
-            fave_bar.enqueue_hydrate(deferred_player)
-          end
-        elseif fave_bar.has_pending_slot_build(deferred_player.index) then
-          -- Let the in-flight blank-first (or progressive) queue run; hydrate after blank shell if needed.
-          if has_favorites then
-            storage._tf_hydrate_after_blank = storage._tf_hydrate_after_blank or {}
-            storage._tf_hydrate_after_blank[deferred_player.index] = true
-          end
-        else
-          fave_bar.enqueue_progressive_build(deferred_player)
+      -- Build/hydrate bar for all deferred entries (new players and rejoins alike).
+      -- enqueue_blank_bar is gated by is_restricted_controller, so spectator players in new MP
+      -- games never get a queue entry from on_player_created / on_player_joined_game.
+      -- enqueue_progressive_build here is the guaranteed fallback at tick 2 for those players.
+      -- Skip hydration when no non-blank favorites on the current surface → blank bar is correct.
+      local surface_idx = deferred_player.surface.index
+      local has_favorites = player_has_nonblank_favorites(deferred_player, surface_idx)
+      if fave_bar.blank_bar_is_ready(deferred_player) then
+        if has_favorites then
+          fave_bar.enqueue_hydrate(deferred_player)
         end
+      elseif fave_bar.has_pending_slot_build(deferred_player.index) then
+        -- Let the in-flight blank-first (or progressive) queue run; hydrate after blank shell if needed.
+        if has_favorites then
+          storage._tf_hydrate_after_blank = storage._tf_hydrate_after_blank or {}
+          storage._tf_hydrate_after_blank[deferred_player.index] = true
+        end
+      else
+        fave_bar.enqueue_progressive_build(deferred_player)
       end
     end
   end
