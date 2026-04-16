@@ -13,7 +13,6 @@ local GuiValidation = require("core.utils.gui_validation")
 local fave_bar = require("gui.favorites_bar.fave_bar")
 local teleport_history_modal = require("gui.teleport_history_modal.teleport_history_modal")
 local gui_observer = require("core.events.gui_observer")
-local FavoriteUtils = require("core.favorite.favorite_utils")
 local PlayerFavorites = require("core.favorite.player_favorites")
 local with_valid_player = BasicHelpers.with_valid_player
 
@@ -124,19 +123,6 @@ end
 -- Each entry: { player_index = N, is_rejoin = bool }
 local _deferred_init_queue = {}
 
----@param player LuaPlayer
----@param surface_idx uint
----@return boolean
-local function player_has_nonblank_favorites(player, surface_idx)
-  local pfaves = Cache.get_player_favorites(player, surface_idx)
-  if not pfaves then return false end
-  for i = 1, #pfaves do
-    local fav = pfaves[i]
-    if fav and not FavoriteUtils.is_blank_favorite(fav) then return true end
-  end
-  return false
-end
-
 --- True when deferred init is waiting (cheap check before calling process_deferred_init_queue).
 ---@return boolean
 function handlers.has_deferred_init_pending()
@@ -161,30 +147,14 @@ function handlers.process_deferred_init_queue()
 
       register_gui_observers(deferred_player)
 
-      -- Build/hydrate bar for all deferred entries (new players and rejoins alike).
-      -- enqueue_blank_bar is gated by is_restricted_controller, so spectator players in new MP
-      -- games never get a queue entry from on_player_created / on_player_joined_game.
-      -- enqueue_progressive_build here is the guaranteed fallback at tick 2 for those players.
-      -- Skip hydration when no non-blank favorites on the current surface → blank bar is correct.
-      local surface_idx = deferred_player.surface.index
-      local has_favorites = player_has_nonblank_favorites(deferred_player, surface_idx)
-      if fave_bar.blank_bar_is_ready(deferred_player) then
-        if has_favorites then
-          fave_bar.enqueue_hydrate(deferred_player)
-        end
-      elseif fave_bar.has_pending_slot_build(deferred_player.index) then
-        -- Let the in-flight blank-first (or progressive) queue run; hydrate after blank shell if needed.
-        if has_favorites then
-          storage._tf_hydrate_after_blank = storage._tf_hydrate_after_blank or {}
-          storage._tf_hydrate_after_blank[deferred_player.index] = true
-        end
-      else
-        -- Synchronous force-build: matches 0.0.96 approach (tick 60) now at tick 2.
-        -- force_show=true bypasses is_planet_surface; the inner is_restricted_controller
-        -- check still applies so spectator players get no bar here and fall back to
-        -- on_player_controller_changed when their character is ready.
-        fave_bar.build(deferred_player, true)
-      end
+      -- Unconditional force-build for all deferred entries (new players and rejoins alike).
+      -- Cancels any in-flight progressive build and guarantees bar visibility at tick 2.
+      -- force_show=true bypasses is_planet_surface; the inner is_restricted_controller
+      -- check still applies so spectator players get no bar here and fall back to
+      -- on_player_controller_changed when their character is ready.
+      -- fave_bar.build builds all slots synchronously (favorites included), so no
+      -- separate hydrate-after-blank step is needed.
+      fave_bar.build(deferred_player, true)
     end
   end
   _deferred_init_queue = {}
