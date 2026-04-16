@@ -179,7 +179,11 @@ function handlers.process_deferred_init_queue()
           storage._tf_hydrate_after_blank[deferred_player.index] = true
         end
       else
-        fave_bar.enqueue_progressive_build(deferred_player)
+        -- Synchronous force-build: matches 0.0.96 approach (tick 60) now at tick 2.
+        -- force_show=true bypasses is_planet_surface; the inner is_restricted_controller
+        -- check still applies so spectator players get no bar here and fall back to
+        -- on_player_controller_changed when their character is ready.
+        fave_bar.build(deferred_player, true)
       end
     end
   end

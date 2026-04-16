@@ -268,6 +268,7 @@ return function(fave_bar, helpers)
         end
       end
 
+      fave_bar_frame.visible = true
       return fave_bar_frame
     end)
     if not success then

@@ -353,9 +353,13 @@ end
 ---@param event table
 function fave_bar.on_player_controller_changed(event)
   if not event or not event.player_index then return end
-  if is_build_in_flight(event.player_index) then return end
   local player = game.players[event.player_index]
   if not player or not player.valid then return end
+
+  -- Always update visibility before the in-flight guard: bar_frame may exist as
+  -- visible=false (created by frame_init) even while the progressive build runs.
+  fave_bar.update_fave_bar_visibility(player)
+  if is_build_in_flight(event.player_index) then return end
 
   local modal_was_open = Cache.get_modal_dialog_type(player) == "teleport_history"
   local is_remote_controller = player.controller_type == defines.controllers.remote
@@ -363,8 +367,6 @@ function fave_bar.on_player_controller_changed(event)
     teleport_history_modal.destroy(player, true)
     teleport_history_modal.build(player)
   end
-
-  fave_bar.update_fave_bar_visibility(player)
 
   if BasicHelpers.is_supported_controller(player) then
     local _, _, bar_flow, slots_frame = get_fave_bar_gui_refs(player)

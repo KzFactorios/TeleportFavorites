@@ -375,6 +375,10 @@ return function(fave_bar, helpers)
       local slots_frame = get_bar_slots_frame(player)
 
       if not slots_frame or not slots_frame.valid then
+        ErrorHandler.warn_log("[TF_MP][blank_slots] slots_frame missing, aborting build", {
+          tick         = game.tick,
+          player_index = entry.player_index,
+        })
         table.remove(storage._tf_slot_build_queue, 1)
         return
       end
