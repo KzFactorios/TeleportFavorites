@@ -188,7 +188,7 @@ return function(handlers)
     local chart_tag = event.tag
     if not chart_tag or not chart_tag.valid or not chart_tag.position then return end
 
-    local surface_index = player.surface and player.surface.valid and player.surface.index or 1
+    local surface_index = GPSUtils.get_context_surface_index(chart_tag, player)
     Cache.ensure_surface_cache(tonumber(surface_index) or 1)
 
     local gps = GPSUtils.gps_from_map_position(chart_tag.position, tonumber(surface_index) or 1)
@@ -219,14 +219,29 @@ return function(handlers)
     local player = game.players[event.player_index]
     if not player or not player.valid then return end
 
-    local original_owner_name = nil
-
     local new_gps, old_gps = ChartTagHelpers.extract_gps(event, player)
 
+    if not ChartTagHelpers.is_valid_tag_modification(event, player) then
+      local rej_tag = event.tag
+      if rej_tag and rej_tag.valid and event.old_position then
+        rej_tag.position = event.old_position
+        player.play_sound({ path = "utility/cannot_build" })
+      end
+      return
+    end
+
+    local original_owner_name = nil
+
     if old_gps then
-      local old_tag = Cache.get_tag_by_gps(player, old_gps)
-      if old_tag and type(old_tag) == "table" and old_tag.owner_name then
-        original_owner_name = old_tag.owner_name
+      local stored = Cache.get_stored_tag_by_gps(old_gps)
+      if stored and type(stored) == "table" and stored.owner_name and stored.owner_name ~= "" then
+        original_owner_name = stored.owner_name
+      end
+      if not original_owner_name then
+        local old_tag = Cache.get_tag_by_gps(player, old_gps)
+        if old_tag and type(old_tag) == "table" and old_tag.owner_name and old_tag.owner_name ~= "" then
+          original_owner_name = old_tag.owner_name
+        end
       end
     end
 
@@ -238,11 +253,9 @@ return function(handlers)
     end
 
     if not original_owner_name then
-      original_owner_name = player.name
-    end
-
-    if not ChartTagHelpers.is_valid_tag_modification(event, player) then
-      return
+      if not ChartTagUtils.is_admin(player) then
+        original_owner_name = player.name
+      end
     end
 
     local chart_tag = event.tag
@@ -307,6 +320,9 @@ return function(handlers)
       local gps = GPSUtils.gps_from_map_position(chart_tag.position,
         GPSUtils.get_context_surface_index(chart_tag, player))
       local tag = Cache.get_tag_by_gps(player, gps)
+      if not tag and gps then
+        tag = Cache.get_stored_tag_by_gps(gps)
+      end
 
       local is_admin = player.admin
       local is_owner = tag and (not tag.owner_name or tag.owner_name == "" or tag.owner_name == player.name)

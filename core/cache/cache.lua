@@ -321,6 +321,19 @@ end
 local _tag_meta_cache = {}            -- [gps] = { meta = table, expires_at = uint }
 local TAG_META_CACHE_TTL = 60         -- ticks
 
+--- Raw storage row for this GPS (no chart_tag attach). Use for permission checks
+--- when the tag may be on a different surface than the player's current surface.
+---@param gps string
+---@return table|nil
+function Cache.get_stored_tag_by_gps(gps)
+  if not gps or type(gps) ~= "string" or not BasicHelpers.is_valid_gps(gps) then return nil end
+  local surface_index = GPSUtils.get_surface_index_from_gps(gps)
+  if not surface_index then return nil end
+  local uint_si = math.floor(tonumber(surface_index) or 1)
+  local tag_cache = Cache.get_surface_tags(uint_si --[[@as integer]])
+  return tag_cache and tag_cache[gps] or nil
+end
+
 --- Get tag object by GPS string, attaching a transient chart_tag reference.
 ---@param player LuaPlayer
 ---@param gps string
@@ -328,7 +341,11 @@ local TAG_META_CACHE_TTL = 60         -- ticks
 function Cache.get_tag_by_gps(player, gps)
   if not player then return nil end
   if not BasicHelpers.is_valid_gps(gps) then return nil end
-  local surface_index = player.surface.index
+  local surface_index = GPSUtils.get_surface_index_from_gps(gps)
+  if not surface_index then
+    surface_index = player.surface and player.surface.valid and player.surface.index or 1
+  end
+  surface_index = math.floor(tonumber(surface_index) or 1)
 
   local tag_cache = Cache.get_surface_tags(surface_index --[[@as integer]])
   if not tag_cache then return nil end

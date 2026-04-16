@@ -36,8 +36,11 @@ function Tag.update_gps_and_surface_mapping(old_gps, new_gps, chart_tag, player,
   if not old_gps or not new_gps then return end
   if not player or not player.valid then return end
 
-  -- Get or create tag object
-  local old_tag = Cache.get_tag_by_gps(player, old_gps)
+  -- Prefer the actual storage row (same bucket as GPS) so we never replace a real tag with Tag.new.
+  local old_tag = Cache.get_stored_tag_by_gps(old_gps)
+  if old_tag == nil then
+    old_tag = Cache.get_tag_by_gps(player, old_gps)
+  end
   if old_tag == nil and new_gps then
     old_tag = Tag.new(new_gps, {}, preserve_owner_name)
   end

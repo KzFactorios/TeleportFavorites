@@ -237,7 +237,15 @@ function M.handle_confirm_btn(player, element, tag_data)
       BasicHelpers.get_error_string(player, "tag_requires_icon_or_text"))
   end
 
-  local surface_index = player.surface.index
+  local surface_index = nil
+  if tag_data.gps and BasicHelpers.is_valid_gps(tag_data.gps) then
+    local si = GPSUtils.get_surface_index_from_gps(tag_data.gps)
+    if si then surface_index = math.floor(tonumber(si) or 1) end
+  end
+  if not surface_index then
+    surface_index = player.surface and player.surface.valid and player.surface.index or 1
+  end
+  Cache.ensure_surface_cache(surface_index)
   local tags = Cache.get_surface_tags(surface_index)
   local tag = tag_data.tag or {}
 

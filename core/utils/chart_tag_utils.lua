@@ -304,10 +304,12 @@ function ChartTagUtils.can_edit_chart_tag(player, tag)
   local player_valid = BasicHelpers.is_valid_player(player)
   if not player_valid or not tag then return false, false, false end
   local owner_name = tag.owner_name or ""
+  local is_orphan = (owner_name == "")
   local is_owner = (owner_name ~= "" and player.name == owner_name)
   local is_admin = ChartTagUtils.is_admin(player)
-  local can_edit = is_owner or is_admin
-  local is_admin_override = (not is_owner) and is_admin
+  -- Orphan tags (no owner): any player may edit/move; owned tags: owner or admin only
+  local can_edit = is_orphan or is_owner or is_admin
+  local is_admin_override = (not is_owner) and is_admin and not is_orphan
   return can_edit, is_owner, is_admin_override
 end
 

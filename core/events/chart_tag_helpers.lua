@@ -56,11 +56,12 @@ function ChartTagHelpers.is_valid_tag_modification(event, player)
     return false
   end
 
-  -- Get the Tag object from storage to check permissions using Tag.owner_name
+  -- Permission uses storage row by GPS (correct surface bucket); do not rely on
+  -- get_tag_by_gps alone (chart_tag attach / player surface can fail incorrectly).
   local surface_index = GPSUtils.get_context_surface_index(event.tag, player)
   local old_gps = GPSUtils.gps_from_map_position(event.old_position, surface_index)
-  local tag = old_gps and Cache.get_tag_by_gps(player, old_gps) or nil
-  
+  local tag = old_gps and Cache.get_stored_tag_by_gps(old_gps) or nil
+
   -- Check permissions using AdminUtils with Tag object (uses Tag.owner_name)
   local can_edit, _is_owner, is_admin_override = ChartTagUtils.can_edit_chart_tag(player, tag)
 
