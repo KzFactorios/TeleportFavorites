@@ -22,9 +22,6 @@ local with_valid_player = BasicHelpers.with_valid_player
 -- TAG EDITOR EVENT HELPERS (from tag_editor_event_helpers.lua)
 -- ===========================
 
--- Do not gate on player.render_mode here: same multiplayer policy as ChartTagUtils.find_closest_chart_tag_to_position
--- (render_mode is treated as unsafe for cross-peer script decisions in this mod). Map vs game presentation is handled
--- in tag_editor.build / open_tag_editor_from_favorite (markers, deferred layout), not by rejecting open here.
 local function validate_tag_editor_opening(player)
   if not BasicHelpers.is_valid_player(player) then
     return false, "Invalid player"
@@ -114,6 +111,9 @@ return function(handlers)
 
   function handlers.on_open_tag_editor_custom_input(event)
     with_valid_player(event.player_index, function(player)
+      if not BasicHelpers.is_chart_render_mode(player) then
+        return
+      end
       local can_open, reason = validate_tag_editor_opening(player)
       if not can_open then
         if reason == "Drag mode active" then
