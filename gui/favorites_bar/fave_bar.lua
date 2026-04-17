@@ -373,7 +373,7 @@ function fave_bar.on_player_controller_changed(event)
     if bar_flow and bar_flow.valid and slots_frame and slots_frame.valid then
       fave_bar.enqueue_hydrate(player)
     else
-      fave_bar.build(player)
+      fave_bar.build(player, true, true)
     end
   end
 end

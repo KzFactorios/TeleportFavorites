@@ -68,4 +68,8 @@ function mock_cache.remove_tag(surface_index, gps)
     surface_tags[gps] = nil
 end
 
+--- No-op: real Cache clears drag/tag-editor transient state; tests rarely need behavior here.
+function mock_cache.reset_transient_player_states(_player)
+end
+
 return mock_cache

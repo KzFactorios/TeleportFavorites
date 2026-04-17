@@ -19,7 +19,9 @@ local GuiEventBus = GuiObserver.GuiEventBus
 
 local function rebuild_bars(players)
   for _, p in ipairs(players) do
-    if p and p.valid then fave_bar.build(p) end
+    -- force_show + deferred_slots: avoid N full sync slot builds on one tick when many
+    -- players share a moved GPS favorite (MP LuaProfiler spikes).
+    if p and p.valid then fave_bar.build(p, true, true) end
   end
 end
 

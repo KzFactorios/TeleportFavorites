@@ -98,7 +98,7 @@ local function restore_chart_tag_and_refresh(player, chart_tag, tag)
     end
   end
   Cache.ensure_surface_cache(tonumber(player.surface.index) or 1)
-  fave_bar.build(player)
+  fave_bar.build(player, true, true)
 end
 
 ---@param handlers table The handlers table to extend
@@ -354,7 +354,7 @@ return function(handlers)
       tag_destroy_helper.destroy_tag_and_chart_tag(tag, chart_tag)
 
       Cache.ensure_surface_cache(tonumber(player.surface.index) or 1)
-      fave_bar.build(player)
+      fave_bar.build(player, true, true)
     end)
   end
 

@@ -49,6 +49,8 @@ local Constants = {
     FAVE_BAR_SYNC_BLANK_BUILD_CAP = 15,
     -- Max blank slots to add per process_slot_build_queue when finishing the tail after the sync cap.
     FAVE_BAR_TAIL_BLANK_BATCH_MAX = 10,
+    -- Max single-slot GUI updates per on_nth_tick(2) flush (all players). Spreads dirty-slot work across ticks in MP.
+    FAVE_BAR_DIRTY_SLOT_FLUSH_BUDGET = 48,
 
     -- ========================================
     -- Update Intervals (in ticks)

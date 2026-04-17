@@ -57,7 +57,7 @@ function handlers.on_player_changed_surface(event)
     if player.surface and player.surface.valid then
       ControlTagEditor.close_tag_editor(player)
       Cache.ensure_surface_cache(player.surface.index)
-      fave_bar.build(player, true)
+      fave_bar.build(player, true, true)
       fave_bar.update_fave_bar_visibility(player)
       if teleport_history_modal.is_open(player) then
         teleport_history_modal.update_history_list(player)

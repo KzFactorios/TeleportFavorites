@@ -188,7 +188,7 @@ local function apply_max_slots_to_player(p)
   local new_max = Cache.Settings.get_player_max_favorite_slots(p)
   Cache.apply_player_max_slots(p, new_max)
   Cache.set_last_max_favorite_slots(p, new_max)
-  fave_bar.build(p, true)
+  fave_bar.build(p, true, true)
   if type(old_max) == "number" and type(new_max) == "number" and new_max < old_max then
     game.print(string.format("[TeleportFavorites] %s set Max Slots to %d. Favorites beyond this new maximum have been permanently deleted.", p.name, new_max))
   end
@@ -229,7 +229,7 @@ local function register_core_events(script)
           Cache.Settings.invalidate_player_cache(player)
           local player_settings = Cache.Settings.get_player_settings(player)
           ErrorHandler.debug_log("[SETTINGS] Player " .. player.name .. " favorites_on: " .. tostring(player_settings.favorites_on))
-          fave_bar.build(player, true)
+          fave_bar.build(player, true, true)
         end)
         return
       end
@@ -255,7 +255,7 @@ local function register_core_events(script)
           if not player_settings.enable_teleport_history then
             teleport_history_modal.destroy(player)
           end
-          fave_bar.build(player, true)
+          fave_bar.build(player, true, true)
         end)
         return
       end
@@ -265,7 +265,7 @@ local function register_core_events(script)
         local player = (event.player_index and game.players[event.player_index]) or nil
         if player and player.valid then
           Cache.Settings.invalidate_player_cache(player)
-          fave_bar.build(player, true)
+          fave_bar.build(player, true, true)
         end
         return
       end

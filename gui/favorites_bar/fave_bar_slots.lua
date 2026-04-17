@@ -324,7 +324,7 @@ return function(fave_bar, helpers)
       if is_build_in_flight(player.index) then return end
       fave_bar.update_slot_row(player, bar_flow)
     elseif not is_build_in_flight(player.index) then
-      fave_bar.build(player)
+      fave_bar.build(player, true, true)
     end
   end
 
@@ -453,17 +453,17 @@ return function(fave_bar, helpers)
 
     local _, _, bar_flow = get_fave_bar_gui_refs(player)
     if not bar_flow or not bar_flow.valid then
-      fave_bar.build(player, true)
+      fave_bar.build(player, true, true)
       return
     end
     local toggle_container = bar_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.TOGGLE_CONTAINER]
     if not toggle_container or not toggle_container.valid then
-      fave_bar.build(player, true)
+      fave_bar.build(player, true, true)
       return
     end
     local mode_btn = toggle_container[Enum.GuiEnum.FAVE_BAR_ELEMENT.HISTORY_MODE_TOGGLE_BUTTON]
     if not mode_btn or not mode_btn.valid then
-      fave_bar.build(player, true)
+      fave_bar.build(player, true, true)
       return
     end
 
@@ -530,7 +530,7 @@ return function(fave_bar, helpers)
     end
   end
 
-  --- Flush all pending dirty slots for every player with queued work.
+  --- Flush pending dirty slots (bounded per tick) for deterministic MP ordering.
   --- Called from process_slot_build_queue (on_nth_tick(2)) to spread GUI write cost
   --- across ticks rather than spiking on the notification tick.
   function fave_bar.flush_all_dirty_slots()
@@ -540,38 +540,44 @@ return function(fave_bar, helpers)
       _dirty_slots_has_work = false
       return
     end
-    _dirty_slots_has_work = true
-    local pidx_list = {}
-    for pidx in pairs(dirty_slots) do
-      pidx_list[#pidx_list + 1] = pidx
+    local budget = math.max(1, math.floor(tonumber(Constants.settings.FAVE_BAR_DIRTY_SLOT_FLUSH_BUDGET) or 48))
+    local pending = {}
+    for pidx, set in pairs(dirty_slots) do
+      for slot_index in pairs(set) do
+        pending[#pending + 1] = { tonumber(pidx) or 0, tonumber(slot_index) or 0 }
+      end
     end
-    table.sort(pidx_list, function(a, b) return (tonumber(a) or 0) < (tonumber(b) or 0) end)
-    for pi = 1, #pidx_list do
-      local pidx = pidx_list[pi]
+    if #pending == 0 then
+      _dirty_slots_has_work = false
+      return
+    end
+    table.sort(pending, function(a, b)
+      if a[1] ~= b[1] then return a[1] < b[1] end
+      return a[2] < b[2]
+    end)
+    for i = 1, #pending do
+      if budget <= 0 then break end
+      local pidx, slot_index = pending[i][1], pending[i][2]
       local set = dirty_slots[pidx]
-      if set then
+      if set and set[slot_index] then
         local player = game.players[pidx]
         if player and player.valid then
-          local slot_indices = {}
-          for slot_index, _ in pairs(set) do
-            slot_indices[#slot_indices + 1] = slot_index
-          end
-          table.sort(slot_indices, function(a, b) return (tonumber(a) or 0) < (tonumber(b) or 0) end)
-          for si = 1, #slot_indices do
-            local slot_index = slot_indices[si]
-            local ok, err = pcall(function()
-              fave_bar.update_single_slot(player, slot_index)
-            end)
-            if not ok then
-              if ErrorHandler and ErrorHandler.warn_log then
-                ErrorHandler.warn_log("[FAVE_BAR] flush_all_dirty_slots failed", { player = player.name, slot = slot_index, error = err })
-              end
+          local ok, err = pcall(function()
+            fave_bar.update_single_slot(player, slot_index)
+          end)
+          if not ok then
+            if ErrorHandler and ErrorHandler.warn_log then
+              ErrorHandler.warn_log("[FAVE_BAR] flush_all_dirty_slots failed", { player = player.name, slot = slot_index, error = err })
             end
           end
         end
-        dirty_slots[pidx] = nil
+        set[slot_index] = nil
+        if next(set) == nil then
+          dirty_slots[pidx] = nil
+        end
+        budget = budget - 1
       end
     end
-    _dirty_slots_has_work = false
+    _dirty_slots_has_work = next(dirty_slots) ~= nil
   end
 end
