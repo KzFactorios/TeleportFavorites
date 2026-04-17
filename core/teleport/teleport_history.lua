@@ -13,8 +13,10 @@ local MpBisect = require("core.utils.mp_bisect")
 
 
 local HISTORY_STACK_SIZE = 128 -- Only 128 allowed for now (TBA for future options)
-local STD_RESOLUTION_TILES = 20  -- Standard mode: consecutive locations within this distance are collapsed
-local SEQ_RESOLUTION_TILES = 32  -- Sequential mode: FROM→TO hops shorter than this are not recorded
+local STD_RESOLUTION_TILES = 12  -- Standard mode: consecutive locations within this distance are collapsed
+local SEQ_RESOLUTION_TILES = 12  -- Sequential mode: FROM→TO hops shorter than this are not recorded
+-- Second leg of a sequential pair: only collapse TO against FROM when essentially the same tile (not STD_RESOLUTION_TILES).
+local SEQ_PAIR_TO_LEG_RESOLUTION_TILES = 1
 
 local TeleportHistory = {}
 
@@ -94,12 +96,18 @@ end
 
 --- Add a GPS location to the teleport history stack.
 --- Applies the consecutive-duplicate rule: if the new location is within
---- STD_RESOLUTION_TILES of the current stack top it is silently dropped.
+--- duplicate_radius_tiles of the current stack top it is silently dropped.
 ---@param player LuaPlayer
 ---@param gps string GPS location to record
-function TeleportHistory.add_gps(player, gps)
+---@param duplicate_radius_tiles number|nil Defaults to STD_RESOLUTION_TILES when nil
+function TeleportHistory.add_gps(player, gps, duplicate_radius_tiles)
 	local valid = BasicHelpers.is_valid_player(player)
 	if not valid or not gps then return end
+
+	local radius = duplicate_radius_tiles
+	if radius == nil then
+		radius = STD_RESOLUTION_TILES
+	end
 
 	local surface_index = GPSUtils.get_surface_index_from_gps(gps)
 	if not surface_index or type(surface_index) ~= "number" then
@@ -114,7 +122,7 @@ function TeleportHistory.add_gps(player, gps)
 
 	-- Rule C: no consecutive duplicate locations — skip if within resolution of the top entry
 	local top = stack[#stack]
-	if gps_within_resolution(top and top.gps, gps, STD_RESOLUTION_TILES) then
+	if gps_within_resolution(top and top.gps, gps, radius) then
 		hist.pointer = #stack
 		TeleportHistory.notify_observers(player)
 		return
@@ -160,8 +168,9 @@ function TeleportHistory.add_teleport(player, from_gps, to_gps)
 		TeleportHistory.add_gps(player, from_gps)
 	end
 
-	-- Record TO (add_gps consecutive-duplicate check prevents dup when TO ≈ FROM)
-	TeleportHistory.add_gps(player, to_gps)
+	-- Record TO: use a tight duplicate radius vs stack top (FROM) so short hops still keep a destination row;
+	-- only suppress when TO is effectively the same tile as FROM (snapping), not within STD_RESOLUTION_TILES.
+	TeleportHistory.add_gps(player, to_gps, SEQ_PAIR_TO_LEG_RESOLUTION_TILES)
 end
 
 -- Set pointer to specific index (for teleport history modal navigation)

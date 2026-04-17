@@ -98,11 +98,15 @@ local function navigate_history(event, calc_new_pointer)
 
   local new_pointer = calc_new_pointer(hist)
   TeleportHistory.set_pointer(player, surface_index, new_pointer)
+  -- Re-fetch so pointer/stack reads always match persisted history (avoid stale local table edge cases).
+  hist = Cache.get_player_teleport_history(player, surface_index)
+  if not hist or not hist.stack or #hist.stack == 0 then return end
+
   if teleport_history_modal.is_open(player) then
     teleport_history_modal.update_history_list(player)
   end
 
-  -- Teleport to the destination of the new pointer entry
+  -- Teleport to the stack entry at the new pointer (destination or sequential leg).
   local pointer = math.max(1, math.min(hist.pointer, #hist.stack))
   local entry = hist.stack[pointer]
   if entry and type(entry) == "table" and entry.gps then

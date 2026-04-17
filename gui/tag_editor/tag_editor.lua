@@ -216,7 +216,7 @@ local function build_rich_text_row(parent, tag_data)
   local row = GuiElementBuilders.create_two_element_row(parent, "tag_editor_rich_text_row")
   local icon_btn = create_icon_button(row, tag_data)
   local text_input = create_text_input(row, tag_data)
-  -- Focus is deferred to queue stage "focus" after d2 (keeps build_b peak lower).
+  -- Focus is deferred to queue stage "focus" after stage d (keeps build_b peak lower).
   return row, icon_btn, text_input
 end
 
@@ -317,7 +317,7 @@ local function build_interior_b(player, outer, tag_data, partial_refs)
 end
 
 -- Stage C: error row + last row element creation only.
--- Runs on the third on_nth_tick(2) after build(). Returns refs for stage d1/d2 wiring.
+-- Runs on the third on_nth_tick(2) after build(). Returns refs for stage d wiring.
 ---@param player LuaPlayer
 ---@param outer LuaGuiElement
 ---@param tag_data table
@@ -348,25 +348,15 @@ local function build_interior_c(player, outer, tag_data, partial_refs)
   }
 end
 
--- Stage D split across two on_nth_tick(2) passes: part1 then part2 + bring_to_front (reduces peak Lua per tick).
+-- Stage D: full permission/tooltip/error wiring in one queue step (was split d1/d2; merged for fewer nth_tick round-trips).
 ---@param player LuaPlayer
 ---@param outer LuaGuiElement
 ---@param tag_data table
 ---@param partial_refs table
-local function build_interior_d1(player, outer, tag_data, partial_refs)
-  ProfilerExport.start_section("tag_editor_build_d1")
-  setup_tag_editor_ui_part1(partial_refs, tag_data, player)
-  ProfilerExport.stop_section("tag_editor_build_d1")
-end
-
----@param player LuaPlayer
----@param outer LuaGuiElement
----@param tag_data table
----@param partial_refs table
-local function build_interior_d2(player, outer, tag_data, partial_refs)
-  ProfilerExport.start_section("tag_editor_build_d2")
-  setup_tag_editor_ui_part2(partial_refs, tag_data, player)
-  ProfilerExport.stop_section("tag_editor_build_d2")
+local function build_interior_d(player, outer, tag_data, partial_refs)
+  ProfilerExport.start_section("tag_editor_build_d")
+  setup_tag_editor_ui(partial_refs, tag_data, player)
+  ProfilerExport.stop_section("tag_editor_build_d")
 end
 
 -- Main builder for the tag editor.
@@ -447,10 +437,10 @@ end
 -- Stage "a": legacy — structural chrome (now done in tag_editor.build); kept for old queued saves.
 -- Stage "b": action rows.
 -- Stage "c": error/last rows.
--- Stage "d1"/"d2": split final state wiring across two on_nth_tick(2) callbacks. Legacy "d" runs atomically.
+-- Stage "d": final state wiring (merged d1+d2). Legacy "d1"/"d2" entries still accepted for old queued saves.
 -- Stage "focus": rich text input focus (deferred from build_rich_text_row for lower peak Lua on stage b).
--- stage_budget is 2 so b+c run in one process_build_queue call (fewer visible pop-in waves); slightly higher peak Lua that tick.
--- d1/d2/focus still split across ticks. If profiling shows spikes on huge saves, dial back to 1.
+-- stage_budget is 3 so b+c run in one call and d+focus can often finish in the next (fewer visible pop-in waves).
+-- If profiling shows spikes on huge saves, dial back to 2 or 1.
 -- If a build_* slice still exceeds ~2ms after profiling, add nested ProfilerExport inside build_interior_a/b/c.
 function tag_editor.process_build_queue()
   -- Derive work from storage — do not skip when `_tag_editor_queue_has_work` is stale (MP parity with favorites bar queue).
@@ -464,7 +454,7 @@ function tag_editor.process_build_queue()
   end
   _tag_editor_queue_has_work = true
 
-  local stage_budget = 2
+  local stage_budget = 3
   local processed = 0
 
   while processed < stage_budget and #storage._tf_tag_editor_build_queue > 0 do
@@ -497,19 +487,12 @@ function tag_editor.process_build_queue()
           table.insert(storage._tf_tag_editor_build_queue, 1, {
             player_index = player.index,
             tag_data     = entry.tag_data,
-            stage        = "d1",
+            stage        = "d",
             partial_refs = partial_refs,
           })
-        elseif entry.stage == "d1" then
-          build_interior_d1(player, outer, entry.tag_data, entry.partial_refs)
-          table.insert(storage._tf_tag_editor_build_queue, 1, {
-            player_index = player.index,
-            tag_data     = entry.tag_data,
-            stage        = "d2",
-            partial_refs = entry.partial_refs,
-          })
-        elseif entry.stage == "d2" then
-          build_interior_d2(player, outer, entry.tag_data, entry.partial_refs)
+        elseif entry.stage == "d" or entry.stage == "d1" or entry.stage == "d2" then
+          -- d1/d2: legacy queued saves from before d1+d2 merge; full setup_tag_editor_ui is idempotent.
+          build_interior_d(player, outer, entry.tag_data, entry.partial_refs)
           ---@diagnostic disable-next-line: undefined-field
           outer.bring_to_front()
           table.insert(storage._tf_tag_editor_build_queue, 1, {
@@ -526,19 +509,6 @@ function tag_editor.process_build_queue()
             ---@diagnostic disable-next-line: undefined-field
             inp.focus()
           end
-        elseif entry.stage == "d" then
-          ProfilerExport.start_section("tag_editor_build_d")
-          setup_tag_editor_ui(entry.partial_refs, entry.tag_data, player)
-          ProfilerExport.stop_section("tag_editor_build_d")
-          ---@diagnostic disable-next-line: undefined-field
-          outer.bring_to_front()
-          table.insert(storage._tf_tag_editor_build_queue, 1, {
-            player_index = player.index,
-            tag_data     = entry.tag_data,
-            stage        = "focus",
-            partial_refs = entry.partial_refs,
-          })
-          _tag_editor_queue_has_work = true
         end
       end
     end
