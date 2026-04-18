@@ -38,21 +38,4 @@ data:extend({
     localised_name = {"mod-setting-name.slot-label-mode"},
     localised_description = {"mod-setting-description.slot-label-mode"}
   },
-  {
-    name = Constants.settings.MP_BISECT_MODE_SETTING,
-    type = "string-setting",
-    setting_type = "runtime-global",
-    default_value = "none",
-    allowed_values = {
-      "none",
-      "no_fave_bar_queue",
-      "no_tag_editor",
-      "no_history_modal",
-      "no_lookups_sweep",
-      "no_chart_and_remote",
-    },
-    order = "zz-mp-bisect",
-    localised_name = { "mod-setting-name.tf-mp-bisect-mode" },
-    localised_description = { "mod-setting-description.tf-mp-bisect-mode" },
-  },
 })

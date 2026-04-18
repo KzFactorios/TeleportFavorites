@@ -42,6 +42,10 @@ return function(fave_bar, helpers)
     if lock_el and lock_el.valid then
       lock_el.visible = BasicHelpers.is_locked_favorite(fav)
     end
+    local n_el = btn["n"]
+    if n_el and n_el.valid then
+      n_el.caption = tostring(slot_index)
+    end
   end
 
   local function clear_element_children(el)
@@ -62,7 +66,6 @@ return function(fave_bar, helpers)
     local max_slots = Cache.Settings.get_player_max_favorite_slots(player) or 10
     local label_mode = Cache.Settings.get_player_slot_label_mode(player)
     local use_labels = label_mode ~= "off"
-    local children = slots_frame.children
     local child_count = GuiHelpers.count_direct_children(slots_frame)
 
     if child_count ~= max_slots then
@@ -80,7 +83,8 @@ return function(fave_bar, helpers)
 
     for i = 1, max_slots do
       local fav = rehydrated[i]
-      local child = children[i]
+      local child = use_labels and slots_frame["fave_bar_slot_wrapper_" .. i]
+        or slots_frame["fave_bar_slot_" .. i]
       if not child or not child.valid then return false end
 
       local btn, label_el

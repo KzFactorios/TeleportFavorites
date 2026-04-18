@@ -75,8 +75,6 @@ local Constants = {
     -- ========================================
     FAVORITES_ON = "favorites_on",                     -- Setting name for enabling/disabling favorites feature
     SHOW_TELEPORT_HISTORY = "enable_teleport_history", -- Setting name for enabling/disabling teleport history
-    --- Runtime-global; MP desync bisection only. See core/utils/mp_bisect.lua and settings.lua.
-    MP_BISECT_MODE_SETTING = "tf-mp-bisect-mode",
 
     -- ========================================
     -- Physics & Collision

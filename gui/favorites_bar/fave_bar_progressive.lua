@@ -509,11 +509,17 @@ return function(fave_bar, helpers)
       local end_idx   = math.min(start_idx + HYDRATE_BATCH_SIZE - 1, entry.max_slots)
 
       for i = start_idx, end_idx do
-        local child = slots_frame.children[i]
+        local child = entry.use_labels and slots_frame["fave_bar_slot_wrapper_" .. i]
+          or slots_frame["fave_bar_slot_" .. i]
         if not child or not child.valid then goto next_hydrate end
 
         local btn = entry.use_labels and child["fave_bar_slot_" .. i] or child
         if not btn or not btn.valid then goto next_hydrate end
+
+        local n_el = btn["n"]
+        if n_el and n_el.valid then
+          n_el.caption = tostring(i)
+        end
 
         local fav_raw = pfaves and pfaves[i]
         if fav_raw and not FavoriteUtils.is_blank_favorite(fav_raw) then

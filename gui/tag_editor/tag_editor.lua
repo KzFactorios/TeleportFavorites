@@ -423,7 +423,8 @@ function tag_editor.build(player)
       table.remove(storage._tf_tag_editor_build_queue, i)
     end
   end
-  table.insert(storage._tf_tag_editor_build_queue, {
+  -- Prepend so this open's stages run before any other players' queued entries (same-tick drain below).
+  table.insert(storage._tf_tag_editor_build_queue, 1, {
     player_index = player.index,
     tag_data     = tag_data,
     stage        = "b",
@@ -431,6 +432,12 @@ function tag_editor.build(player)
   })
   _tag_editor_queue_has_work = true
   ProfilerExport.stop_section(sec("te_outer_queue"))
+
+  -- Drain b→c→d→focus on the open tick instead of waiting for on_nth_tick(2) only.
+  if storage._tf_tag_editor_build_queue[1]
+      and storage._tf_tag_editor_build_queue[1].player_index == player.index then
+    tag_editor.process_build_queue()
+  end
 end
 
 --- Called from on_nth_tick(2). Drains up to a bounded number of queued stages per invocation.
@@ -439,8 +446,8 @@ end
 -- Stage "c": error/last rows.
 -- Stage "d": final state wiring (merged d1+d2). Legacy "d1"/"d2" entries still accepted for old queued saves.
 -- Stage "focus": rich text input focus (deferred from build_rich_text_row for lower peak Lua on stage b).
--- stage_budget is 3 so b+c run in one call and d+focus can often finish in the next (fewer visible pop-in waves).
--- If profiling shows spikes on huge saves, dial back to 2 or 1.
+-- stage_budget is 4 so one drain can run b, c, d, and focus without waiting for the next on_nth_tick(2).
+-- If profiling shows spikes on huge saves, dial back to 3 or 2.
 -- If a build_* slice still exceeds ~2ms after profiling, add nested ProfilerExport inside build_interior_a/b/c.
 function tag_editor.process_build_queue()
   -- Derive work from storage — do not skip when `_tag_editor_queue_has_work` is stale (MP parity with favorites bar queue).
@@ -454,7 +461,7 @@ function tag_editor.process_build_queue()
   end
   _tag_editor_queue_has_work = true
 
-  local stage_budget = 3
+  local stage_budget = 4
   local processed = 0
 
   while processed < stage_budget and #storage._tf_tag_editor_build_queue > 0 do

@@ -21,17 +21,6 @@ local TagEditorMapMarker = require("core.utils.tag_editor_map_marker")
 local GuiObserver = require("core.events.gui_observer")
 local ProfilerExport = require("core.utils.profiler_export")
 local PlayerFavorites = require("core.favorite.player_favorites")
-local MpBisect = require("core.utils.mp_bisect")
-
---- Wrap chart-tag Factorio events when bisect mode disables chart-tag + remote history paths.
----@param handler function
----@return function
-local function bisect_wrap_chart_tag(handler)
-  return function(event)
-    if MpBisect.no_chart_and_remote() then return end
-    return handler(event)
-  end
-end
 
 ---@class EventRegistrationDispatcher
 local EventRegistrationDispatcher = {}
@@ -278,13 +267,13 @@ local function register_core_events(script)
     handler = fave_bar.on_player_controller_changed, name = "on_player_controller_changed"
   }
   core_events[defines.events.on_chart_tag_added] = {
-    handler = bisect_wrap_chart_tag(handlers.on_chart_tag_added), name = "on_chart_tag_added"
+    handler = handlers.on_chart_tag_added, name = "on_chart_tag_added"
   }
   core_events[defines.events.on_chart_tag_modified] = {
-    handler = bisect_wrap_chart_tag(handlers.on_chart_tag_modified), name = "on_chart_tag_modified"
+    handler = handlers.on_chart_tag_modified, name = "on_chart_tag_modified"
   }
   core_events[defines.events.on_chart_tag_removed] = {
-    handler = bisect_wrap_chart_tag(handlers.on_chart_tag_removed), name = "on_chart_tag_removed"
+    handler = handlers.on_chart_tag_removed, name = "on_chart_tag_removed"
   }
 
   -- Periodic cleanup: GUI observer cleanup (every 30 min) and icon_typing reset (every 15 min)
@@ -299,7 +288,6 @@ local function register_core_events(script)
     -- GPS point cache sweep: evicts TTL-expired entries for active surfaces only.
     -- Per-surface next_sweep_at clock pauses while no players are on that surface.
     script.on_nth_tick(Cache.Lookups.VALIDITY_SWEEP_TICKS, function()
-      if MpBisect.no_lookups_sweep() then return end
       Cache.Lookups.sweep_expired_entries()
     end)
   end)
@@ -316,19 +304,13 @@ local function register_core_events(script)
     if GuiObserver.GuiEventBus._deferred_tick_active then
       GuiObserver.GuiEventBus.process_deferred_notifications()
     end
-    if not MpBisect.no_fave_bar_queue() then
-      fave_bar.process_slot_build_queue()
-      -- Flush dirty slots queued by DataObserver:update this tick (or any previous tick
-      -- that was skipped due to budget overflow). Runs after process_slot_build_queue so
-      -- a progressive build stage and a dirty-slot flush never compete on the same tick.
-      fave_bar.flush_all_dirty_slots()
-    end
-    if not MpBisect.no_tag_editor() then
-      tag_editor.process_build_queue()
-    end
-    if not MpBisect.no_history_modal() then
-      teleport_history_modal.process_build_queue()
-    end
+    fave_bar.process_slot_build_queue()
+    -- Flush dirty slots queued by DataObserver:update this tick (or any previous tick
+    -- that was skipped due to budget overflow). Runs after process_slot_build_queue so
+    -- a progressive build stage and a dirty-slot flush never compete on the same tick.
+    fave_bar.flush_all_dirty_slots()
+    tag_editor.process_build_queue()
+    teleport_history_modal.process_build_queue()
   end)
 
   ErrorHandler.debug_log("[EVENT_REG] Registering on_tick handler for first-tick setup")
@@ -336,7 +318,7 @@ local function register_core_events(script)
     ProfilerExport.on_game_tick(event)
     -- Deferred tag-editor map marker (favorites open): run after modal frame first tick.
     local defer_at = storage and storage._tf_tag_editor_marker_defer_at
-    if defer_at and not MpBisect.no_tag_editor() then
+    if defer_at then
       local deferred_indices = {}
       for pindex, due in pairs(defer_at) do
         if type(pindex) == "number" and type(due) == "number" then

@@ -7,20 +7,9 @@ local gui_style = data.raw["gui-style"].default
 -- Slot index label (child of sprite-button): keep color when the button is hovered (avoids dark text on locked slots).
 local TF_FAVE_BAR_SLOT_NUMBER_COLOR = { r = 0.98, g = 0.66, b = 0.22, a = 0.9 }
 
--- Locked slot chrome: warm wash on the slot face + crisp outer rim (same 9-slice pattern as mod rounded_button_glow).
--- Rim is draw-only (outer layer); does not change button size, padding, or margins.
--- Face wash + outer rim for `tf_slot_button_smallfont_locked` (see `locked_face()` below). Lower `a` = subtler.
-local LOCKED_SLOT_BASE_TINT = { r = 0.55, g = 0.38, b = 0.24, a = 0.10 }
-local LOCKED_SLOT_BORDER_RIM = {
-  position = { 256, 191 },
-  corner_size = 16,
-  tint = { r = 0.72, g = 0.36, b = 0.06, a = 0.18 },
-  top_outer_border_shift = 4,
-  bottom_outer_border_shift = -4,
-  left_outer_border_shift = 4,
-  right_outer_border_shift = -4,
-  draw_type = "outer",
-}
+-- Locked slot chrome: dark grey face vs default slots; no extra shadow layer (avoids the light outer “frame”).
+-- `base.tint` multiplies the slot texture — tune r/g/b and `a` for lighter/darker grey.
+local LOCKED_SLOT_BASE_TINT = { r = 0.34, g = 0.34, b = 0.36, a = 0.72 }
 
 -- add all new styles under this line
 
@@ -105,23 +94,18 @@ gui_style.tf_slot_button_smallfont_map_pin = {
     left_padding = 8
 }
 
--- Locked favorites: neutral grey slot face (slot_button.default), not clicked — clicked_graphical_set uses the
--- warm/orange “pressed” variant in 2.0. Shallow-frame clicked shadow adds inset / depressed chrome.
+-- Locked favorites: dark grey tinted face; glow and copied shallow-frame shadow omitted for a tight edge (no halo).
 do
   local sb = gui_style.slot_button
-  local shallow = gui_style.slot_button_in_shallow_frame
   if sb and sb.default_graphical_set then
     local function locked_face()
       local g = util.table.deepcopy(sb.default_graphical_set)
       g.glow = nil
-      if shallow and shallow.clicked_graphical_set and shallow.clicked_graphical_set.shadow then
-        g.shadow = util.table.deepcopy(shallow.clicked_graphical_set.shadow)
-      end
+      g.shadow = nil
       if g.base then
         g.base = util.table.deepcopy(g.base)
         g.base.tint = LOCKED_SLOT_BASE_TINT
       end
-      g.glow = util.table.deepcopy(LOCKED_SLOT_BORDER_RIM)
       return g
     end
     local pressed = locked_face()

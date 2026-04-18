@@ -196,17 +196,6 @@ All settings are under **Mod settings → Per player**:
 
 ---
 
-## Troubleshooting (console)
-
-🔧 Use this only when diagnosing problems or helping with a bug report.
-
-- **`/tf_log_level debug`** — Verbose debug logging
-- **`/tf_log_level production`** — Normal logging (default)
-- **`/tf_log_level`** — Show current level and options
-- **`/tf_debug_info`** — Show debug configuration
-
----
-
 ## FAQ
 
 **I can't teleport to my favorite.**  

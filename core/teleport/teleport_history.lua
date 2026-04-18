@@ -9,8 +9,6 @@ local BasicHelpers, Cache, GPSUtils =
   Deps.BasicHelpers, Deps.Cache, Deps.GpsUtils
 local HistoryItem = Cache.HistoryItem
 local ProfilerExport = require("core.utils.profiler_export")
-local MpBisect = require("core.utils.mp_bisect")
-
 
 local HISTORY_STACK_SIZE = 128 -- Only 128 allowed for now (TBA for future options)
 local STD_RESOLUTION_TILES = 12  -- Standard mode: consecutive locations within this distance are collapsed
@@ -218,11 +216,9 @@ function TeleportHistory.register_remote_interface()
 	end
 	remote.add_interface("TeleportFavorites_History", {
 		add_to_history = function(player_index, gps)
-			if MpBisect.no_chart_and_remote() then return end
 			TeleportHistory.add_gps(game.players[player_index], gps)
 		end,
 		add_teleport = function(player_index, from_gps, to_gps)
-			if MpBisect.no_chart_and_remote() then return end
 			TeleportHistory.add_teleport(game.players[player_index], from_gps, to_gps)
 		end,
 	})
