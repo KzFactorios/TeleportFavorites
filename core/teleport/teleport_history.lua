@@ -11,8 +11,8 @@ local HistoryItem = Cache.HistoryItem
 local ProfilerExport = require("core.utils.profiler_export")
 
 local HISTORY_STACK_SIZE = 128 -- Only 128 allowed for now (TBA for future options)
-local STD_RESOLUTION_TILES = 12  -- Standard mode: consecutive locations within this distance are collapsed
-local SEQ_RESOLUTION_TILES = 12  -- Sequential mode: FROM→TO hops shorter than this are not recorded
+local STD_RESOLUTION_TILES = 32  -- Standard mode: consecutive locations within this distance are collapsed
+local SEQ_RESOLUTION_TILES = 16  -- Sequential mode: FROM→TO hops shorter than this are not recorded
 -- Second leg of a sequential pair: only collapse TO against FROM when essentially the same tile (not STD_RESOLUTION_TILES).
 local SEQ_PAIR_TO_LEG_RESOLUTION_TILES = 1
 
