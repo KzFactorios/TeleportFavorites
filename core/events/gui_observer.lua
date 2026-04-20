@@ -25,6 +25,16 @@ local function for_each_sorted_dirty_slot(slots_tbl, fn)
   end
 end
 
+--- True when payload targets explicit slot indices (partial bar write).
+---@param d table|nil
+---@return boolean
+local function refresh_payload_is_slot_specific(d)
+  if type(d) ~= "table" then return false end
+  if type(d.slot) == "number" then return true end
+  if type(d.slots) == "table" and next(d.slots) ~= nil then return true end
+  return false
+end
+
 ---@class BaseGuiObserver
 ---@field player LuaPlayer
 ---@field player_index uint|nil
@@ -84,16 +94,31 @@ function DataObserver:update(event_data)
   end
 
   local success, err = pcall(function()
-    if event_data and type(event_data) == "table" and type(event_data.slots) == "table" then
-      -- Deferred path: mark all affected slots dirty; flush_all_dirty_slots() will
-      -- write the GUI on the next on_nth_tick(2), spreading the visual-write cost.
+    if event_data and type(event_data) == "table" and event_data.full_refresh then
       run(function()
         run(function()
-          for_each_sorted_dirty_slot(event_data.slots, function(slot_index)
-            fave_bar.mark_slot_dirty(player, slot_index)
-          end)
+          fave_bar.refresh_slots(player)
         end)
       end)
+    elseif event_data and type(event_data) == "table" and type(event_data.slots) == "table" then
+      if next(event_data.slots) == nil then
+        -- Empty `slots` must not no-op (coalesce edge); treat as full row refresh.
+        run(function()
+          run(function()
+            fave_bar.refresh_slots(player)
+          end)
+        end)
+      else
+        -- Deferred path: mark all affected slots dirty; flush_all_dirty_slots() will
+        -- write the GUI on the next on_nth_tick(2), spreading the visual-write cost.
+        run(function()
+          run(function()
+            for_each_sorted_dirty_slot(event_data.slots, function(slot_index)
+              fave_bar.mark_slot_dirty(player, slot_index)
+            end)
+          end)
+        end)
+      end
     elseif event_data and event_data.slot then
       -- Deferred path: mark the single affected slot dirty for next-tick flush.
       run(function()
@@ -293,7 +318,15 @@ local function coalesce_snapshot_notifications(snapshot)
         existing_data.old_gps = new_data.old_gps or existing_data.old_gps
         existing_data.new_gps = new_data.new_gps or existing_data.new_gps
 
-        merge_slot_payload(existing_data, new_data)
+        -- If either side is not slot-specific, do not downgrade to a sparse partial refresh
+        -- (would skip updating `n` captions and other slots that still need storage sync).
+        if refresh_payload_is_slot_specific(existing_data) and refresh_payload_is_slot_specific(new_data) then
+          merge_slot_payload(existing_data, new_data)
+        else
+          existing_data.full_refresh = true
+          existing_data.slots = nil
+          existing_data.slot = nil
+        end
       elseif existing then
         existing.data = new_data
       end

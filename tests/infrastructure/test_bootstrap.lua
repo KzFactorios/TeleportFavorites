@@ -38,6 +38,8 @@ local FaveBarGuiLabelsManager = {
 local fave_bar = {
   build = function() end,
   clear_session_gui_refs = function() end,
+  refresh_slots = function() end,
+  mark_slot_dirty = function() end,
 }
 
 -- Shared spy utility
@@ -112,7 +114,12 @@ package.loaded["core.favorite.player_favorites"] = setmetatable({
 }, { __index = function() return function() end end })
 --]]
 package.loaded["core.utils.gui_validation"] = { find_child_by_name = function() return nil end }
-package.loaded["core.utils.gui_helpers"] = {}
+package.loaded["core.utils.gui_helpers"] = {
+  peel_destroy_all_children = function() end,
+  count_direct_children = function() return 0 end,
+  get_or_create_gui_flow_from_gui_top = function() return nil end,
+  build_favorite_tooltip = function() return "" end,
+}
 package.loaded["core.events.chart_tag_modification_helpers"] = {
   is_valid_tag_modification = function() return true end,
   extract_gps = function() return "gps:100,200,nauvis", "gps:50,150,nauvis" end,
@@ -150,6 +157,8 @@ io.stdout:setvbuf('no')
 
 -- Set up spies for all handler dependencies BEFORE SUT is loaded
 make_spy(fave_bar, "build")
+make_spy(fave_bar, "refresh_slots")
+make_spy(fave_bar, "mark_slot_dirty")
 make_spy(FaveBarGuiLabelsManager, "register_all")
 make_spy(FaveBarGuiLabelsManager, "initialize_all_players")
 make_spy(FaveBarGuiLabelsManager, "update_label_for_player")

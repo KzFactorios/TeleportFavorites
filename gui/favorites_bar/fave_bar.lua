@@ -408,6 +408,7 @@ local helpers = {
   create_toggle_chrome         = create_toggle_chrome,
   _destroy_fave_bar            = _destroy_fave_bar,
   GuiElementBuilders           = GuiElementBuilders,
+  clear_session_gui_refs       = function(player_index) fave_bar.clear_session_gui_refs(player_index) end,
 }
 
 fave_bar_slots_extend(fave_bar, helpers)

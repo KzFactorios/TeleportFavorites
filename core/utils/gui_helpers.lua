@@ -34,6 +34,19 @@ function GuiHelpers.count_direct_children(parent)
   return n
 end
 
+--- Destroy every direct child by repeatedly removing `children[1]` (LuaCustomTable-safe).
+---@param el LuaGuiElement|nil
+function GuiHelpers.peel_destroy_all_children(el)
+  if not el or not el.valid then return end
+  local ch = el.children
+  if not ch then return end
+  for _ = 1, 512 do
+    local c = ch[1]
+    if c == nil or not c.valid then break end
+    c.destroy()
+  end
+end
+
 function GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
   local top = player.gui.top
   local flow = top and top.tf_main_gui_flow

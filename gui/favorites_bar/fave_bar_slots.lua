@@ -23,7 +23,11 @@ return function(fave_bar, helpers)
   local prune_stale_favorites     = helpers.prune_stale_favorites
   local last_build_tick           = helpers.last_build_tick
   local _destroy_fave_bar         = helpers._destroy_fave_bar
+  local clear_session_gui_refs    = helpers.clear_session_gui_refs
 
+  --- Invariant: child label `n` is always the fixed slot index (1..max_slots), never tied to
+  --- favorite "identity order" after reorder or chart-tag moves. Only sprite, tooltip, and
+  --- optional text labels reflect favorite/tag content.
   local function apply_slot_visuals(btn, fav, slot_index)
     local icon, tooltip, style = get_slot_btn_props(slot_index, fav)
     btn.sprite  = icon or ""
@@ -49,15 +53,56 @@ return function(fave_bar, helpers)
   end
 
   local function clear_element_children(el)
-    if not el or not el.valid then return end
-    local ch = el.children
-    if not ch then return end
-    -- Do not use `#ch` on LuaCustomTable — count can disagree between peers; always peel index 1.
-    for _ = 1, 512 do
-      local c = ch[1]
-      if c == nil or not c.valid then break end
-      c.destroy()
+    GuiHelpers.peel_destroy_all_children(el)
+  end
+
+  --- Peel twice if anything remains (defensive against LuaCustomTable edge cases).
+  local function clear_slots_row_children(slots_frame)
+    if not slots_frame or not slots_frame.valid then return end
+    clear_element_children(slots_frame)
+    if GuiHelpers.count_direct_children(slots_frame) > 0 then
+      log("[TeleportFavorites][FAVE_BAR] clear_slots_row_children: second peel pass")
+      clear_element_children(slots_frame)
     end
+  end
+
+  local function resolve_slots_frame_from_bar(fave_bar_frame)
+    if not fave_bar_frame or not fave_bar_frame.valid then return nil end
+    local bf = fave_bar_frame[Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW]
+    if not bf or not bf.valid then return nil end
+    local sf = bf[Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW]
+    if sf and sf.valid then return sf end
+    return nil
+  end
+
+  local function is_duplicate_name_gui_err(msg)
+    local s = type(msg) == "string" and msg or tostring(msg)
+    return s:find("already present", 1, true) ~= nil or s:find("already exists", 1, true) ~= nil
+  end
+
+  ---@param player LuaPlayer
+  ---@param fave_bar_frame LuaGuiElement
+  ---@param add_fn fun(slots_frame: LuaGuiElement)
+  local function run_slot_creation_with_retry(player, fave_bar_frame, add_fn)
+    local sf = resolve_slots_frame_from_bar(fave_bar_frame)
+    if not sf then return false end
+    local ok, err = pcall(add_fn, sf)
+    if ok then return true end
+    if not is_duplicate_name_gui_err(err) then
+      error(err)
+    end
+    ErrorHandler.warn_log("[FAVE_BAR] duplicate slot name on add; clearing refs and row, retrying once", {
+      player = player and player.name,
+      tick = game and game.tick or 0,
+      err = tostring(err),
+    })
+    clear_session_gui_refs(player.index)
+    sf = resolve_slots_frame_from_bar(fave_bar_frame)
+    if not sf or not sf.valid then error(err) end
+    clear_slots_row_children(sf)
+    ok, err = pcall(add_fn, sf)
+    if not ok then error(err) end
+    return true
   end
 
   --- Attempt to update all slot buttons in place (no destroy/recreate).
@@ -181,6 +226,7 @@ return function(fave_bar, helpers)
       local needs_rebuild = not has_valid_structure
       if needs_rebuild then
         GuiValidation.safe_destroy_frame(main_flow, Enum.GuiEnum.GUI_FRAME.FAVE_BAR)
+        clear_session_gui_refs(player.index)
       end
 
       local fave_bar_frame
@@ -249,55 +295,73 @@ return function(fave_bar, helpers)
           slots_frame.visible = slots_visible
         end
 
-        local slots_already_current = recently_built
-          and slots_frame and slots_frame.valid and GuiHelpers.count_direct_children(slots_frame) > 0
-        if not slots_already_current then
+        -- Layer 1 + 5: always try in-place refresh first (fixed 1..N labels + storage-backed visuals).
+        -- Never skip all slot work after cancel_progressive_build_for — that left stale `n` and icons.
+        slots_frame = resolve_slots_frame_from_bar(fave_bar_frame) or slots_frame
+        local in_place_ok = false
+        if slots_frame and slots_frame.valid then
+          in_place_ok = try_update_slots_in_place(slots_frame, player, pfaves)
+        end
+
+        if in_place_ok and deferred_slots then
+          -- Row already matches storage; skip blank/hydrate queue (avoids duplicate-name + wasted ticks).
+        elseif not in_place_ok then
           if deferred_slots then
             storage._tf_slot_build_queue = storage._tf_slot_build_queue or {}
-            clear_element_children(slots_frame)
-            -- Sync cap keeps first-tick Lua under budget; tail uses blank_slots (tick>=2) then prune+hydrate.
-            local build_blanks = helpers.build_blank_slot_range
-            local cap = math.floor(tonumber(Constants.settings.FAVE_BAR_SYNC_BLANK_BUILD_CAP) or 22)
-            local tail_batch_max = math.floor(tonumber(Constants.settings.FAVE_BAR_TAIL_BLANK_BATCH_MAX) or 10)
-            if use_labels then
-              cap = math.min(cap, 14)
-            end
-            local n_first = math.min(cap, max_slots)
-            if build_blanks and slots_frame and slots_frame.valid then
-              build_blanks(slots_frame, 1, n_first, use_labels)
-            end
-            if max_slots > n_first then
-              local remaining = max_slots - n_first
-              table.insert(storage._tf_slot_build_queue, {
-                player_index         = player.index,
-                surface_index        = player.surface.index,
-                stage                = "blank_slots",
-                next_slot            = n_first + 1,
-                expected_blank       = n_first,
-                max_slots            = max_slots,
-                use_labels           = use_labels,
-                label_mode           = label_mode,
-                stop_after_blank     = false,
-                blank_batch_override = math.min(tail_batch_max, remaining),
+            clear_session_gui_refs(player.index)
+            slots_frame = resolve_slots_frame_from_bar(fave_bar_frame)
+            if not slots_frame or not slots_frame.valid then
+              ErrorHandler.warn_log("[FAVE_BAR] deferred build: slots_frame missing after ref resolve", {
+                player = player.name,
               })
             else
-              table.insert(storage._tf_slot_build_queue, {
-                player_index  = player.index,
-                surface_index = player.surface.index,
-                stage         = "hydrate_slots",
-                next_slot     = 1,
-                max_slots     = max_slots,
-                use_labels    = use_labels,
-                label_mode    = label_mode,
-              })
+              clear_slots_row_children(slots_frame)
+              local build_blanks = helpers.build_blank_slot_range
+              local cap = math.floor(tonumber(Constants.settings.FAVE_BAR_SYNC_BLANK_BUILD_CAP) or 22)
+              local tail_batch_max = math.floor(tonumber(Constants.settings.FAVE_BAR_TAIL_BLANK_BATCH_MAX) or 10)
+              if use_labels then
+                cap = math.min(cap, 14)
+              end
+              local n_first = math.min(cap, max_slots)
+              if build_blanks then
+                run_slot_creation_with_retry(player, fave_bar_frame, function(sf)
+                  build_blanks(sf, 1, n_first, use_labels)
+                end)
+              end
+              if max_slots > n_first then
+                local remaining = max_slots - n_first
+                table.insert(storage._tf_slot_build_queue, {
+                  player_index         = player.index,
+                  surface_index        = player.surface.index,
+                  stage                = "blank_slots",
+                  next_slot            = n_first + 1,
+                  expected_blank       = n_first,
+                  max_slots            = max_slots,
+                  use_labels           = use_labels,
+                  label_mode           = label_mode,
+                  stop_after_blank     = false,
+                  blank_batch_override = math.min(tail_batch_max, remaining),
+                })
+              else
+                table.insert(storage._tf_slot_build_queue, {
+                  player_index  = player.index,
+                  surface_index = player.surface.index,
+                  stage         = "hydrate_slots",
+                  next_slot     = 1,
+                  max_slots     = max_slots,
+                  use_labels    = use_labels,
+                  label_mode    = label_mode,
+                })
+              end
             end
           else
-            local slots_updated = slots_frame and slots_frame.valid
-              and GuiHelpers.count_direct_children(slots_frame) > 0
-              and try_update_slots_in_place(slots_frame, player, pfaves)
-            if not slots_updated then
-              clear_element_children(slots_frame)
-              fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves)
+            clear_session_gui_refs(player.index)
+            slots_frame = resolve_slots_frame_from_bar(fave_bar_frame)
+            if slots_frame and slots_frame.valid then
+              clear_slots_row_children(slots_frame)
+              run_slot_creation_with_retry(player, fave_bar_frame, function(sf)
+                fave_bar.build_favorite_buttons_row(sf, player, pfaves)
+              end)
             end
           end
         end
@@ -353,8 +417,15 @@ return function(fave_bar, helpers)
     end
 
     -- Slow path: structure changed, clear and rebuild.
-    clear_element_children(slots_frame)
-    fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves)
+    local bar_root = parent_flow.parent
+    clear_slots_row_children(slots_frame)
+    if bar_root and bar_root.valid then
+      run_slot_creation_with_retry(player, bar_root, function(sf)
+        fave_bar.build_favorite_buttons_row(sf, player, pfaves)
+      end)
+    else
+      fave_bar.build_favorite_buttons_row(slots_frame, player, pfaves)
+    end
 
     return slots_frame
   end

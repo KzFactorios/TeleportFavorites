@@ -76,6 +76,7 @@ return function(fave_bar, helpers)
   helpers.build_blank_slot_range = build_blank_slot_range
 
   local cancel_progressive_build_for = helpers.cancel_progressive_build_for
+  local clear_session_gui_refs         = helpers.clear_session_gui_refs
   local last_build_tick              = helpers.last_build_tick
   local create_toggle_chrome         = helpers.create_toggle_chrome
   local prune_stale_favorites        = helpers.prune_stale_favorites
@@ -295,6 +296,7 @@ return function(fave_bar, helpers)
 
       local existing_flow = bar_frame[Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW]
       if existing_flow and existing_flow.valid then existing_flow.destroy() end
+      clear_session_gui_refs(entry.player_index)
 
       GuiBase.create_hflow(bar_frame, Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW)
       local bar_flow = bar_frame[Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW]
@@ -441,7 +443,37 @@ return function(fave_bar, helpers)
       local start_idx  = entry.next_slot
       local end_idx    = math.min(start_idx + batch_size - 1, entry.max_slots)
 
-      build_blank_slot_range(slots_frame, start_idx, end_idx, entry.use_labels)
+      local function try_blank_range(sf)
+        build_blank_slot_range(sf, start_idx, end_idx, entry.use_labels)
+      end
+      local ok, err = pcall(try_blank_range, slots_frame)
+      if not ok then
+        local msg = tostring(err)
+        if msg:find("already present", 1, true) or msg:find("already exists", 1, true) then
+          ErrorHandler.warn_log("[TF_MP][blank_slots] duplicate slot name; clearing refs and row, retrying once", {
+            player_index = entry.player_index,
+            tick = game.tick,
+            err = msg,
+            start_idx = start_idx,
+            end_idx = end_idx,
+          })
+          clear_session_gui_refs(entry.player_index)
+          slots_frame = get_bar_slots_frame(player)
+          if slots_frame and slots_frame.valid then
+            GuiHelpers.peel_destroy_all_children(slots_frame)
+            ok, err = pcall(try_blank_range, slots_frame)
+          end
+        end
+      end
+      if not ok then
+        ErrorHandler.warn_log("[TF_MP][blank_slots] build_blank_slot_range failed, dropping queue entry", {
+          player_index = entry.player_index,
+          tick = game.tick,
+          err = tostring(err),
+        })
+        table.remove(storage._tf_slot_build_queue, 1)
+        return
+      end
 
       if end_idx >= entry.max_slots then
         if entry.stop_after_blank then
