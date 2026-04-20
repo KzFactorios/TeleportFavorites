@@ -148,7 +148,7 @@ gui_style.tf_fave_bar_slot_number = {
     clicked_font_color = TF_FAVE_BAR_SLOT_NUMBER_COLOR,
     horizontal_align = "center",
     width = 25,
-    top_padding = 19
+    top_padding = 21
 }
 
 gui_style.tf_fave_bar_slot_wrapper = {
