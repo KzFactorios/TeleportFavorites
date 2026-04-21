@@ -2,8 +2,7 @@
 Version: 0.0.98
 Date: 2026-04-15
   Changes:
-    - Multiplayer: more desync fixes and stricter same-order behavior across the favorites bar, tag editor, and teleport history so clients stay in sync
-    - Multiplayer: if you still desync with the same mod version on host and every client, try the same save with TeleportFavorites turned off everywhere to see whether the problem is this mod or something else
+    - Multiplayer: desync fixes and stricter same-order behavior across the favorites bar, tag editor, and teleport history so clients stay in sync
     - Fixed tag creator/owner information being lost after moving a tag on the map
     - Tag editor: delete confirmation (confirm/cancel) behaves reliably again
     - UPS and responsiveness: favorites bar updates use less work per change (chunked deferred work, fewer full rebuilds, better coalescing), which should show as lower mod time in the UPS overlay and feel snappier when you reorder slots, edit favorites, toggle sequential history, or change several locations in a row
