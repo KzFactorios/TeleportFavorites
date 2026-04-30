@@ -19,8 +19,8 @@
 --          └─ fave_bar_slot_label_1 (label)
 
 local Deps = require("core.deps_barrel")
-local BasicHelpers, ErrorHandler, Cache, Enum =
-  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.Enum
+local BasicHelpers, ErrorHandler, Cache, Enum, Constants =
+  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.Enum, Deps.Constants
 local GuiBase = require("gui.gui_base")
 local GuiElementBuilders = require("core.utils.gui_element_builders")
 local FavoriteUtils = require("core.favorite.favorite_utils")
@@ -413,6 +413,42 @@ local helpers = {
 
 fave_bar_slots_extend(fave_bar, helpers)
 fave_bar_progressive_extend(fave_bar, helpers)
+
+--- Low-frequency self-heal when slot row child count or structure drifts from settings (e.g. queue aborted).
+--- One connected player per call; driven by on_nth_tick(120).
+function fave_bar.tick_slot_row_watchdog()
+  if not game or not game.players or not storage then return end
+  local default_max = math.floor(tonumber(Constants.settings.DEFAULT_MAX_FAVORITE_SLOTS) or 10)
+  local plist = {}
+  BasicHelpers.for_each_connected_player_by_index_asc(function(player)
+    if player and player.valid then plist[#plist + 1] = player end
+  end)
+  if #plist == 0 then return end
+  storage._tf_slot_watch_next_index = storage._tf_slot_watch_next_index or 1
+  local idx = storage._tf_slot_watch_next_index
+  if idx < 1 or idx > #plist then idx = 1 end
+  local player = plist[idx]
+  storage._tf_slot_watch_next_index = (idx % #plist) + 1
+  if BasicHelpers.is_restricted_controller(player) then return end
+  if not player.surface or not player.surface.valid then return end
+  if not BasicHelpers.is_planet_surface(player.surface) then return end
+  local player_settings = Cache.Settings.get_player_settings(player)
+  if not player_settings.favorites_on and not player_settings.enable_teleport_history then return end
+  if is_build_in_flight(player.index) then return end
+  local _, _, _, slots_frame = get_fave_bar_gui_refs(player)
+  if not slots_frame or not slots_frame.valid then return end
+  local max_slots = Cache.Settings.get_player_max_favorite_slots(player) or default_max
+  local label_mode = Cache.Settings.get_player_slot_label_mode(player)
+  local use_labels = label_mode ~= "off"
+  if GuiHelpers.slot_row_matches_expected(slots_frame, max_slots, use_labels) then return end
+  ErrorHandler.warn_log("[FAVE_BAR] slot row watchdog: mismatch, scheduling rebuild", {
+    player = player.name,
+    tick = game and game.tick or 0,
+    max_slots = max_slots,
+    child_count = GuiHelpers.count_direct_children(slots_frame),
+  })
+  fave_bar.build(player, true, true)
+end
 
 -- Loader sprite is removed immediately (delay=0) so it is gone before the first bar frame element appears.
 local FAVE_BAR_LOADER_DELAY_TICKS = 0

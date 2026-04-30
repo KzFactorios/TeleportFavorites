@@ -117,6 +117,11 @@ function PlayerFavorites:add_favorite(gps, silent)
       favorites[i] = old_faves[i] or FavoriteUtils.get_blank_favorite()
     end
   end
+  if favorites then
+    for i = max_slots + 1, #favorites do
+      favorites[i] = nil
+    end
+  end
   -- Check for duplicate (already present — treat as success, return current slot).
   for i = 1, max_slots do
     local fav = favorites[i]

@@ -15,8 +15,8 @@
 --   slots          → legacy stage kept for old save files
 
 local Deps                                    = require("core.deps_barrel")
-local BasicHelpers, ErrorHandler, Cache, Enum =
-    Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.Enum
+local BasicHelpers, ErrorHandler, Cache, Enum, Constants =
+  Deps.BasicHelpers, Deps.ErrorHandler, Deps.Cache, Deps.Enum, Deps.Constants
 local GuiBase                                 = require("gui.gui_base")
 local GuiHelpers                              = require("core.utils.gui_helpers")
 local FavoriteUtils                           = require("core.favorite.favorite_utils")
@@ -28,46 +28,64 @@ local PlayerFavorites                         = require("core.favorite.player_fa
 local BLANK_BATCH_SIZE                        = 3
 local HYDRATE_BATCH_SIZE                      = 5
 
+local function default_max_favorite_slots()
+  return math.floor(tonumber(Constants.settings.DEFAULT_MAX_FAVORITE_SLOTS) or 10)
+end
+
 --- Create empty slot buttons for indices [start_idx, end_idx]. Shared by blank_slots queue stage and
 --- fave_bar.build(..., deferred_slots) so placeholder DOM matches before hydrate runs.
+--- Each slot is built inside pcall; on failure any partial element for that index is destroyed so retry
+--- does not leave duplicate-name orphans.
 ---@param slots_frame LuaGuiElement
 ---@param start_idx uint
 ---@param end_idx uint
 ---@param use_labels boolean
 local function build_blank_slot_range(slots_frame, start_idx, end_idx, use_labels)
   for i = start_idx, end_idx do
-    local btn_parent = slots_frame
-    if use_labels then
-      btn_parent = slots_frame.add {
-        type      = "flow",
-        name      = "fave_bar_slot_wrapper_" .. i,
-        direction = "vertical",
-        style     = "tf_fave_bar_slot_wrapper",
+    local slot_ok, slot_err = pcall(function()
+      local btn_parent = slots_frame
+      if use_labels then
+        btn_parent = slots_frame.add {
+          type      = "flow",
+          name      = "fave_bar_slot_wrapper_" .. i,
+          direction = "vertical",
+          style     = "tf_fave_bar_slot_wrapper",
+        }
+      end
+      local btn = btn_parent.add {
+        type    = "sprite-button",
+        name    = "fave_bar_slot_" .. i,
+        sprite  = "",
+        style   = "tf_slot_button_smallfont",
+        tooltip = { "tf-gui.favorite_slot_empty" },
       }
-    end
-    local btn = btn_parent.add {
-      type    = "sprite-button",
-      name    = "fave_bar_slot_" .. i,
-      sprite  = "",
-      style   = "tf_slot_button_smallfont",
-      tooltip = { "tf-gui.favorite_slot_empty" },
-    }
-    btn.add { type = "label", name = "n", caption = tostring(i), style = "tf_fave_bar_slot_number" }
-    btn.add {
-      type                   = "sprite",
-      name                   = "tf_slot_lock",
-      sprite                 = "tf_fave_slot_lock",
-      visible                = false,
-      ignored_by_interaction = true,
-      style                  = "tf_fave_slot_lock_overlay",
-    }
-    if use_labels then
-      btn_parent.add {
-        type    = "label",
-        name    = "fave_bar_slot_label_" .. i,
-        caption = "",
-        style   = "tf_fave_bar_slot_label",
+      btn.add { type = "label", name = "n", caption = tostring(i), style = "tf_fave_bar_slot_number" }
+      btn.add {
+        type                   = "sprite",
+        name                   = "tf_slot_lock",
+        sprite                 = "tf_fave_slot_lock",
+        visible                = false,
+        ignored_by_interaction = true,
+        style                  = "tf_fave_slot_lock_overlay",
       }
+      if use_labels then
+        btn_parent.add {
+          type    = "label",
+          name    = "fave_bar_slot_label_" .. i,
+          caption = "",
+          style   = "tf_fave_bar_slot_label",
+        }
+      end
+    end)
+    if not slot_ok then
+      local w = slots_frame["fave_bar_slot_wrapper_" .. i]
+      if w and w.valid then
+        w.destroy()
+      else
+        local b = slots_frame["fave_bar_slot_" .. i]
+        if b and b.valid then b.destroy() end
+      end
+      error(slot_err)
     end
   end
 end
@@ -117,6 +135,22 @@ return function(fave_bar, helpers)
     local bar_frame = main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
     local bar_flow  = bar_frame and bar_frame[Enum.GuiEnum.FAVE_BAR_ELEMENT.FAVE_BAR_FLOW]
     return bar_flow and bar_flow[Enum.GuiEnum.FAVE_BAR_ELEMENT.SLOTS_FLOW]
+  end
+
+  --- Drop the current queue head (failed stage) and restart full progressive chrome for this player.
+  local function replace_queue_head_with_frame_init(player, surface_index, stop_after_blank)
+    storage._tf_slot_build_queue = storage._tf_slot_build_queue or {}
+    if #storage._tf_slot_build_queue > 0 then
+      table.remove(storage._tf_slot_build_queue, 1)
+    end
+    table.insert(storage._tf_slot_build_queue, 1, {
+      player_index     = player.index,
+      surface_index    = surface_index,
+      stage            = "frame_init",
+      stop_after_blank = stop_after_blank and true or false,
+    })
+    last_build_tick[player.index] = game.tick
+    _fave_bar_queue_has_work = true
   end
 
   --- Called from process_deferred_init_queue when a full progressive build is needed.
@@ -184,17 +218,26 @@ return function(fave_bar, helpers)
     local _, _, bar_flow, slots_frame = get_fave_bar_gui_refs(player)
     if not bar_flow or not bar_flow.valid then return false end
     if not slots_frame or not slots_frame.valid then return false end
-    local max_slots = Cache.Settings.get_player_max_favorite_slots(player) or 30
-    return GuiHelpers.count_direct_children(slots_frame) >= max_slots
+    local max_slots = Cache.Settings.get_player_max_favorite_slots(player) or default_max_favorite_slots()
+    local label_mode = Cache.Settings.get_player_slot_label_mode(player)
+    local use_labels = label_mode ~= "off"
+    return GuiHelpers.slot_row_matches_expected(slots_frame, max_slots, use_labels)
   end
 
   --- Enqueues only the hydrate_slots stage for a player whose blank bar is already built.
   ---@param player LuaPlayer
   function fave_bar.enqueue_hydrate(player)
     if not BasicHelpers.is_valid_player(player) then return end
-    local max_slots              = Cache.Settings.get_player_max_favorite_slots(player) or 30
+    local max_slots              = Cache.Settings.get_player_max_favorite_slots(player) or default_max_favorite_slots()
     local label_mode             = Cache.Settings.get_player_slot_label_mode(player)
     local use_labels             = label_mode ~= "off"
+
+    local _, _, _, slots_frame = get_fave_bar_gui_refs(player)
+    if not slots_frame or not slots_frame.valid
+        or not GuiHelpers.slot_row_matches_expected(slots_frame, max_slots, use_labels) then
+      fave_bar.build(player, true, true)
+      return
+    end
 
     storage._tf_slot_build_queue = storage._tf_slot_build_queue or {}
     cancel_progressive_build_for(player.index)
@@ -390,7 +433,7 @@ return function(fave_bar, helpers)
       if toggle_btn  and toggle_btn.valid  then toggle_btn.visible  = true     end
       if slots_frame and slots_frame.valid then slots_frame.visible = slots_vis end
 
-      local max_slots  = Cache.Settings.get_player_max_favorite_slots(player) or 30
+      local max_slots  = Cache.Settings.get_player_max_favorite_slots(player) or default_max_favorite_slots()
       local label_mode = Cache.Settings.get_player_slot_label_mode(player)
       local use_labels = label_mode ~= "off"
 
@@ -423,11 +466,11 @@ return function(fave_bar, helpers)
       local slots_frame = get_bar_slots_frame(player)
 
       if not slots_frame or not slots_frame.valid then
-        ErrorHandler.warn_log("[TF_MP][blank_slots] slots_frame missing, aborting build", {
+        ErrorHandler.warn_log("[TF_MP][blank_slots] slots_frame missing, re-queuing frame_init", {
           tick         = game.tick,
           player_index = entry.player_index,
         })
-        table.remove(storage._tf_slot_build_queue, 1)
+        replace_queue_head_with_frame_init(player, entry.surface_index, entry.stop_after_blank)
         return
       end
 
@@ -461,17 +504,21 @@ return function(fave_bar, helpers)
           slots_frame = get_bar_slots_frame(player)
           if slots_frame and slots_frame.valid then
             GuiHelpers.peel_destroy_all_children(slots_frame)
-            ok, err = pcall(try_blank_range, slots_frame)
+            local function try_blank_range_after_peel(sf)
+              -- Rebuild 1..end_idx so earlier batches are not left missing after peel.
+              build_blank_slot_range(sf, 1, end_idx, entry.use_labels)
+            end
+            ok, err = pcall(try_blank_range_after_peel, slots_frame)
           end
         end
       end
       if not ok then
-        ErrorHandler.warn_log("[TF_MP][blank_slots] build_blank_slot_range failed, dropping queue entry", {
+        ErrorHandler.warn_log("[TF_MP][blank_slots] build_blank_slot_range failed, re-queuing frame_init", {
           player_index = entry.player_index,
           tick = game.tick,
           err = tostring(err),
         })
-        table.remove(storage._tf_slot_build_queue, 1)
+        replace_queue_head_with_frame_init(player, entry.surface_index, entry.stop_after_blank)
         return
       end
 
@@ -532,6 +579,7 @@ return function(fave_bar, helpers)
 
       if not slots_frame or not slots_frame.valid then
         table.remove(storage._tf_slot_build_queue, 1)
+        fave_bar.build(player, true, true)
         return
       end
 
@@ -549,7 +597,14 @@ return function(fave_bar, helpers)
         if not btn or not btn.valid then goto next_hydrate end
 
         local n_el = btn["n"]
-        if n_el and n_el.valid then
+        if not n_el or not n_el.valid then
+          btn.add {
+            type    = "label",
+            name    = "n",
+            caption = tostring(i),
+            style   = "tf_fave_bar_slot_number",
+          }
+        else
           n_el.caption = tostring(i)
         end
 
@@ -582,6 +637,19 @@ return function(fave_bar, helpers)
 
 
       if end_idx >= entry.max_slots then
+        if not GuiHelpers.slot_row_matches_expected(slots_frame, entry.max_slots, entry.use_labels) then
+          ErrorHandler.warn_log("[TF_MP][hydrate_slots] row invalid after hydrate; forcing sync rebuild", {
+            player_index = entry.player_index,
+            tick = game.tick,
+            max_slots = entry.max_slots,
+            child_count = GuiHelpers.count_direct_children(slots_frame),
+          })
+          table.remove(storage._tf_slot_build_queue, 1)
+          cancel_progressive_build_for(player.index)
+          fave_bar.build(player, true, false)
+          last_build_tick[entry.player_index] = game.tick
+          return
+        end
         -- Hydration complete — reveal the bar now that it has real content.
         local main_flow = GuiHelpers.get_or_create_gui_flow_from_gui_top(player)
         local bar_frame = main_flow and main_flow[Enum.GuiEnum.GUI_FRAME.FAVE_BAR]
@@ -603,11 +671,17 @@ return function(fave_bar, helpers)
         return
       end
       if GuiHelpers.count_direct_children(slots_frame) ~= entry.expected_built then
-        table.remove(storage._tf_slot_build_queue, 1)
+        ErrorHandler.warn_log("[TF_MP][slots] legacy row count mismatch, re-queuing frame_init", {
+          player_index = entry.player_index,
+          tick = game.tick,
+          expected = entry.expected_built,
+          actual = GuiHelpers.count_direct_children(slots_frame),
+        })
+        replace_queue_head_with_frame_init(player, entry.surface_index, false)
         return
       end
 
-      local max_slots  = Cache.Settings.get_player_max_favorite_slots(player) or 30
+      local max_slots  = Cache.Settings.get_player_max_favorite_slots(player) or default_max_favorite_slots()
       local pfaves     = Cache.get_player_favorites(player, entry.surface_index)
       local label_mode = Cache.Settings.get_player_slot_label_mode(player)
       local use_labels = label_mode ~= "off"

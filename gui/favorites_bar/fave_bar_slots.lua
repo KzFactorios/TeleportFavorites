@@ -14,6 +14,11 @@ local GuiElementBuilders = require("core.utils.gui_element_builders")
 local FavoriteUtils = require("core.favorite.favorite_utils")
 local PlayerFavorites = require("core.favorite.player_favorites")
 return function(fave_bar, helpers)
+  local function max_favorite_slots_for(player)
+    return Cache.Settings.get_player_max_favorite_slots(player)
+      or math.floor(tonumber(Constants.settings.DEFAULT_MAX_FAVORITE_SLOTS) or 10)
+  end
+
   local is_build_in_flight        = helpers.is_build_in_flight
   local get_fave_bar_gui_refs     = helpers.get_fave_bar_gui_refs
   local get_slot_label_text       = helpers.get_slot_label_text
@@ -47,6 +52,14 @@ return function(fave_bar, helpers)
       lock_el.visible = BasicHelpers.is_locked_favorite(fav)
     end
     local n_el = btn["n"]
+    if not n_el or not n_el.valid then
+      n_el = btn.add {
+        type    = "label",
+        name    = "n",
+        caption = tostring(slot_index),
+        style   = "tf_fave_bar_slot_number",
+      }
+    end
     if n_el and n_el.valid then
       n_el.caption = tostring(slot_index)
     end
@@ -108,7 +121,7 @@ return function(fave_bar, helpers)
   --- Attempt to update all slot buttons in place (no destroy/recreate).
   --- Returns true on success; false means structure changed and a full rebuild is needed.
   local function try_update_slots_in_place(slots_frame, player, pfaves)
-    local max_slots = Cache.Settings.get_player_max_favorite_slots(player) or 10
+    local max_slots = max_favorite_slots_for(player)
     local label_mode = Cache.Settings.get_player_slot_label_mode(player)
     local use_labels = label_mode ~= "off"
     local child_count = GuiHelpers.count_direct_children(slots_frame)
@@ -142,6 +155,16 @@ return function(fave_bar, helpers)
       end
       if not btn or not btn.valid then return false end
 
+      local n_el = btn["n"]
+      if not n_el or not n_el.valid then
+        btn.add {
+          type    = "label",
+          name    = "n",
+          caption = tostring(i),
+          style   = "tf_fave_bar_slot_number",
+        }
+      end
+
       apply_slot_visuals(btn, fav, i)
 
       if label_el and label_el.valid then
@@ -161,7 +184,7 @@ return function(fave_bar, helpers)
       return parent
     end
 
-    local max_slots = Cache.Settings.get_player_max_favorite_slots(player) or 10
+    local max_slots = max_favorite_slots_for(player)
     local label_mode = Cache.Settings.get_player_slot_label_mode(player)
     local use_labels = label_mode ~= "off"
 
@@ -273,7 +296,7 @@ return function(fave_bar, helpers)
       else
         local surface_index = player.surface.index
         local pfaves = Cache.get_player_favorites(player, surface_index)
-        local max_slots = Cache.Settings.get_player_max_favorite_slots(player) or 30
+        local max_slots = max_favorite_slots_for(player)
         local label_mode = Cache.Settings.get_player_slot_label_mode(player)
         local use_labels = label_mode ~= "off"
 

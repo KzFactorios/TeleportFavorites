@@ -300,6 +300,10 @@ local function register_core_events(script)
   -- MULTIPLAYER FIX: All on_nth_tick and on_tick handlers are registered permanently.
   -- Dynamic registration/deregistration causes script-event-mismatch when clients join.
 
+  script.on_nth_tick(120, function()
+    fave_bar.tick_slot_row_watchdog()
+  end)
+
   script.on_nth_tick(2, function()
     if GuiObserver.GuiEventBus._deferred_tick_active then
       GuiObserver.GuiEventBus.process_deferred_notifications()
