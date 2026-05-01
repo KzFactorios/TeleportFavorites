@@ -39,7 +39,9 @@ gui_style.tf_fave_slots_row = {
     type = "frame_style",
     parent = "quick_bar_inner_panel",
     vertically_stretchable = "off",
-    horizontally_stretchable = "on",
+    -- Must not stretch horizontally: after lowering max slots (e.g. 30→10) the row would
+    -- still consume all leftover bar width, leaving a large empty recessed area to the right.
+    horizontally_stretchable = "off",
     left_margin = 6, -- left border
     right_margin = 0,
     top_padding = 1,
@@ -149,26 +151,6 @@ gui_style.tf_fave_bar_slot_number = {
     horizontal_align = "center",
     width = 25,
     top_padding = 21
-}
-
-gui_style.tf_fave_bar_slot_wrapper = {
-    type = "vertical_flow_style",
-    width = 40,
-    horizontal_align = "center",
-    vertical_spacing = 0,
-    top_padding = 0,
-    bottom_padding = 0,
-}
-
-gui_style.tf_fave_bar_slot_label = {
-    type = "label_style",
-    font = "tf_font_7",
-    font_color = { r = 0.7, g = 0.7, b = 0.7, a = 0.9 },
-    horizontal_align = "center",
-    width = 40,
-    single_line = true,
-    top_padding = 0,
-    bottom_padding = 0,
 }
 
 return true

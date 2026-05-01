@@ -29,16 +29,6 @@ data:extend({
     localised_description = {"mod-setting-description.max-favorite-slots"}
   },
   {
-    name = "slot-label-mode",
-    type = "string-setting",
-    setting_type = "runtime-per-user",
-    allowed_values = { "off", "short", "long" },
-    default_value = Constants.settings.DEFAULT_SLOT_LABEL_MODE,
-    order = "ka-3",
-    localised_name = {"mod-setting-name.slot-label-mode"},
-    localised_description = {"mod-setting-description.slot-label-mode"}
-  },
-  {
     name = "teleport-history-radius",
     type = "string-setting",
     setting_type = "runtime-per-user",

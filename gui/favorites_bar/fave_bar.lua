@@ -13,10 +13,7 @@
 --    │  ├─ fave_bar_history_mode_toggle (sprite-button)
 --    │  └─ fave_bar_visibility_toggle (sprite-button)
 --    └─ fave_bar_slots_flow (frame, horizontal)
---       ├─ [mode=off] fave_bar_slot_1 ... fave_bar_slot_N
---       └─ [mode=short/long] fave_bar_slot_wrapper_1 (flow, vertical)
---          ├─ fave_bar_slot_1 (sprite-button: children label "n", sprite tf_slot_lock when locked)
---          └─ fave_bar_slot_label_1 (label)
+--       └─ fave_bar_slot_1 ... fave_bar_slot_N (sprite-button: children label "n", sprite tf_slot_lock when locked)
 
 local Deps = require("core.deps_barrel")
 local BasicHelpers, ErrorHandler, Cache, Enum, Constants =
@@ -180,26 +177,6 @@ function fave_bar.clear_session_gui_refs(player_index)
   end
 end
 
---- Get slot label text based on label mode setting.
----@param fav table|nil
----@param mode string "off", "short", or "long"
----@return string
-local function get_slot_label_text(fav, mode)
-  if mode == "off" then return "" end
-  if not fav or FavoriteUtils.is_blank_favorite(fav) then return "" end
-  local text = ""
-  if fav.tag and fav.tag.chart_tag and fav.tag.chart_tag.valid then
-    text = fav.tag.chart_tag.text or ""
-  end
-  if text == "" then return "" end
-  if mode == "short" then return string.sub(text, 1, 5) end
-  if mode == "long" then
-    if #text > 64 then return string.sub(text, 1, 64) .. "..." end
-    return text
-  end
-  return ""
-end
-
 --- Build properties (icon, tooltip, style) for a single slot's button.
 ---@param i number slot index
 ---@param fav table rehydrated favorite
@@ -231,15 +208,13 @@ local function get_slot_btn_props(i, fav)
   end
 end
 
---- Add one slot button (and optional label wrapper) to parent.
+--- Add one slot button to parent.
 --- Shared by build_favorite_buttons_row and the progressive builder.
 ---@param parent LuaGuiElement
 ---@param player LuaPlayer
 ---@param pfaves table|nil
 ---@param i number slot index
----@param use_labels boolean
----@param label_mode string
-local function build_single_slot(parent, player, pfaves, i, use_labels, label_mode)
+local function build_single_slot(parent, player, pfaves, i)
   local fav_raw = pfaves and pfaves[i] or nil
   local fav
   if fav_raw and not FavoriteUtils.is_blank_favorite(fav_raw) then
@@ -251,17 +226,7 @@ local function build_single_slot(parent, player, pfaves, i, use_labels, label_mo
 
   local btn_icon, tooltip, style = get_slot_btn_props(i, fav)
 
-  local btn_parent = parent
-  if use_labels then
-    btn_parent = parent.add {
-      type      = "flow",
-      name      = "fave_bar_slot_wrapper_" .. i,
-      direction = "vertical",
-      style     = "tf_fave_bar_slot_wrapper",
-    }
-  end
-
-  local btn = btn_parent.add {
+  local btn = parent.add {
     type    = "sprite-button",
     name    = "fave_bar_slot_" .. i,
     sprite  = btn_icon or "",
@@ -278,10 +243,6 @@ local function build_single_slot(parent, player, pfaves, i, use_labels, label_mo
       ignored_by_interaction = true,
       style                  = "tf_fave_slot_lock_overlay",
     }
-    if use_labels then
-      GuiBase.create_label(btn_parent, "fave_bar_slot_label_" .. i,
-                           get_slot_label_text(fav, label_mode), "tf_fave_bar_slot_label")
-    end
   else
     ErrorHandler.warn_log("[FAVE_BAR] Failed to create slot button", { slot = i, icon = btn_icon })
   end
@@ -399,7 +360,6 @@ local helpers = {
   is_build_in_flight           = is_build_in_flight,
   normalize_icon_type          = normalize_icon_type,
   get_fave_bar_gui_refs        = get_fave_bar_gui_refs,
-  get_slot_label_text          = get_slot_label_text,
   get_slot_btn_props           = get_slot_btn_props,
   build_single_slot            = build_single_slot,
   cancel_progressive_build_for = cancel_progressive_build_for,
@@ -438,9 +398,7 @@ function fave_bar.tick_slot_row_watchdog()
   local _, _, _, slots_frame = get_fave_bar_gui_refs(player)
   if not slots_frame or not slots_frame.valid then return end
   local max_slots = Cache.Settings.get_player_max_favorite_slots(player) or default_max
-  local label_mode = Cache.Settings.get_player_slot_label_mode(player)
-  local use_labels = label_mode ~= "off"
-  if GuiHelpers.slot_row_matches_expected(slots_frame, max_slots, use_labels) then return end
+  if GuiHelpers.slot_row_matches_expected(slots_frame, max_slots) then return end
   ErrorHandler.warn_log("[FAVE_BAR] slot row watchdog: mismatch, scheduling rebuild", {
     player = player.name,
     tick = game and game.tick or 0,

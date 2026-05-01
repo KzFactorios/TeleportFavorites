@@ -23,8 +23,7 @@ local FavoriteUtils                           = require("core.favorite.favorite_
 local PlayerFavorites                         = require("core.favorite.player_favorites")
 
 -- Batches spread GUI adds across ticks; slightly larger than legacy (~10–15% fewer ticks).
--- No-label mode: BLANK_BATCH_SIZE slots/tick × 2 adds/slot (button + number label).
--- Label mode: 1 slot/tick × 4 adds/slot (wrapper + button + number label + slot label).
+-- BLANK_BATCH_SIZE slots/tick × 2 adds/slot (button + number label "n" + lock sprite).
 local BLANK_BATCH_SIZE                        = 3
 local HYDRATE_BATCH_SIZE                      = 5
 
@@ -39,20 +38,10 @@ end
 ---@param slots_frame LuaGuiElement
 ---@param start_idx uint
 ---@param end_idx uint
----@param use_labels boolean
-local function build_blank_slot_range(slots_frame, start_idx, end_idx, use_labels)
+local function build_blank_slot_range(slots_frame, start_idx, end_idx)
   for i = start_idx, end_idx do
     local slot_ok, slot_err = pcall(function()
-      local btn_parent = slots_frame
-      if use_labels then
-        btn_parent = slots_frame.add {
-          type      = "flow",
-          name      = "fave_bar_slot_wrapper_" .. i,
-          direction = "vertical",
-          style     = "tf_fave_bar_slot_wrapper",
-        }
-      end
-      local btn = btn_parent.add {
+      local btn = slots_frame.add {
         type    = "sprite-button",
         name    = "fave_bar_slot_" .. i,
         sprite  = "",
@@ -68,14 +57,6 @@ local function build_blank_slot_range(slots_frame, start_idx, end_idx, use_label
         ignored_by_interaction = true,
         style                  = "tf_fave_slot_lock_overlay",
       }
-      if use_labels then
-        btn_parent.add {
-          type    = "label",
-          name    = "fave_bar_slot_label_" .. i,
-          caption = "",
-          style   = "tf_fave_bar_slot_label",
-        }
-      end
     end)
     if not slot_ok then
       local w = slots_frame["fave_bar_slot_wrapper_" .. i]
@@ -100,7 +81,6 @@ return function(fave_bar, helpers)
   local prune_stale_favorites        = helpers.prune_stale_favorites
   local get_fave_bar_gui_refs        = helpers.get_fave_bar_gui_refs
   local get_slot_btn_props           = helpers.get_slot_btn_props
-  local get_slot_label_text          = helpers.get_slot_label_text
   local build_single_slot            = helpers.build_single_slot
   local is_build_in_flight           = helpers.is_build_in_flight
   local GuiElementBuilders           = helpers.GuiElementBuilders
@@ -219,9 +199,7 @@ return function(fave_bar, helpers)
     if not bar_flow or not bar_flow.valid then return false end
     if not slots_frame or not slots_frame.valid then return false end
     local max_slots = Cache.Settings.get_player_max_favorite_slots(player) or default_max_favorite_slots()
-    local label_mode = Cache.Settings.get_player_slot_label_mode(player)
-    local use_labels = label_mode ~= "off"
-    return GuiHelpers.slot_row_matches_expected(slots_frame, max_slots, use_labels)
+    return GuiHelpers.slot_row_matches_expected(slots_frame, max_slots)
   end
 
   --- Enqueues only the hydrate_slots stage for a player whose blank bar is already built.
@@ -229,12 +207,10 @@ return function(fave_bar, helpers)
   function fave_bar.enqueue_hydrate(player)
     if not BasicHelpers.is_valid_player(player) then return end
     local max_slots              = Cache.Settings.get_player_max_favorite_slots(player) or default_max_favorite_slots()
-    local label_mode             = Cache.Settings.get_player_slot_label_mode(player)
-    local use_labels             = label_mode ~= "off"
 
     local _, _, _, slots_frame = get_fave_bar_gui_refs(player)
     if not slots_frame or not slots_frame.valid
-        or not GuiHelpers.slot_row_matches_expected(slots_frame, max_slots, use_labels) then
+        or not GuiHelpers.slot_row_matches_expected(slots_frame, max_slots) then
       fave_bar.build(player, true, true)
       return
     end
@@ -248,8 +224,6 @@ return function(fave_bar, helpers)
       stage         = "hydrate_slots",
       next_slot     = 1,
       max_slots     = max_slots,
-      use_labels    = use_labels,
-      label_mode    = label_mode,
     })
     last_build_tick[player.index] = game.tick
     _fave_bar_queue_has_work = true
@@ -434,8 +408,6 @@ return function(fave_bar, helpers)
       if slots_frame and slots_frame.valid then slots_frame.visible = slots_vis end
 
       local max_slots  = Cache.Settings.get_player_max_favorite_slots(player) or default_max_favorite_slots()
-      local label_mode = Cache.Settings.get_player_slot_label_mode(player)
-      local use_labels = label_mode ~= "off"
 
       storage._tf_slot_build_queue[1] = {
         player_index     = entry.player_index,
@@ -444,8 +416,6 @@ return function(fave_bar, helpers)
         next_slot        = 1,
         expected_blank   = 0,
         max_slots        = max_slots,
-        use_labels       = use_labels,
-        label_mode       = label_mode,
         stop_after_blank = entry.stop_after_blank,
       }
       return
@@ -474,20 +444,18 @@ return function(fave_bar, helpers)
         return
       end
 
-      -- No-label mode: BLANK_BATCH_SIZE slots/tick × 2 adds/slot (button + number label).
-      -- Label mode: 1 slot/tick × 4 adds/slot (wrapper flow + button + number label + slot label).
-      -- blank_batch_override: optional (e.g. deferred build — full row of placeholders in one pass when no labels).
+      -- blank_batch_override: optional (e.g. deferred build — full tail in one pass).
       local batch_size
       if type(entry.blank_batch_override) == "number" and entry.blank_batch_override > 0 then
         batch_size = entry.blank_batch_override
       else
-        batch_size = entry.use_labels and 1 or BLANK_BATCH_SIZE
+        batch_size = BLANK_BATCH_SIZE
       end
       local start_idx  = entry.next_slot
       local end_idx    = math.min(start_idx + batch_size - 1, entry.max_slots)
 
       local function try_blank_range(sf)
-        build_blank_slot_range(sf, start_idx, end_idx, entry.use_labels)
+        build_blank_slot_range(sf, start_idx, end_idx)
       end
       local ok, err = pcall(try_blank_range, slots_frame)
       if not ok then
@@ -506,7 +474,7 @@ return function(fave_bar, helpers)
             GuiHelpers.peel_destroy_all_children(slots_frame)
             local function try_blank_range_after_peel(sf)
               -- Rebuild 1..end_idx so earlier batches are not left missing after peel.
-              build_blank_slot_range(sf, 1, end_idx, entry.use_labels)
+              build_blank_slot_range(sf, 1, end_idx)
             end
             ok, err = pcall(try_blank_range_after_peel, slots_frame)
           end
@@ -546,8 +514,6 @@ return function(fave_bar, helpers)
             surface_index = entry.surface_index,
             stage         = "prune",
             max_slots     = entry.max_slots,
-            use_labels    = entry.use_labels,
-            label_mode    = entry.label_mode,
           }
         end
       else
@@ -567,8 +533,6 @@ return function(fave_bar, helpers)
         stage         = "hydrate_slots",
         next_slot     = 1,
         max_slots     = entry.max_slots,
-        use_labels    = entry.use_labels,
-        label_mode    = entry.label_mode,
       }
       return
     end
@@ -589,11 +553,7 @@ return function(fave_bar, helpers)
       local end_idx   = math.min(start_idx + HYDRATE_BATCH_SIZE - 1, entry.max_slots)
 
       for i = start_idx, end_idx do
-        local child = entry.use_labels and slots_frame["fave_bar_slot_wrapper_" .. i]
-          or slots_frame["fave_bar_slot_" .. i]
-        if not child or not child.valid then goto next_hydrate end
-
-        local btn = entry.use_labels and child["fave_bar_slot_" .. i] or child
+        local btn = slots_frame["fave_bar_slot_" .. i]
         if not btn or not btn.valid then goto next_hydrate end
 
         local n_el = btn["n"]
@@ -625,19 +585,13 @@ return function(fave_bar, helpers)
           if lock_el and lock_el.valid then
             lock_el.visible = BasicHelpers.is_locked_favorite(fav)
           end
-          if entry.use_labels then
-            local lbl = child["fave_bar_slot_label_" .. i]
-            if lbl and lbl.valid then
-              lbl.caption = get_slot_label_text(fav, entry.label_mode)
-            end
-          end
         end
         ::next_hydrate::
       end
 
 
       if end_idx >= entry.max_slots then
-        if not GuiHelpers.slot_row_matches_expected(slots_frame, entry.max_slots, entry.use_labels) then
+        if not GuiHelpers.slot_row_matches_expected(slots_frame, entry.max_slots) then
           ErrorHandler.warn_log("[TF_MP][hydrate_slots] row invalid after hydrate; forcing sync rebuild", {
             player_index = entry.player_index,
             tick = game.tick,
@@ -683,13 +637,11 @@ return function(fave_bar, helpers)
 
       local max_slots  = Cache.Settings.get_player_max_favorite_slots(player) or default_max_favorite_slots()
       local pfaves     = Cache.get_player_favorites(player, entry.surface_index)
-      local label_mode = Cache.Settings.get_player_slot_label_mode(player)
-      local use_labels = label_mode ~= "off"
       local start_idx  = entry.next_slot
       local end_idx    = math.min(start_idx + 2 - 1, max_slots)
 
       for i = start_idx, end_idx do
-        build_single_slot(slots_frame, player, pfaves, i, use_labels, label_mode)
+        build_single_slot(slots_frame, player, pfaves, i)
       end
 
 

@@ -21,7 +21,6 @@ return function(fave_bar, helpers)
 
   local is_build_in_flight        = helpers.is_build_in_flight
   local get_fave_bar_gui_refs     = helpers.get_fave_bar_gui_refs
-  local get_slot_label_text       = helpers.get_slot_label_text
   local get_slot_btn_props        = helpers.get_slot_btn_props
   local build_single_slot         = helpers.build_single_slot
   local cancel_progressive_build_for = helpers.cancel_progressive_build_for
@@ -69,13 +68,29 @@ return function(fave_bar, helpers)
     GuiHelpers.peel_destroy_all_children(el)
   end
 
-  --- Peel twice if anything remains (defensive against LuaCustomTable edge cases).
+  --- Peel twice; then named sweep for fave_bar_slot_* / wrappers if anything still remains.
   local function clear_slots_row_children(slots_frame)
     if not slots_frame or not slots_frame.valid then return end
     clear_element_children(slots_frame)
     if GuiHelpers.count_direct_children(slots_frame) > 0 then
       log("[TeleportFavorites][FAVE_BAR] clear_slots_row_children: second peel pass")
       clear_element_children(slots_frame)
+    end
+    if GuiHelpers.count_direct_children(slots_frame) > 0 then
+      local default_max = math.floor(tonumber(Constants.settings.DEFAULT_MAX_FAVORITE_SLOTS) or 10)
+      local max_named   = math.max(30, default_max)
+      for n = 1, max_named do
+        if not slots_frame.valid then break end
+        local w = slots_frame["fave_bar_slot_wrapper_" .. n]
+        if w and w.valid then w.destroy() end
+        local b = slots_frame["fave_bar_slot_" .. n]
+        if b and b.valid then b.destroy() end
+      end
+    end
+    if GuiHelpers.count_direct_children(slots_frame) > 0 then
+      ErrorHandler.warn_log("[FAVE_BAR] clear_slots_row_children: children remain after peel and named sweep", {
+        child_count = GuiHelpers.count_direct_children(slots_frame),
+      })
     end
   end
 
@@ -122,8 +137,6 @@ return function(fave_bar, helpers)
   --- Returns true on success; false means structure changed and a full rebuild is needed.
   local function try_update_slots_in_place(slots_frame, player, pfaves)
     local max_slots = max_favorite_slots_for(player)
-    local label_mode = Cache.Settings.get_player_slot_label_mode(player)
-    local use_labels = label_mode ~= "off"
     local child_count = GuiHelpers.count_direct_children(slots_frame)
 
     if child_count ~= max_slots then
@@ -141,18 +154,7 @@ return function(fave_bar, helpers)
 
     for i = 1, max_slots do
       local fav = rehydrated[i]
-      local child = use_labels and slots_frame["fave_bar_slot_wrapper_" .. i]
-        or slots_frame["fave_bar_slot_" .. i]
-      if not child or not child.valid then return false end
-
-      local btn, label_el
-      if use_labels then
-        if child.type ~= "flow" then return false end
-        btn = child["fave_bar_slot_" .. i]
-        label_el = child["fave_bar_slot_label_" .. i]
-      else
-        btn = child
-      end
+      local btn = slots_frame["fave_bar_slot_" .. i]
       if not btn or not btn.valid then return false end
 
       local n_el = btn["n"]
@@ -166,10 +168,6 @@ return function(fave_bar, helpers)
       end
 
       apply_slot_visuals(btn, fav, i)
-
-      if label_el and label_el.valid then
-        label_el.caption = get_slot_label_text(fav, label_mode)
-      end
     end
 
     return true
@@ -185,11 +183,9 @@ return function(fave_bar, helpers)
     end
 
     local max_slots = max_favorite_slots_for(player)
-    local label_mode = Cache.Settings.get_player_slot_label_mode(player)
-    local use_labels = label_mode ~= "off"
 
     for i = 1, max_slots do
-      build_single_slot(parent, player, pfaves, i, use_labels, label_mode)
+      build_single_slot(parent, player, pfaves, i)
     end
 
     return parent
@@ -297,8 +293,6 @@ return function(fave_bar, helpers)
         local surface_index = player.surface.index
         local pfaves = Cache.get_player_favorites(player, surface_index)
         local max_slots = max_favorite_slots_for(player)
-        local label_mode = Cache.Settings.get_player_slot_label_mode(player)
-        local use_labels = label_mode ~= "off"
 
         local recently_built = prev_build_tick ~= nil
           and tick >= prev_build_tick and (tick - prev_build_tick) < 3
@@ -342,13 +336,10 @@ return function(fave_bar, helpers)
               local build_blanks = helpers.build_blank_slot_range
               local cap = math.floor(tonumber(Constants.settings.FAVE_BAR_SYNC_BLANK_BUILD_CAP) or 22)
               local tail_batch_max = math.floor(tonumber(Constants.settings.FAVE_BAR_TAIL_BLANK_BATCH_MAX) or 10)
-              if use_labels then
-                cap = math.min(cap, 14)
-              end
               local n_first = math.min(cap, max_slots)
               if build_blanks then
                 run_slot_creation_with_retry(player, fave_bar_frame, function(sf)
-                  build_blanks(sf, 1, n_first, use_labels)
+                  build_blanks(sf, 1, n_first)
                 end)
               end
               if max_slots > n_first then
@@ -360,8 +351,6 @@ return function(fave_bar, helpers)
                   next_slot            = n_first + 1,
                   expected_blank       = n_first,
                   max_slots            = max_slots,
-                  use_labels           = use_labels,
-                  label_mode           = label_mode,
                   stop_after_blank     = false,
                   blank_batch_override = math.min(tail_batch_max, remaining),
                 })
@@ -372,8 +361,6 @@ return function(fave_bar, helpers)
                   stage         = "hydrate_slots",
                   next_slot     = 1,
                   max_slots     = max_slots,
-                  use_labels    = use_labels,
-                  label_mode    = label_mode,
                 })
               end
             end
@@ -453,20 +440,13 @@ return function(fave_bar, helpers)
     return slots_frame
   end
 
-  --- Apply visuals for one slot when refs, pfaves, and label_mode are already resolved.
+  --- Apply visuals for one slot when refs and pfaves are already resolved.
   ---@param slots_frame LuaGuiElement
   ---@param player LuaPlayer
   ---@param pfaves table
-  ---@param label_mode string
   ---@param slot_index number
-  local function apply_one_slot_at_index(slots_frame, player, pfaves, label_mode, slot_index)
-    local wrapper = slots_frame["fave_bar_slot_wrapper_" .. slot_index]
-    local slot_button
-    if wrapper and wrapper.valid then
-      slot_button = wrapper["fave_bar_slot_" .. slot_index]
-    else
-      slot_button = slots_frame["fave_bar_slot_" .. slot_index]
-    end
+  local function apply_one_slot_at_index(slots_frame, player, pfaves, slot_index)
+    local slot_button = slots_frame["fave_bar_slot_" .. slot_index]
     if not slot_button then return end
 
     local fav = pfaves[slot_index]
@@ -479,16 +459,9 @@ return function(fave_bar, helpers)
     end
 
     apply_slot_visuals(slot_button, rehydrated_fav, slot_index)
-
-    if wrapper and wrapper.valid then
-      local slot_label = wrapper["fave_bar_slot_label_" .. slot_index]
-      if slot_label and slot_label.valid then
-        slot_label.caption = get_slot_label_text(rehydrated_fav, label_mode)
-      end
-    end
   end
 
-  --- Update several slot buttons after one storage change (e.g. drag-drop): one GUI ref resolve and one settings read.
+  --- Update several slot buttons after one storage change (e.g. drag-drop): one GUI ref resolve.
   ---@param player LuaPlayer
   ---@param indices uint[] 1-based slot indices
   function fave_bar.update_slots_batch(player, indices)
@@ -499,9 +472,8 @@ return function(fave_bar, helpers)
     local surface_index = player.surface.index
     local pfaves = Cache.get_player_favorites(player, surface_index)
     if not pfaves then return end
-    local label_mode = Cache.Settings.get_player_slot_label_mode(player)
     for _, slot_index in ipairs(indices) do
-      apply_one_slot_at_index(slots_frame, player, pfaves, label_mode, slot_index)
+      apply_one_slot_at_index(slots_frame, player, pfaves, slot_index)
     end
   end
 
@@ -515,8 +487,7 @@ return function(fave_bar, helpers)
     local surface_index = player.surface.index
     local pfaves = Cache.get_player_favorites(player, surface_index)
     if not pfaves then return end
-    local label_mode = Cache.Settings.get_player_slot_label_mode(player)
-    apply_one_slot_at_index(slots_frame, player, pfaves, label_mode, slot_index)
+    apply_one_slot_at_index(slots_frame, player, pfaves, slot_index)
   end
 
   --- Update toggle button visibility state.

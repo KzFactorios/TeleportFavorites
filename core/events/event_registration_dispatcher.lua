@@ -249,16 +249,6 @@ local function register_core_events(script)
         return
       end
 
-      if event.setting == Constants.settings.SLOT_LABEL_MODE_SETTING then
-        ErrorHandler.debug_log("[SETTINGS] Processing slot-label-mode change")
-        local player = (event.player_index and game.players[event.player_index]) or nil
-        if player and player.valid then
-          Cache.Settings.invalidate_player_cache(player)
-          fave_bar.build(player, true, true)
-        end
-        return
-      end
-
       if event.setting == Constants.settings.TELEPORT_HISTORY_RADIUS_SETTING then
         ErrorHandler.debug_log("[SETTINGS] Processing teleport-history-radius change")
         -- Radius is read live each teleport; no dedicated cache. Invalidate for consistency with other per-player settings.

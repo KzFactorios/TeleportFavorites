@@ -38,21 +38,13 @@ end
 --- has the expected named elements with the slot number label caption matching the index.
 ---@param slots_frame LuaGuiElement|nil
 ---@param max_slots integer
----@param use_labels boolean
 ---@return boolean
-function GuiHelpers.slot_row_matches_expected(slots_frame, max_slots, use_labels)
+function GuiHelpers.slot_row_matches_expected(slots_frame, max_slots)
   if not slots_frame or not slots_frame.valid then return false end
   if type(max_slots) ~= "number" or max_slots < 1 then return false end
   if GuiHelpers.count_direct_children(slots_frame) ~= max_slots then return false end
   for i = 1, max_slots do
-    local btn
-    if use_labels then
-      local wrapper = slots_frame["fave_bar_slot_wrapper_" .. i]
-      if not wrapper or not wrapper.valid or wrapper.type ~= "flow" then return false end
-      btn = wrapper["fave_bar_slot_" .. i]
-    else
-      btn = slots_frame["fave_bar_slot_" .. i]
-    end
+    local btn = slots_frame["fave_bar_slot_" .. i]
     if not btn or not btn.valid then return false end
     local n_el = btn["n"]
     if not n_el or not n_el.valid then return false end
@@ -62,13 +54,14 @@ function GuiHelpers.slot_row_matches_expected(slots_frame, max_slots, use_labels
 end
 
 --- Destroy every direct child by repeatedly removing `children[1]` (LuaCustomTable-safe).
+--- Must read `el.children[1]` each iteration — caching `local ch = el.children` breaks after the
+--- first destroy: `ch[1]` keeps resolving to the invalidated first child and the loop stops early.
 ---@param el LuaGuiElement|nil
 function GuiHelpers.peel_destroy_all_children(el)
   if not el or not el.valid then return end
-  local ch = el.children
-  if not ch then return end
   for _ = 1, 512 do
-    local c = ch[1]
+    if not el.valid then break end
+    local c = el.children[1]
     if c == nil or not c.valid then break end
     c.destroy()
   end
