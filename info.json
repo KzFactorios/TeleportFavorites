@@ -2,7 +2,7 @@
   "name": "TeleportFavorites",
   "title": "Teleport Favorites",
   "version": "0.0.99",
-  "description": "A utility mod for managing favorite locations and teleport functionality.",
+  "description": "Favorite map tags and teleport shortcuts. Optional Sequential History Mode (experimental) records departure and destination per hop.",
   "author": "kurtz",
   "license": "MIT",
   "created": "2025-05-22",

@@ -127,8 +127,7 @@ When you teleport in Sequential mode, two entries are added: first your **depart
 
 **Filtering** keeps noise down:
 
-- **Trivial hop (Sequential only)** — If departure and destination are within **32** tiles of each other, that teleport is not recorded
-- **Stack collapse** — A new GPS within **20** tiles of the **top of the history stack** is skipped (same rule used whenever an entry is pushed, including each step of a Sequential pair)
+- **Minimum new-entry distance** — Mod setting **Teleport history: minimum new-entry distance** (per player). A new GPS is skipped if it lies within the chosen tile radius of the **current stack top** (choices **0**, **16**, **32** default, **48**, **64**). The same rule applies in **Standard** mode (destination pushes) and **Sequential** mode (each departure and destination push is checked separately). **0** records every teleport (only exact duplicate tiles merge).
 
 ### How navigation differs
 
@@ -179,6 +178,7 @@ All settings are under **Mod settings → Per player**:
 
 - **Enable favorites** — **Default:** On — Show the favorites bar and related UI
 - **Enable teleport history** — **Default:** On — Record and show teleport history
+- **Teleport history: minimum new-entry distance** — **Default:** 32 tiles (one chunk) — Merge radius for history entries; choices **0** / **16** / **32** / **48** / **64**. Applies to Standard and Sequential modes; **Sequential mode remains experimental** (see below).
 - **Sequential History Mode (experimental)** — **Default:** Off — Record departure and destination in Sequential mode
 - **Max slots** — **Default:** 10 — Slot count: **10**, **20**, or **30**. **Warning:** lowering this **permanently deletes** favorites in slots above the new limit (including locked slots). Larger slot counts refresh more UI when the bar updates; pick the size you actually use.
 
