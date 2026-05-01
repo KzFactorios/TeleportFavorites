@@ -11,10 +11,6 @@ local HistoryItem = Cache.HistoryItem
 local ProfilerExport = require("core.utils.profiler_export")
 
 local HISTORY_STACK_SIZE = 128 -- Only 128 allowed for now (TBA for future options)
-local STD_RESOLUTION_TILES = 32  -- Standard mode: consecutive locations within this distance are collapsed
-local SEQ_RESOLUTION_TILES = 16  -- Sequential mode: FROM→TO hops shorter than this are not recorded
--- Second leg of a sequential pair: only collapse TO against FROM when essentially the same tile (not STD_RESOLUTION_TILES).
-local SEQ_PAIR_TO_LEG_RESOLUTION_TILES = 1
 
 local TeleportHistory = {}
 
@@ -93,19 +89,15 @@ function TeleportHistory.notify_observers(player, context)
 end
 
 --- Add a GPS location to the teleport history stack.
---- Applies the consecutive-duplicate rule: if the new location is within
---- duplicate_radius_tiles of the current stack top it is silently dropped.
+--- Skips if the new location is within the per-player merge radius (teleport-history-radius,
+--- default one chunk) of the current stack top.
 ---@param player LuaPlayer
 ---@param gps string GPS location to record
----@param duplicate_radius_tiles number|nil Defaults to STD_RESOLUTION_TILES when nil
-function TeleportHistory.add_gps(player, gps, duplicate_radius_tiles)
+function TeleportHistory.add_gps(player, gps)
 	local valid = BasicHelpers.is_valid_player(player)
 	if not valid or not gps then return end
 
-	local radius = duplicate_radius_tiles
-	if radius == nil then
-		radius = STD_RESOLUTION_TILES
-	end
+	local radius = Cache.Settings.get_teleport_history_radius(player)
 
 	local surface_index = GPSUtils.get_surface_index_from_gps(gps)
 	if not surface_index or type(surface_index) ~= "number" then
@@ -135,11 +127,9 @@ function TeleportHistory.add_gps(player, gps, duplicate_radius_tiles)
 	TeleportHistory.notify_observers(player)
 end
 
---- Record a teleport in history, applying mode-specific deduplication logic.
---- Standard mode: records only the destination.
---- Sequential mode: records both FROM and TO with two deduplication rules:
----   Rule B — FROM within SEQ_RESOLUTION_TILES of TO (trivial hop) → nothing recorded.
----   Rule A — FROM within STD_RESOLUTION_TILES of the stack top → FROM silently skipped by add_gps.
+--- Record a teleport in history.
+--- Standard mode: records only the destination (same merge radius as sequential).
+--- Sequential mode: records FROM then TO; each push uses the same merge radius vs the current stack top.
 ---@param player LuaPlayer
 ---@param from_gps string|nil GPS where the player departed from (may be nil if unknown)
 ---@param to_gps string GPS where the player teleported to
@@ -150,25 +140,14 @@ function TeleportHistory.add_teleport(player, from_gps, to_gps)
 	local is_sequential = Cache.get_sequential_history_mode(player)
 
 	if not is_sequential then
-		-- Standard mode: record destination only
 		TeleportHistory.add_gps(player, to_gps)
 		return
 	end
 
-	-- Sequential mode
-	-- Rule B: trivial hop — FROM is within SEQ_RESOLUTION_TILES of TO, record nothing
-	if from_gps and gps_within_resolution(from_gps, to_gps, SEQ_RESOLUTION_TILES) then
-		return
-	end
-
-	-- Record FROM first (add_gps top-check handles Rule A implicitly)
 	if from_gps then
 		TeleportHistory.add_gps(player, from_gps)
 	end
-
-	-- Record TO: use a tight duplicate radius vs stack top (FROM) so short hops still keep a destination row;
-	-- only suppress when TO is effectively the same tile as FROM (snapping), not within STD_RESOLUTION_TILES.
-	TeleportHistory.add_gps(player, to_gps, SEQ_PAIR_TO_LEG_RESOLUTION_TILES)
+	TeleportHistory.add_gps(player, to_gps)
 end
 
 -- Set pointer to specific index (for teleport history modal navigation)

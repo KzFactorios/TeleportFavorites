@@ -259,6 +259,16 @@ local function register_core_events(script)
         return
       end
 
+      if event.setting == Constants.settings.TELEPORT_HISTORY_RADIUS_SETTING then
+        ErrorHandler.debug_log("[SETTINGS] Processing teleport-history-radius change")
+        -- Radius is read live each teleport; no dedicated cache. Invalidate for consistency with other per-player settings.
+        local player = (event.player_index and game.players[event.player_index]) or nil
+        if player and player.valid then
+          Cache.Settings.invalidate_player_cache(player)
+        end
+        return
+      end
+
       ErrorHandler.debug_log("[SETTINGS] Unknown setting changed: " .. tostring(event.setting))
     end,
     name = "on_runtime_mod_setting_changed"

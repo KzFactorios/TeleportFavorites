@@ -207,4 +207,37 @@ function Settings.get_player_slot_label_mode(player)
   return default_mode
 end
 
+--- Teleport history merge radius in tiles (0 = only exact same tile merges).
+--- Allowed values: 0, 16, 32, 48, 64 (string-setting); unknown values fall back to default.
+--- @param player LuaPlayer|nil
+--- @return integer
+function Settings.get_teleport_history_radius(player)
+  local default_radius = math.floor(tonumber(Constants.settings.DEFAULT_TELEPORT_HISTORY_RADIUS) or 32)
+  local setting_key = Constants.settings.TELEPORT_HISTORY_RADIUS_SETTING
+  if not setting_key then return default_radius end
+
+  local allowed = Constants.settings.TELEPORT_HISTORY_RADIUS_ALLOWED_VALUES
+  if type(allowed) ~= "table" then return default_radius end
+
+  local global_settings = get_global_settings(player)
+  if not global_settings then return default_radius end
+
+  local s = global_settings[setting_key]
+  local value = s and s.value
+  local n = nil
+  if type(value) == "string" then
+    n = tonumber(value, 10)
+  elseif type(value) == "number" then
+    n = math.floor(value)
+  end
+  if n then
+    for i = 1, #allowed do
+      if tonumber(allowed[i], 10) == n then
+        return n
+      end
+    end
+  end
+  return default_radius
+end
+
 return Settings

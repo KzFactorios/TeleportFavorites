@@ -68,7 +68,12 @@ local Constants = {
     -- ========================================
     -- Teleport History
     -- ========================================
-    SEQUENTIAL_HISTORY_RESOLUTION = 32, -- Sequential mode: FROM→TO hops within this many tiles are not recorded
+    -- One merge radius for add_gps: skip a new GPS if within this many tiles of the stack top.
+    -- Same rule for standard mode (destination only) and sequential (FROM then TO, each vs current top).
+    DEFAULT_TELEPORT_HISTORY_RADIUS = 32,
+    TELEPORT_HISTORY_RADIUS_SETTING = "teleport-history-radius",
+    -- Runtime string-setting allowed_values (tiles); must stay in sync with get_teleport_history_radius.
+    TELEPORT_HISTORY_RADIUS_ALLOWED_VALUES = { "0", "16", "32", "48", "64" },
 
     -- ========================================
     -- Feature Toggles

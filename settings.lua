@@ -38,4 +38,14 @@ data:extend({
     localised_name = {"mod-setting-name.slot-label-mode"},
     localised_description = {"mod-setting-description.slot-label-mode"}
   },
+  {
+    name = "teleport-history-radius",
+    type = "string-setting",
+    setting_type = "runtime-per-user",
+    allowed_values = Constants.settings.TELEPORT_HISTORY_RADIUS_ALLOWED_VALUES,
+    default_value = tostring(Constants.settings.DEFAULT_TELEPORT_HISTORY_RADIUS),
+    order = "ka-4",
+    localised_name = {"mod-setting-name.teleport-history-radius"},
+    localised_description = {"mod-setting-description.teleport-history-radius"},
+  },
 })

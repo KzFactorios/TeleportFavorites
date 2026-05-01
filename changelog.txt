@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.0.99
+Date: 2026-04-30
+  Changes:
+    - Harden the flow of changing values for number of faves and management of favorite slots
+    - Unified teleport history dedupe: per-player setting "Teleport history: minimum new-entry distance" (choices 0 / 16 / 32 / 48 / 64 tiles, default 32) for both standard and sequential modes
+---------------------------------------------------------------------------------------------------
 Version: 0.0.98
 Date: 2026-04-15
   Changes:
