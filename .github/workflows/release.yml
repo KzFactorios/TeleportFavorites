@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g., 0.0.15)'
+        description: 'Stable version (Must end in an even patch number, e.g., 0.1.2)'
         required: true
 
 jobs:
@@ -31,34 +31,103 @@ jobs:
       - name: Strip comments from Lua files
         run: python .scripts/strip_comments.py
 
-      - name: Update info.json version
+      - name: Analyze Changelog and Calculate Version Scope
+        id: scope
         run: |
-          $v = $env:RELEASE_VERSION
-          $infoPath = ".dist/info.json"
-          $json = Get-Content $infoPath -Raw | ConvertFrom-Json
-          $json.version = $v
-          $json | ConvertTo-Json -Depth 32 | Set-Content $infoPath -Encoding UTF8
-
-      - name: Validate changelog
-        run: python .scripts/validate_changelog.py
-
-      - name: Wrap .dist contents in versioned mod folder
-        run: |
-          $modFolder = "TeleportFavorites_$($env:RELEASE_VERSION)"
-          $target = ".dist/$modFolder"
-          if (-not (Test-Path $target)) { New-Item -ItemType Directory -Path $target | Out-Null }
-          Get-ChildItem ".dist" -Force | Where-Object { $_.Name -ne $modFolder } | ForEach-Object {
-            Move-Item -Path $_.FullName -Destination $target
+          $stableVer = $env:RELEASE_VERSION
+          $parts = $stableVer.Split('.')
+          $major = $parts[0]
+          $minor = $parts[1]
+          $patch = [int]$parts[2]
+          
+          # Increment patch by 1 for the experimental identifier
+          $expPatch = $patch + 1
+          $expVer = "$major.$minor.$expPatch"
+          
+          # Scan the head of the pristine changelog file
+          $changelogPath = "changelog.txt"
+          $topLines = Get-Content $changelogPath -Head 15
+          
+          $hasExpHeader = $false
+          $specifiesTarget = $false
+          foreach ($line in $topLines) {
+            if ($line -match "Version:\s*$($expVer)") { $hasExpHeader = $true }
+            if ($hasExpHeader -and ($line -match "Factorio 2\.1")) {
+              $specifiesTarget = $true
+              break
+            }
+          }
+          
+          echo "STABLE_VERSION=$stableVer" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "EXP_VERSION=$expVer" | Out-File -FilePath $env:GITHUB_ENV -Append
+          
+          if ($hasExpHeader -and $specifiesTarget) {
+            Write-Host "Confirmed: Changelog specifies $expVer targeting Factorio 2.1. Building both tracks."
+            echo "BUILD_EXPERIMENTAL=true" | Out-File -FilePath $env:GITHUB_ENV -Append
+          } else {
+            Write-Host "Changelog does not verify a 2.1 payload configuration. Building Stable track only."
+            echo "BUILD_EXPERIMENTAL=false" | Out-File -FilePath $env:GITHUB_ENV -Append
+          }
+          
+          # Move staged items into dynamic isolated pipeline workspaces
+          Copy-Item -Path ".dist" -Destination ".dist_stable" -Recurse -Force
+          if ($hasExpHeader -and $specifiesTarget) {
+            Copy-Item -Path ".dist" -Destination ".dist_exp" -Recurse -Force
           }
 
-      - name: Zip the mod directory
+      - name: Build Stable (2.0) Mod Package
         run: |
-          $modFolder = "TeleportFavorites_$($env:RELEASE_VERSION)"
-          Compress-Archive -Path ".dist/$modFolder" -DestinationPath "$modFolder.zip" -Force
+          $v = $env:STABLE_VERSION
+          $infoPath = ".dist_stable/info.json"
+          
+          # Mutate manifest rules for Stable Track requirements
+          $json = Get-Content $infoPath -Raw | ConvertFrom-Json
+          $json.version = $v
+          $json.factorio_version = "2.0"
+          $json.dependencies = $json.dependencies | ForEach-Object {
+            if ($_ -like "*base*") { "base >= 2.0.0" } else { $_ }
+          }
+          $json | ConvertTo-Json -Depth 32 | Set-Content $infoPath -Encoding UTF8
+          
+          # Seal files into subfolder layer
+          $modFolder = "TeleportFavorites_$v"
+          New-Item -ItemType Directory -Path ".dist_stable/$modFolder" | Out-Null
+          Get-ChildItem ".dist_stable" -Force | Where-Object { $_.Name -ne $modFolder } | ForEach-Object {
+            Move-Item -Path $_.FullName -Destination ".dist_stable/$modFolder"
+          }
+          
+          Compress-Archive -Path ".dist_stable/$modFolder" -DestinationPath "$modFolder.zip" -Force
 
-      - name: Validate zip contains info.json
+      - name: Build Experimental (2.1) Mod Package
+        if: env.BUILD_EXPERIMENTAL == 'true'
         run: |
-          $modFolder = "TeleportFavorites_$($env:RELEASE_VERSION)"
+          $v = $env:EXP_VERSION
+          $infoPath = ".dist_exp/info.json"
+          
+          # Mutate manifest rules for Experimental Track requirements
+          $json = Get-Content $infoPath -Raw | ConvertFrom-Json
+          $json.version = $v
+          $json.factorio_version = "2.1"
+          $json.dependencies = $json.dependencies | ForEach-Object {
+            if ($_ -like "*base*") { "base >= 2.1.0" } else { $_ }
+          }
+          $json | ConvertTo-Json -Depth 32 | Set-Content $infoPath -Encoding UTF8
+          
+          # Seal files into subfolder layer
+          $modFolder = "TeleportFavorites_$v"
+          New-Item -ItemType Directory -Path ".dist_exp/$modFolder" | Out-Null
+          Get-ChildItem ".dist_exp" -Force | Where-Object { $_.Name -ne $modFolder } | ForEach-Object {
+            Move-Item -Path $_.FullName -Destination ".dist_exp/$modFolder"
+          }
+          
+          Compress-Archive -Path ".dist_exp/$modFolder" -DestinationPath "$modFolder.zip" -Force
+
+      - name: Validate Changelog
+        run: python .scripts/validate_changelog.py
+
+      - name: Validate Stable Zip Integrity
+        run: |
+          $modFolder = "TeleportFavorites_$($env:STABLE_VERSION)"
           $zipPath = "$modFolder.zip"
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           $zip = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
@@ -66,42 +135,76 @@ jobs:
             $expected = "$modFolder/info.json"
             $found = $false
             foreach ($entry in $zip.Entries) {
-              if ($entry.FullName -eq $expected) {
-                $found = $true
-                break
-              }
+              if ($entry.FullName -eq $expected) { $found = $true; break }
             }
-            if (-not $found) {
-              throw "Missing $expected inside $zipPath"
-            }
-          } finally {
-            $zip.Dispose()
-          }
+            if (-not $found) { throw "Missing $expected inside $zipPath" }
+          } finally { $zip.Dispose() }
 
-      - name: Upload workflow artifact
+      - name: Validate Experimental Zip Integrity
+        if: env.BUILD_EXPERIMENTAL == 'true'
+        run: |
+          $modFolder = "TeleportFavorites_$($env:EXP_VERSION)"
+          $zipPath = "$modFolder.zip"
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zip = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
+          try {
+            $expected = "$modFolder/info.json"
+            $found = $false
+            foreach ($entry in $zip.Entries) {
+              if ($entry.FullName -eq $expected) { $found = $true; break }
+            }
+            if (-not $found) { throw "Missing $expected inside $zipPath" }
+          } finally { $zip.Dispose() }
+
+      - name: Upload Stable Workflow Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TeleportFavorites-${{ env.RELEASE_VERSION }}
-          path: TeleportFavorites_${{ env.RELEASE_VERSION }}.zip
+          name: TeleportFavorites-Stable-${{ env.STABLE_VERSION }}
+          path: TeleportFavorites_${{ env.STABLE_VERSION }}.zip
+
+      - name: Upload Experimental Workflow Artifact
+        if: env.BUILD_EXPERIMENTAL == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: TeleportFavorites-Exp-${{ env.EXP_VERSION }}
+          path: TeleportFavorites_${{ env.EXP_VERSION }}.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ env.RELEASE_VERSION }}
-          name: TeleportFavorites ${{ env.RELEASE_VERSION }}
-          body_path: .dist/TeleportFavorites_${{ env.RELEASE_VERSION }}/release_notes.txt
-          files: TeleportFavorites_${{ env.RELEASE_VERSION }}.zip
+          tag_name: v${{ env.STABLE_VERSION }}
+          name: TeleportFavorites ${{ env.STABLE_VERSION }}
+          body_path: .dist_stable/TeleportFavorites_${{ env.STABLE_VERSION }}/release_notes.txt
+          files: |
+            TeleportFavorites_${{ env.STABLE_VERSION }}.zip
+            ${{ env.BUILD_EXPERIMENTAL == 'true' && format('TeleportFavorites_{0}.zip', env.EXP_VERSION) || '' }}
 
-      - name: Output Permanent Download URL
+      - name: Output Permanent Download Links
         run: |
-          $v = $env:RELEASE_VERSION
+          $stableV = $env:STABLE_VERSION
+          $expV = $env:EXP_VERSION
           $repo = "${{ github.repository }}"
-          $zipUrl = "https://github.com/$repo/releases/download/v$v/TeleportFavorites_$v.zip"
-          $releaseUrl = "https://github.com/$repo/releases/tag/v$v"
+          
+          $stableUrl = "https://github.com/$repo/releases/download/v$stableV/TeleportFavorites_$stableV.zip"
+          $releaseUrl = "https://github.com/$repo/releases/tag/v$stableV"
+          
           Write-Host "=========================================================="
-          Write-Host "Mod released successfully!"
-          Write-Host "Download URL: $zipUrl"
+          Write-Host "Mod track packages completed!"
+          Write-Host "Stable URL: $stableUrl"
+          
+          $summary = "## TeleportFavorites Release v$stableV`n`n" +
+                     "* **[Download Stable 2.0 Package (TeleportFavorites_$stableV.zip)]($stableUrl)**`n"
+                     
+          if ($env:BUILD_EXPERIMENTAL -eq 'true') {
+            $expUrl = "https://github.com/$repo/releases/download/v$stableV/TeleportFavorites_$expV.zip"
+            Write-Host "Experimental URL: $expUrl"
+            $summary += "* **[Download Experimental 2.1 Package (TeleportFavorites_$expV.zip)]($expUrl)**`n`n"
+          } else {
+            $summary += "`n*(No experimental track build triggered for this release)*`n`n"
+          }
+          
           Write-Host "Release page: $releaseUrl"
           Write-Host "=========================================================="
-          $summary = "## TeleportFavorites $v`n`n**[Download TeleportFavorites_$v.zip]($zipUrl)**`n`n[View release]($releaseUrl)`n"
+          
+          $summary += "[View release on GitHub]($releaseUrl)`n"
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary -Encoding utf8
