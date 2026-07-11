@@ -73,7 +73,7 @@ Date: 2025-11-03
 ---------------------------------------------------------------------------------------------------
 Version: 0.0.9
 Date: 2025-10-27
-  Performance:
+  Optimizations:
     - performance optimizations
 ---------------------------------------------------------------------------------------------------
 Version: 0.0.8
@@ -124,15 +124,6 @@ Date: 2025-08-08
   Features:
     - include mod thumbnail
 ---------------------------------------------------------------------------------------------------
-Version: 0.0.2
-Date: 2025-08-08
-  Features:
-    - Initial release with basic teleport functionality
-    - Favorites management system for quick access to teleport locations
-    - Basic UI for adding, editing, and deleting favorites
-    - Teleportation confirmation dialog to prevent accidental teleports
-    - Basic error handling and user feedback
----------------------------------------------------------------------------------------------------
 Version: 0.0.15
 Date: 2025-07-23
   Features:
@@ -146,3 +137,12 @@ Date: 2025-07-23
     - Advanced mod settings for history update interval and tag click radius
     - Improved error handling and user feedback for permissions
     - Visual UI enhancements and tooltips for all major features
+---------------------------------------------------------------------------------------------------
+Version: 0.0.2
+Date: 2025-08-08
+  Features:
+    - Initial release with basic teleport functionality
+    - Favorites management system for quick access to teleport locations
+    - Basic UI for adding, editing, and deleting favorites
+    - Teleportation confirmation dialog to prevent accidental teleports
+    - Basic error handling and user feedback
