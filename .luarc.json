@@ -1,18 +1,15 @@
 {
-    "$schema": "https://githubusercontent.com",
+    "$schema": "https://raw.githubusercontent.com/EmmyLuaLs/emmylua-analyzer-rust/refs/heads/main/crates/emmylua_code_analysis/resources/schema.json",
     "runtime": {
-        "version": "Lua 5.2",
+        "version": "Lua5.2",
         "path": [
             "?.lua",
             "?/init.lua"
         ],
-        "pathStrict": true
+        "pathStrict": true,"requirePattern": ["?","?.lua"]
     },
     "workspace": {
-        "library": [
-            "__factorio__/data",
-            "__factorio__/core"
-        ],
+        "library": ["c:\\Users\\Dev\\AppData\\Roaming\\Code\\User\\workspaceStorage\\26043dc160d4e4319293c5102c68cac8\\justarandomgeek.factoriomod-debug\\emmylua\\factorio\\library","v:\\Fac2orios\\factorio-space-age_win_2.1.9\\Factorio_2.1.9\\data","v:\\Fac2orios\\factorio-space-age_win_2.1.9\\Factorio_2.1.9\\data\\core\\lualib"],
         "checkThirdParty": false
     },
     "diagnostics": {
@@ -29,9 +26,7 @@
             "log",
             "table_size"
         ],
-        "disable": [
-            "lowercase-global"
-        ]
+        "disable": ["unnecessary-if"]
     },
     "type": {
         "castNumberToInteger": true

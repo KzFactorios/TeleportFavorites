@@ -4,30 +4,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e2ea2e94-bda5-4ad0-b13d-6600c6b8371a" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.luarc.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.github/instructions/coding-standards.instructions.md" beforeDir="false" afterPath="$PROJECT_DIR$/.github/instructions/coding-standards.instructions.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/TESTING_INSTRUCTIONS.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/constants.lua" beforeDir="false" afterPath="$PROJECT_DIR$/constants.lua" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/control.lua" beforeDir="false" afterPath="$PROJECT_DIR$/control.lua" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/cache/cache.lua" beforeDir="false" afterPath="$PROJECT_DIR$/core/cache/cache.lua" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/control/control_tag_editor.lua" beforeDir="false" afterPath="$PROJECT_DIR$/core/control/control_tag_editor.lua" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/control/slot_interaction_handlers.lua" beforeDir="false" afterPath="$PROJECT_DIR$/core/control/slot_interaction_handlers.lua" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/events/event_registration_dispatcher.lua" beforeDir="false" afterPath="$PROJECT_DIR$/core/events/event_registration_dispatcher.lua" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/events/handlers.lua" beforeDir="false" afterPath="$PROJECT_DIR$/core/events/handlers.lua" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/favorite/player_favorites.lua" beforeDir="false" afterPath="$PROJECT_DIR$/core/favorite/player_favorites.lua" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/utils/error_handler.lua" beforeDir="false" afterPath="$PROJECT_DIR$/core/utils/error_handler.lua" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/favorites_bar/fave_bar.lua" beforeDir="false" afterPath="$PROJECT_DIR$/gui/favorites_bar/fave_bar.lua" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/tag_editor/tag_editor.lua" beforeDir="false" afterPath="$PROJECT_DIR$/gui/tag_editor/tag_editor.lua" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/coverage_summary.txt" beforeDir="false" afterPath="$PROJECT_DIR$/tests/coverage_summary.txt" afterDir="false" />
-    </list>
+    <list default="true" id="e2ea2e94-bda5-4ad0-b13d-6600c6b8371a" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="17152" />
+    <option name="cachedIndexableFilesCount" value="700" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="FileTemplateManagerImpl">
@@ -67,8 +51,12 @@
     "RunOnceActivity.MCP Project settings loaded": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
     "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "cidr.known.project.marker": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
     "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
     "git-widget-placeholder": "master",
     "ignore.virus.scanning.warn.message": "true",
@@ -78,7 +66,7 @@
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "settings.editor.selected.configurable": "ml.llm.LLMConfigurable",
     "to.speed.mode.migration.done": "true",
     "vue.rearranger.settings.migration": "true"
   }
@@ -105,6 +93,7 @@
       <workItem from="1775324948672" duration="26000" />
       <workItem from="1775324994476" duration="3253000" />
       <workItem from="1775330915120" duration="2359000" />
+      <workItem from="1780877056647" duration="68000" />
     </task>
     <servers />
   </component>
@@ -147,5 +136,13 @@
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
     <select />
+  </component>
+  <component name="github-copilot-workspace">
+    <instructionFileLocations>
+      <option value=".github/instructions" />
+    </instructionFileLocations>
+    <promptFileLocations>
+      <option value=".github/prompts" />
+    </promptFileLocations>
   </component>
 </project>

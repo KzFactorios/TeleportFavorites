@@ -329,6 +329,10 @@ settings = settings or {} ---@type LuaSettings
 -- FIELDS
 ---@field admin boolean
 ---@field afk_time uint
+---@field physical_surface LuaSurface
+---@field physical_surface_index uint
+---@field physical_position MapPosition
+---@field physical_vehicle? LuaEntity
 ---@field character? LuaEntity
 ---@field color Color
 ---@field connected boolean
@@ -358,7 +362,6 @@ settings = settings or {} ---@type LuaSettings
 ---@field tag string
 ---@field ticks_to_respawn? uint
 ---@field vehicle? LuaEntity
----@field physical_vehicle? LuaEntity
 ---@field valid boolean
 ---@field gui LuaGui
 ---@field walking_state {walking: boolean, direction: defines.direction}

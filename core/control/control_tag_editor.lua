@@ -102,14 +102,14 @@ local function handle_delete_cancel(player)
   Cache.set_tag_editor_delete_mode(player, false)
 end
 
---- Teleport player to tag position and close editor
+--- Teleport player to tag position; close editor only on success
 ---@param player LuaPlayer
----@param map_position MapPosition
-local function handle_teleport_btn(player, map_position)
-  if not player or not map_position then
+---@param gps string
+local function handle_teleport_btn(player, gps)
+  if not player or not gps or type(gps) ~= "string" or gps == "" then
     ErrorHandler.warn_log("Invalid teleport parameters", {
       player_valid = player and player.valid or false,
-      map_position_provided = map_position ~= nil
+      gps_provided = gps ~= nil and gps ~= ""
     })
     return
   end
@@ -118,23 +118,21 @@ local function handle_teleport_btn(player, map_position)
     return
   end
 
-  local gps = GPSUtils.gps_from_map_position(map_position, player.surface.index)
-  if not gps or gps == "" then
-    ErrorHandler.warn_log("Failed to create GPS from map position", {
-      player_name = player.name,
-      map_position_x = map_position.x,
-      map_position_y = map_position.y,
-      surface_index = player.surface.index
-    })
-    return
-  end
-
-  TeleportEntrypoint.execute(player, gps, {
+  local success, error_code = TeleportEntrypoint.execute(player, gps, {
     source = "tag_editor",
     add_to_history = true,
+    on_failure = function(failure_player, err_code)
+      if not failure_player or not failure_player.valid then return end
+      if err_code == "already_at_target" then return end
+      local error_message = tostring(err_code or "teleport_failed")
+      ---@type any
+      local msg = { "tf-gui.teleport_failed", error_message }
+      BasicHelpers.safe_player_print(failure_player, msg)
+    end,
   })
-  -- Keep current UX: close editor immediately after teleport action.
-  Core.close_tag_editor(player)
+  if success then
+    Core.close_tag_editor(player)
+  end
 end
 
 --- Tag editor GUI click dispatcher
@@ -188,15 +186,7 @@ local function on_tag_editor_gui_click(event)
       })
       return
     end
-    local tele_pos = GPSUtils.map_position_from_gps(tag_data.gps)
-    if not tele_pos then
-      ErrorHandler.warn_log("Failed to parse GPS for teleport", {
-        player_name = player and player.name or "unknown",
-        gps = tostring(tag_data.gps)
-      })
-      return
-    end
-    return handle_teleport_btn(player, tele_pos)
+    return handle_teleport_btn(player, tag_data.gps)
   elseif element.name == "tag_editor_icon_button" then
     local new_icon = element.elem_value or element.signal or ""
     tag_data.icon = new_icon

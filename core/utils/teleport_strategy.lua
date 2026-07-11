@@ -11,6 +11,115 @@ local ChartTagUtils = require("core.utils.chart_tag_utils")
 
 local TeleportStrategy = {}
 
+--- Character/camera split in remote view: player.position is the map camera;
+--- physical_position (2.1+) or character.position is where the body actually is.
+---@param player LuaPlayer
+---@return MapPosition|nil position
+---@return integer|nil surface_index
+local function get_physical_location(player)
+  if not player or not player.valid then return nil, nil end
+
+  local pos = nil
+  local surface_index = nil
+
+  if player.physical_position
+      and type(player.physical_position.x) == "number"
+      and type(player.physical_position.y) == "number" then
+    pos = player.physical_position
+    if player.physical_surface_index then
+      surface_index = math.floor(tonumber(player.physical_surface_index) or 0)
+    elseif player.physical_surface and player.physical_surface.valid then
+      surface_index = player.physical_surface.index
+    end
+  end
+
+  if not pos and player.character and player.character.valid
+      and player.character.position
+      and type(player.character.position.x) == "number"
+      and type(player.character.position.y) == "number" then
+    pos = player.character.position
+    if player.character.surface and player.character.surface.valid then
+      surface_index = player.character.surface.index
+    end
+  end
+
+  if not pos and player.position
+      and type(player.position.x) == "number"
+      and type(player.position.y) == "number" then
+    pos = player.position
+    if player.surface and player.surface.valid then
+      surface_index = player.surface.index
+    end
+  end
+
+  if surface_index then
+    surface_index = math.floor(tonumber(surface_index) or 1)
+  end
+
+  return pos, surface_index
+end
+
+---@param surface_index integer|nil
+---@param fallback LuaSurface|nil
+---@return LuaSurface|nil
+local function resolve_target_surface(surface_index, fallback)
+  if surface_index then
+    surface_index = math.floor(tonumber(surface_index) or 0)
+    if surface_index >= 1 and game and game.get_surface then
+      local surface = game.get_surface(surface_index)
+      if surface and surface.valid then return surface end
+    end
+  end
+  if fallback and fallback.valid then return fallback end
+  return nil
+end
+
+---@param gps_a string|nil
+---@param gps_b string|nil
+---@return boolean
+local function gps_coords_equal(gps_a, gps_b)
+  if not gps_a or not gps_b then return false end
+  if gps_a == gps_b then return true end
+  local a = GPSUtils.parse_gps_string(gps_a)
+  local b = GPSUtils.parse_gps_string(gps_b)
+  if not a or not b then return false end
+  return a.x == b.x and a.y == b.y and a.s == b.s
+end
+
+--- Teleport the body (character/vehicle), not the remote-view camera.
+---@param player LuaPlayer
+---@param position MapPosition
+---@param surface LuaSurface
+---@return boolean success
+---@return string|nil error_code
+local function teleport_physical_entity(player, position, surface)
+  if player.physical_vehicle and player.physical_vehicle.valid then
+    if player.physical_vehicle.speed ~= nil and player.physical_vehicle.speed ~= 0 then
+      player.play_sound { path = "utility/cannot_build" }
+      return false, "vehicle_moving"
+    end
+    return player.physical_vehicle.teleport(position, surface, true), nil
+  end
+
+  if player.character and player.character.valid then
+    local _, physical_surface_index = get_physical_location(player)
+    local target_surface_index = surface and surface.valid and surface.index
+    local same_surface = physical_surface_index and target_surface_index
+        and math.floor(tonumber(physical_surface_index) or 0) == math.floor(tonumber(target_surface_index) or 0)
+
+    if same_surface then
+      return player.character.teleport(position, surface, true), nil
+    end
+
+    -- Cross-surface: LuaPlayer can hop surfaces; leave remote view first when possible.
+    if player.controller_type == defines.controllers.remote then
+      pcall(function() player.exit_remote_view() end)
+    end
+    return player.teleport(position, surface, true), nil
+  end
+
+  return player.teleport(position, surface, true), nil
+end
 
 ---@param player LuaPlayer
 ---@return boolean, string
@@ -40,8 +149,9 @@ local function get_closest_chart_tag_gps(player, gps)
   end
 
   if chart_tag and chart_tag.position and type(chart_tag.position.x) == "number" and type(chart_tag.position.y) == "number" then
-  local surface_index = player.surface.index
-  return GPSUtils.gps_from_map_position(chart_tag.position, surface_index)
+    local surface_index = GPSUtils.get_surface_index_from_gps(gps)
+        or GPSUtils.get_context_surface_index(chart_tag, player)
+    return GPSUtils.gps_from_map_position(chart_tag.position, surface_index)
   end
   return nil
 end
@@ -74,15 +184,22 @@ function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history, ac
     return false, error_msg
   end
 
+  local target_surface_index = GPSUtils.get_surface_index_from_gps(target_gps)
+  local target_surface = resolve_target_surface(target_surface_index, player.surface)
+  if not target_surface then
+    ErrorHandler.error_log("TeleportStrategy", "Safe teleport failed: Invalid target surface", { target_gps = target_gps }, "teleport_to_gps")
+    return false, "invalid_target_surface"
+  end
+
   -- Normalize the pos
   local target_position = GPSUtils.map_position_from_gps(target_gps)
+  local physical_position, physical_surface_index = get_physical_location(player)
   local player_gps = nil
-  if player.position and type(player.position.x) == "number" and type(player.position.y) == "number" then
-  local surface_index = player.surface.index
-  player_gps = GPSUtils.gps_from_map_position(player.position, surface_index)
+  if physical_position and physical_surface_index then
+    player_gps = GPSUtils.gps_from_map_position(physical_position, physical_surface_index)
   end
-  -- Short-circuit if player is already at the target GPS position (surface-aware, multiplayer-safe)
-  if target_gps == player_gps then
+  -- Short-circuit if character is already at the target GPS (not remote-view camera position)
+  if player_gps and gps_coords_equal(target_gps, player_gps) then
     ErrorHandler.debug_log("Teleport short-circuited: Already at target GPS", {
       player_gps = player_gps,
       target_gps = target_gps
@@ -103,11 +220,11 @@ function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history, ac
     local safe_target_position = (target_position and type(target_position.x) == "number" and type(target_position.y) == "number") and target_position or {x=0, y=0}
     local non_collide_position = nil
     if safe_target_position and type(safe_target_position.x) == "number" and type(safe_target_position.y) == "number" then
-      non_collide_position = player.surface.find_non_colliding_position("character", safe_target_position, search_radius, precision)
+      non_collide_position = target_surface.find_non_colliding_position("character", safe_target_position, search_radius, precision)
     end
 
     if non_collide_position and type(non_collide_position.x) == "number" and type(non_collide_position.y) == "number" then
-      working_gps = GPSUtils.gps_from_map_position(non_collide_position, tonumber(player.surface.index) or 1)
+      working_gps = GPSUtils.gps_from_map_position(non_collide_position, tonumber(target_surface.index) or 1)
     end
   end
 
@@ -125,17 +242,10 @@ function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history, ac
     return false, "invalid_working_position"
   end
 
-  local teleport_success = false
-  if player.physical_vehicle and player.physical_vehicle.valid then
-    if player.physical_vehicle.speed == nil or player.physical_vehicle.speed == 0 then
-      teleport_success = player.physical_vehicle.teleport(working_position, player.surface, true)
-    else
-      player.play_sound { path = "utility/cannot_build" }
-      ErrorHandler.warn_log("Safe teleport blocked: Vehicle is moving")
-      return false, "vehicle_moving"
-    end
-  else
-    teleport_success = player.teleport(working_position, player.surface, true)
+  local teleport_success, teleport_err = teleport_physical_entity(player, working_position, target_surface)
+  if teleport_err == "vehicle_moving" then
+    ErrorHandler.warn_log("Safe teleport blocked: Vehicle is moving")
+    return false, teleport_err
   end
 
   if teleport_success then
@@ -157,6 +267,7 @@ function TeleportStrategy.teleport_to_gps(player, target_gps, add_to_history, ac
   end
 
   ErrorHandler.error_log("TeleportStrategy", "Safe teleport failed: Unforeseen circumstances", {}, "teleport_to_gps")
+  BasicHelpers.safe_player_print(player, BasicHelpers.get_error_string(player, "teleport_failed"))
   return false, "teleport_failed"
 end
 

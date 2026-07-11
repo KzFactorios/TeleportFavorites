@@ -1,7 +1,7 @@
 {
   "name": "TeleportFavorites",
   "title": "Teleport Favorites",
-  "version": "0.0.99",
+  "version": "0.1.0",
   "description": "Favorite map tags and teleport shortcuts. Optional Sequential History Mode (experimental) records departure and destination per hop.",
   "author": "kurtz",
   "license": "MIT",

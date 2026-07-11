@@ -140,8 +140,8 @@ return function(fave_bar, helpers)
     local child_count = GuiHelpers.count_direct_children(slots_frame)
 
     if child_count ~= max_slots then
-      log("[TeleportFavorites][FAVE_BAR] try_update_slots_in_place: count mismatch children="
-        .. tostring(child_count) .. " max_slots=" .. tostring(max_slots))
+      --- log("[TeleportFavorites][FAVE_BAR] try_update_slots_in_place: count mismatch children="
+        ---.. tostring(child_count) .. " max_slots=" .. tostring(max_slots))
       return false
     end
 
@@ -390,7 +390,7 @@ return function(fave_bar, helpers)
       ErrorHandler.warn_log("Favorites bar build failed", { player = player and player.name, error = result })
       return nil
     end
-    return result
+      return result
   end
 
   --- Refresh only the slot buttons if the bar exists, otherwise do a full build.
