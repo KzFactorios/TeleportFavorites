@@ -96,9 +96,9 @@ jobs:
             Move-Item -Path $_.FullName -Destination ".dist_stable/$modFolder"
           }
           
-          # Target folder contents directly using a wildcard so the contents sit at the archive root
-          Push-Location ".dist_stable/$modFolder"
-          Compress-Archive -Path * -DestinationPath "../../$modFolder.zip" -Force
+          # Move into workspace directory and compress the mod container folder itself
+          Push-Location .dist_stable
+          Compress-Archive -Path "$modFolder" -DestinationPath "../$modFolder.zip" -Force
           Pop-Location
 
       - name: Build Experimental (2.1) Mod Package
@@ -123,9 +123,9 @@ jobs:
             Move-Item -Path $_.FullName -Destination ".dist_exp/$modFolder"
           }
           
-          # Target folder contents directly using a wildcard so the contents sit at the archive root
-          Push-Location ".dist_exp/$modFolder"
-          Compress-Archive -Path * -DestinationPath "../../$modFolder.zip" -Force
+          # Move into workspace directory and compress the mod container folder itself
+          Push-Location .dist_exp
+          Compress-Archive -Path "$modFolder" -DestinationPath "../$modFolder.zip" -Force
           Pop-Location
 
       - name: Validate Changelog
@@ -138,12 +138,12 @@ jobs:
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           $zip = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
           try {
-            $expected = "info.json"
+            $expected = "$modFolder/info.json"
             $found = $false
             foreach ($entry in $zip.Entries) {
               if ($entry.FullName -eq $expected) { $found = $true; break }
             }
-            if (-not $found) { throw "Missing $expected at the root inside $zipPath" }
+            if (-not $found) { throw "Missing internal root mod folder structure ($expected) inside $zipPath" }
           } finally { $zip.Dispose() }
 
       - name: Validate Experimental Zip Integrity
@@ -154,12 +154,12 @@ jobs:
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           $zip = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
           try {
-            $expected = "info.json"
+            $expected = "$modFolder/info.json"
             $found = $false
             foreach ($entry in $zip.Entries) {
               if ($entry.FullName -eq $expected) { $found = $true; break }
             }
-            if (-not $found) { throw "Missing $expected at the root inside $zipPath" }
+            if (-not $found) { throw "Missing internal root mod folder structure ($expected) inside $zipPath" }
           } finally { $zip.Dispose() }
 
       - name: Upload Stable Workflow Artifact
