@@ -1,4 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.1.1
+Date: 2026-07-11
+  Info:
+    - Built for Factorio 2.1 Experimental engine.
+  Changes:
+    - Factorio 2.1 compatibility
+    - Removed unnecessary logging of slot count mismatch in favorites bar
+    - Fix bug where teleporting was not working in map mode
+---------------------------------------------------------------------------------------------------
 Version: 0.1.0
 Date: 2026-07-11
   Changes:
